@@ -217,7 +217,7 @@ historical strict startup gate remains tracked under feat-889.
   APK is not declared ready for installation. No physical Chromecast install.
 - Source-only wiring tests and redundant label-only assertions were removed;
   state/hook regressions and native before/after evidence remain. No source
-  changes weakened a failed test. The new branch remains local for review.
+  changes weakened a failed test. At that checkpoint the new branch remained local for review.
 
 ## Owner-reported Android Back follow-up
 
@@ -227,3 +227,18 @@ The new native QA build and 17 native unit tests pass; focused runtime proves bo
 reported paths and saved-position retention. See the validation report under
 `docs/validation/tv-reviewed-shortlist-20261029/`. Merge remains on hold for the
 separate sampled duplicated-frame investigation; earlier failures remain retained.
+
+## Merge-readiness resolution
+
+PR #2961 publishes the combined work. The first submitted head passed required
+ci-gate and CodeQL with no open review threads. Main `786902d4d` is integrated; its
+later recommendation-script changes do not affect TV source or dependencies.
+
+The controlled cold-runtime comparison is complete: candidate first and main
+second, identical 22:41 saved data/content, no snapshot memory, current clock,
+60-second windows, 24 clean fresh frames. A fresh 720p candidate recording also
+passed 24 inspected frames. Earlier degraded snapshot runs affected both sources;
+retain them as operational evidence in feat-904, not a claimed app regression or
+product fix. See docs/validation/tv-reviewed-shortlist-20261029/README.md for exact
+metrics, hashes, limits and restoration. The owner's Back report is fixed and
+verified separately in feat-903. Physical installation remains deferred.

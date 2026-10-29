@@ -2,9 +2,11 @@
 
 Initial candidate application: `c19459c65`; comparison main: `c2f0a0e52`.
 The owner's Android Back issue is repaired and verified at `d0377137` (feat-903).
-Merge readiness remains in progress because a sampled duplicated video frame
-requires investigation. Later main `34f5be683` is integrated; it changes no TV
-application code or TV dependency inputs.
+The valid cold-runtime packaged comparison is complete; the earlier degraded
+snapshot experiments are retained below and in feat-904. Main `786902d4d` is
+integrated; its later changes affect no TV application or dependency inputs.
+PR #2961 contains the combined work. GitHub is authoritative for final CI and
+merge state; no physical-device or store-release certification is claimed.
 
 ## Static checks and review
 
@@ -48,8 +50,8 @@ at 60.050 and 60.007 seconds respectively; fresh screenshots were captured at
   24:12, and selecting it subsequently reached moving playback at 24:18.
 - Candidate's 30-second sample contains a rectangular duplicated/scaled video
   frame, also present in the decoded recording. Baseline sampled frames do not.
-  Its origin is unresolved; a second matched comparison is planned. Moving
-  playback does not establish artifact-free rendering.
+  Its exact driver/capture origin remains unresolved. The subsequent controlled
+  cold-runtime comparison below separates it from a demonstrated app regression.
 - The earlier HTTP 503, emulator decoder and preparation/failure captures remain
   retained. They were not reproduced in this first matched pair. No application
   fix or confirmed root cause is claimed from a successful retry alone.
@@ -88,6 +90,40 @@ OCSP certificate validation rejected an out-of-date response. Synchronizing the
 emulator clock to the host restored playback with the same unchanged candidate;
 certificate checks were never bypassed. This explains that specific later failure,
 not every earlier HTTP 503 or decoder error.
+
+## Cold-runtime comparison and retained environment failures
+
+The restored-snapshot experiments later showed 20–27-second screenshot stalls
+on both main and candidate. Those trials are retained as degraded environment
+evidence, not valid matched-sampling proof. Neither a successful retry nor
+identical native source alone was used to dismiss the observation.
+
+The follow-up restored the same original user data, then cold-booted the actual
+emulator with snapshot memory loading disabled and synchronized its clock.
+Candidate ran first and unchanged main second, both starting from the observed
+22:41 position with the same film, language, configuration and 60-second window.
+Neither trial used screen recording. All 24 fresh screenshots were inspected,
+including the corresponding film scene around the earlier anomaly. Each met
+the five-second sampling schedule; maximum capture times were 0.915 and
+0.944 seconds. Both showed normal full-frame playback without duplication.
+
+A further cold-boot candidate control used the original 1280×720 recording size
+without concurrent screenshots. Its 60.11-second video decoded successfully;
+all 24 inspected frames, including every second from 18 through 36, were clean.
+These results clear the packaged playback comparison in a valid environment.
+They do not claim that an application fix repaired the old snapshot artifact,
+nor identify its exact graphics-driver cause. Feat-904 retains that operational
+observation for follow-up; feat-889 remains open for strict whole-startup work.
+Cold-boot intervention and transient host load cannot be perfectly separated in
+this local diagnosis; these are bounded observations, not a universal stability
+or performance guarantee.
+
+Formal evidence: `frame-artifact-assessment.json` in the build-workspace evidence
+directory above, with 71 artifact hashes and exact timing/recording details.
+SHA-256: `ebaeb0e11e81f92730ea9f07a845c252bc38f8131591d789819f16629d937496`.
+The post-Back user state was restored and cold-booted; the final installed APK
+matches `8825c667…1459b`, host/guest clock delta was zero, and details showed
+Saved at 27:44. No physical Chromecast installation occurred.
 
 ## UI examples
 

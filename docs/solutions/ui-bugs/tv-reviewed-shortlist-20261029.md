@@ -69,3 +69,29 @@ even when a seed exists; a static poster can preserve context without starting a
 backdrop decoder. A failed seeded query must never leave a ready-looking Play
 action that cannot act. Keep meaningful state/hook tests and live fault/recovery
 evidence instead of source-snippet assertions that duplicate an implementation.
+
+## Android exit controls must remain actionable
+
+A handler can be correctly wired while the interaction still appears broken.
+The native player consumed hidden-chrome Back as a reveal-only key, and the
+playing-controls timer hid the on-screen Back even while it held focus. The next
+Select then revealed the timebar rather than activating the vanished exit.
+
+Handle remote Back separately from keys that reveal controls: consume both halves
+and dismiss once on key-up. Preserve the earlier scrub-cancellation branch and
+its paired-key latch. Keep focused Back out of both hide scheduling and hide
+execution; checking only scheduling misses a timer already queued before focus
+moves. Moving focus to another control should resume normal scheduling.
+
+Verify the difficult state, not only paused controls: focus Back, resume playback,
+wait longer than the hide timeout, then select. Separately press Back once with
+all controls hidden. Preserve the resulting detail destination and saved progress.
+These paths were reproduced and verified in feat-903 on the packaged emulator.
+
+## Snapshot restores can invalidate network evidence
+
+An emulator snapshot also restores an old guest clock. During the Back diagnosis,
+an 80-minute drift caused OCSP validation to reject a certificate response as
+out-of-date. Synchronizing the guest clock to the host restored playback without
+changing the APK or bypassing certificate checks. Record both clocks after a
+restore before attributing TLS or media failures to an application change.

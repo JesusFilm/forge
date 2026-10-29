@@ -3,7 +3,7 @@ id: "feat-890"
 title: "Validate and refine the reviewed Watch TV UX shortlist"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-29"
 duration: 3
 depends_on: []
@@ -68,10 +68,15 @@ exact source, targets, screenshots and limitations in the plan and local harness
 
 ## Completion evidence — 2026-10-29
 
-The selected UI work is combined locally on `codex/tv-reviewed-shortlist`, with
-current main merged and application source equivalent to `327c57a1d`. The final
-TV harness passes static checks, both native UI scopes, all acceptance items and
-bounded performance observations. Native physical-device/Siri validation and
-strict whole-startup equivalence are not claimed. Historical startup validation
-remains open in feat-889; separate bundled Release playback is unverified. See
-the plan for all retained failures, measurements and limits.
+The selected UI work is combined on `codex/tv-reviewed-shortlist` and published
+in PR #2961. The earlier TV harness passed static checks, both native UI scopes,
+all acceptance items and bounded performance observations. Fresh PR validation
+also passed. A controlled packaged Android comparison after cold emulator boots
+passed on both main and candidate; a fresh 720p recording was clean. The owner’s
+additional Android Back report is repaired and verified in feat-903.
+
+Physical-device/Siri validation and strict whole-startup equivalence are not
+claimed. Historical startup validation remains open in feat-889; retained emulator
+snapshot/capture observations are tracked in feat-904. See the validation report
+and plan for evidence, failures and limitations. PR checks and merge state remain
+authoritative on GitHub; this ticket records implementation and validation.
