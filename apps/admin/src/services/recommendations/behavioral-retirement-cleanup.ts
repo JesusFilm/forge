@@ -295,7 +295,6 @@ function protectedParentSql(
 async function assertAdmission(client: Client): Promise<void> {
   const catalog = await client.query<{ ready: boolean }>(`SELECT
     to_regclass('recommendation_behavioral_retirement_batch') IS NOT NULL
-    AND to_regclass('workflow.workflow_runs') IS NOT NULL
     AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('recommendation_experiment_assignment')
       AND conname = 'recommendation_experiment_assignment_retirement_privacy_check')
     AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('recommendation_shadow_run')
@@ -306,6 +305,38 @@ async function assertAdmission(client: Client): Promise<void> {
       AND conname = 'recommendation_experiment_assignment_profile_fkey' AND confdeltype = 'c') AS ready`)
   if (!catalog.rows[0]?.ready)
     throw new RetirementAdmissionError("Retirement schema guard not deployed")
+  await assertRetiredWorkflowRuntimesTerminal(client)
+  const active = await client.query<{ blocked: boolean }>(`SELECT
+    EXISTS (SELECT 1 FROM recommendation_profile_projection_run WHERE state IN ('pending', 'claimed'))
+    OR EXISTS (SELECT 1 FROM recommendation_profile_projection_generation WHERE state = 'building')
+    OR EXISTS (SELECT 1 FROM recommendation_shadow_run WHERE state IN ('pending', 'claimed'))
+    OR EXISTS (SELECT 1 FROM recommendation_experiment_evaluation_run WHERE state IN ('pending', 'claimed'))
+    OR EXISTS (SELECT 1 FROM recommendation_cowatch_refresh_attempt WHERE status = 'running') AS blocked`)
+  if (active.rows[0]?.blocked)
+    throw new RetirementAdmissionError(
+      "Known behavioral learner is nonterminal",
+    )
+}
+
+/** Read-only runtime guard shared with the pre-cleanup projection fence. Its
+ * closed enum proof is required before the indexed positive-status check. */
+export async function assertRetiredWorkflowRuntimesTerminal(
+  client: Client,
+): Promise<void> {
+  const catalog = await client.query<{ ready: boolean }>(`SELECT EXISTS (
+    SELECT 1 FROM pg_attribute a
+    JOIN pg_type t ON t.oid = a.atttypid
+    WHERE a.attrelid = to_regclass('workflow.workflow_runs')
+      AND a.attname = 'status' AND a.attnotnull AND NOT a.attisdropped
+      AND t.typtype = 'e'
+      AND ARRAY(SELECT e.enumlabel::text FROM pg_enum e
+        WHERE e.enumtypid = t.oid ORDER BY e.enumsortorder)
+        = ARRAY['pending', 'running', 'completed', 'failed', 'cancelled']
+  ) AS ready`)
+  if (!catalog.rows[0]?.ready)
+    throw new RetirementAdmissionError(
+      "Workflow runtime status contract changed",
+    )
   const active = await client.query<{
     blocked: boolean
   }>(`WITH retired(workflow_key, runtime_name) AS (VALUES
@@ -320,21 +351,26 @@ async function assertAdmission(client: Client): Promise<void> {
       ('recommendation-experiment-evaluation',
        'workflow//./src/workflows/recommendationExperimentEvaluation//runRecommendationExperimentEvaluation')
     ) SELECT
-    EXISTS (SELECT 1 FROM recommendation_profile_projection_run WHERE state IN ('pending', 'claimed'))
-    OR EXISTS (SELECT 1 FROM recommendation_profile_projection_generation WHERE state = 'building')
-    OR EXISTS (SELECT 1 FROM recommendation_shadow_run WHERE state IN ('pending', 'claimed'))
-    OR EXISTS (SELECT 1 FROM recommendation_experiment_evaluation_run WHERE state IN ('pending', 'claimed'))
-    OR EXISTS (SELECT 1 FROM recommendation_cowatch_refresh_attempt WHERE status = 'running')
-    OR EXISTS (SELECT 1 FROM workflow.workflow_runs runtime
-      JOIN retired ON retired.runtime_name = runtime.name
-      WHERE runtime.status IS NULL OR runtime.status NOT IN ('completed', 'failed', 'cancelled'))
+    EXISTS (SELECT 1 FROM workflow.workflow_runs runtime
+      WHERE runtime.status IN ('pending', 'running')
+        AND runtime.name IN (
+          'workflow//./src/workflows/recommendationProfileProjection//runRecommendationProfileProjection',
+          'workflow//./src/workflows/recommendationProfileReconciliation//runRecommendationProfileReconciliationScheduler',
+          'workflow//./src/workflows/recommendationCowatchRefresh//runRecommendationCowatchRefreshScheduler',
+          'workflow//./src/workflows/recommendationShadowEvaluation//runRecommendationShadowEvaluation',
+          'workflow//./src/workflows/recommendationExperimentEvaluation//runRecommendationExperimentEvaluation'))
     OR EXISTS (SELECT 1 FROM workflow_run ledger
       JOIN retired ON retired.workflow_key = ledger.workflow_key
       LEFT JOIN workflow.workflow_runs runtime ON runtime.id = ledger.runtime_run_id
-      WHERE ledger.runtime_run_id IS NULL OR runtime.id IS NULL
-        OR runtime.name IS DISTINCT FROM retired.runtime_name
-        OR runtime.status IS NULL
-        OR runtime.status NOT IN ('completed', 'failed', 'cancelled')) AS blocked`)
+      WHERE ledger.workflow_key IN (
+        'recommendation-profile-projection',
+        'recommendation-profile-reconciliation-scheduler',
+        'recommendation-cowatch-refresh-scheduler',
+        'recommendation-shadow-evaluation',
+        'recommendation-experiment-evaluation')
+        AND (ledger.runtime_run_id IS NULL OR runtime.id IS NULL
+          OR runtime.name IS DISTINCT FROM retired.runtime_name
+          OR runtime.status IN ('pending', 'running'))) AS blocked`)
   if (active.rows[0]?.blocked)
     throw new RetirementAdmissionError(
       "Known behavioral learner is nonterminal",
