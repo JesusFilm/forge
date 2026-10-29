@@ -23,6 +23,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "tsx src/scripts/migrate-deploy-known-recovery.ts",
     "retention:run-once": "tsx src/scripts/run-recommendation-retention-once.ts",
+    "recommendations:retire-behavioral": "tsx src/scripts/retire-behavioral-recommendations.ts",
     "db:backfill:watch-home-category-rail": "prisma db execute --schema prisma/schema.prisma --file prisma/backfills/watch-home-category-rail-block.sql",
     "db:studio": "prisma studio",
     "core-sync:run": "tsx src/scripts/run-core-sync.ts",

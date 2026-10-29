@@ -5312,6 +5312,23 @@ model RecommendationRetentionRun {
   @@map("recommendation_retention_run")
 }
 
+/// One transaction-coupled receipt per independently committed page of the
+/// owner-approved behavioral retirement. This is not ordinary expiry health.
+model RecommendationBehavioralRetirementBatch {
+  batchId      String   @id @map("batch_id") @db.Uuid
+  operationId  String   @map("operation_id") @db.Uuid
+  sequence     Int
+  phase        String   @db.VarChar(80)
+  deletedCount Int      @map("deleted_count")
+  updatedCount Int      @map("updated_count")
+  sourceCommit String   @map("source_commit") @db.Char(40)
+  committedAt  DateTime @default(now()) @map("committed_at")
+
+  @@unique([operationId, sequence], map: "recommendation_behavioral_retirement_operation_sequence_key")
+  @@index([operationId, committedAt], map: "recommendation_behavioral_retirement_operation_idx")
+  @@map("recommendation_behavioral_retirement_batch")
+}
+
 /// Permission-gated Admin raw-trace access audit. The request FK is cleared
 /// atomically by root purge; actor digest/reason/time remain for 90 days.
 model RecommendationTraceAccessAudit {
