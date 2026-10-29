@@ -41,11 +41,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const databaseUrl = new URL(env.DATABASE_URL)
       if (
         !["127.0.0.1", "localhost"].includes(databaseUrl.hostname) ||
-        databaseUrl.pathname !== "/forge_test" ||
+        !["/forge_test", "/forge_precomputed_control_test"].includes(
+          databaseUrl.pathname,
+        ) ||
         databaseUrl.search ||
         databaseUrl.hash
       )
-        throw new Error("Owned loopback forge_test database required")
+        throw new Error("Owned loopback precomputed fixture database required")
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
       await admin.query(`CREATE SCHEMA "${schema}"`)

@@ -86,7 +86,7 @@ describe.skipIf(!run)(
     let owned = false
     let retainedTriggersBefore: string[] = []
     const digest = "a".repeat(64)
-    const future = "2027-01-01T00:00:00Z"
+    const future = new Date(Date.now() + 90 * 86_400_000).toISOString()
 
     async function count(table: string): Promise<number> {
       const result = await db.query<{ n: number }>(
