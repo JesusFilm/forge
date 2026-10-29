@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-28"
 duration: 2
 depends_on: []
-blocks: []
+blocks:
+  - "feat-908"
 tags:
   - "manager"
   - "mastra"
@@ -70,8 +71,8 @@ historical todo 016 browser/publication acceptance complete.
 
 ## PR886 review repair, round 2
 
-Replayed the two source-acquisition repairs from `a36b9ac7a` onto the
-source-only PR886 layer:
+Addressed both P2 findings in an isolated worktree from graph-integrated
+`7d281c435`:
 
 - `source-mux.ts`: wait for any matching preparing subtitle track before
   checking generation support or issuing a generation POST. Uploaded English
@@ -85,22 +86,13 @@ source-only PR886 layer:
 
 Red proof captured 10 failed tests before implementation. The local source-only
 HTTP tests return 400 for invalid content and 502 for transient read failures,
-without artifact writes, Mux fallback or translation. The public source API,
-Admin and callbacks are unchanged. This layer keeps the source-only policy digest
-`3e46dd8c3b82e3b32560d5a645c08f5b2795284e3cc997b50cc68a96dc243f62`
-and its original ordered files. Provider-spend tracking and its expanded graph
-pin belong to PR1087.
+without artifact writes, Mux fallback or translation. The public API, graph
+spend/ambiguity tracking, Admin and callbacks are unchanged. No pinned runtime
+file changed; the policy digest remains
+`6d65176d66f9b71ca7de75a14abdd978c7cbcc0cae74c42b0e727f52b367d426`,
+including `provider-spend.ts`, with the existing Manager literals intact.
 
-Historical integrated validation: source/translation/graph suite (34 files, 254
-tests) and Manager caller suite (12 files, 97 tests), both package typechecks and linters,
+Validation: source/translation/graph suite (34 files, 254 tests) and Manager
+caller suite (12 files, 97 tests), both package typechecks and linters,
 changed-file Prettier, repository format check and `git diff --check`. Commit hooks remain enabled. No live provider request,
 push, merge or deployment; parent owns the fresh independent review round.
-
-## Local stack reconstruction, 2026-10-29
-
-Replayed original source execution and its eight-file review repair onto
-`48ad42865`, without graph/provider-spend changes. Fresh source/translation
-tests: 24 files, 182 tests; Manager caller tests: 11 files, 91 tests. Both
-packages pass fresh nonincremental typechecks and full linters. The frozen
-filtered install ran Husky and Prisma generation. The source-only byte-pin
-test passes. No dependency manifest or lockfile change belongs to this layer.

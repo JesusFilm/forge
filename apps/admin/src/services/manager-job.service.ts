@@ -2,7 +2,15 @@ import { assertAutomationJobAdmission } from "./manager-automation-job-admission
 import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
-import { ForbiddenError, NotFoundError } from "./errors"
+import {
+  ConcurrentModificationError,
+  ForbiddenError,
+  NotFoundError,
+} from "./errors"
+import {
+  lockManagerExecutionJob,
+  managerExecutionOwner,
+} from "./manager-execution.service"
 
 export type ManagerJobStatus = "pending" | "running" | "completed" | "failed"
 export type ManagerStepStatus =
@@ -24,6 +32,7 @@ export type ManagerJobStep = {
 
 export type ManagerJobRecord = {
   id: string
+  revision: number
   muxAssetId: string
   muxPlaybackId: string
   videoDocumentId?: string
@@ -77,6 +86,7 @@ type UpdateInput = Partial<CreateInput>
 
 type ManagerJobRow = {
   id: string
+  revision: number
   muxAssetId: string
   muxPlaybackId: string | null
   videoDocumentId: string | null
@@ -242,6 +252,7 @@ function toJobRecord(
 
   return {
     id: row.id,
+    revision: row.revision,
     muxAssetId: row.muxAssetId,
     muxPlaybackId: row.muxPlaybackId ?? "",
     ...(row.videoDocumentId ? { videoDocumentId: row.videoDocumentId } : {}),
@@ -401,13 +412,17 @@ export class ManagerJobService {
     user,
     id,
     input,
+    expectedRevision,
   }: {
     user: Principal | null
     id: string
+    expectedRevision?: number
     input: UpdateInput
   }) {
     assertManagerJobAccess(user)
-    const data: Prisma.ManagerEnrichmentJobUpdateInput = {}
+    const data: Prisma.ManagerEnrichmentJobUpdateInput = {
+      revision: { increment: 1 },
+    }
     if (input.muxAssetId !== undefined) data.muxAssetId = input.muxAssetId
     if (input.muxPlaybackId !== undefined) {
       data.muxPlaybackId = input.muxPlaybackId
@@ -459,9 +474,40 @@ export class ManagerJobService {
     if (input.startedAt !== undefined) data.startedAt = input.startedAt
     if (input.completedAt !== undefined) data.completedAt = input.completedAt
 
-    const row = await this.prisma.managerEnrichmentJob.update({
-      where: { id },
-      data,
+    const row = await this.prisma.$transaction(async (tx) => {
+      const current = await lockManagerExecutionJob(tx, id)
+      if (!current) throw new NotFoundError("Manager enrichment job", id)
+      if (
+        expectedRevision !== undefined &&
+        current.revision !== expectedRevision
+      ) {
+        throw new ConcurrentModificationError("Manager enrichment job", id)
+      }
+      const owner = managerExecutionOwner(current.options)
+      const next =
+        input.options === undefined
+          ? owner
+          : managerExecutionOwner(input.options)
+      const invalidates =
+        owner.engine !== next.engine ||
+        owner.currentRunId !== next.currentRunId ||
+        (input.status !== undefined &&
+          input.status !== "pending" &&
+          input.status !== "running") ||
+        (input.completedAt !== undefined && input.completedAt !== null)
+      if (
+        invalidates &&
+        (await tx.managerExecutionOperation.findFirst({
+          where: { jobId: id, completedAt: null },
+          select: { jobId: true },
+        }))
+      ) {
+        throw new ConcurrentModificationError(
+          "Manager enrichment job has an in-flight execution operation",
+          id,
+        )
+      }
+      return tx.managerEnrichmentJob.update({ where: { id }, data })
     })
     return toJobRecord(row)
   }

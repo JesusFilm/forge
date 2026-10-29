@@ -1,0 +1,653 @@
+{
+  "job": {
+    "id": "cmvu12i5s0000lfuki4jdorl7",
+    "revision": 20,
+    "muxAssetId": "actual-http-isolated-mux",
+    "muxPlaybackId": "fixture-playback",
+    "languages": ["fr", "es"],
+    "sourceLanguageCode": "en",
+    "resolvedTargetLanguageCodes": ["fr", "es"],
+    "requestedLanguageAbbreviations": [],
+    "options": {
+      "engine": "mastra",
+      "currentRunId": "actual-http-isolated-graph-run",
+      "callbackSequences": {
+        "chapters": 2,
+        "metadata": 2,
+        "embeddings": 2,
+        "mux_upload": 3,
+        "translation": 2,
+        "audio_cleanup": 1,
+        "transcription": 2,
+        "structured_transcript": 2
+      },
+      "enrichmentArtifacts": {
+        "status": "ready",
+        "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2",
+        "sourceVerified": true
+      }
+    },
+    "status": "completed",
+    "currentStep": "mux_upload",
+    "retries": 0,
+    "createdAt": "2026-10-29T21:00:44.273Z",
+    "updatedAt": "2026-10-29T21:00:45.775Z",
+    "completedAt": "2026-10-29T21:00:45.766Z",
+    "artifacts": {
+      "muxSync": {
+        "data": {
+          "updatedAt": "2026-10-29T21:00:45.731Z",
+          "comparisons": [
+            {
+              "status": "synced",
+              "updatedAt": "2026-10-29T21:00:45.731Z",
+              "muxTrackId": "fixture-track-fr",
+              "artifactKey": "subtitles-fr",
+              "explanation": "Synced fr subtitles to Mux",
+              "muxTargetKey": "fr",
+              "muxTargetType": "text_track",
+              "targetLanguage": "fr",
+              "generatedPreview": "NOTE language: fr NOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2 NOTE generated: 2026-10-29T21:00:45.647Z Jesus offers hope in fr."
+            },
+            {
+              "status": "synced",
+              "updatedAt": "2026-10-29T21:00:45.731Z",
+              "muxTrackId": "fixture-track-es",
+              "artifactKey": "subtitles-es",
+              "explanation": "Synced es subtitles to Mux",
+              "muxTargetKey": "es",
+              "muxTargetType": "text_track",
+              "targetLanguage": "es",
+              "generatedPreview": "NOTE language: es NOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2 NOTE generated: 2026-10-29T21:00:45.647Z Jesus offers hope in es."
+            }
+          ],
+          "overrideHistory": []
+        },
+        "kind": "metadata"
+      },
+      "chapters": {
+        "kind": "downloadable"
+      },
+      "metadata": {
+        "kind": "downloadable"
+      },
+      "subtitles": {
+        "kind": "downloadable"
+      },
+      "transcript": {
+        "kind": "downloadable"
+      },
+      "chapters-vtt": {
+        "kind": "downloadable"
+      },
+      "subtitles-es": {
+        "kind": "downloadable"
+      },
+      "subtitles-fr": {
+        "kind": "downloadable"
+      },
+      "translation-es": {
+        "kind": "downloadable"
+      },
+      "translation-fr": {
+        "kind": "downloadable"
+      },
+      "transcript-correction-report": {
+        "kind": "downloadable"
+      }
+    },
+    "steps": [
+      {
+        "name": "audio_cleanup",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      },
+      {
+        "name": "transcription",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.490Z",
+        "finishedAt": "2026-10-29T21:00:45.543Z",
+        "details": null
+      },
+      {
+        "name": "structured_transcript",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.555Z",
+        "finishedAt": "2026-10-29T21:00:45.616Z",
+        "details": {
+          "mastra": {
+            "runId": "actual-http-isolated-graph-run-correction",
+            "status": "skipped"
+          },
+          "transcriptCorrection": {
+            "basis": "model_knowledge",
+            "status": "skipped",
+            "findings": [],
+            "confidence": 0.25,
+            "appliedCount": 0,
+            "flaggedCount": 0,
+            "contentDomain": "christian_general",
+            "skippedReason": "no_scripture_context",
+            "checkedReferenceCount": 0,
+            "likelyBibleReferences": []
+          }
+        }
+      },
+      {
+        "name": "translation",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.623Z",
+        "finishedAt": "2026-10-29T21:00:45.661Z",
+        "details": {
+          "mastra": {
+            "runId": "actual-http-isolated-graph-run-translation",
+            "status": "completed",
+            "languages": ["fr", "es"]
+          },
+          "languageResults": [
+            {
+              "lang": "fr",
+              "status": "completed"
+            },
+            {
+              "lang": "es",
+              "status": "completed"
+            }
+          ]
+        }
+      },
+      {
+        "name": "chapters",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.630Z",
+        "finishedAt": "2026-10-29T21:00:45.673Z",
+        "details": null
+      },
+      {
+        "name": "metadata",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.639Z",
+        "finishedAt": "2026-10-29T21:00:45.681Z",
+        "details": null
+      },
+      {
+        "name": "embeddings",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.649Z",
+        "finishedAt": "2026-10-29T21:00:45.693Z",
+        "details": {
+          "mastra": {
+            "model": "openai/text-embedding-3-small",
+            "runId": "actual-http-isolated-graph-run-embeddings",
+            "chunks": 1,
+            "status": "created",
+            "provider": "openai",
+            "totalTokens": 40,
+            "sourceContentHash": "sha256:a653b12145df48438785690cb8c6e51592552cfaa486e35ec7211a5a3bade332"
+          }
+        }
+      },
+      {
+        "name": "mux_upload",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-29T21:00:45.702Z",
+        "finishedAt": "2026-10-29T21:00:45.766Z",
+        "details": null
+      },
+      {
+        "name": "theology_validation_bible_quotes",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      },
+      {
+        "name": "seo_improvements",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      }
+    ],
+    "errors": []
+  },
+  "fences": [
+    {
+      "stage": "source",
+      "rejectedRunReplacement": true,
+      "rejectedTerminalInvalidation": true,
+      "errors": [
+        "Error: Manager enrichment job has an in-flight execution operation was modified concurrently: cmvu12i5s0000lfuki4jdorl7",
+        "Error: Manager enrichment job has an in-flight execution operation was modified concurrently: cmvu12i5s0000lfuki4jdorl7"
+      ]
+    }
+  ],
+  "admissionRejections": [
+    {
+      "operation": {
+        "kind": "run-admission",
+        "assetId": "foreign-namespace",
+        "muxAssetId": "actual-http-isolated-mux",
+        "sourceReuse": "none"
+      },
+      "status": 400,
+      "result": {
+        "error": "asset_mismatch"
+      }
+    },
+    {
+      "operation": {
+        "kind": "run-admission",
+        "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2",
+        "muxAssetId": "actual-http-isolated-mux",
+        "sourceReuse": "transcript"
+      },
+      "status": 400,
+      "result": {
+        "error": "unverified_source_reuse"
+      }
+    }
+  ],
+  "preparation": {
+    "createdRevision": 0,
+    "preparedRevision": 2,
+    "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2"
+  },
+  "http": [
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "run-admission",
+      "sourceReuse": "none",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "replayed": false,
+        "result": {
+          "admitted": true
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "audio_cleanup",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "transcription",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "source",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "6253e94e-8cc8-41ca-9f11-5878f293d408"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "source",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "transcription",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "structured_transcript",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "correction",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "1f55f927-f8d2-4886-818e-80bb54823eb8"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "correction",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "apply-transcript-corrections",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "replayed": false,
+        "result": {
+          "artifactKeys": ["transcript-correction-report"],
+          "summary": {
+            "status": "skipped",
+            "basis": "model_knowledge",
+            "contentDomain": "christian_general",
+            "confidence": 0.25,
+            "checkedReferenceCount": 0,
+            "appliedCount": 0,
+            "flaggedCount": 0,
+            "skippedReason": "no_scripture_context",
+            "likelyBibleReferences": [],
+            "findings": []
+          },
+          "changed": false
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "structured_transcript",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "translation",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "chapters",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "translation",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "4803cfcb-fa81-4052-890b-becdc64e5bd7"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "metadata",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "chapters",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "abd097b4-9318-47a7-9b1b-79b9e7a15623"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "translation",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "embeddings",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "metadata",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "f77515b6-58a4-4b35-8acd-ba47fe97e32b"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "chapters",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "translation",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-claim",
+      "stage": "embeddings",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "67dda1b9-f9eb-4cd2-b611-836e4b917173"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "metadata",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "chapters",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mastra-stage-complete",
+      "stage": "embeddings",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "metadata",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "embeddings",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "mux_upload",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "operation": "mux-publication",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "replayed": false,
+        "result": {
+          "report": {
+            "comparisons": [
+              {
+                "artifactKey": "subtitles-fr",
+                "targetLanguage": "fr",
+                "muxTargetType": "text_track",
+                "muxTargetKey": "fr",
+                "status": "synced",
+                "explanation": "Synced fr subtitles to Mux",
+                "generatedPreview": "NOTE language: fr NOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2 NOTE generated: 2026-10-29T21:00:45.647Z Jesus offers hope in fr.",
+                "muxTrackId": "fixture-track-fr",
+                "updatedAt": "2026-10-29T21:00:45.731Z"
+              },
+              {
+                "artifactKey": "subtitles-es",
+                "targetLanguage": "es",
+                "muxTargetType": "text_track",
+                "muxTargetKey": "es",
+                "status": "synced",
+                "explanation": "Synced es subtitles to Mux",
+                "generatedPreview": "NOTE language: es NOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2 NOTE generated: 2026-10-29T21:00:45.647Z Jesus offers hope in es.",
+                "muxTrackId": "fixture-track-es",
+                "updatedAt": "2026-10-29T21:00:45.731Z"
+              }
+            ],
+            "overrideHistory": [],
+            "updatedAt": "2026-10-29T21:00:45.731Z"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "mux_upload",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "step": "mux_upload",
+      "status": 200,
+      "response": {
+        "ok": true,
+        "action": "applied"
+      }
+    }
+  ]
+}

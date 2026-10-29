@@ -1,0 +1,503 @@
+{
+  "job": {
+    "id": "cmvsm5ynt0000lfmiqmgtss93",
+    "revision": 18,
+    "muxAssetId": "actual-http-1793222145148",
+    "muxPlaybackId": "fixture-playback",
+    "languages": ["fr", "es"],
+    "sourceLanguageCode": "en",
+    "resolvedTargetLanguageCodes": ["fr", "es"],
+    "requestedLanguageAbbreviations": [],
+    "options": {
+      "engine": "mastra",
+      "currentRunId": "actual-http-graph-run",
+      "callbackSequences": {
+        "chapters": 2,
+        "metadata": 2,
+        "embeddings": 2,
+        "mux_upload": 3,
+        "translation": 2,
+        "audio_cleanup": 1,
+        "transcription": 2,
+        "structured_transcript": 2
+      }
+    },
+    "status": "completed",
+    "currentStep": "mux_upload",
+    "retries": 0,
+    "createdAt": "2026-10-28T21:15:45.208Z",
+    "updatedAt": "2026-10-28T21:16:56.620Z",
+    "completedAt": "2026-10-28T21:16:56.520Z",
+    "artifacts": {
+      "muxSync": {
+        "data": {
+          "updatedAt": "2026-10-28T21:16:52.928Z",
+          "comparisons": []
+        },
+        "kind": "metadata"
+      },
+      "chapters": {
+        "kind": "downloadable"
+      },
+      "metadata": {
+        "kind": "downloadable"
+      },
+      "subtitles": {
+        "kind": "downloadable"
+      },
+      "transcript": {
+        "kind": "downloadable"
+      },
+      "chapters-vtt": {
+        "kind": "downloadable"
+      },
+      "subtitles-es": {
+        "kind": "downloadable"
+      },
+      "subtitles-fr": {
+        "kind": "downloadable"
+      },
+      "translation-es": {
+        "kind": "downloadable"
+      },
+      "translation-fr": {
+        "kind": "downloadable"
+      },
+      "transcript-correction-report": {
+        "kind": "downloadable"
+      }
+    },
+    "steps": [
+      {
+        "name": "audio_cleanup",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      },
+      {
+        "name": "transcription",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:32.916Z",
+        "finishedAt": "2026-10-28T21:16:34.296Z",
+        "details": null
+      },
+      {
+        "name": "structured_transcript",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:34.495Z",
+        "finishedAt": "2026-10-28T21:16:48.724Z",
+        "details": {
+          "mastra": {
+            "runId": "actual-http-graph-run-correction",
+            "status": "skipped"
+          },
+          "transcriptCorrection": {
+            "basis": "model_knowledge",
+            "status": "skipped",
+            "findings": [],
+            "confidence": 0.25,
+            "appliedCount": 0,
+            "flaggedCount": 0,
+            "contentDomain": "christian_general",
+            "skippedReason": "no_scripture_context",
+            "checkedReferenceCount": 0,
+            "likelyBibleReferences": []
+          }
+        }
+      },
+      {
+        "name": "translation",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:49.194Z",
+        "finishedAt": "2026-10-28T21:16:51.359Z",
+        "details": {
+          "mastra": {
+            "runId": "actual-http-graph-run-translation",
+            "status": "completed",
+            "languages": ["fr", "es"]
+          },
+          "languageResults": [
+            {
+              "lang": "fr",
+              "status": "completed"
+            },
+            {
+              "lang": "es",
+              "status": "completed"
+            }
+          ]
+        }
+      },
+      {
+        "name": "chapters",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:49.468Z",
+        "finishedAt": "2026-10-28T21:16:51.053Z",
+        "details": null
+      },
+      {
+        "name": "metadata",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:50.190Z",
+        "finishedAt": "2026-10-28T21:16:51.495Z",
+        "details": null
+      },
+      {
+        "name": "embeddings",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:50.792Z",
+        "finishedAt": "2026-10-28T21:16:51.740Z",
+        "details": {
+          "mastra": {
+            "model": "openai/text-embedding-3-small",
+            "runId": "actual-http-graph-run-embeddings",
+            "chunks": 1,
+            "status": "created",
+            "provider": "openai",
+            "totalTokens": 40,
+            "sourceContentHash": "sha256:a653b12145df48438785690cb8c6e51592552cfaa486e35ec7211a5a3bade332"
+          }
+        }
+      },
+      {
+        "name": "mux_upload",
+        "status": "completed",
+        "retries": 0,
+        "startedAt": "2026-10-28T21:16:51.791Z",
+        "finishedAt": "2026-10-28T21:16:56.520Z",
+        "details": null
+      },
+      {
+        "name": "theology_validation_bible_quotes",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      },
+      {
+        "name": "seo_improvements",
+        "status": "skipped",
+        "retries": 0,
+        "details": null
+      }
+    ],
+    "errors": []
+  },
+  "records": [
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "9a5ab5fa-1b91-4a7a-ab94-23f19b5d7bc5"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "15db9be7-338b-4b93-8480-3a6384cff886"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "replayed": false,
+        "result": {
+          "artifactKeys": ["transcript-correction-report"],
+          "summary": {
+            "status": "skipped",
+            "basis": "model_knowledge",
+            "contentDomain": "christian_general",
+            "confidence": 0.25,
+            "checkedReferenceCount": 0,
+            "appliedCount": 0,
+            "flaggedCount": 0,
+            "skippedReason": "no_scripture_context",
+            "likelyBibleReferences": [],
+            "findings": []
+          },
+          "changed": false
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "0edefd9c-5c55-4b75-af3e-d06863e16073"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "7e28a327-601c-41eb-881f-f00c306bf5d0"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "f29fe854-8cfb-4a9d-a680-e06e660f509a"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "claimed",
+          "claimToken": "43aee696-027a-41e2-8802-d27e66ce01b9"
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "result": {
+          "status": "replayed",
+          "result": {
+            "status": "completed"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-execution",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "replayed": false,
+        "result": {
+          "report": {
+            "comparisons": [],
+            "updatedAt": "2026-10-28T21:16:52.928Z"
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    },
+    {
+      "path": "/api/internal/enrichment-callback",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "action": "applied"
+      }
+    }
+  ]
+}

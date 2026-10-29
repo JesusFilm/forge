@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 29, 2026)
 
-- **Total tickets:** 989
-- **Complete:** 750
+- **Total tickets:** 992
+- **Complete:** 751
 - **Cancelled:** 43
-- **In progress:** 81
+- **In progress:** 82
 - **Not started:** 57
-- **Blocked:** 58
+- **Blocked:** 59
 - **Overdue and open:** 174
 
 ## Feature Index
@@ -387,7 +387,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-887](media-generation/feat-887-release-shorts-editor-to-production.md)                | Release the recovered Shorts editor to production                     | tataihono | P1       | 2026-10-28 | 1    | 2026-10-28 | complete    |
 | [feat-892](media-generation/feat-892-subtitle-source-artifact-execution-recovery.md)        | Recover subtitle source artifact execution                            | vlad      | P1       | 2026-10-28 | 2    | 2026-10-29 | complete    |
 | [feat-906](media-generation/feat-906-manager-automation-response-errors.md)                 | Manager automation response errors                                    | vlad      | P1       | 2026-10-28 | 1    | 2026-10-28 | complete    |
-| [feat-907](media-generation/feat-907-manager-admin-automation-backend.md)                   | Restore Manager automations on Admin                                  | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | complete    |
+| [feat-907](media-generation/feat-907-manager-admin-automation-backend.md)                   | Restore Manager automations on Admin                                  | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | in-progress |
+| [feat-908](media-generation/feat-908-manager-mastra-enrichment-execution-recovery.md)       | Recover durable Manager to Mastra enrichment execution                | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | blocked     |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -812,6 +813,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-789](platform/feat-789-tv-simulator-feedback.md)                                 | Simulator feedback, local capture and isolated development identities                 | ekkasit    | P1       | 2026-10-21 | 2    | 2026-10-22 | complete    |
 | [feat-784](platform/feat-784-mobile-android-blur-crash.md)                             | Android app crash in expo-image's RenderScript blur                                   | urim       | P1       | 2026-10-23 | 2    | 2026-10-24 | complete    |
 | [feat-787](platform/feat-787-subtitle-recovery-credential-boundary.md)                 | Constrain subtitle recovery credential egress                                         | vlad       | P1       | 2026-10-23 | 1    | 2026-10-23 | complete    |
+| [feat-789](platform/feat-789-manager-image-feature-flags-closure.md)                   | Include feature flags in the Manager production image                                 | vlad       | P1       | 2026-10-24 | 1    | 2026-10-24 | complete    |
 | [feat-790](platform/feat-790-tv-feedback-release-hostname-migration.md)                | Migrate installed TV beta feedback to the recreated staging hostname                  | ekkasit    | P1       | 2026-10-27 | 1    | 2026-10-27 | not-started |
 | [feat-891](platform/feat-891-manager-mobile-shell-and-agents-modal-recovery.md)        | Recover Manager mobile shell and Agents modal polish                                  | vlad       | P1       | 2026-10-28 | 1    | 2026-10-28 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                             | vlad       | P2       | —          | —    | —          | complete    |
@@ -910,6 +912,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-838](platform/feat-838-manager-compact-persistent-sidebar.md)                    | Compact and persistent Manager navigation                                             | tataihono  | P2       | 2026-10-20 | 1    | 2026-10-20 | complete    |
 | [feat-798](platform/feat-798-mobile-release-check-runner.md)                           | Mobile release check runner on five local test devices                                | urim       | P2       | 2026-10-21 | 10   | 2026-10-30 | complete    |
 | [feat-785](platform/feat-785-expo-notifications-57-0-24-cold-tap-pass.md)              | Verify expo-notifications 57.0.24 Android tap handling, then release the hold         | urim       | P2       | 2026-10-23 | 2    | 2026-10-24 | not-started |
+| [feat-788](platform/feat-788-manager-enrichment-callback-resource-bound.md)            | Bound Manager enrichment callback admission state                                     | vlad       | P2       | 2026-10-23 | 1    | 2026-10-23 | complete    |
 | [feat-791](platform/feat-791-tv-feedback-build-tracing.md)                             | Bound production tracing of the local feedback capture path                           | ekkasit    | P2       | 2026-10-27 | 1    | 2026-10-27 | not-started |
 | [feat-888](platform/feat-888-mobile-release-check-qa-journeys.md)                      | QA engineers write and repair mobile release check journeys                           | urim       | P2       | 2026-10-28 | 1    | 2026-10-28 | complete    |
 | [feat-898](platform/feat-898-mobile-watch-page-start-from-last-video.md)               | Mobile watch page counts the last video's playback as its own start                   | urim       | P2       | 2026-10-29 | 3    | 2026-10-31 | not-started |

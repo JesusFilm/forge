@@ -3,11 +3,12 @@ id: "feat-907"
 title: "Restore Manager automations on Admin"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-28"
 duration: 5
 depends_on: []
-blocks: []
+blocks:
+  - "feat-908"
 tags:
   - "manager"
   - "graphql"
@@ -64,8 +65,8 @@ share lease-fenced orchestration; the dedicated service bearer grants no
 operator/session authority. See
 `docs/reports/2026-10-28-pr870-mastra-dry-run-recovery.md` for the exact contract,
 red regression evidence, deterministic workflow proof and integration limits.
-This historical unit left final Admin/browser/PR review and integration with
-the parent; local stack reconstruction is recorded below.
+The parent feature remains in progress for root's final Admin/browser/PR review
+and integration work.
 
 ## Foundation review repair unit — 2026-10-28
 
@@ -76,25 +77,5 @@ locking before manual lease recovery; atomic admission for both manual lanes;
 and strictly future wall-clock scheduling across IANA gaps/folds. See
 `docs/reports/2026-10-28-feat890-foundation-review-repairs.md` for reproduction,
 verification and exact integration boundaries. This unit adds no schema,
-generated-client, lockfile, OAuth or Docker changes. Final integration and independent review remain parent-owned.
-
-## Local foundation reconstruction — 2026-10-29
-
-Reconstructed PR870 on the source and response/UI layers from exact main
-`48ad42865`. Foundation migration is `0165_manager_automations`; execution
-operations (0166) and job revision (0167) remain deferred to PR1087. Foundation
-fixtures require only their own schema. Ticket 908 and reverse dependencies
-will land with that execution layer.
-
-Fresh focused checks: Manager 184 tests, Mastra 220, Admin service/instrumentation
-34 and Admin schema-security 2305. All three fresh typechecks and full strict
-linters pass. Frozen filtered installation ran Husky and Prisma/Pothos generation;
-SDL and gql.tada were regenerated together. Admin production build registers
-79 steps and 23 workflows and passes all three postbuild verifiers. Manager
-production and Mastra Studio build-analysis also pass. The four-line Admin
-GraphQL entry import from root `8384ff1d2` registers only the scheduler definition.
-
-No database was activated or connected: 19 database tests are explicitly skipped.
-Historical browser/HTTP and load evidence is retained; no browser or provider
-request was made during reconstruction. Parent independently reviews exact local
-heads and owns remote CI, publication and the remaining execution restoration.
+generated-client, lockfile, OAuth or Docker changes. Parent status remains in
+progress for root's final integration and independent review.

@@ -71,10 +71,8 @@ source was restored before final validation.
 
 The databases are task-owned on **127.0.0.1:55932**:
 `forge_automation_890_repair_09df2a57` and
-`forge_automation_890_repair_09df2a57_recovery`. The historical integrated fixtures included execution and CAS migrations.
-The reconstructed foundation fixtures instead use only backend 0017, automation
-0165 and, for recovery, workflow ledger 0009. Execution/CAS schema is deferred
-to PR1087. Port 55890 was never
+`forge_automation_890_repair_09df2a57_recovery`. Both fixtures include migrations
+0165 and 0166 so Prisma job reads include the CAS revision. Port 55890 was never
 used. Disposable cluster and raw local logs live in ignored
 `local/feat890-repair/` and may be removed after handoff.
 

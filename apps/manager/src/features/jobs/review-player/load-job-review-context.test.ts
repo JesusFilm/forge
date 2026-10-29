@@ -49,6 +49,34 @@ describe("loadJobReviewContext", () => {
     getCmsGatewayMock.mockReturnValue({ mode: "live" })
   })
 
+  it("loads generated review metadata and chapters from the persisted job namespace", async () => {
+    const readArtifactJson = vi.fn(
+      async (_assetId: string, artifactKey: string) =>
+        artifactKey === "metadata"
+          ? { title: "Owned title" }
+          : { chapters: [] },
+    )
+    await loadJobReviewContext(
+      buildJob({
+        options: {
+          enrichmentArtifacts: {
+            assetId: "owned-review",
+            status: "ready",
+            sourceVerified: true,
+          },
+        },
+      }),
+      {
+        loadVideoReviewSource: async () => null,
+        loadMuxSubtitleTracks: async () => [],
+        readArtifactJson,
+      },
+    )
+    expect(readArtifactJson).toHaveBeenCalledTimes(2)
+    expect(readArtifactJson).toHaveBeenCalledWith("owned-review", "metadata")
+    expect(readArtifactJson).toHaveBeenCalledWith("owned-review", "chapters")
+  })
+
   it("loads live CMS metadata, live Mux subtitle tracks, and generated artifact tracks", async () => {
     const result = await loadJobReviewContext(buildJob(), {
       loadVideoReviewSource: async () => ({

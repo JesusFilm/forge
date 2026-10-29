@@ -1,0 +1,38 @@
+{
+  "baseHead": "ba8bc18768cf316fdf3746689c6376c22e37a620",
+  "mergedMain": "48ad42865",
+  "preRunCombinedDiffSha256": "ff8482acb6e3e4cb239619e5438cd9f30198709aa59f281d96ec8e888745841a",
+  "node": "24.22.1",
+  "postgres": "18.6",
+  "files": {
+    "apps/manager/src/lib/enrichment-artifact-namespace.ts": "6134dbf11f949a8fdb7006892f370b0447505ea7438d298bb183b98bde595f1f",
+    "apps/manager/src/lib/enrichment-execution.ts": "9f973d1cc5e3b45503d9d1471ca6b9f8378f12a440cdad08079a616d4f1fb11b",
+    "apps/manager/src/lib/enrichment-execution-contract.ts": "91e0c99f6c50772e02e0a975301c972b4292e3a31e2663dba31fc4496c37e5c9",
+    "apps/manager/src/lib/state.ts": "5dc9bea5b430db8f46ff8a9a4ca38f0aeee3141254bb55faf6f9ba7deb9d50f6",
+    "apps/manager/src/backend/admin-client.ts": "e97974be3bb6b5ccbe5e878c1d352290fb02091deb2be68729ae1995f1f048f1",
+    "apps/manager/src/app/api/internal/enrichment-execution/route.ts": "1bcff0e64db7d772e77c461f2a1a00ae2c8f270e9bb9b2109637706a0433bf5d",
+    "apps/manager/src/app/api/internal/enrichment-callback/route.ts": "ba2bc98917a7a88b5fbf0d8f772200a74f40dbf8be9b2d6505f621bb3911687c",
+    "apps/admin/src/services/manager-job.service.ts": "5e0f2bed29cebdfad744097dbcad3dd188234ce987d36b8ea2bc4fc240ec58b1",
+    "apps/admin/src/services/manager-execution.service.ts": "3ff026e2b0d14cc46e3a7f55dad19d0eae7133446b03298587d1ff97a53b862b",
+    "apps/admin/src/graphql/types/managerJob.ts": "080fbd177ef873d413583f62ce2d1a1536435b55af2128d3cbc2682537413178",
+    "apps/admin/src/graphql/types/managerExecution.ts": "716bcda6b5c775d612612f791f781e4f312b166854d5d0ccb979fdeb44f8ef73",
+    "apps/mastra/src/mastra/workflows/forge-video-enrichment.ts": "c35ddc6dd2ca1cbf62196737b2780b86dcbcba9916e527cff942a52cea835611",
+    "apps/mastra/src/services/video-enrichment/graph.ts": "48d79ba377cc6f9fd90b7d60160c955a20aed2412566e1dffea844fa5902463e",
+    "apps/mastra/src/services/video-enrichment/runtime.ts": "74bd8be4bf4762969731ab23c351d936be32f3d7b8fd9981c259618223c4633e",
+    "apps/mastra/src/services/manager-enrichment-execution-client.ts": "ac595ee464ab7a07b957e2ea5963dbaf24dfa2ddc2ff1281d8fa3f52433c4a7d",
+    "apps/mastra/src/services/manager-enrichment-callback-client.ts": "4698e881ef09f1db03ccf9d4939e27f5bdf62d488d4f4bb3ba7ba16ad5cd59ed",
+    "apps/admin/prisma/migrations/0017_manager_backend_contracts/migration.sql": "511ed55a08d16cd2847f599135df9473ee9baac4303149b46706a66534356a2d",
+    "apps/admin/prisma/migrations/0165_manager_automations/migration.sql": "4b9a3c22df4dc1c69fa3cc043d13de366f951599b9f7e8fa2ab4d5f4d70b9227",
+    "apps/admin/prisma/migrations/0166_manager_execution_operations/migration.sql": "caf3033b98e2aea8c7380cd6d3aff7a3e92b47d847ed976cb277a266ea35cee5",
+    "apps/admin/prisma/migrations/0167_manager_job_revision/migration.sql": "e295c079d6baa95d9a3ec1bb5803694dbc207044c6569a24a5af71e5807c8f97"
+  },
+  "harnessFiles": {
+    "manager.config.mjs": "4d26eee7a10210fcd6955fb10c10c7c8cd138aaff9fd7bd4bd345cfa94b58d6f",
+    "mastra.test.ts": "16fb83a20909cfa103304296e0c962f30a30dfc284d1ce101ba5e6c39b6aeaa4",
+    "run.sh": "a4d62af1ed4b74c07c7f79010bf22fc21694041eb9fc6a29920c484466623fc4",
+    "manager.test.ts": "d32fb47231a1f166b2d32266296283be03211c2f501ba803eb85e987b566de73",
+    "setup-db.sh": "84644a39e56301fffd40ed5b4c55b9a01b2ae1c7b4f9f6c3a38f1ee1a0137919",
+    "mastra.config.mjs": "f7a59350d137a98d49786befb1a69d36ba0e4ae36253452e35af51bbdaf8f79d",
+    "admin-server.ts": "914265cc3cd1cced926573de2a8ec302b7af18c960530ef6b1b9bbcc4cd01b63"
+  }
+}

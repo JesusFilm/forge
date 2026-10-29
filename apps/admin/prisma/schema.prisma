@@ -1583,34 +1583,66 @@ model ManagerAutomationRun {
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
 /// existing Manager JobRecord so Manager can move transport without UI churn.
 model ManagerEnrichmentJob {
-  id                                 String    @id @default(cuid())
-  muxAssetId                         String    @map("mux_asset_id")
-  muxPlaybackId                      String?   @map("mux_playback_id")
-  videoDocumentId                    String?   @map("video_document_id")
-  languages                          String[]  @default([])
-  sourceLanguageId                   String?   @map("source_language_id")
-  sourceLanguageCode                 String?   @map("source_language_code")
-  sourceSelectionReason              String?   @map("source_selection_reason")
-  primaryRequestedTargetLanguageCode String?   @map("primary_requested_target_language_code")
-  resolvedTargetLanguageCodes        String[]  @default([]) @map("resolved_target_language_codes")
-  sourceCollectionTitle              String?   @map("source_collection_title")
-  sourceMediaTitle                   String?   @map("source_media_title")
-  requestedLanguageAbbreviations     String[]  @default([]) @map("requested_language_abbreviations")
-  options                            Json      @default("{}")
-  status                             String    @default("pending")
-  currentStep                        String?   @map("current_step")
-  retries                            Int       @default(0)
-  startedAt                          DateTime? @map("started_at")
-  completedAt                        DateTime? @map("completed_at")
-  artifacts                          Json      @default("{}")
-  steps                              Json      @default("[]")
-  errors                             Json      @default("[]")
-  createdAt                          DateTime  @default(now()) @map("created_at")
-  updatedAt                          DateTime  @updatedAt @map("updated_at")
+  id                                 String                @id @default(cuid())
+  revision                           Int                   @default(0)
+  muxAssetId                         String                @map("mux_asset_id")
+  muxPlaybackId                      String?               @map("mux_playback_id")
+  videoDocumentId                    String?               @map("video_document_id")
+  languages                          String[]              @default([])
+  sourceLanguageId                   String?               @map("source_language_id")
+  sourceLanguageCode                 String?               @map("source_language_code")
+  sourceSelectionReason              String?               @map("source_selection_reason")
+  primaryRequestedTargetLanguageCode String?               @map("primary_requested_target_language_code")
+  resolvedTargetLanguageCodes        String[]              @default([]) @map("resolved_target_language_codes")
+  sourceCollectionTitle              String?               @map("source_collection_title")
+  sourceMediaTitle                   String?               @map("source_media_title")
+  requestedLanguageAbbreviations     String[]              @default([]) @map("requested_language_abbreviations")
+  options                            Json                  @default("{}")
+  status                             String                @default("pending")
+  currentStep                        String?               @map("current_step")
+  retries                            Int                   @default(0)
+  startedAt                          DateTime?             @map("started_at")
+  completedAt                        DateTime?             @map("completed_at")
+  artifacts                          Json                  @default("{}")
+  steps                              Json                  @default("[]")
+  errors                             Json                  @default("[]")
+  createdAt                          DateTime              @default(now()) @map("created_at")
+  updatedAt                          DateTime              @updatedAt @map("updated_at")
+  executionRuns                      ManagerExecutionRun[]
 
   @@index([status, createdAt])
   @@index([videoDocumentId])
   @@map("manager_enrichment_job")
+}
+
+/// Immutable input binding for one admitted Mastra run. Never expires implicitly.
+model ManagerExecutionRun {
+  jobId       String                      @map("job_id")
+  runId       String                      @map("run_id")
+  inputDigest String                      @map("input_digest")
+  createdAt   DateTime                    @default(now()) @map("created_at")
+  job         ManagerEnrichmentJob        @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  operations  ManagerExecutionOperation[]
+
+  @@id([jobId, runId])
+  @@map("manager_execution_run")
+}
+
+/// A consumed operation claim. Null completedAt is ambiguous/in-flight, never retryable.
+model ManagerExecutionOperation {
+  jobId           String              @map("job_id")
+  runId           String              @map("run_id")
+  operationId     String              @map("operation_id")
+  operationDigest String              @map("operation_digest")
+  claimToken      String              @map("claim_token")
+  result          Json?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  completedAt     DateTime?           @map("completed_at")
+  run             ManagerExecutionRun @relation(fields: [jobId, runId], references: [jobId, runId], onDelete: Restrict)
+
+  @@id([jobId, runId, operationId])
+  @@index([jobId, completedAt])
+  @@map("manager_execution_operation")
 }
 
 // -----------------------------------------------------------------------------

@@ -5,9 +5,12 @@ const {
   authenticateRequestMock,
   createJobMock,
   ensureGeneratedSubtitlesForAssetMock,
+  getJobMock,
   getCmsGatewayMock,
   isAudioCleanupConfiguredMock,
+  markEnrichmentDispatchedMock,
   materializeEnrichmentTargetForJobMock,
+  resolveEnrichmentEngineMock,
   readMockCmsStateMock,
   runVideoEnrichmentMock,
   startMock,
@@ -17,9 +20,12 @@ const {
   authenticateRequestMock: vi.fn(),
   createJobMock: vi.fn(),
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
+  getJobMock: vi.fn(),
   getCmsGatewayMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
+  markEnrichmentDispatchedMock: vi.fn(),
   materializeEnrichmentTargetForJobMock: vi.fn(),
+  resolveEnrichmentEngineMock: vi.fn(),
   readMockCmsStateMock: vi.fn(),
   runVideoEnrichmentMock: vi.fn(),
   startMock: vi.fn(),
@@ -51,7 +57,13 @@ vi.mock("@/cms/gateway", () => ({
 
 vi.mock("@/lib/state", () => ({
   createJob: createJobMock,
+  getJob: getJobMock,
+  markEnrichmentDispatched: markEnrichmentDispatchedMock,
   updateJob: updateJobMock,
+}))
+
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: resolveEnrichmentEngineMock,
 }))
 
 vi.mock("@/services/mux", () => ({
@@ -255,6 +267,7 @@ describe("createEnrichmentJobs", () => {
     getCmsGatewayMock.mockReturnValue(adminGateway)
     readMockCmsStateMock.mockResolvedValue(null)
     authenticateRequestMock.mockResolvedValue(null)
+    resolveEnrichmentEngineMock.mockResolvedValue("workflow")
     afterMock.mockImplementation(async (callback: () => Promise<void>) => {
       await callback()
     })
@@ -291,6 +304,20 @@ describe("createEnrichmentJobs", () => {
         errors: [],
       }),
     )
+    getJobMock.mockResolvedValue({
+      id: "job-1",
+      muxAssetId: "mux-target-1",
+      muxPlaybackId: "mux-target-playback-1",
+      languages: ["fr"],
+      options: { engine: "workflow" },
+      status: "pending",
+      retries: 0,
+      createdAt: "",
+      updatedAt: "",
+      artifacts: {},
+      steps: [],
+      errors: [],
+    })
     updateJobMock.mockImplementation(async (_id, updates) => ({
       id: "job-1",
       muxAssetId: "mux-target-1",

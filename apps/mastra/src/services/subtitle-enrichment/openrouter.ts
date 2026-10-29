@@ -1,3 +1,7 @@
+import {
+  enrichmentProviderFetch,
+  markEnrichmentSpendAmbiguous,
+} from "../video-enrichment/provider-spend"
 import { createHash } from "node:crypto"
 
 import { z } from "zod"
@@ -223,16 +227,20 @@ export async function requestOpenRouterChat<T = string>({
     )
   }
   try {
-    response = await fetchImpl(OPENROUTER_CHAT_COMPLETIONS_URL, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-        "HTTP-Referer": OPENROUTER_REFERER,
+    response = await enrichmentProviderFetch(
+      fetchImpl,
+      OPENROUTER_CHAT_COMPLETIONS_URL,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+          "HTTP-Referer": OPENROUTER_REFERER,
+        },
+        body: requestBody,
+        signal: AbortSignal.timeout(Math.max(1, remainingMs)),
       },
-      body: requestBody,
-      signal: AbortSignal.timeout(Math.max(1, remainingMs)),
-    })
+    )
   } catch (error) {
     reportUsageUnavailable()
     settleProviderCall("FAILED")
@@ -395,7 +403,10 @@ async function readBoundedResponseJson(
   const chunks: Uint8Array[] = []
   let byteLength = 0
   while (true) {
-    const { done, value } = await reader.read()
+    const { done, value } = await reader.read().catch((error: unknown) => {
+      markEnrichmentSpendAmbiguous()
+      throw error
+    })
     if (done) break
     byteLength += value.byteLength
     if (byteLength > maximumBytes) {

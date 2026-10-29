@@ -77,6 +77,8 @@ const workflowKey = "manager-automation-scheduler"
       for (const migration of [
         "0017_manager_backend_contracts",
         "0165_manager_automations",
+        "0166_manager_execution_operations",
+        "0167_manager_job_revision",
         "0009_workflow_run_ledger",
       ]) {
         await setup.query(

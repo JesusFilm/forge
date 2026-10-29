@@ -53,6 +53,13 @@ export const featureFlags = {
     description:
       "Runtime rollout gate for the watch-page floating question panel.",
   },
+  managerEnrichmentEngine: {
+    key: "forge.enrichment.engine",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_ENRICHMENT_ENGINE_DEFAULT",
+    description:
+      "Runtime rollout gate for Manager enrichment engine selection. false=workflow, true=mastra.",
+  },
   watchAlgoliaSearch: {
     key: "forge.watch.algoliaSearch",
     defaultValue: false,

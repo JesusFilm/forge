@@ -75,7 +75,5 @@ Local HTTP regression tests exercise source-only bearer-authenticated requests:
 malformed content maps to HTTP 400 and transient artifact reads map to HTTP 502. Mux regressions transition uploaded English/Arabic tracks from preparing
 to ready with zero generation POSTs, and retain bounded polling and signed
 playback coverage. These source helpers are outside the ordered subtitle Lab
-workflow-policy byte pin; this source-only repair preserves digest
-`3e46dd8c3b82e3b32560d5a645c08f5b2795284e3cc997b50cc68a96dc243f62`
-and the corresponding Manager literals. The provider-spend file and expanded
-graph pin are deferred to PR1087.
+workflow-policy byte pin; this repair leaves its graph-integrated digest and
+Manager literals unchanged.

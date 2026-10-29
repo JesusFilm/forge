@@ -403,6 +403,12 @@ packages, exact Remotion version lockstep and React-free server imports intact.
 | CROP_WORKER_API_KEY                               | Bearer key Manager presents to crop-worker (optional — enables Smart Crop)                                                   |
 | MASTRA_SMART_CROP_TIMEOUT_MS                      | Optional per-call timeout for Mastra smart-crop launches (default 120000)                                                    |
 | NEXT_PUBLIC_WATCH_URL                             | Public video watch URL (optional)                                                                                            |
+| MASTRA_ENRICHMENT_API_KEY                         | Optional dedicated bearer for Mastra video-enrichment dispatches                                                             |
+| MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS             | Optional short ack-only timeout for video-enrichment dispatch (default 15s)                                                  |
+| LAUNCHDARKLY_SDK_KEY                              | Optional server-side LaunchDarkly SDK key                                                                                    |
+| FORGE_ENRICHMENT_ENGINE_DEFAULT                   | Local fallback for `forge.enrichment.engine` (`true` selects Mastra)                                                         |
+| FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED              | Explicit guard; must be `true` before new jobs can use the Mastra engine                                                     |
+| ENRICHMENT_CALLBACK_API_KEYS                      | CSV of bearer keys Mastra can use to call `/api/internal/enrichment-callback`                                                |
 
 ## Subtitle Quality Lab operations
 
@@ -566,6 +572,44 @@ decisions, truncation counts, and current proposal outcomes. Provider response
 bodies, credentials, headers, and cookies never belong in the report. Query and
 request detail is compacted after 29 days by the existing Admin search-trace
 retention job, while run totals, report state, and proposal references remain.
+
+## Manager enrichment engine cutover (Mastra Phase 1)
+
+Video enrichment jobs carry an engine stamp in `job.options.engine`. Missing or
+corrupt stamps resolve to `workflow`, so old in-flight jobs stay on the legacy
+engine while Phase 1 ramps Mastra.
+
+- Runtime flag: `@forge/feature-flags` entry `forge.enrichment.engine`
+  (`false=workflow`, `true=mastra`) with local fallback
+  `FORGE_ENRICHMENT_ENGINE_DEFAULT`.
+- Ramp guard: Mastra remains unavailable for new jobs unless
+  `FORGE_ENRICHMENT_MASTRA_RAMP_ENABLED=true`, until the durable admission/operation ledger and callback/artifact integration
+  are qualified together. The registered graph now executes the real pipeline;
+  see `docs/plans/2026-10-28-manager-enrichment-graph.md`.
+- Operator/API override: `GET/PUT /api/admin/engine-flag`, authenticated with
+  the Manager service bearer. This process-local override matches the verified
+  single-replica Phase 1 window; revisit before scaling Manager above 1 replica.
+- Mastra callback receiver: `POST /api/internal/enrichment-callback`, protected
+  by `ENRICHMENT_CALLBACK_API_KEYS`. Callback keys must stay disjoint from
+  `ADMIN_TRIGGER_API_KEYS`.
+- Callback admission retains at most 1024 keys for fixed 60-second windows,
+  each admitting 120 requests. Unused expired entries are pruned on the next
+  request. A full table rejects new keys with 429 until the earliest expiry;
+  active buckets are never evicted to make room. Admission remains before auth.
+- Address policy defaults to one shared bucket for internal/unverified ingress.
+  Only set `ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP=true` after verifying
+  that the ingress overwrites `CF-Connecting-IP` and direct-origin bypass is
+  blocked. Then only a single valid IPv4/IPv6 literal of at most 45 characters
+  selects a partition (IPv6 is canonicalized). Missing/malformed headers share
+  the fallback bucket; `X-Forwarded-For` and `X-Real-IP` are ignored. This setting
+  supplies no authentication or job authority. No edge spoofing or production
+  memory-exhaustion incident has been established.
+- First-callback watchdog: after a Mastra run starts, Manager arms a 60s
+  process-local watchdog. When it fires it re-reads the job and fails only if
+  the same `currentRunId` still owns the job and no callback sequence has
+  landed.
+- Manual re-drive: `POST /api/jobs/[id]/redispatch` accepts only
+  Mastra-stamped jobs and mints a fresh Mastra run through the shared launcher.
 
 ## Standalone smoke
 

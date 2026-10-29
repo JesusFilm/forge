@@ -655,6 +655,7 @@ type ManagerJob {
   requestedLanguageAbbreviations: [String!]
   resolvedTargetLanguageCodes: [String!]
   retries: Int
+  revision: Int
   sourceCollectionTitle: String
   sourceLanguageCode: String
   sourceLanguageId: String
@@ -2026,12 +2027,14 @@ type Mutation {
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
   claimManagerAutomationRun(id: ID!): JSON
+  claimManagerExecutionOperation(input: JSON!): JSON!
   claimManagerSubtitleEvalCell(leaseSeconds: Int!, runCellId: ID!): ManagerSubtitleEvalOperationResult
   claimManagerSubtitleEvalMachineRecovery(leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   claimManagerSubtitleEvalRecovery(assertion: String!, leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
   completeManagerAutomationRun(id: ID!, leaseToken: String!, result: JSON!): JSON
+  completeManagerExecutionOperation(input: JSON!): JSON!
   completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
@@ -2201,7 +2204,7 @@ type Mutation {
   """
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
   updateManagerAutomationStatus(id: ID!, status: String!): JSON
-  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
+  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, expectedRevision: Int, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """

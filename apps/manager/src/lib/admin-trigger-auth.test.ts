@@ -1,13 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
-  env: {} as { ADMIN_TRIGGER_API_KEYS?: string },
+  env: {} as {
+    ADMIN_TRIGGER_API_KEYS?: string
+    ENRICHMENT_CALLBACK_API_KEYS?: string
+  },
 }))
 
 const { env } = await import("@/config/env")
-const { validateAdminTriggerBearer } = await import("@/lib/admin-trigger-auth")
+const {
+  assertBearerCsvsDisjoint,
+  validateAdminTriggerBearer,
+  validateEnrichmentCallbackBearer,
+} = await import("@/lib/admin-trigger-auth")
 
-const envMutable = env as { ADMIN_TRIGGER_API_KEYS?: string }
+const envMutable = env as {
+  ADMIN_TRIGGER_API_KEYS?: string
+  ENRICHMENT_CALLBACK_API_KEYS?: string
+}
 
 function reqWith(authHeader?: string): Request {
   return new Request("http://example.test/api/admin-trigger/scene-analysis", {
@@ -23,6 +33,7 @@ describe("validateAdminTriggerBearer", () => {
 
   afterEach(() => {
     envMutable.ADMIN_TRIGGER_API_KEYS = undefined
+    envMutable.ENRICHMENT_CALLBACK_API_KEYS = undefined
   })
 
   it("returns 503 config_missing when env unset", () => {
@@ -117,5 +128,22 @@ describe("validateAdminTriggerBearer", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.status).toBe(401)
+  })
+
+  it("validates enrichment callback keys from a separate env var", () => {
+    envMutable.ENRICHMENT_CALLBACK_API_KEYS = "callback-key"
+    const result = validateEnrichmentCallbackBearer(
+      reqWith("Bearer callback-key"),
+    )
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("detects callback and trigger key overlap", () => {
+    expect(assertBearerCsvsDisjoint("trigger-a, shared", "callback-a")).toBe(
+      true,
+    )
+    expect(
+      assertBearerCsvsDisjoint("trigger-a, shared", "callback-a,shared"),
+    ).toBe(false)
   })
 })

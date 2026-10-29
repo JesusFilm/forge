@@ -1,0 +1,40 @@
+{
+  "status": "success",
+  "steps": {
+    "input": {
+      "jobId": "cmvsm5ynt0000lfmiqmgtss93",
+      "assetId": "actual-http-1793222145148",
+      "muxAssetId": "actual-http-1793222145148",
+      "playbackId": "fixture-playback",
+      "language": "en",
+      "translateTo": ["fr", "es"]
+    },
+    "execute-video-enrichment": {
+      "startedAt": 1793222188630,
+      "status": "success",
+      "output": {
+        "ok": true,
+        "jobId": "cmvsm5ynt0000lfmiqmgtss93",
+        "runId": "actual-http-graph-run",
+        "acceptedAt": "2026-10-28T21:16:56.648Z"
+      },
+      "endedAt": 1793222216648
+    }
+  },
+  "input": {
+    "jobId": "cmvsm5ynt0000lfmiqmgtss93",
+    "assetId": "actual-http-1793222145148",
+    "muxAssetId": "actual-http-1793222145148",
+    "playbackId": "fixture-playback",
+    "language": "en",
+    "translateTo": ["fr", "es"]
+  },
+  "stepExecutionPath": ["execute-video-enrichment"],
+  "result": {
+    "ok": true,
+    "jobId": "cmvsm5ynt0000lfmiqmgtss93",
+    "runId": "actual-http-graph-run",
+    "acceptedAt": "2026-10-28T21:16:56.648Z"
+  },
+  "runId": "actual-http-graph-run"
+}

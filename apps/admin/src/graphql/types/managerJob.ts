@@ -61,6 +61,7 @@ const ManagerJobRef = builder
   .implement({
     fields: (t) => ({
       id: t.exposeID("id"),
+      revision: t.exposeInt("revision"),
       muxAssetId: t.exposeString("muxAssetId"),
       muxPlaybackId: t.exposeString("muxPlaybackId"),
       videoDocumentId: t.exposeString("videoDocumentId", { nullable: true }),
@@ -250,6 +251,7 @@ builder.mutationFields((t) => ({
     authScopes: { hasPermission: "write:manager-jobs" },
     args: {
       id: t.arg.id({ required: true }),
+      expectedRevision: t.arg.int({ required: false }),
       status: t.arg({ type: ManagerJobStatusEnum, required: false }),
       currentStep: t.arg.string({ required: false }),
       retries: t.arg.int({ required: false }),
@@ -272,6 +274,7 @@ builder.mutationFields((t) => ({
       ctx.services.managerJob.update({
         user: ctx.user,
         id: String(args.id),
+        expectedRevision: args.expectedRevision ?? undefined,
         input: {
           ...(args.status != null
             ? { status: args.status as ManagerJobStatus }

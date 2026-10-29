@@ -139,6 +139,39 @@ describe("POST /api/jobs/[id]/mux-sync/override", () => {
       })
   })
 
+  it("resolves override artifacts from the job namespace while targeting the original Mux asset", async () => {
+    const legacy = await getJobMock()
+    getJobMock.mockResolvedValue({
+      ...legacy,
+      options: {
+        enrichmentArtifacts: {
+          assetId: "owned-job-prefix",
+          status: "ready",
+          sourceVerified: true,
+        },
+      },
+    })
+    const response = await POST(
+      new Request("https://manager.test/api/jobs/job-1/mux-sync/override", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          artifactKey: "subtitles-fr",
+          targetLanguage: "fr",
+        }),
+      }),
+      { params: Promise.resolve({ id: "job-1" }) },
+    )
+    expect(response.status).toBe(200)
+    expect(applySubtitleOverrideMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        assetId: "owned-job-prefix",
+        muxAssetId: "mux-1",
+      }),
+    )
+  })
+
   it("applies an authorized subtitle override and persists the updated report", async () => {
     const response = await POST(
       new Request("https://manager.test/api/jobs/job-1/mux-sync/override", {

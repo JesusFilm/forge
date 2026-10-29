@@ -368,18 +368,21 @@ export function buildJobArtifactHref(
 // Smart-crop artifacts are stored under the job's smartCrop assetId
 // (`options.smartCrop.assetId`) and shorts artifacts under the job's shorts
 // assetId (`options.shorts.assetId`), which may differ from `job.muxAssetId`
-// — the storage prefix used by enrichment artifacts. Keep both halves of
+// — the storage prefix used by legacy enrichment artifacts. Keep both halves of
 // this contract in sync with Smart Crop creation and retained historical Shorts
 // store the assetId on their options discriminator, and the artifact routes
 // resolve the storage prefix through this helper. A job carries at most one
-// of the two discriminators.
+// of the two discriminators. Ready enrichment jobs use their persisted private
+// namespace; legacy and preparing jobs retain the original Mux prefix.
 export function getJobArtifactStorageAssetId(
   job: Pick<JobRecord, "muxAssetId" | "options">,
 ): string {
   return (
     job.options.smartCrop?.assetId ??
     job.options.shorts?.assetId ??
-    job.muxAssetId
+    (job.options.enrichmentArtifacts?.status === "ready"
+      ? job.options.enrichmentArtifacts.assetId
+      : job.muxAssetId)
   )
 }
 
