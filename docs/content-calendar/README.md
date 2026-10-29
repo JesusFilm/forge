@@ -90,6 +90,12 @@ post was removed or cancelled.
 
 ## Content view and open decisions (`stories`)
 
+Owner only (Lyuba, Oct 29): the calendar is shared by link, so the `stories` and `requests`
+collections are readable and writable only by the artifact's owner (db rules `read`/`write:
+"owner"`), and the list icon that opens this view shows only when `user.isOwner()`. Keep the
+publish capabilities as `{assets: {}, user: {}, db: {rules: [{path: "stories", read: "owner",
+write: "owner"}, {path: "requests", read: "owner", write: "owner"}]}}`.
+
 The list icon in the calendar header opens "All content": one row per story (numbered in
 release order, newest on top) with its thumbnail, title, passage and "done of total"
 (orange until every piece is scheduled or published, then green). Opening a story shows a

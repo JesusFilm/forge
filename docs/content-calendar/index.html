@@ -1160,6 +1160,10 @@
       transform: none;
     }
   }
+  /* The All content page (notes, previews) is the owner's only; the db rules hide its data too. */
+  body:not(.owner) #toList {
+    display: none !important;
+  }
 </style>
 
 <div class="wrap">
@@ -2408,6 +2412,7 @@
     if (e.key === "Escape" && openCell) closeNote()
   })
   function setView(v) {
+    if (v === "list" && !document.body.classList.contains("owner")) v = "cal"
     view = v
     document.body.classList.toggle("listview", v === "list")
     store("dbp-view", v)
@@ -2424,7 +2429,14 @@
   document.getElementById("toCal").onclick = () => setView("cal")
 
   week = weekStart(now)
-  setView(store("dbp-view") === "list" ? "list" : "cal")
+  const wantList = store("dbp-view") === "list"
+  setView("cal")
+  ;(async () => {
+    const user = await window.claude?.use?.("user")
+    if (!(await user?.isOwner())) return
+    document.body.classList.add("owner")
+    if (wantList) setView("list")
+  })()
   document.getElementById("status").textContent = "Loading posts…"
   ;(async () => {
     const db = await window.claude?.use?.("db")
