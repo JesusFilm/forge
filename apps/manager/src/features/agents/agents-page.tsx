@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Bot, RefreshCw, X } from "lucide-react"
 import { createPortal } from "react-dom"
-import { apiFetch } from "@/lib/api-fetch"
+import { AutomationResponseError, requestAutomation } from "./automation-api"
 import type {
   AutomationDraft,
   EnrichmentAutomation,
@@ -24,6 +24,7 @@ export function AgentsPage({
   const [dryRunAutomationIds, setDryRunAutomationIds] = useState<Set<string>>(
     () => new Set(),
   )
+  const modalRef = useRef<HTMLElement>(null)
   const modalRoot = typeof document === "undefined" ? null : document.body
 
   const activeAutomations = useMemo(
@@ -45,14 +46,41 @@ export function AgentsPage({
   useEffect(() => {
     if (!isCreateModalOpen) return
 
+    const previousFocus = document.activeElement
+    modalRef.current?.querySelector<HTMLButtonElement>("button")?.focus()
+
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsCreateModalOpen(false)
       }
+      if (event.key === "Tab") {
+        const controls = modalRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+        )
+        const visible = Array.from(controls ?? []).filter(
+          (element) => element.getClientRects().length > 0,
+        )
+        const first = visible[0]
+        const last = visible.at(-1)
+        if (!modalRef.current?.contains(document.activeElement)) {
+          event.preventDefault()
+          const nextFocus = event.shiftKey ? last : first
+          nextFocus?.focus()
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last?.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first?.focus()
+        }
+      }
     }
 
     window.addEventListener("keydown", closeOnEscape)
-    return () => window.removeEventListener("keydown", closeOnEscape)
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape)
+      if (previousFocus instanceof HTMLElement) previousFocus.focus()
+    }
   }, [isCreateModalOpen])
 
   useEffect(() => {
@@ -63,33 +91,30 @@ export function AgentsPage({
   }, [isCreateModalOpen])
 
   async function refreshAutomations() {
-    const response = await apiFetch("/api/automations", { cache: "no-store" })
-    if (!response.ok) {
-      throw new Error("Automations did not refresh.")
-    }
-    const payload = (await response.json()) as {
+    const payload = await requestAutomation<{
       automations: EnrichmentAutomation[]
-    }
+    }>(
+      "/api/automations",
+      { cache: "no-store" },
+      "Automations did not refresh.",
+    )
     setAutomations(payload.automations)
   }
 
   async function createAutomation(draft: AutomationDraft) {
-    const response = await apiFetch("/api/automations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    })
-    const payload = (await response.json()) as {
+    const payload = await requestAutomation<{
       automation?: EnrichmentAutomation
-      error?: string
-      details?: string[]
-    }
-    if (!response.ok || !payload.automation) {
-      throw new Error(
-        payload.details?.join(" ") ??
-          payload.error ??
-          "Automation was not created.",
-      )
+    }>(
+      "/api/automations",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      },
+      "Automation was not created.",
+    )
+    if (!payload.automation) {
+      throw new AutomationResponseError("Automation was not created.")
     }
     setAutomations((current) => [payload.automation!, ...current])
     setStatusMessage("Automation created.")
@@ -99,32 +124,39 @@ export function AgentsPage({
     automation: EnrichmentAutomation,
     status: "active" | "paused",
   ) {
-    const response = await apiFetch(
-      `/api/automations/${encodeURIComponent(automation.documentId)}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      },
-    )
-    const payload = (await response.json()) as {
-      automation?: EnrichmentAutomation
-      error?: string
+    try {
+      const payload = await requestAutomation<{
+        automation?: EnrichmentAutomation
+      }>(
+        `/api/automations/${encodeURIComponent(automation.documentId)}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+        "Automation status did not update.",
+      )
+      if (!payload.automation) {
+        setStatusMessage("Automation status did not update.")
+        return
+      }
+      setAutomations((current) =>
+        current.map((candidate) =>
+          candidate.documentId === payload.automation!.documentId
+            ? payload.automation!
+            : candidate,
+        ),
+      )
+      setStatusMessage(
+        status === "active" ? "Automation resumed." : "Automation paused.",
+      )
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Automation status did not update.",
+      )
     }
-    if (!response.ok || !payload.automation) {
-      setStatusMessage(payload.error ?? "Automation status did not update.")
-      return
-    }
-    setAutomations((current) =>
-      current.map((candidate) =>
-        candidate.documentId === payload.automation!.documentId
-          ? payload.automation!
-          : candidate,
-      ),
-    )
-    setStatusMessage(
-      status === "active" ? "Automation resumed." : "Automation paused.",
-    )
   }
 
   async function runDryRun(automation: EnrichmentAutomation) {
@@ -135,16 +167,15 @@ export function AgentsPage({
     })
     setStatusMessage("Dry run started.")
     try {
-      const response = await apiFetch(
+      const payload = await requestAutomation<{
+        automation?: EnrichmentAutomation
+      }>(
         `/api/automations/${encodeURIComponent(automation.documentId)}/dry-run`,
         { method: "POST" },
+        "Dry run did not start.",
       )
-      const payload = (await response.json()) as {
-        automation?: EnrichmentAutomation
-        error?: string
-      }
-      if (!response.ok || !payload.automation) {
-        setStatusMessage(payload.error ?? "Dry run did not start.")
+      if (!payload.automation) {
+        setStatusMessage("Dry run did not start.")
         return
       }
       setAutomations((current) =>
@@ -184,7 +215,13 @@ export function AgentsPage({
             type="button"
             className="collection-cache-clear jobs-refresh-link"
             onClick={() => {
-              void refreshAutomations()
+              void refreshAutomations().catch((error: unknown) => {
+                setStatusMessage(
+                  error instanceof Error
+                    ? error.message
+                    : "Automations did not refresh.",
+                )
+              })
             }}
           >
             <RefreshCw className="icon" aria-hidden="true" />
@@ -204,7 +241,7 @@ export function AgentsPage({
       {modalRoot && isCreateModalOpen
         ? createPortal(
             <div
-              className="agents-modal-backdrop"
+              className="design-system-eleven agents-modal-backdrop"
               role="presentation"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
@@ -213,6 +250,7 @@ export function AgentsPage({
               }}
             >
               <section
+                ref={modalRef}
                 className="agents-modal"
                 role="dialog"
                 aria-modal="true"

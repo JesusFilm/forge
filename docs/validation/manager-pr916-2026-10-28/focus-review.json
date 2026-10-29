@@ -1,0 +1,308 @@
+{
+  "before": [
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 72,
+      "loadMs": 78.79999995231628,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 38.199999928474426
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 64,
+      "loadMs": 73.89999997615814,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 34.60000002384186
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 68,
+      "loadMs": 81.20000004768372,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 40.800000071525574
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 64,
+      "loadMs": 68.09999990463257,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 31.399999976158146
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 76,
+      "loadMs": 86,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 33.5
+    }
+  ],
+  "after": [
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 64,
+      "loadMs": 82,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 35.59999990463257
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 48,
+      "loadMs": 72.40000009536743,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 29.600000023841854
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 80,
+      "loadMs": 89.10000002384186,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 44.5
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 68,
+      "loadMs": 79,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 39.699999928474426
+    },
+    {
+      "active": "BODY",
+      "apiRequests": ["/api/jobs", "/api/jobs"],
+      "fcpMs": 64,
+      "loadMs": 95.79999995231628,
+      "resourceTransferBytes": 6922,
+      "staticResources": 21,
+      "ttfbMs": 37.09999990463257
+    }
+  ],
+  "mobileFocus": [
+    {
+      "active": "BUTTON",
+      "bottom": 67,
+      "id": "",
+      "label": "open",
+      "posts": 0,
+      "scroll": 0,
+      "text": "",
+      "top": 29
+    },
+    {
+      "active": "H4",
+      "bottom": 185.359375,
+      "id": "agents-config-title",
+      "label": "recipe-to-rules",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Tune the rules",
+      "top": 161.359375
+    },
+    {
+      "active": "H4",
+      "bottom": 202.359375,
+      "id": "agents-review-title",
+      "label": "review-enter",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Review and launch",
+      "top": 178.359375
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 450.90625,
+      "id": "",
+      "label": "review-next-tab",
+      "posts": 0,
+      "scroll": 504,
+      "text": "Cancel",
+      "top": 412.90625
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 143.359375,
+      "id": "stepper-tab-3",
+      "label": "review-shift-tab",
+      "posts": 0,
+      "scroll": 0,
+      "text": "LaunchLaunch",
+      "top": 109.359375
+    },
+    {
+      "active": "H4",
+      "bottom": 185.359375,
+      "id": "agents-config-title",
+      "label": "back-enter",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Tune the rules",
+      "top": 161.359375
+    },
+    {
+      "active": "H4",
+      "bottom": 185.359375,
+      "id": "agents-recipe-title",
+      "label": "change-enter",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Choose the workflow to automate",
+      "top": 161.359375
+    },
+    {
+      "active": "H4",
+      "bottom": 185.359375,
+      "id": "agents-config-title",
+      "label": "continue-enter",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Tune the rules",
+      "top": 161.359375
+    },
+    {
+      "active": "H4",
+      "bottom": 202.359375,
+      "id": "agents-review-title",
+      "label": "review-again",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Review and launch",
+      "top": 178.359375
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 67,
+      "id": "",
+      "label": "tab-wrap",
+      "posts": 0,
+      "scroll": 0,
+      "text": "",
+      "top": 29
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 402.3309326171875,
+      "id": "",
+      "label": "shift-tab-wrap",
+      "posts": 0,
+      "scroll": 504,
+      "text": "Create automation",
+      "top": 364.3309326171875
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 396.7421569824219,
+      "id": "",
+      "label": "escape-restoration",
+      "posts": 0,
+      "text": "New automation",
+      "top": 358.8544616699219
+    }
+  ],
+  "desktopFocus": [
+    {
+      "active": "BUTTON",
+      "bottom": 129.40625,
+      "id": "",
+      "label": "desktop-open",
+      "posts": 0,
+      "scroll": 0,
+      "text": "",
+      "top": 91.40625
+    },
+    {
+      "active": "H4",
+      "bottom": 235.90625,
+      "id": "agents-review-title",
+      "label": "desktop-review-enter",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Review and launch",
+      "top": 211.90625
+    },
+    {
+      "active": "BUTTON",
+      "bottom": 826.28125,
+      "id": "",
+      "label": "desktop-next-tab",
+      "posts": 0,
+      "scroll": 0,
+      "text": "Cancel",
+      "top": 788.28125
+    }
+  ],
+  "browser": {
+    "location": "http://localhost:3920/dashboard/agents",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    }
+  },
+  "environment": {
+    "baseline": "c2188072a",
+    "parent": "a810975c7",
+    "sourceRecovery": "1309e8ccbb3868e281ee19c837b9136dc1f1e969",
+    "node": "24.22.1",
+    "next": "16.3.8",
+    "server": "local Next dev, mock backend, port 3920",
+    "loadViewport": {
+      "width": 320,
+      "height": 480
+    },
+    "samples": "One excluded warmup, then five warmed reloads per variant; measured 350ms after load; baseline/candidate differ only in automation-form.tsx",
+    "limits": "Local development timing under shared-host load, not production Web Vitals or uncached transfer size. Focus checks use real Chromium keyboard input; POSTs use local mocks only."
+  },
+  "medians": {
+    "before": {
+      "fcpMs": 68,
+      "loadMs": 78.79999995231628,
+      "ttfbMs": 34.60000002384186,
+      "staticResources": 21,
+      "resourceTransferBytes": 6922
+    },
+    "after": {
+      "fcpMs": 64,
+      "loadMs": 82,
+      "ttfbMs": 37.09999990463257,
+      "staticResources": 21,
+      "resourceTransferBytes": 6922
+    }
+  },
+  "baselineReproduction": {
+    "viewport": "320x480",
+    "afterReviewEnter": {
+      "active": "BODY",
+      "dialogScrollTop": 504
+    },
+    "afterNextTab": {
+      "focus": "Close modal",
+      "dialogScrollTop": 0
+    }
+  },
+  "explicitCreate": {
+    "reviewPosts": 0,
+    "syntheticHtml502Attempts": 1,
+    "error": "Automation was not created. The server returned an unexpected response (HTTP 502). Refresh the page and try again.",
+    "formRetained": true,
+    "subsequentRealMockPosts": 1,
+    "status": 201,
+    "dialogClosed": true,
+    "restoredFocus": "New automation"
+  }
+}

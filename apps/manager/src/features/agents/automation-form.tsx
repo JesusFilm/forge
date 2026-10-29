@@ -1,6 +1,13 @@
 "use client"
 
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   Bot,
@@ -219,6 +226,17 @@ export function AutomationForm({
   onCreated?: () => void
 }) {
   const [activeStep, setActiveStep] = useState(0)
+  const previousStepRef = useRef(activeStep)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  useEffect(() => {
+    // Preserve modal-opening focus; move it only after a step transition.
+    // Navigation may unmount the focused button (advance/create have distinct keys).
+    if (previousStepRef.current === activeStep) return
+    previousStepRef.current = activeStep
+    stepHeadingRef.current?.focus()
+  }, [activeStep])
+
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [name, setName] = useState("")
   const [template, setTemplate] = useState<AutomationTemplate>(
@@ -290,6 +308,7 @@ export function AutomationForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (activeStep !== 2 || isSubmitting) return
     if (!selectedRecipe) {
       setError("Choose an automation before creating it.")
       return
@@ -359,7 +378,9 @@ export function AutomationForm({
       >
         <div className="agents-stage-heading">
           <div>
-            <h4 id="agents-recipe-title">Choose the workflow to automate</h4>
+            <h4 id="agents-recipe-title" ref={stepHeadingRef} tabIndex={-1}>
+              Choose the workflow to automate
+            </h4>
             <p>
               Start from a ready-made playbook, then move into the setup details
               for the one you want to launch.
@@ -424,7 +445,9 @@ export function AutomationForm({
       >
         <div className="agents-stage-heading">
           <div>
-            <h4 id="agents-config-title">Tune the rules</h4>
+            <h4 id="agents-config-title" ref={stepHeadingRef} tabIndex={-1}>
+              Tune the rules
+            </h4>
             <p>
               Shape how often the automation runs and how aggressively it
               refreshes existing output.
@@ -540,7 +563,7 @@ export function AutomationForm({
                   ) : (
                     <div
                       className="agents-language-pills"
-                      role="radiogroup"
+                      role="group"
                       aria-label="Target language"
                     >
                       {languageOptions.map((language) => {
@@ -580,6 +603,7 @@ export function AutomationForm({
                   <button
                     type="button"
                     className="agents-cap-button"
+                    aria-label="Decrease videos per run"
                     disabled={maxVideosPerRun <= 1}
                     onClick={() =>
                       setMaxVideosPerRun((current) => Math.max(1, current - 1))
@@ -594,6 +618,7 @@ export function AutomationForm({
                   <button
                     type="button"
                     className="agents-cap-button"
+                    aria-label="Increase videos per run"
                     disabled={maxVideosPerRun >= 100}
                     onClick={() =>
                       setMaxVideosPerRun((current) =>
@@ -632,7 +657,9 @@ export function AutomationForm({
       >
         <div className="agents-stage-heading">
           <div>
-            <h4 id="agents-review-title">Review and launch</h4>
+            <h4 id="agents-review-title" ref={stepHeadingRef} tabIndex={-1}>
+              Review and launch
+            </h4>
             <p>
               Check the setup, then create the automation when it looks right.
             </p>
@@ -784,8 +811,10 @@ export function AutomationForm({
               Back
             </button>
           ) : null}
+          {/* Distinct keys prevent a navigation click from submitting after the step changes. */}
           {activeStep < 2 ? (
             <button
+              key="advance"
               type="button"
               className="jobs-primary-button agents-primary-advance"
               disabled={
@@ -800,6 +829,7 @@ export function AutomationForm({
             </button>
           ) : (
             <button
+              key="create"
               type="submit"
               className="jobs-primary-button agents-primary-advance"
               disabled={!isReadyToLaunch || isSubmitting}

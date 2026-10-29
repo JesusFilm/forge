@@ -34,6 +34,7 @@ import {
   KeyRound,
   ListChecks,
   LogOut,
+  Menu,
   Moon,
   PanelLeft,
   SearchCheck,
@@ -175,7 +176,7 @@ export function StudioThemeSwitch() {
     <button
       type="button"
       role="menuitemcheckbox"
-      className="group flex min-h-[58px] w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]"
+      className="group flex min-h-[58px] min-w-0 w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]"
       aria-label={`Switch to ${nextTheme} mode`}
       aria-checked={isDark}
       onClick={() => {
@@ -623,7 +624,7 @@ export function StudioUserMenuPanel({
         role="menuitem"
         onClick={onClick}
         className={cn(
-          "group flex min-h-[50px] w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
+          "group flex min-h-[50px] min-w-0 w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]",
           isDanger &&
             "hover:bg-[color:color-mix(in_srgb,var(--ds-danger)_8%,transparent)] active:bg-[color:color-mix(in_srgb,var(--ds-danger)_12%,transparent)]",
         )}
@@ -662,7 +663,7 @@ export function StudioUserMenuPanel({
 
   return (
     <div
-      className="absolute right-0 top-[calc(100%+12px)] z-[70] w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+12px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3.5 shadow-[0_20px_55px_rgba(17,17,17,0.14)] animate-in fade-in-0 zoom-in-95 duration-150"
+      className="studio-user-menu-panel absolute right-0 top-[calc(100%+12px)] z-[70] w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+12px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3.5 shadow-[0_20px_55px_rgba(17,17,17,0.14)] animate-in fade-in-0 zoom-in-95 duration-150"
       role="menu"
       aria-label="User menu"
     >
@@ -934,6 +935,45 @@ export function ManagerDashboardShell({
                   )
                 })}
               </nav>
+              <details
+                className="studio-mobile-nav"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.currentTarget.removeAttribute("open")
+                    event.currentTarget.querySelector("summary")?.focus()
+                  }
+                }}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) {
+                    event.currentTarget.removeAttribute("open")
+                  }
+                }}
+              >
+                <summary aria-label="Navigation menu">
+                  <Menu size={20} aria-hidden="true" />
+                </summary>
+                <nav aria-label="Primary mobile menu">
+                  {navItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = isActiveRoute(pathname, item.href)
+                    return (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        onClick={(event) => {
+                          const details = event.currentTarget.closest("details")
+                          details?.removeAttribute("open")
+                          details?.querySelector("summary")?.focus()
+                        }}
+                      >
+                        <Icon size={19} aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </nav>
+              </details>
             </div>
 
             {sidebarContent ? (

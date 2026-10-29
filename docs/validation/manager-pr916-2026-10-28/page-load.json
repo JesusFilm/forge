@@ -1,0 +1,338 @@
+{
+  "setup": {
+    "url": "http://localhost:3916/dashboard/agents",
+    "browser": "T3 Chromium headless shell 154.0.8037.92, CSS viewport resize, DPR 2",
+    "runtime": "Next 16.3.8 dev, Node 24.22.1, local mock data; warmed browser/server caches",
+    "viewport": [375, 667],
+    "pairedControl": "Same source files temporarily restored to HEAD 1279e6cfc for baseline; current files restored for after. Each process warmed with an excluded navigation, then five reload samples, collected 250ms after load.",
+    "limitations": "development-mode cache revalidation; shared host has concurrent validation. Not a production Web Vitals or transferred bundle-size claim."
+  },
+  "initialBefore": [
+    {
+      "viewport": [375, 667],
+      "ttfb": 43.5,
+      "dcl": 53.800000071525574,
+      "load": 82.70000004768372,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 68
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 68
+        }
+      ],
+      "resources": 22,
+      "transferBytes": 6300,
+      "decodedBytes": 6099279,
+      "fetches": []
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 38.300000071525574,
+      "dcl": 45,
+      "load": 66.10000002384186,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 56
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 56
+        }
+      ],
+      "resources": 23,
+      "transferBytes": 6611,
+      "decodedBytes": 412,
+      "fetches": ["/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 30,
+      "dcl": 36.89999997615814,
+      "load": 54.59999990463257,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 56
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 56
+        }
+      ],
+      "resources": 22,
+      "transferBytes": 6300,
+      "decodedBytes": 401,
+      "fetches": []
+    }
+  ],
+  "initialAfter": [
+    {
+      "viewport": [375, 667],
+      "ttfb": 65.20000004768372,
+      "dcl": 83.40000009536743,
+      "load": 139.20000004768372,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 152
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 152
+        }
+      ],
+      "resources": 22,
+      "transferBytes": 6300,
+      "decodedBytes": 6120608,
+      "fetches": []
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 61.299999952316284,
+      "dcl": 83.29999995231628,
+      "load": 114.89999997615814,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 88
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 88
+        }
+      ],
+      "resources": 22,
+      "transferBytes": 6300,
+      "decodedBytes": 401,
+      "fetches": []
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 58.40000009536743,
+      "dcl": 69.30000007152557,
+      "load": 109.80000007152557,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 88
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 88
+        }
+      ],
+      "resources": 23,
+      "transferBytes": 6611,
+      "decodedBytes": 412,
+      "fetches": ["/api/jobs?view=count"]
+    }
+  ],
+  "pairedBefore": [
+    {
+      "viewport": [375, 667],
+      "ttfb": 44.199999928474426,
+      "responseEnd": 45.39999997615814,
+      "dcl": 52.5,
+      "load": 72.19999992847443,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 60
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 60
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 28.100000023841858,
+      "responseEnd": 29.100000023841858,
+      "dcl": 37.5,
+      "load": 57.39999997615814,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 40
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 40
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 29.200000047683716,
+      "responseEnd": 30.5,
+      "dcl": 36.299999952316284,
+      "load": 54,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 52
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 52
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 34.299999952316284,
+      "responseEnd": 35.59999990463257,
+      "dcl": 44.59999990463257,
+      "load": 58.299999952316284,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 48
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 48
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 29.09999990463257,
+      "responseEnd": 30.899999976158142,
+      "dcl": 35.299999952316284,
+      "load": 59.5,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 56
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 56
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    }
+  ],
+  "pairedAfter": [
+    {
+      "viewport": [375, 667],
+      "ttfb": 49.200000047683716,
+      "responseEnd": 50.40000009536743,
+      "dcl": 58.40000009536743,
+      "load": 81.10000002384186,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 80
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 80
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 34.5,
+      "responseEnd": 35.89999997615814,
+      "dcl": 42,
+      "load": 64.89999997615814,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 52
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 52
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 35.39999997615814,
+      "responseEnd": 36.799999952316284,
+      "dcl": 44.09999990463257,
+      "load": 73.09999990463257,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 56
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 56
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 28.399999976158142,
+      "responseEnd": 29.399999976158142,
+      "dcl": 34.5,
+      "load": 50.10000002384186,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 48
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 48
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    },
+    {
+      "viewport": [375, 667],
+      "ttfb": 29.699999928474426,
+      "responseEnd": 31,
+      "dcl": 35.799999952316284,
+      "load": 53.10000002384186,
+      "paint": [
+        {
+          "name": "first-paint",
+          "ms": 52
+        },
+        {
+          "name": "first-contentful-paint",
+          "ms": 52
+        }
+      ],
+      "staticResources": 22,
+      "transferBytes": 6922,
+      "fetches": ["/api/jobs?view=count", "/api/jobs?view=count"]
+    }
+  ]
+}
