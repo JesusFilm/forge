@@ -12,6 +12,7 @@ function managerJobPayload(overrides: Record<string, unknown> = {}) {
     options: {},
     status: "completed",
     retries: 0,
+    revision: 0,
     createdAt: "2026-05-06T00:00:00.000Z",
     updatedAt: "2026-05-06T00:00:00.000Z",
     artifacts: {},
@@ -229,6 +230,7 @@ describe("AdminGraphqlClient", () => {
               options: {},
               status: "pending",
               retries: 0,
+              revision: 0,
               createdAt: "2026-05-06T00:00:00.000Z",
               updatedAt: "2026-05-06T00:00:00.000Z",
               artifacts: {},
@@ -317,6 +319,7 @@ describe("AdminGraphqlClient", () => {
                   options: {},
                   status: "running",
                   retries: 1,
+                  revision: 0,
                   createdAt: "2026-05-06T00:00:00.000Z",
                   updatedAt: "2026-05-06T00:01:00.000Z",
                   artifacts: {},
@@ -636,6 +639,7 @@ describe("AdminGraphqlClient", () => {
               options: {},
               status: "running",
               retries: 0,
+              revision: 0,
               createdAt: "2026-05-06T00:00:00.000Z",
               updatedAt: "2026-05-06T00:02:00.000Z",
               artifacts: {
@@ -750,3 +754,42 @@ it("preserves playable metadata when the catalog artwork lookup fails", async ()
   expect(await client.getVideosForEnrichment(["film"], true)).toEqual(rows)
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
+
+it("selects and preserves the integer revision and sends the optional CAS argument", async () => {
+  const fetchImpl = vi.fn().mockResolvedValue(
+    Response.json({
+      data: { updateManagerJob: managerJobPayload({ revision: 13 }) },
+    }),
+  )
+  const client = new AdminGraphqlClient({
+    graphqlUrl: "https://admin.example.test/graphql",
+    fetchImpl,
+  })
+  expect(
+    await client.updateJob(
+      "admin-job-test",
+      { options: { currentRunId: "new" } },
+      12,
+    ),
+  ).toMatchObject({ revision: 13 })
+  const request = JSON.parse(fetchImpl.mock.calls[0][1].body)
+  expect(request.variables.expectedRevision).toBe(12)
+  expect(request.query).toContain("expectedRevision: $expectedRevision")
+  expect(request.query).toMatch(/id\s+revision\s+muxAssetId/)
+})
+
+it.each([undefined, -1, 1.5])(
+  "fails closed on an invalid Admin revision (%s)",
+  async (revision) => {
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example.test/graphql",
+      fetchImpl: async () =>
+        Response.json({
+          data: { managerJob: managerJobPayload({ revision }) },
+        }),
+    })
+    await expect(client.getJob("admin-job-test")).rejects.toThrow(
+      "invalid Manager job payload",
+    )
+  },
+)

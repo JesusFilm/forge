@@ -24,6 +24,7 @@ COPY patches patches
 COPY apps/manager/package.json apps/manager/package.json
 COPY packages/admin-graphql/package.json packages/admin-graphql/package.json
 COPY packages/automation-contracts/package.json packages/automation-contracts/package.json
+COPY packages/feature-flags/package.json packages/feature-flags/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
 COPY packages/studio-contracts/package.json packages/studio-contracts/package.json
 COPY packages/studio-server/package.json packages/studio-server/package.json
@@ -33,11 +34,13 @@ RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filte
 COPY apps/manager apps/manager
 COPY packages/admin-graphql packages/admin-graphql
 COPY packages/automation-contracts packages/automation-contracts
+COPY packages/feature-flags packages/feature-flags
 COPY packages/shorts-compositions packages/shorts-compositions
 COPY packages/studio-contracts packages/studio-contracts
 COPY packages/studio-server packages/studio-server
 COPY packages/video-player packages/video-player
 COPY packages/watch-url-policy packages/watch-url-policy
+COPY docs/fixtures/manager-enrichment-steps.json docs/fixtures/manager-enrichment-callbacks.json docs/fixtures/
 ARG NEXT_PUBLIC_WATCH_URL
 RUN CI=true MUX_TOKEN_ID=synthetic-build-id MUX_TOKEN_SECRET=synthetic-build-secret \
     OPENROUTER_API_KEY=synthetic-build-openrouter MANAGER_DATA_MODE=admin \

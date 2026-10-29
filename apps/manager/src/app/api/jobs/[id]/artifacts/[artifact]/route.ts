@@ -47,7 +47,8 @@ export async function GET(
   }
 
   // Smart-crop jobs store artifacts under options.smartCrop.assetId, which may
-  // differ from the job's muxAssetId. Enrichment jobs keep muxAssetId.
+  // differ from the Mux id. Enrichment resolves the persisted ready namespace
+  // and keeps the original prefix for legacy/preparing jobs.
   const body = await readArtifact(
     getJobArtifactStorageAssetId(job),
     descriptor.artifactType,

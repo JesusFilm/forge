@@ -1,0 +1,539 @@
+{
+  "runningTranscription": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 1,
+    "status": "running",
+    "step": "transcription"
+  },
+  "completedTranslation": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 2,
+    "status": "completed",
+    "step": "translation",
+    "artifactsDelta": ["subtitles-fr", "translation-fr"],
+    "languageResults": [
+      {
+        "lang": "fr",
+        "status": "completed"
+      }
+    ]
+  },
+  "failedMuxUploadTerminal": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 3,
+    "status": "failed",
+    "step": "mux_upload",
+    "error": "Mux comparison failed",
+    "jobStatus": "failed"
+  },
+  "correctionWithSummary": {
+    "jobId": "dummy-job",
+    "engine": "mastra",
+    "runId": "dummy-run",
+    "sequence": 2,
+    "status": "completed",
+    "step": "structured_transcript",
+    "artifactsDelta": [
+      "transcript-correction-report",
+      "transcript-raw",
+      "subtitles-raw",
+      "transcript",
+      "subtitles"
+    ],
+    "details": {
+      "mastra": {
+        "runId": "correction-child-run",
+        "status": "reviewed",
+        "retryable": false
+      },
+      "transcriptCorrection": {
+        "status": "skipped",
+        "basis": "model_knowledge",
+        "contentDomain": "bible_story",
+        "confidence": 1,
+        "checkedReferenceCount": 0,
+        "appliedCount": 0,
+        "flaggedCount": 0,
+        "skippedReason": "no_corrections",
+        "likelyBibleReferences": [],
+        "findings": []
+      }
+    }
+  },
+  "validationWithSummary": {
+    "jobId": "dummy-job",
+    "engine": "mastra",
+    "runId": "dummy-run",
+    "sequence": 2,
+    "status": "completed",
+    "step": "translation",
+    "artifactsDelta": [
+      "subtitles-fr",
+      "translation-fr",
+      "subtitle-validation-fr"
+    ],
+    "languageResults": [
+      {
+        "lang": "fr",
+        "status": "completed"
+      }
+    ],
+    "details": {
+      "subtitleValidation": {
+        "highestVerdict": "pass",
+        "languagesChecked": 1,
+        "modelOnlyLanguages": ["fr"],
+        "unavailableLanguages": [],
+        "warningCount": 0,
+        "needsReviewCount": 0,
+        "results": [
+          {
+            "lang": "fr",
+            "verdict": "pass",
+            "basis": "model_knowledge",
+            "confidence": 1,
+            "checkedReferenceCount": 0,
+            "warningCount": 0,
+            "needsReviewCount": 0
+          }
+        ]
+      }
+    }
+  },
+  "routingWithSummary": {
+    "jobId": "dummy-job",
+    "engine": "mastra",
+    "runId": "dummy-run",
+    "sequence": 2,
+    "status": "completed",
+    "step": "transcription",
+    "reports": {
+      "transcriptionRouting": {
+        "sourceInputHost": "stream.mux.com",
+        "attempts": [
+          {
+            "attemptId": "attempt-1",
+            "requestedProvider": "automatic",
+            "resolvedProvider": "mux",
+            "status": "completed",
+            "startedAt": "2026-10-28T00:00:00.000Z",
+            "finishedAt": "2026-10-28T00:01:00.000Z"
+          }
+        ],
+        "finalProvider": "mux",
+        "finalSourceLanguageCode": "en"
+      }
+    }
+  },
+  "muxWithSummary": {
+    "jobId": "dummy-job",
+    "engine": "mastra",
+    "runId": "dummy-run",
+    "sequence": 2,
+    "status": "completed",
+    "step": "mux_upload",
+    "reports": {
+      "muxSync": {
+        "comparisons": [
+          {
+            "artifactKey": "subtitles-fr",
+            "targetLanguage": "fr",
+            "muxTargetType": "text_track",
+            "muxTargetKey": "fr",
+            "status": "synced",
+            "explanation": "Published generated subtitles"
+          }
+        ],
+        "updatedAt": "2026-10-28T00:00:00.000Z"
+      }
+    }
+  },
+  "maximumLanguageAggregate": {
+    "jobId": "dummy-job",
+    "engine": "mastra",
+    "runId": "dummy-run",
+    "sequence": 2,
+    "status": "completed",
+    "step": "translation",
+    "artifactsDelta": [
+      "translations",
+      "subtitles-aa",
+      "translation-aa",
+      "subtitle-validation-aa",
+      "subtitles-ab",
+      "translation-ab",
+      "subtitle-validation-ab",
+      "subtitles-ae",
+      "translation-ae",
+      "subtitle-validation-ae",
+      "subtitles-af",
+      "translation-af",
+      "subtitle-validation-af",
+      "subtitles-ak",
+      "translation-ak",
+      "subtitle-validation-ak",
+      "subtitles-am",
+      "translation-am",
+      "subtitle-validation-am",
+      "subtitles-an",
+      "translation-an",
+      "subtitle-validation-an",
+      "subtitles-ar",
+      "translation-ar",
+      "subtitle-validation-ar",
+      "subtitles-as",
+      "translation-as",
+      "subtitle-validation-as",
+      "subtitles-av",
+      "translation-av",
+      "subtitle-validation-av",
+      "subtitles-ay",
+      "translation-ay",
+      "subtitle-validation-ay",
+      "subtitles-az",
+      "translation-az",
+      "subtitle-validation-az",
+      "subtitles-ba",
+      "translation-ba",
+      "subtitle-validation-ba",
+      "subtitles-be",
+      "translation-be",
+      "subtitle-validation-be",
+      "subtitles-bg",
+      "translation-bg",
+      "subtitle-validation-bg",
+      "subtitles-bh",
+      "translation-bh",
+      "subtitle-validation-bh",
+      "subtitles-bi",
+      "translation-bi",
+      "subtitle-validation-bi",
+      "subtitles-bm",
+      "translation-bm",
+      "subtitle-validation-bm",
+      "subtitles-bn",
+      "translation-bn",
+      "subtitle-validation-bn",
+      "subtitles-bo",
+      "translation-bo",
+      "subtitle-validation-bo",
+      "subtitles-br",
+      "translation-br",
+      "subtitle-validation-br",
+      "subtitles-bs",
+      "translation-bs",
+      "subtitle-validation-bs",
+      "subtitles-ca",
+      "translation-ca",
+      "subtitle-validation-ca",
+      "subtitles-ce",
+      "translation-ce",
+      "subtitle-validation-ce",
+      "subtitles-ch",
+      "translation-ch",
+      "subtitle-validation-ch",
+      "subtitles-co",
+      "translation-co",
+      "subtitle-validation-co",
+      "subtitles-cr",
+      "translation-cr",
+      "subtitle-validation-cr",
+      "subtitles-cs",
+      "translation-cs",
+      "subtitle-validation-cs",
+      "subtitles-cu",
+      "translation-cu",
+      "subtitle-validation-cu",
+      "subtitles-cv",
+      "translation-cv",
+      "subtitle-validation-cv",
+      "subtitles-cy",
+      "translation-cy",
+      "subtitle-validation-cy",
+      "subtitles-da",
+      "translation-da",
+      "subtitle-validation-da",
+      "subtitles-de",
+      "translation-de",
+      "subtitle-validation-de",
+      "subtitles-dv",
+      "translation-dv",
+      "subtitle-validation-dv",
+      "subtitles-dz",
+      "translation-dz",
+      "subtitle-validation-dz",
+      "subtitles-ee",
+      "translation-ee",
+      "subtitle-validation-ee",
+      "subtitles-el",
+      "translation-el",
+      "subtitle-validation-el",
+      "subtitles-en",
+      "translation-en",
+      "subtitle-validation-en",
+      "subtitles-eo",
+      "translation-eo",
+      "subtitle-validation-eo",
+      "subtitles-es",
+      "translation-es",
+      "subtitle-validation-es",
+      "subtitles-et",
+      "translation-et",
+      "subtitle-validation-et",
+      "subtitles-eu",
+      "translation-eu",
+      "subtitle-validation-eu",
+      "subtitles-fa",
+      "translation-fa",
+      "subtitle-validation-fa",
+      "subtitles-ff",
+      "translation-ff",
+      "subtitle-validation-ff",
+      "subtitles-fi",
+      "translation-fi",
+      "subtitle-validation-fi",
+      "subtitles-fj",
+      "translation-fj",
+      "subtitle-validation-fj",
+      "subtitles-fo",
+      "translation-fo",
+      "subtitle-validation-fo",
+      "subtitles-fr",
+      "translation-fr",
+      "subtitle-validation-fr",
+      "subtitles-fy",
+      "translation-fy",
+      "subtitle-validation-fy",
+      "subtitles-ga",
+      "translation-ga",
+      "subtitle-validation-ga"
+    ],
+    "languageResults": [
+      {
+        "lang": "aa",
+        "status": "completed"
+      },
+      {
+        "lang": "ab",
+        "status": "completed"
+      },
+      {
+        "lang": "ae",
+        "status": "completed"
+      },
+      {
+        "lang": "af",
+        "status": "completed"
+      },
+      {
+        "lang": "ak",
+        "status": "completed"
+      },
+      {
+        "lang": "am",
+        "status": "completed"
+      },
+      {
+        "lang": "an",
+        "status": "completed"
+      },
+      {
+        "lang": "ar",
+        "status": "completed"
+      },
+      {
+        "lang": "as",
+        "status": "completed"
+      },
+      {
+        "lang": "av",
+        "status": "completed"
+      },
+      {
+        "lang": "ay",
+        "status": "completed"
+      },
+      {
+        "lang": "az",
+        "status": "completed"
+      },
+      {
+        "lang": "ba",
+        "status": "completed"
+      },
+      {
+        "lang": "be",
+        "status": "completed"
+      },
+      {
+        "lang": "bg",
+        "status": "completed"
+      },
+      {
+        "lang": "bh",
+        "status": "completed"
+      },
+      {
+        "lang": "bi",
+        "status": "completed"
+      },
+      {
+        "lang": "bm",
+        "status": "completed"
+      },
+      {
+        "lang": "bn",
+        "status": "completed"
+      },
+      {
+        "lang": "bo",
+        "status": "completed"
+      },
+      {
+        "lang": "br",
+        "status": "completed"
+      },
+      {
+        "lang": "bs",
+        "status": "completed"
+      },
+      {
+        "lang": "ca",
+        "status": "completed"
+      },
+      {
+        "lang": "ce",
+        "status": "completed"
+      },
+      {
+        "lang": "ch",
+        "status": "completed"
+      },
+      {
+        "lang": "co",
+        "status": "completed"
+      },
+      {
+        "lang": "cr",
+        "status": "completed"
+      },
+      {
+        "lang": "cs",
+        "status": "completed"
+      },
+      {
+        "lang": "cu",
+        "status": "completed"
+      },
+      {
+        "lang": "cv",
+        "status": "completed"
+      },
+      {
+        "lang": "cy",
+        "status": "completed"
+      },
+      {
+        "lang": "da",
+        "status": "completed"
+      },
+      {
+        "lang": "de",
+        "status": "completed"
+      },
+      {
+        "lang": "dv",
+        "status": "completed"
+      },
+      {
+        "lang": "dz",
+        "status": "completed"
+      },
+      {
+        "lang": "ee",
+        "status": "completed"
+      },
+      {
+        "lang": "el",
+        "status": "completed"
+      },
+      {
+        "lang": "en",
+        "status": "completed"
+      },
+      {
+        "lang": "eo",
+        "status": "completed"
+      },
+      {
+        "lang": "es",
+        "status": "completed"
+      },
+      {
+        "lang": "et",
+        "status": "completed"
+      },
+      {
+        "lang": "eu",
+        "status": "completed"
+      },
+      {
+        "lang": "fa",
+        "status": "completed"
+      },
+      {
+        "lang": "ff",
+        "status": "completed"
+      },
+      {
+        "lang": "fi",
+        "status": "completed"
+      },
+      {
+        "lang": "fj",
+        "status": "completed"
+      },
+      {
+        "lang": "fo",
+        "status": "completed"
+      },
+      {
+        "lang": "fr",
+        "status": "completed"
+      },
+      {
+        "lang": "fy",
+        "status": "completed"
+      },
+      {
+        "lang": "ga",
+        "status": "completed"
+      }
+    ]
+  },
+  "embeddingsWithProductionHash": {
+    "jobId": "job-1",
+    "engine": "mastra",
+    "runId": "run-1",
+    "sequence": 2,
+    "status": "completed",
+    "step": "embeddings",
+    "details": {
+      "mastra": {
+        "runId": "run-1-embeddings",
+        "status": "created",
+        "provider": "jesus-film-ai-gateway",
+        "model": "embeddings",
+        "chunks": 1,
+        "totalTokens": 3,
+        "sourceContentHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  }
+}

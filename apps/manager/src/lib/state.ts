@@ -9,12 +9,20 @@ import {
   updateMockCmsState,
 } from "@/cms/gateway"
 import { env } from "@/config/env"
+import type { CallbackReports } from "@/lib/enrichment-callback-contract"
+import { readEngineStamp } from "@/lib/engine-stamp"
+import {
+  buildDownloadableArtifactManifest,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
+import { buildInitialSteps, FORGE_WORKFLOW_STEPS } from "@/lib/workflow-steps"
 import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
 import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
-import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
+  EnrichmentEngine,
   JobArtifactEntry,
   JobArtifactManifest,
+  JobOptions,
   JobRecord,
   JobStatus,
   JobStepDetails,
@@ -42,6 +50,10 @@ type JobUpdateFields = Partial<
     | "completedAt"
     | "retries"
     | "steps"
+    | "options"
+    | "sourceCollectionTitle"
+    | "sourceMediaTitle"
+    | "requestedLanguageAbbreviations"
     | "sourceLanguageId"
     | "sourceLanguageCode"
     | "sourceSelectionReason"
@@ -62,6 +74,32 @@ export type JobLookupResult =
       status: "error"
       error: unknown
     }
+
+export type ApplyJobCallbackUpdateInput = {
+  jobId: string
+  runId: string
+  sequence: number
+  step: WorkflowStepName
+  status: StepStatus
+  jobStatus?: Extract<JobStatus, "completed" | "failed">
+  error?: string
+  details?: JobStepDetails
+  reports?: CallbackReports
+  artifactsDelta?: readonly string[]
+}
+
+export type ApplyJobCallbackUpdateResult =
+  | { status: "applied"; job: JobRecord }
+  | { status: "dropped"; reason: string }
+  | { status: "invalid"; error: string }
+  | { status: "not-found" }
+  | { status: "error"; error: unknown }
+
+export type FailMastraFirstCallbackWatchdogResult =
+  | { status: "failed"; job: JobRecord }
+  | { status: "dropped"; reason: string }
+  | { status: "not-found" }
+  | { status: "error"; error: unknown }
 
 let adminJobClient: AdminGraphqlClient | undefined
 
@@ -93,6 +131,7 @@ type EnrichmentJobNode = {
   updatedAt?: string | null
   startedAt?: string | null
   completedAt?: string | null
+  options?: unknown
   artifacts?: unknown
   steps?: EnrichmentJobStepNode[] | null
   errors?: JobRecord["errors"] | null
@@ -183,6 +222,98 @@ function readNonBlankStringArray(value: unknown): string[] | undefined {
     .filter((entry): entry is string => entry != null)
 
   return strings.length > 0 ? strings : undefined
+}
+
+/** Parse a raw `options` JSON blob into a typed JobOptions, dropping unknowns. */
+function normalizeJobOptions(raw: unknown): JobOptions {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return {}
+  }
+  const candidate = raw as Record<string, unknown>
+  const options: JobOptions = {}
+  // Preserve malformed namespace bindings too: dispatch/admission must reject
+  // them, never silently fall back to a shared Mux prefix.
+  if (candidate.enrichmentArtifacts !== undefined) {
+    options.enrichmentArtifacts =
+      candidate.enrichmentArtifacts as JobOptions["enrichmentArtifacts"]
+  }
+  // Preserve existing typed job discriminators alongside the parsed engine fence.
+  if (
+    candidate.smartCrop &&
+    typeof candidate.smartCrop === "object" &&
+    !Array.isArray(candidate.smartCrop)
+  ) {
+    options.smartCrop = candidate.smartCrop as JobOptions["smartCrop"]
+  }
+  if (
+    candidate.shorts &&
+    typeof candidate.shorts === "object" &&
+    !Array.isArray(candidate.shorts)
+  ) {
+    options.shorts = candidate.shorts as JobOptions["shorts"]
+  }
+  if (typeof candidate.generateVoiceover === "boolean") {
+    options.generateVoiceover = candidate.generateVoiceover
+  }
+  if (typeof candidate.uploadMux === "boolean") {
+    options.uploadMux = candidate.uploadMux
+  }
+  if (typeof candidate.notifyCms === "boolean") {
+    options.notifyCms = candidate.notifyCms
+  }
+  if (candidate.engine === "workflow" || candidate.engine === "mastra") {
+    options.engine = candidate.engine
+  }
+  if (typeof candidate.currentRunId === "string") {
+    options.currentRunId = candidate.currentRunId
+  }
+  if (typeof candidate.dispatchedAt === "string") {
+    options.dispatchedAt = candidate.dispatchedAt
+  }
+  if (
+    typeof candidate.callbackSequences === "object" &&
+    candidate.callbackSequences != null &&
+    !Array.isArray(candidate.callbackSequences)
+  ) {
+    const allowedSteps = new Set<WorkflowStepName>(FORGE_WORKFLOW_STEPS)
+    const callbackSequences: Partial<Record<WorkflowStepName, number>> = {}
+    for (const [key, value] of Object.entries(
+      candidate.callbackSequences as Record<string, unknown>,
+    )) {
+      const step = key as WorkflowStepName
+      if (
+        allowedSteps.has(step) &&
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 0
+      ) {
+        callbackSequences[step] = value
+      }
+    }
+    if (Object.keys(callbackSequences).length > 0) {
+      options.callbackSequences = callbackSequences
+    }
+  }
+  return options
+}
+
+function buildDispatchedOptions(
+  options: JobOptions,
+  runId: string,
+  dispatchedAt: string,
+): JobOptions {
+  const rest = { ...options }
+  delete rest.callbackSequences
+
+  return {
+    ...rest,
+    currentRunId: runId,
+    dispatchedAt,
+  }
+}
+
+function hasCallbackSequence(options: JobOptions | undefined): boolean {
+  return Object.keys(options?.callbackSequences ?? {}).length > 0
 }
 
 function deriveMaterializationFields(
@@ -283,7 +414,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
     sourceMediaTitle: videoTitle?.trim() || undefined,
-    options: {},
+    options: normalizeJobOptions(node.options),
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
     retries: node.retries ?? 0,
@@ -494,6 +625,7 @@ export async function createJob(
     sourceCollectionTitle?: string
     sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
+    engine?: EnrichmentEngine
     // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
     // custom step inventory (smart-crop jobs persist smart_crop_* steps
     // instead of the enrichment FORGE_WORKFLOW_STEPS).
@@ -502,7 +634,10 @@ export async function createJob(
   },
 ): Promise<JobRecord> {
   const steps = options?.steps ?? buildInitialSteps()
-  const jobOptions = options?.jobOptions ?? {}
+  const jobOptions = {
+    ...options?.jobOptions,
+    ...(options?.engine ? { engine: options.engine } : {}),
+  }
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -679,8 +814,10 @@ export async function updateJob(
       | "completedAt"
       | "retries"
       | "steps"
+      | "options"
     >
   >,
+  expectedRevision?: number,
 ): Promise<JobRecord | null> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
@@ -721,7 +858,11 @@ export async function updateJob(
             }
           : updates
       const adminUpdates = buildJobUpdateData(updatesWithDerivedFields)
-      const job = await getAdminJobClient().updateJob(id, adminUpdates)
+      const job = await getAdminJobClient().updateJob(
+        id,
+        adminUpdates,
+        expectedRevision,
+      )
       if (job) {
         publishJobEvent(job)
       }
@@ -733,6 +874,330 @@ export async function updateJob(
   }
 
   return null
+}
+
+/**
+ * Merge-aware engine re-stamp for the transcription-rerun path. A rerun
+ * re-stamps the job to the engine selected at rerun time WITHOUT clobbering
+ * sibling JobOptions (generateVoiceover / uploadMux / notifyCms). Always merges
+ * onto the existing options object — never writes a bare `{ engine }`, because
+ * the Admin `updateManagerJob` mutation replaces the whole `options` column.
+ */
+export async function restampEngine(
+  id: string,
+  engine: EnrichmentEngine,
+): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, () => doRestampEngine(id, engine))
+}
+
+async function doRestampEngine(
+  id: string,
+  engine: EnrichmentEngine,
+): Promise<JobRecord | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                options: { ...job.options, engine },
+                updatedAt: new Date().toISOString(),
+              }
+            : job,
+        ),
+      },
+    }))
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
+    return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(id)
+      if (!current) {
+        return null
+      }
+      const job = await getAdminJobClient().updateJob(
+        id,
+        {
+          options: { ...current.options, engine },
+        },
+        current.revision,
+      )
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] restampEngine(${id}) failed:`, err)
+      return null
+    }
+  }
+
+  return null
+}
+
+/** Reset visible rerun state and retire the old run in one revision-guarded write.
+ * Admin replaces the whole options column; the local queue only covers this replica.
+ */
+export async function resetEnrichmentForRerun(
+  id: string,
+  artifacts: JobArtifactManifest,
+): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, async () => {
+    const current = await getJob(id)
+    if (!current) return null
+    const options = { ...current.options }
+    delete options.currentRunId
+    delete options.dispatchedAt
+    delete options.callbackSequences
+    return updateJob(
+      id,
+      {
+        options,
+        status: "pending",
+        currentStep: undefined,
+        completedAt: undefined,
+        artifacts,
+        errors: [],
+        steps: buildInitialSteps(),
+      },
+      current.revision,
+    )
+  })
+}
+
+export async function markEnrichmentDispatched(
+  id: string,
+  runId: string,
+  dispatchedAt = new Date().toISOString(),
+): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, () =>
+    doMarkEnrichmentDispatched(id, runId, dispatchedAt),
+  )
+}
+
+async function doMarkEnrichmentDispatched(
+  id: string,
+  runId: string,
+  dispatchedAt: string,
+): Promise<JobRecord | null> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const currentJob = mockState.readModels.jobs.find((job) => job.id === id)
+    if (currentJob?.options.currentRunId === runId) return currentJob
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                options: buildDispatchedOptions(
+                  job.options,
+                  runId,
+                  dispatchedAt,
+                ),
+                steps: buildInitialSteps(),
+                errors: [],
+                status: "running",
+                currentStep: undefined,
+                completedAt: undefined,
+                updatedAt: dispatchedAt,
+              }
+            : job,
+        ),
+      },
+    }))
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
+    return job ?? null
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(id)
+      if (!current) {
+        return null
+      }
+      if (current.options.currentRunId === runId) return current
+      const job = await getAdminJobClient().updateJob(
+        id,
+        buildJobUpdateData({
+          options: buildDispatchedOptions(current.options, runId, dispatchedAt),
+          steps: buildInitialSteps(),
+          errors: [],
+          status: "running",
+          currentStep: undefined,
+          completedAt: undefined,
+        }) as Parameters<AdminGraphqlClient["updateJob"]>[1],
+        current.revision,
+      )
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] markEnrichmentDispatched(${id}) failed:`, err)
+      return null
+    }
+  }
+
+  return null
+}
+
+const FIRST_CALLBACK_WATCHDOG_STEP: WorkflowStepName = "transcription"
+const FIRST_CALLBACK_WATCHDOG_MESSAGE =
+  "Mastra enrichment did not emit a callback before the first-callback watchdog expired."
+
+function buildFirstCallbackWatchdogJob(
+  job: JobRecord,
+  runId: string,
+  now: string,
+): FailMastraFirstCallbackWatchdogResult {
+  if (readEngineStamp(job.options) !== "mastra") {
+    return { status: "dropped", reason: "engine_mismatch" }
+  }
+  if (job.options.currentRunId !== runId) {
+    return { status: "dropped", reason: "stale_run" }
+  }
+  if (hasCallbackSequence(job.options)) {
+    return { status: "dropped", reason: "callback_seen" }
+  }
+  if (job.status !== "pending" && job.status !== "running") {
+    return { status: "dropped", reason: "terminal_job" }
+  }
+
+  return {
+    status: "failed",
+    job: {
+      ...job,
+      status: "failed",
+      currentStep: undefined,
+      completedAt: now,
+      updatedAt: now,
+      errors: [
+        ...job.errors,
+        {
+          step: FIRST_CALLBACK_WATCHDOG_STEP,
+          message: FIRST_CALLBACK_WATCHDOG_MESSAGE,
+          at: now,
+          code: "mastra_first_callback_timeout",
+          operatorHint:
+            "Check Mastra logs for the runId, then use redispatch if the run never started.",
+          isDependencyError: true,
+        },
+      ],
+      steps: job.steps.map((step) =>
+        step.name === FIRST_CALLBACK_WATCHDOG_STEP &&
+        step.status !== "completed"
+          ? {
+              ...step,
+              status: "failed",
+              finishedAt: now,
+              error: FIRST_CALLBACK_WATCHDOG_MESSAGE,
+            }
+          : step,
+      ),
+    },
+  }
+}
+
+export async function failMastraEnrichmentIfNoCallback(
+  jobId: string,
+  runId: string,
+  now = new Date().toISOString(),
+): Promise<FailMastraFirstCallbackWatchdogResult> {
+  return serializeJobUpdate(jobId, async () => {
+    const gateway = getCmsGateway()
+    const mockState = await readMockCmsState(gateway)
+    if (mockState) {
+      let result: FailMastraFirstCallbackWatchdogResult = {
+        status: "not-found",
+      }
+      let failedJob: JobRecord | undefined
+      const nextState = await updateMockCmsState(gateway, (current) => ({
+        ...current,
+        readModels: {
+          ...current.readModels,
+          jobs: current.readModels.jobs.map((job) => {
+            if (job.id !== jobId) return job
+            result = buildFirstCallbackWatchdogJob(job, runId, now)
+            if (result.status === "failed") {
+              failedJob = result.job
+              return result.job
+            }
+            return job
+          }),
+        },
+      }))
+      if (!nextState) {
+        return { status: "error", error: new Error("Mock CMS update failed") }
+      }
+      if (failedJob) {
+        publishJobEvent(failedJob)
+      }
+      return result
+    }
+
+    if (gateway.mode === "admin") {
+      try {
+        const current = await getAdminJobClient().getJob(jobId)
+        if (!current) {
+          return { status: "not-found" }
+        }
+
+        const result = buildFirstCallbackWatchdogJob(current, runId, now)
+        if (result.status !== "failed") {
+          return result
+        }
+
+        const job = await getAdminJobClient().updateJob(
+          jobId,
+          buildJobUpdateData({
+            status: result.job.status,
+            currentStep: result.job.currentStep,
+            completedAt: result.job.completedAt,
+            errors: result.job.errors,
+            steps: result.job.steps,
+          }) as Parameters<AdminGraphqlClient["updateJob"]>[1],
+          current.revision,
+        )
+        if (job) {
+          publishJobEvent(job)
+          return { status: "failed", job }
+        }
+        return {
+          status: "error",
+          error: new Error("Admin update returned null"),
+        }
+      } catch (error) {
+        console.warn(
+          `[state] failMastraEnrichmentIfNoCallback(${jobId}) failed:`,
+          error,
+        )
+        return { status: "error", error }
+      }
+    }
+
+    return { status: "not-found" }
+  })
 }
 
 export function buildJobUpdateData(
@@ -748,6 +1213,7 @@ export function buildJobUpdateData(
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
+  if (updates.options !== undefined) data.options = updates.options
   if (updates.sourceLanguageId !== undefined) {
     data.sourceLanguageId = updates.sourceLanguageId
   }
@@ -764,6 +1230,15 @@ export function buildJobUpdateData(
   if (updates.resolvedTargetLanguageCodes !== undefined) {
     data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes
   }
+  if ("sourceCollectionTitle" in updates) {
+    data.sourceCollectionTitle = updates.sourceCollectionTitle ?? null
+  }
+  if ("sourceMediaTitle" in updates) {
+    data.sourceMediaTitle = updates.sourceMediaTitle ?? null
+  }
+  if (updates.requestedLanguageAbbreviations !== undefined) {
+    data.requestedLanguageAbbreviations = updates.requestedLanguageAbbreviations
+  }
 
   return data
 }
@@ -778,6 +1253,360 @@ export function mergeArtifactEntries(
   }
 }
 
+const STATUS_RANK: Record<StepStatus, number> = {
+  pending: 0,
+  running: 1,
+  skipped: 2,
+  failed: 3,
+  completed: 4,
+}
+
+const TERMINAL_STEP_STATUSES = new Set<StepStatus>([
+  "skipped",
+  "failed",
+  "completed",
+])
+const TERMINAL_JOB_STATUSES = new Set<JobStatus>(["failed", "completed"])
+
+const CALLBACK_ARTIFACT_KEYS_BY_STEP: Partial<
+  Record<WorkflowStepName, readonly string[]>
+> = {
+  transcription: ["transcript", "subtitles", "subtitlesVtt"],
+  structured_transcript: [
+    "transcript",
+    "subtitles",
+    "subtitlesVtt",
+    "transcript-raw",
+    "subtitles-raw",
+    "transcript-correction-report",
+  ],
+  translation: ["translations"],
+  chapters: ["chapters", "chapters-vtt"],
+  metadata: ["metadata"],
+  embeddings: ["embeddings"],
+  audio_cleanup: ["original-audio", "cleaned-audio"],
+}
+
+const ARTIFACT_LANGUAGE_SUFFIX_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i
+const LANGUAGE_CODE_RE = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
+
+function serializeJobUpdate<T>(
+  jobId: string,
+  update: () => Promise<T>,
+): Promise<T> {
+  // This queue only reduces contention within one replica. Admin compares the
+  // read revision under its shared row lock before any read-then-write persists.
+  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
+  const next = previous.then(update)
+  jobUpdateLocks.set(
+    jobId,
+    next.catch(() => {}),
+  )
+  return next
+}
+
+function isStaleStatus(current: StepStatus | undefined, next: StepStatus) {
+  if (!current) return false
+  if (TERMINAL_STEP_STATUSES.has(current) && current !== next) return true
+  return STATUS_RANK[next] < STATUS_RANK[current]
+}
+
+function isStaleSequence(current: number | undefined, next: number): boolean {
+  return current != null && next <= current
+}
+
+function collectArtifactLanguageCodes(job: JobRecord): Set<string> {
+  const values = [
+    ...job.languages,
+    ...(job.resolvedTargetLanguageCodes ?? []),
+    ...(job.requestedLanguageAbbreviations ?? []),
+    job.primaryRequestedTargetLanguageCode,
+    job.sourceLanguageCode,
+  ]
+
+  return new Set(
+    values
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim().toLowerCase())
+      .filter((value) => LANGUAGE_CODE_RE.test(value)),
+  )
+}
+
+function readTranslationArtifactLanguage(key: string): string | null {
+  const language = key.startsWith("subtitles-")
+    ? key.slice("subtitles-".length)
+    : key.startsWith("translation-")
+      ? key.slice("translation-".length)
+      : key.startsWith("subtitle-validation-")
+        ? key.slice("subtitle-validation-".length)
+        : null
+
+  if (!language || !ARTIFACT_LANGUAGE_SUFFIX_RE.test(language)) {
+    return null
+  }
+
+  return language.toLowerCase()
+}
+
+function validateCallbackArtifactKeys(
+  job: JobRecord,
+  step: WorkflowStepName,
+  keys: readonly string[] | undefined,
+) {
+  if (!keys?.length) return { ok: true as const, keys: [] as string[] }
+
+  const allowedExactKeys = new Set(CALLBACK_ARTIFACT_KEYS_BY_STEP[step] ?? [])
+  const jobLanguageCodes = collectArtifactLanguageCodes(job)
+  const invalid: string[] = []
+
+  for (const key of keys) {
+    if (!resolveJobArtifactDescriptor(key)) {
+      invalid.push(key)
+      continue
+    }
+
+    if (allowedExactKeys.has(key)) {
+      continue
+    }
+
+    const artifactLanguage = readTranslationArtifactLanguage(key)
+    const languageMatchesJob = jobLanguageCodes.has(artifactLanguage ?? "")
+    if (step === "translation" && artifactLanguage && languageMatchesJob) {
+      continue
+    }
+
+    invalid.push(key)
+  }
+
+  if (invalid.length > 0) {
+    return {
+      ok: false as const,
+      error: `Unsupported artifact keys for ${step}: ${invalid.join(", ")}`,
+    }
+  }
+
+  return { ok: true as const, keys: [...new Set(keys)] }
+}
+
+function validateCallbackDetails(
+  job: JobRecord,
+  input: ApplyJobCallbackUpdateInput,
+): boolean {
+  const languages = collectArtifactLanguageCodes(job)
+  const ownsLanguage = (lang: string) => languages.has(lang.toLowerCase())
+  if (
+    input.details?.languageResults &&
+    (input.step !== "translation" ||
+      !input.details.languageResults.every((result) =>
+        ownsLanguage(result.lang),
+      ))
+  )
+    return false
+  const validation = input.details?.subtitleValidation
+  if (
+    validation &&
+    (input.step !== "translation" ||
+      ![
+        ...validation.results.map((result) => result.lang),
+        ...validation.modelOnlyLanguages,
+        ...validation.unavailableLanguages,
+      ].every(ownsLanguage))
+  )
+    return false
+  if (
+    input.details?.mastra?.languages &&
+    !input.details.mastra.languages.every(ownsLanguage)
+  )
+    return false
+  if (
+    input.details?.transcriptCorrection &&
+    input.step !== "structured_transcript"
+  )
+    return false
+  if (input.reports?.transcriptionRouting && input.step !== "transcription")
+    return false
+  if (
+    input.reports?.muxSync &&
+    (input.step !== "mux_upload" ||
+      !input.reports.muxSync.comparisons.every(
+        (comparison) =>
+          ownsLanguage(comparison.targetLanguage) &&
+          comparison.artifactKey === `subtitles-${comparison.targetLanguage}`,
+      ))
+  )
+    return false
+  return true
+}
+
+function buildCallbackUpdatedJob(
+  job: JobRecord,
+  input: ApplyJobCallbackUpdateInput,
+  now: string,
+): ApplyJobCallbackUpdateResult {
+  if (readEngineStamp(job.options) !== "mastra") {
+    return { status: "dropped", reason: "engine_mismatch" }
+  }
+  if (job.options.currentRunId !== input.runId) {
+    return { status: "dropped", reason: "stale_run" }
+  }
+
+  const currentStep = job.steps.find((step) => step.name === input.step)
+  if (isStaleStatus(currentStep?.status, input.status)) {
+    return { status: "dropped", reason: "stale_status" }
+  }
+  if (
+    isStaleSequence(job.options.callbackSequences?.[input.step], input.sequence)
+  ) {
+    return { status: "dropped", reason: "stale_sequence" }
+  }
+
+  if (TERMINAL_JOB_STATUSES.has(job.status)) {
+    return { status: "dropped", reason: "terminal_job" }
+  }
+  if (!validateCallbackDetails(job, input))
+    return {
+      status: "invalid",
+      error: "Callback details do not belong to the step or job languages",
+    }
+
+  const artifacts = validateCallbackArtifactKeys(
+    job,
+    input.step,
+    input.artifactsDelta,
+  )
+  if (!artifacts.ok) {
+    return { status: "invalid", error: artifacts.error }
+  }
+
+  const steps = job.steps.map((step) => {
+    if (step.name !== input.step) return step
+
+    const updated = { ...step, status: input.status }
+    if (input.status === "running" && !step.startedAt) {
+      updated.startedAt = now
+    }
+    if (input.status === "completed" || input.status === "failed") {
+      updated.finishedAt = now
+    }
+    if (input.error) {
+      updated.error = input.error
+    }
+    if (input.details !== undefined) {
+      updated.details = input.details
+    }
+    return updated
+  })
+
+  const reportArtifacts: JobArtifactManifest = {}
+  for (const [key, data] of Object.entries(input.reports ?? {})) {
+    const existing = job.artifacts[key]
+    reportArtifacts[key] = {
+      kind: "metadata",
+      data: {
+        ...(existing?.kind === "metadata" ? existing.data : {}),
+        ...data,
+      },
+    }
+  }
+  const errors = input.error
+    ? [...job.errors, { step: input.step, message: input.error, at: now }]
+    : job.errors
+  const callbackSequences = {
+    ...(job.options.callbackSequences ?? {}),
+    [input.step]: input.sequence,
+  }
+  let updatedJob: JobRecord = {
+    ...job,
+    artifacts: mergeArtifactEntries(job.artifacts, {
+      ...buildDownloadableArtifactManifest(artifacts.keys),
+      ...reportArtifacts,
+    }),
+    errors,
+    options: {
+      ...job.options,
+      callbackSequences,
+      ...(job.options.enrichmentArtifacts?.status === "ready" &&
+      input.step === "transcription" &&
+      input.status === "completed" &&
+      artifacts.keys.includes("transcript") &&
+      artifacts.keys.includes("subtitles")
+        ? {
+            enrichmentArtifacts: {
+              ...job.options.enrichmentArtifacts,
+              sourceVerified: true,
+            },
+          }
+        : {}),
+    },
+    steps,
+    updatedAt: now,
+  }
+
+  if (input.status === "running") {
+    updatedJob = {
+      ...updatedJob,
+      status: "running",
+      currentStep: input.step,
+    }
+  } else if (input.jobStatus) {
+    updatedJob = {
+      ...updatedJob,
+      status: input.jobStatus,
+      currentStep: undefined,
+      completedAt: input.jobStatus === "completed" ? now : undefined,
+    }
+  }
+
+  return { status: "applied", job: updatedJob }
+}
+
+function buildCallbackJobUpdates(
+  current: JobRecord,
+  updated: JobRecord,
+  input: ApplyJobCallbackUpdateInput,
+): Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "completedAt"
+    | "steps"
+    | "options"
+  >
+> {
+  const updates: Partial<
+    Pick<
+      JobRecord,
+      | "status"
+      | "currentStep"
+      | "artifacts"
+      | "errors"
+      | "completedAt"
+      | "steps"
+      | "options"
+    >
+  > = {
+    artifacts: updated.artifacts,
+    errors: updated.errors,
+    options: updated.options,
+    steps: updated.steps,
+  }
+
+  if (input.status === "running" || updated.status !== current.status) {
+    updates.status = updated.status
+  }
+  if (input.status === "running" || input.jobStatus) {
+    updates.currentStep = updated.currentStep
+  }
+  if (input.jobStatus) {
+    updates.completedAt = updated.completedAt
+  }
+
+  return updates
+}
+
 // ---------------------------------------------------------------------------
 // Per-job mutex for serializing step updates (read-then-write)
 // ---------------------------------------------------------------------------
@@ -788,13 +1617,7 @@ export async function mergeJobArtifacts(
   jobId: string,
   artifacts: JobArtifactManifest,
 ): Promise<JobRecord | null> {
-  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
-  const next = previous.then(() => doMergeJobArtifacts(jobId, artifacts))
-  jobUpdateLocks.set(
-    jobId,
-    next.catch(() => {}),
-  )
-  return next
+  return serializeJobUpdate(jobId, () => doMergeJobArtifacts(jobId, artifacts))
 }
 
 export async function updateStepStatus(
@@ -805,15 +1628,105 @@ export async function updateStepStatus(
   details?: JobStepDetails,
 ): Promise<JobRecord | null> {
   // Serialize per-job to avoid read-then-write race conditions.
-  const previous = jobUpdateLocks.get(jobId) ?? Promise.resolve()
-  const next = previous.then(() =>
+  return serializeJobUpdate(jobId, () =>
     doUpdateStepStatus(jobId, stepName, status, error, details),
   )
-  jobUpdateLocks.set(
-    jobId,
-    next.catch(() => {}),
-  )
-  return next
+}
+
+export async function applyJobCallbackUpdate(
+  input: ApplyJobCallbackUpdateInput,
+): Promise<ApplyJobCallbackUpdateResult> {
+  return serializeJobUpdate(input.jobId, () => doApplyJobCallbackUpdate(input))
+}
+
+async function doApplyJobCallbackUpdate(
+  input: ApplyJobCallbackUpdateInput,
+): Promise<ApplyJobCallbackUpdateResult> {
+  const now = new Date().toISOString()
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+
+  if (mockState) {
+    let result: ApplyJobCallbackUpdateResult = { status: "not-found" }
+    let appliedJob: JobRecord | null = null
+    const nextState = await updateMockCmsState(gateway, (current) => {
+      const currentJob = current.readModels.jobs.find(
+        (candidate) => candidate.id === input.jobId,
+      )
+      if (!currentJob) {
+        result = { status: "not-found" }
+        return current
+      }
+
+      const updateResult = buildCallbackUpdatedJob(currentJob, input, now)
+      result = updateResult
+      if (updateResult.status !== "applied") {
+        return current
+      }
+
+      appliedJob = updateResult.job
+      return {
+        ...current,
+        readModels: {
+          ...current.readModels,
+          jobs: current.readModels.jobs.map((candidate) =>
+            candidate.id === input.jobId ? updateResult.job : candidate,
+          ),
+        },
+      }
+    })
+
+    if (appliedJob) {
+      const job =
+        nextState?.readModels.jobs.find(
+          (candidate) => candidate.id === input.jobId,
+        ) ?? appliedJob
+      publishJobEvent(job)
+      return { status: "applied", job }
+    }
+
+    return result
+  }
+
+  if (gateway.mode === "admin") {
+    try {
+      const current = await getAdminJobClient().getJob(input.jobId)
+      if (!current) {
+        return { status: "not-found" }
+      }
+
+      const result = buildCallbackUpdatedJob(current, input, now)
+      if (result.status !== "applied") {
+        return result
+      }
+
+      const updates = buildCallbackJobUpdates(current, result.job, input)
+      const job = await getAdminJobClient().updateJob(
+        input.jobId,
+        buildJobUpdateData(updates) as Parameters<
+          AdminGraphqlClient["updateJob"]
+        >[1],
+        current.revision,
+      )
+      if (!job) {
+        return { status: "not-found" }
+      }
+
+      publishJobEvent(job)
+      return { status: "applied", job }
+    } catch (err) {
+      console.warn(
+        `[state] applyJobCallbackUpdate(${input.jobId}) failed:`,
+        err,
+      )
+      return { status: "error", error: err }
+    }
+  }
+
+  return {
+    status: "error",
+    error: new Error("Unsupported Manager backend"),
+  }
 }
 
 async function doMergeJobArtifacts(
@@ -823,9 +1736,13 @@ async function doMergeJobArtifacts(
   const job = await getJob(jobId)
   if (!job) return null
 
-  return updateJob(jobId, {
-    artifacts: mergeArtifactEntries(job.artifacts, artifacts),
-  })
+  return updateJob(
+    jobId,
+    {
+      artifacts: mergeArtifactEntries(job.artifacts, artifacts),
+    },
+    job.revision,
+  )
 }
 
 async function doUpdateStepStatus(
@@ -894,7 +1811,7 @@ async function doUpdateStepStatus(
   }
 
   if (gateway.mode === "admin") {
-    return updateJob(jobId, { steps, errors })
+    return updateJob(jobId, { steps, errors }, job.revision)
   }
 
   return null

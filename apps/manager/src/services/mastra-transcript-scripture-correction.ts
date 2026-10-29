@@ -109,7 +109,7 @@ const FindingSchema = z
   })
   .strict()
 
-const CorrectionSchema = z
+export const CorrectionSchema = z
   .object({
     status: z.enum(["reviewed", "skipped", "unavailable"]),
     basis: z.enum(["model_knowledge", "source_bible_text", "unavailable"]),

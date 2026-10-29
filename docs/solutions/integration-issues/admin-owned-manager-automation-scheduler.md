@@ -101,10 +101,8 @@ Lord Howe's half-hour transitions and Apia's missing day.
 `manager-automation-recovery.db.test.ts` requires its explicit disposable database
 on port 55932. It exercises real PostgreSQL transactions/triggers and actual SDK
 `start()` with a deterministic runtime storage/queue adapter, not a live workflow
-worker or paid provider. The foundation fixtures use backend migration 0017 and
-automation migration 0165; recovery also uses workflow-ledger migration 0009.
-Execution operations and job revision migrations belong to PR1087 and are not
-required by the foundation-only Prisma schema.
+worker or paid provider. The lifecycle fixture includes migrations 0166/0167 so
+generated Prisma job reads include the CAS `revision` column.
 
 ## Register the timer in the built runtime
 

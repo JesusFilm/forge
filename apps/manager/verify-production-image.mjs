@@ -81,12 +81,13 @@ try {
   const logo = await request("/jesusfilm-sign.svg")
   assert.equal(logo.status, 200)
   assert.match(logo.headers.get("content-type"), /image\/svg/)
-  for (const path of [
-    "/api/videos",
-    "/api/languages",
-    "/api/backfill/status",
+  for (const [path, deniedStatus] of [
+    ["/api/videos", 401],
+    ["/api/languages", 401],
+    ["/api/backfill/status", 401],
+    ["/api/admin/engine-flag", 403],
   ]) {
-    assert.equal((await request(path)).status, 401)
+    assert.equal((await request(path)).status, deniedStatus)
     assert.equal(
       (
         await request(path, {
@@ -95,12 +96,12 @@ try {
           },
         })
       ).status,
-      401,
+      deniedStatus,
     )
     assert.equal(
       (await request(path, { headers: { authorization: "Bearer wrong-key" } }))
         .status,
-      401,
+      deniedStatus,
     )
   }
   const retired = await request("/api/backfill/status", {
@@ -108,6 +109,11 @@ try {
   })
   assert.equal(retired.status, 410)
   assert.equal((await retired.json()).retired, true)
+  const engine = await request("/api/admin/engine-flag", {
+    headers: { authorization: `Bearer ${apiKey}` },
+  })
+  assert.equal(engine.status, 200)
+  assert.deepEqual(await engine.json(), { engine: "workflow", override: null })
   const dashboard = await request("/dashboard/coverage")
   assert.ok([302, 303, 307].includes(dashboard.status))
   assert.equal(
@@ -135,6 +141,9 @@ try {
   )
   console.log(
     "PASS: anonymous/invalid-cookie/wrong-key API and dashboard denials; runtime-only API key reads retired endpoint; invalid OAuth state denied",
+  )
+  console.log(
+    "PASS: compiled feature-flag resolver loads with no SDK key and returns the default workflow engine without an override",
   )
   console.log(
     "PASS: unauthorized workflow trigger denied; no network, real identity, content, model/provider, render, publication or push action",

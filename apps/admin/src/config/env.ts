@@ -380,6 +380,8 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
     STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
+    // Opt-in isolated execution-fence tests; never falls back to DATABASE_URL.
+    MANAGER_EXECUTION_TEST_DATABASE_URL: z.string().url().optional(),
     // Opt-in disposable exposure reconciliation database; the test enforces loopback and name guards.
     WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: z
       .string()
@@ -965,6 +967,8 @@ export const env = createEnv({
 
     DATABASE_URL: process.env.DATABASE_URL,
     STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+    MANAGER_EXECUTION_TEST_DATABASE_URL:
+      process.env.MANAGER_EXECUTION_TEST_DATABASE_URL,
     WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: emptyToUndefined(
       process.env.WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL,
     ),

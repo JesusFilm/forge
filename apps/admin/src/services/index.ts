@@ -13,6 +13,7 @@ import { ExperiencePreviewService } from "@/services/experience-preview.service"
 import { ExperienceSearchService } from "@/services/experience.search"
 import { ManagerAutomationService } from "@/services/manager-automation.service"
 import { ManagerJobService } from "@/services/manager-job.service"
+import { ManagerExecutionService } from "@/services/manager-execution.service"
 import { ManagerReadModelService } from "@/services/manager-read-model.service"
 import { MediaAssetService } from "@/services/media-asset.service"
 import { MediaFolderService } from "@/services/media-folder.service"
@@ -144,6 +145,7 @@ export function createServices(prisma: PrismaClient) {
     experienceSearch: new ExperienceSearchService(prisma),
     managerJob: new ManagerJobService(prisma),
     managerAutomation: new ManagerAutomationService(prisma),
+    managerExecution: new ManagerExecutionService(prisma),
     managerReadModel: new ManagerReadModelService(prisma),
     mediaAsset: new MediaAssetService(prisma),
     mediaFolder: new MediaFolderService(prisma),

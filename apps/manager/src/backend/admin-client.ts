@@ -1,4 +1,10 @@
 import { createAdminAutomationAdapter } from "./automation-client"
+import {
+  ExecutionClaimResultSchema,
+  type ExecutionClaimInput,
+  type ExecutionCompleteInput,
+  type ExecutionClaimResult,
+} from "@/lib/enrichment-execution-contract"
 import { createStudioAdminAdapter } from "./studio-client"
 import type {
   MockCoverageSnapshot,
@@ -120,6 +126,7 @@ type UpdateAdminJobInput = Partial<
     | "sourceCollectionTitle"
     | "sourceMediaTitle"
     | "requestedLanguageAbbreviations"
+    | "options"
   >
 >
 
@@ -225,6 +232,7 @@ const COVERAGE_SNAPSHOT_SELECTION = `
 
 const JOB_SELECTION = `
   id
+  revision
   muxAssetId
   muxPlaybackId
   videoDocumentId
@@ -635,6 +643,7 @@ const optionalStringFromNullable = z
 
 const jobRecordSchema: z.ZodType<JobRecord> = z.object({
   id: z.string(),
+  revision: z.number().int().nonnegative(),
   muxAssetId: z.string(),
   muxPlaybackId: z.string(),
   videoDocumentId: optionalStringFromNullable,
@@ -762,6 +771,32 @@ export class AdminGraphqlClient {
     }
 
     return payload.data
+  }
+
+  async claimManagerExecutionOperation(
+    input: ExecutionClaimInput,
+  ): Promise<ExecutionClaimResult> {
+    const data = await this.request<{
+      claimManagerExecutionOperation: unknown
+    }>(
+      "mutation ClaimManagerExecutionOperation($input: JSON!) { claimManagerExecutionOperation(input: $input) }",
+      { input },
+    )
+    return ExecutionClaimResultSchema.parse(data.claimManagerExecutionOperation)
+  }
+
+  async completeManagerExecutionOperation(
+    input: ExecutionCompleteInput,
+  ): Promise<ExecutionClaimResult> {
+    const data = await this.request<{
+      completeManagerExecutionOperation: unknown
+    }>(
+      "mutation CompleteManagerExecutionOperation($input: JSON!) { completeManagerExecutionOperation(input: $input) }",
+      { input },
+    )
+    return ExecutionClaimResultSchema.parse(
+      data.completeManagerExecutionOperation,
+    )
   }
 
   async getSeoWorkspace(limit = 50): Promise<SeoWorkspace> {
@@ -1172,11 +1207,13 @@ export class AdminGraphqlClient {
   async updateJob(
     id: string,
     updates: UpdateAdminJobInput,
+    expectedRevision?: number,
   ): Promise<JobRecord | null> {
     const data = await this.request<Record<string, unknown>>(
       `
         mutation UpdateManagerJob(
           $id: ID!
+          $expectedRevision: Int
           $status: ManagerJobStatus
           $currentStep: String
           $retries: Int
@@ -1197,6 +1234,7 @@ export class AdminGraphqlClient {
         ) {
           updateManagerJob(
             id: $id
+            expectedRevision: $expectedRevision
             status: $status
             currentStep: $currentStep
             retries: $retries
@@ -1220,6 +1258,7 @@ export class AdminGraphqlClient {
       {
         id,
         ...updates,
+        expectedRevision,
       } as Record<string, unknown>,
     )
 

@@ -64,6 +64,7 @@ describe("cloud subtitle eval cell runner", () => {
       "apps/mastra/src/services/subtitle-enrichment/chunker.ts",
       "apps/mastra/src/services/subtitle-enrichment/language-config.ts",
       "apps/mastra/src/services/subtitle-enrichment/openrouter.ts",
+      "apps/mastra/src/services/video-enrichment/provider-spend.ts",
       "apps/mastra/src/services/subtitle-enrichment/translator.ts",
       "apps/mastra/src/services/subtitle-enrichment/retimer.ts",
       "apps/mastra/src/services/subtitle-enrichment/scripture-context.ts",

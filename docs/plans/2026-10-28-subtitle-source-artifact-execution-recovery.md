@@ -41,9 +41,9 @@ does not discard successful source or translated artifacts.
 
 ## PR886 review repair, round 2
 
-Scope: replay the source acquisition and invalid approved VTT repairs from
-`a36b9ac7a` onto the source-only layer. Preserve the public source API; defer
-graph provider-ambiguity tracking and its expanded byte pin to PR1087. No Admin, graph, callback or parent-worktree
+Scope: start from graph-integrated `7d281c435`; repair only source acquisition
+and invalid approved VTT classification. Preserve the public source API and
+graph provider-ambiguity tracking. No Admin, graph, callback or parent-worktree
 edits, paid/provider calls, pushes, merges or deployments.
 
 1. Reproduce uploaded preparing tracks in supported English and unsupported
@@ -54,6 +54,6 @@ edits, paid/provider calls, pushes, merges or deployments.
 3. Keep bounded polling, exact language/status matching, service auth and
    signed playback. Check the existing policy pin; regenerate both services'
    literals only if the ordered pinned runtime files change.
-4. Run source/translation, Manager caller regression tests, both
+4. Run source/translation, Manager caller and graph regression tests, both
    package typechecks/linters, formatting and enabled commit hooks. Record
    durable findings and return the isolated clean commit for parent review.

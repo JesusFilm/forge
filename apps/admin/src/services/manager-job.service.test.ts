@@ -22,6 +22,7 @@ const PUBLIC_USER: Principal | null = null
 
 const JOB_ROW = {
   id: "job-1",
+  revision: 0,
   muxAssetId: "asset-1",
   muxPlaybackId: "playback-1",
   videoDocumentId: "video-1",
@@ -60,6 +61,11 @@ describe("ManagerJobService", () => {
 
   beforeEach(() => {
     prisma = mockPrisma()
+    prisma.$transaction = vi.fn((callback) => callback(prisma))
+    prisma.$queryRaw = vi.fn().mockResolvedValue([JOB_ROW])
+    prisma.managerExecutionOperation = {
+      findFirst: vi.fn().mockResolvedValue(null),
+    }
     service = new ManagerJobService(prisma)
   })
 
@@ -215,5 +221,40 @@ describe("ManagerJobService", () => {
     )
     expect(result.status).toBe("running")
     expect(result.steps[0]?.status).toBe("completed")
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
   })
+  it("checks the expected revision while holding the job row lock", async () => {
+    await expect(
+      service.update({
+        user: MANAGER_BACKEND_PRINCIPAL,
+        id: "job-1",
+        expectedRevision: 1,
+        input: { options: { currentRunId: "stale" } },
+      }),
+    ).rejects.toThrow("modified concurrently")
+    expect(prisma.managerEnrichmentJob.update).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, 0])(
+    "increments revision for guarded and legacy writes (%s)",
+    async (expectedRevision) => {
+      prisma.managerEnrichmentJob.update.mockResolvedValueOnce({
+        ...JOB_ROW,
+        revision: 1,
+      })
+      expect(
+        await service.update({
+          user: MANAGER_BACKEND_PRINCIPAL,
+          id: "job-1",
+          expectedRevision,
+          input: {},
+        }),
+      ).toMatchObject({ revision: 1 })
+      expect(prisma.managerEnrichmentJob.update).toHaveBeenCalledWith({
+        where: { id: "job-1" },
+        data: { revision: { increment: 1 } },
+      })
+    },
+  )
 })

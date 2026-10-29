@@ -56,6 +56,14 @@ const success = {
         "utf8",
       ),
     )
+    for (const migration of [
+      "0166_manager_execution_operations",
+      "0167_manager_job_revision",
+    ]) {
+      await setup.query(
+        readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8"),
+      )
+    }
     await setup.query(`
       CREATE TABLE video(id TEXT PRIMARY KEY,core_id TEXT,primary_language_id TEXT,label TEXT,deleted_at TIMESTAMP,published_at TIMESTAMP,ai_metadata BOOLEAN DEFAULT false);
       CREATE TABLE video_locale(id TEXT PRIMARY KEY,video_id TEXT,locale TEXT,title TEXT,description TEXT,deleted_at TIMESTAMP);

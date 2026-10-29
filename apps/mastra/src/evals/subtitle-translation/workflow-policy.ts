@@ -2,6 +2,7 @@ export const SUBTITLE_EVAL_WORKFLOW_POLICY_FILES = [
   "apps/mastra/src/services/subtitle-enrichment/chunker.ts",
   "apps/mastra/src/services/subtitle-enrichment/language-config.ts",
   "apps/mastra/src/services/subtitle-enrichment/openrouter.ts",
+  "apps/mastra/src/services/video-enrichment/provider-spend.ts",
   "apps/mastra/src/services/subtitle-enrichment/translator.ts",
   "apps/mastra/src/services/subtitle-enrichment/retimer.ts",
   "apps/mastra/src/services/subtitle-enrichment/scripture-context.ts",
@@ -20,4 +21,4 @@ export const SUBTITLE_EVAL_WORKFLOW_POLICY_FILES = [
 
 // Update only after the byte-pin test confirms this exact ordered file set.
 export const SUBTITLE_EVAL_WORKFLOW_POLICY_DIGEST =
-  "3e46dd8c3b82e3b32560d5a645c08f5b2795284e3cc997b50cc68a96dc243f62"
+  "6d65176d66f9b71ca7de75a14abdd978c7cbcc0cae74c42b0e727f52b367d426"

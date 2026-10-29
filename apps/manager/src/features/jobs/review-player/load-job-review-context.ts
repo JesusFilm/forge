@@ -1,6 +1,9 @@
 import { TextDecoder } from "node:util"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
-import { buildJobArtifactHref } from "@/lib/job-artifacts"
+import {
+  buildJobArtifactHref,
+  getJobArtifactStorageAssetId,
+} from "@/lib/job-artifacts"
 import { getPlaybackUrl, listMuxSubtitleTracks } from "@/services/mux"
 import { readArtifact } from "@/services/storage"
 import type { JobRecord } from "@/types/job"
@@ -440,7 +443,7 @@ export async function loadJobReviewContext(
   } else {
     try {
       afterMetadata = buildMetadataDomain(
-        await readArtifactJson(job.muxAssetId, "metadata"),
+        await readArtifactJson(getJobArtifactStorageAssetId(job), "metadata"),
       )
     } catch (error) {
       afterMetadata = {
@@ -478,7 +481,7 @@ export async function loadJobReviewContext(
   } else {
     try {
       afterChapters = buildChaptersDomain(
-        await readArtifactJson(job.muxAssetId, "chapters"),
+        await readArtifactJson(getJobArtifactStorageAssetId(job), "chapters"),
         afterChapterTrack,
       )
     } catch (error) {

@@ -1,3 +1,4 @@
+import { getJobArtifactStorageAssetId } from "@/lib/job-artifacts"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authenticateRequest } from "@/lib/auth"
@@ -153,7 +154,7 @@ export async function POST(
 
     const nextReport = await applySubtitleOverride({
       jobId: job.id,
-      assetId: job.muxAssetId,
+      assetId: getJobArtifactStorageAssetId(job),
       muxAssetId: job.muxAssetId,
       artifactKey: parsedBody.data.artifactKey,
       targetLanguage: parsedBody.data.targetLanguage,

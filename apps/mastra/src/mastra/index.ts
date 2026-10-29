@@ -1,3 +1,5 @@
+import { isBlockedEnrichmentNativeMutation } from "./enrichment-native-route-guard"
+import { readEnrichmentRequestBody } from "../server/enrichment-request-body"
 import { managerAutomationDryRunWorkflow } from "./workflows/manager-automation-dry-run"
 import { managerAutomationDryRunTool } from "./tools/manager-automation-dry-run"
 import { handleManagerAutomationDryRunRequest } from "./manager-automation-dry-run-route"
@@ -80,6 +82,11 @@ import {
   handleTranscriptEmbeddingRouteRequest,
   transcriptEmbeddingWorkflow,
 } from "./workflows/transcript-embedding"
+import {
+  forgeVideoEnrichmentWorkflow,
+  handleForgeVideoEnrichmentRouteRequest,
+  handleForgeVideoEnrichmentStartRouteRequest,
+} from "./workflows/forge-video-enrichment"
 import {
   experienceEmbeddingWorkflow,
   handleExperienceEmbeddingRouteRequest,
@@ -188,6 +195,7 @@ import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
+import { isManagerEnrichmentCallbackConfigured } from "../services/manager-enrichment-callback-client"
 import { handleDevotionalAssetRequest } from "./devotional-asset-route"
 import {
   handleAiChatHistoryListRequest,
@@ -208,6 +216,9 @@ import { loadPromptBundle } from "../services/devotional/authored-data"
 assertMastraRuntimeEnv()
 
 const serviceKeys = parseServiceApiKeys(env.MASTRA_SERVICE_API_KEYS)
+const enrichmentServiceKeys = parseServiceApiKeys(
+  env.MASTRA_ENRICHMENT_API_KEYS,
+)
 const devotionalApprovalKeys = parseServiceApiKeys(
   env.DEVOTIONAL_APPROVAL_API_KEYS,
 )
@@ -320,6 +331,7 @@ export const mastra = new Mastra({
   },
   tools: { managerAutomationDryRunTool },
   workflows: {
+    forgeVideoEnrichmentWorkflow,
     managerAutomationDryRunWorkflow,
     transcriptEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
@@ -420,6 +432,21 @@ export const mastra = new Mastra({
       {
         path: "/api/workflows/*",
         handler: async (c, next) => {
+          if (
+            isBlockedEnrichmentNativeMutation(
+              c.req.method,
+              new URL(c.req.url).pathname,
+            )
+          ) {
+            return c.json(
+              {
+                error: "enrichment_admission_route_required",
+                message:
+                  "Use the authenticated /forge-video-enrichment admission routes.",
+              },
+              403,
+            )
+          }
           if (
             isBlockedDevotionalNativeMutation(
               c.req.method,
@@ -527,6 +554,40 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-enrichment", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleForgeVideoEnrichmentRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: enrichmentServiceKeys,
+            configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),
+            callbackConfigured: isManagerEnrichmentCallbackConfigured(),
+            readJson: () => readEnrichmentRequestBody(c.req.raw),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-video-enrichment/start", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleForgeVideoEnrichmentStartRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys: enrichmentServiceKeys,
+            configured: Boolean(env.MASTRA_ENRICHMENT_API_KEYS),
+            callbackConfigured: isManagerEnrichmentCallbackConfigured(),
+            readJson: () => readEnrichmentRequestBody(c.req.raw),
           })
 
           return new Response(JSON.stringify(outcome.body), {

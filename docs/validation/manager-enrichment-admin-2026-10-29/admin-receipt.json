@@ -1,0 +1,324 @@
+[
+  {
+    "operation": "CreateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200,
+    "errors": [
+      "Manager enrichment job has an in-flight execution operation was modified concurrently: cmvu12i5s0000lfuki4jdorl7"
+    ]
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200,
+    "errors": [
+      "Manager enrichment job has an in-flight execution operation was modified concurrently: cmvu12i5s0000lfuki4jdorl7"
+    ]
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ClaimManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "CompleteManagerExecutionOperation",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "UpdateManagerJob",
+    "status": 200
+  },
+  {
+    "operation": "ManagerJob",
+    "status": 200
+  }
+]

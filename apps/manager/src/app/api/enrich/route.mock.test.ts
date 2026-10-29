@@ -26,6 +26,11 @@ vi.mock("@/cms/client", () => ({
   })),
 }))
 
+// This test covers mock job creation, not server-only feature-flag bootstrap.
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: vi.fn(async () => "workflow"),
+}))
+
 import { createEnrichmentJobs } from "./route"
 
 describe("createEnrichmentJobs in mock mode", () => {

@@ -1,0 +1,62 @@
+{
+  "input": {
+    "jobId": "cmvu12i5s0000lfuki4jdorl7",
+    "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2",
+    "muxAssetId": "actual-http-isolated-mux",
+    "playbackId": "fixture-playback",
+    "language": "en",
+    "translateTo": ["fr", "es"],
+    "requestedTranscriptionProvider": "mux"
+  },
+  "runId": "actual-http-isolated-graph-run",
+  "result": {
+    "status": "success",
+    "steps": {
+      "input": {
+        "jobId": "cmvu12i5s0000lfuki4jdorl7",
+        "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2",
+        "muxAssetId": "actual-http-isolated-mux",
+        "playbackId": "fixture-playback",
+        "language": "en",
+        "translateTo": ["fr", "es"],
+        "requestedTranscriptionProvider": "mux"
+      },
+      "execute-video-enrichment": {
+        "startedAt": 1793307645477,
+        "status": "success",
+        "output": {
+          "ok": true,
+          "jobId": "cmvu12i5s0000lfuki4jdorl7",
+          "runId": "actual-http-isolated-graph-run",
+          "acceptedAt": "2026-10-29T21:00:45.779Z"
+        },
+        "endedAt": 1793307645779
+      }
+    },
+    "input": {
+      "jobId": "cmvu12i5s0000lfuki4jdorl7",
+      "assetId": "enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2",
+      "muxAssetId": "actual-http-isolated-mux",
+      "playbackId": "fixture-playback",
+      "language": "en",
+      "translateTo": ["fr", "es"],
+      "requestedTranscriptionProvider": "mux"
+    },
+    "stepExecutionPath": ["execute-video-enrichment"],
+    "result": {
+      "ok": true,
+      "jobId": "cmvu12i5s0000lfuki4jdorl7",
+      "runId": "actual-http-isolated-graph-run",
+      "acceptedAt": "2026-10-29T21:00:45.779Z"
+    },
+    "runId": "actual-http-isolated-graph-run"
+  },
+  "providerCalls": ["chapters_outline", "video_metadata"],
+  "artifacts": {
+    "transcript.json": "{\"text\":\"Jesus offers hope to the world.\",\"segments\":[{\"start\":0,\"end\":3,\"text\":\"Jesus offers hope to the world.\"}],\"language\":\"en\",\"source\":\"mux\"}",
+    "subtitles-fr.vtt": "WEBVTT\nNOTE language: fr\nNOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2\nNOTE generated: 2026-10-29T21:00:45.647Z\n\n00:00:00.000 --> 00:00:03.000\nJesus offers hope in fr.\n",
+    "subtitles-es.vtt": "WEBVTT\nNOTE language: es\nNOTE source: enrichment-job-89553640f738561458599c76b87e35cee8767699ca0af8ed981b57f4312cf8c2\nNOTE generated: 2026-10-29T21:00:45.647Z\n\n00:00:00.000 --> 00:00:03.000\nJesus offers hope in es.\n",
+    "chapters.json": "{\n  \"chapters\": [\n    {\n      \"title\": \"Hope for the world\",\n      \"startSeconds\": 0,\n      \"endSeconds\": 3,\n      \"summary\": \"Jesus offers hope.\"\n    }\n  ]\n}",
+    "metadata.json": "{\n  \"title\": \"Hope for the World\",\n  \"description\": \"Jesus offers hope to everyone.\",\n  \"topics\": [\n    \"hope\"\n  ],\n  \"speakers\": [\n    \"Jesus\"\n  ],\n  \"tags\": [\n    \"hope\"\n  ],\n  \"language\": \"en\"\n}"
+  }
+}
