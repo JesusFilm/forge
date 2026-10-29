@@ -6,11 +6,7 @@ import {
   RecommendationOwnerReleaseOperator,
   type OwnerReleaseOperatorInput,
 } from "./owner-operator"
-import {
-  lockOwnerReleaseForRevocation,
-  readActiveOwnerRelease,
-} from "./owner-authority"
-import { ownerReleaseInfluenceAllowed } from "./owner-influence"
+import { lockOwnerReleaseForRevocation } from "./owner-authority"
 import { assertStudyAuthority } from "../experiment/study-authority"
 import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "../experiment/assignment"
 import { STUDY_POLICY_VERSION } from "../experiment/study-protocol"
@@ -915,68 +911,16 @@ export async function recordFirstEligiblePromotionExposure(
     receivedAt: Date
   },
 ) {
-  let pointer = await tx.recommendationPromotionPointer.findUnique({
+  const pointer = await tx.recommendationPromotionPointer.findUnique({
     where: { id: PROMOTION_POINTER_ID },
   })
   if (
     !pointer ||
     pointer.killSwitchEnabled ||
     pointer.stage === RecommendationPromotionStage.CONTROL ||
-    (pointer.stage !== RecommendationPromotionStage.OWNER_APPROVED &&
-      pointer.activeManifestId !== input.effectiveManifestId)
+    pointer.activeManifestId !== input.effectiveManifestId
   ) {
     return false
-  }
-  let ownerReleaseId: string | null = null
-  if (pointer.stage === RecommendationPromotionStage.OWNER_APPROVED) {
-    const request = await tx.recommendationRequest.findUnique({
-      where: { id: input.requestId },
-      select: {
-        id: true,
-        ownerReleaseId: true,
-        ownerReleaseGeneration: true,
-        manifestId: true,
-        personalizationDecision: {
-          select: { effectiveManifestId: true, executionMode: true },
-        },
-      },
-    })
-    if (
-      !request?.ownerReleaseId ||
-      request.ownerReleaseGeneration !== pointer.generation ||
-      request.ownerReleaseId !== pointer.activeOwnerReleaseId ||
-      request.manifestId !== input.effectiveManifestId ||
-      request.personalizationDecision?.effectiveManifestId !==
-        pointer.activeManifestId ||
-      request.personalizationDecision.executionMode !==
-        "cowatch_mmr_personalized"
-    )
-      return false
-    const release = await tx.recommendationOwnerRelease.findUnique({
-      where: { id: request.ownerReleaseId },
-    })
-    if (!release) return false
-    await tx.$queryRaw`SELECT id FROM recommendation_cowatch_generation WHERE id = ${release.graphGenerationId}::char(64) FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_owner_release WHERE id = ${release.id}::uuid FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer WHERE id = 'recommendation-promotion-pointer' FOR SHARE`
-    const authority = await readActiveOwnerRelease(tx, input.receivedAt)
-    if (
-      !authority ||
-      authority.releaseId !== request.ownerReleaseId ||
-      authority.pointerGeneration !== request.ownerReleaseGeneration ||
-      !(await ownerReleaseInfluenceAllowed(tx, request))
-    )
-      return false
-    pointer = await tx.recommendationPromotionPointer.findUnique({
-      where: { id: PROMOTION_POINTER_ID },
-    })
-    if (
-      !pointer ||
-      pointer.activeOwnerReleaseId !== authority.releaseId ||
-      pointer.generation !== authority.pointerGeneration
-    )
-      return false
-    ownerReleaseId = release.id
   }
   const created = await tx.recommendationPromotionEvent.createMany({
     data: [
@@ -1000,9 +944,6 @@ export async function recordFirstEligiblePromotionExposure(
         }),
         details: {
           receivedAt: input.receivedAt.toISOString(),
-          ...(ownerReleaseId
-            ? { ownerReleaseId, ownerReleaseGeneration: pointer.generation }
-            : {}),
         },
         now: input.receivedAt,
       }),

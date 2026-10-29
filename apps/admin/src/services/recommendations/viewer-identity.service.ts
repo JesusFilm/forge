@@ -6,12 +6,6 @@ import {
   RecommendationInputError,
 } from "./errors"
 import { assertWebRecommendationCaller } from "./caller"
-import { RECOMMENDATION_PROFILE_CONTRACT } from "./contracts"
-import {
-  createRecommendationProfileService,
-  RecommendationProfileService,
-  RECOMMENDATION_CONSENT_CONTRACT,
-} from "./profile.service"
 import {
   unlinkPushViewerIdentities,
   type PushIdentityUnlinkResult,
@@ -100,64 +94,30 @@ export class RecommendationViewerService {
       input.viewerToken,
       input.sessionToken,
     )
-    const service = createRecommendationProfileService(this.prisma)
     let pushUnlink: PushIdentityUnlinkResult | null = null
-    const receipt =
-      input.action === "status"
-        ? await service.status({
-            caller: identity.caller,
-            contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-            sessionDigest: identity.sessionDigest,
-            consentReceiptDigest: identity.viewer.consentReceiptDigest,
-            profileDigest: identity.viewer.profileDigest,
-          })
-        : await this.prisma.$transaction(async (tx) => {
-            // Serialize pointer changes across all sessions for this installation.
-            await tx.$executeRaw`SELECT token_digest FROM recommendation_viewer WHERE token_digest = ${identity.viewer.tokenDigest} FOR UPDATE`
-            const current = await tx.recommendationViewer.findUniqueOrThrow({
-              where: { tokenDigest: identity.viewer.tokenDigest },
-            })
-            const proposedProfileDigest = null
-            const proposedConsentReceiptDigest = digest(mint())
-            const result = await new RecommendationProfileService({
-              prisma: this.prisma,
-              transaction: tx,
-            }).transition({
-              caller: identity.caller,
-              contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-              consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-              action: input.action as "grant" | "reset" | "withdraw" | "delete",
-              consentChoice:
-                input.action === "withdraw" || input.action === "delete"
-                  ? "essential_only"
-                  : "personalization",
-              sessionDigest: identity.sessionDigest,
-              existingProfileDigest: current.profileDigest,
-              existingConsentReceiptDigest: current.consentReceiptDigest,
-              proposedProfileDigest,
-              proposedConsentReceiptDigest,
-            })
-            await tx.recommendationViewer.update({
-              where: { tokenDigest: current.tokenDigest },
-              data: {
-                profileDigest:
-                  result.cookieDisposition === "set"
-                    ? proposedProfileDigest
-                    : result.cookieDisposition === "clear"
-                      ? null
-                      : current.profileDigest,
-                consentReceiptDigest: proposedConsentReceiptDigest,
-              },
-            })
-            // A deletion is an erasure, so the push link ends with it. A
-            // withdrawal is a consent choice and leaves every push row alone.
-            if (input.action === "delete") {
-              pushUnlink = await unlinkPushViewerIdentities(tx, [
-                current.tokenDigest,
-              ])
-            }
-            return result
-          })
+    if (input.action !== "status") {
+      await this.prisma.$transaction(async (tx) => {
+        // Serialize pointer changes across all sessions for this installation.
+        await tx.$executeRaw`SELECT token_digest FROM recommendation_viewer WHERE token_digest = ${identity.viewer.tokenDigest} FOR UPDATE`
+        const current = await tx.recommendationViewer.findUniqueOrThrow({
+          where: { tokenDigest: identity.viewer.tokenDigest },
+        })
+        await tx.recommendationViewer.update({
+          where: { tokenDigest: current.tokenDigest },
+          data: {
+            profileDigest: null,
+            consentReceiptDigest: digest(mint()),
+          },
+        })
+        // A deletion is an erasure, so the push link ends with it. A
+        // withdrawal is a consent choice and leaves every push row alone.
+        if (input.action === "delete") {
+          pushUnlink = await unlinkPushViewerIdentities(tx, [
+            current.tokenDigest,
+          ])
+        }
+      })
+    }
     // Logged after the transaction commits, and with counts only: a digest is
     // an identifier and never reaches a log line.
     if (pushUnlink) {
@@ -166,17 +126,9 @@ export class RecommendationViewerService {
         `[push] event=identity_unlinked reason=viewer_delete registrations=${unlinked.registrationsUnlinked} opens=${unlinked.opensDeleted} attributions=${unlinked.attributionsDeleted}`,
       )
     }
-    if (receipt.profileId && receipt.erasureGeneration != null) {
-      void service
-        .completeErasure({
-          profileId: receipt.profileId,
-          privacyGeneration: receipt.erasureGeneration,
-        })
-        .catch(() => undefined)
-    }
     return {
-      state: receipt.state,
-      personalization: receipt.consentChoice === "personalization",
+      state: "session_only",
+      personalization: false,
     }
   }
 }

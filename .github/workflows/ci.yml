@@ -229,59 +229,46 @@ jobs:
           pnpm --filter @forge/admin test --
           src/services/recommendations/migration.db.test.ts
           src/services/recommendations/migration.candidates.db.test.ts
-          src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/migration.operations.db.test.ts
           src/services/recommendations/migration.attribution-reliability.db.test.ts
           src/services/recommendations/migration.playback-upgrade.db.test.ts
+          src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/playback-episode.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
-          src/services/recommendations/profile.service.db.test.ts
-          src/services/recommendations/behavioral-retirement.db.test.ts
           src/services/recommendations/viewer-identity.service.db.test.ts
           src/services/recommendations/curated-pools.service.db.test.ts
-          src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
           src/services/recommendations/admin-ops/watch-exposure.service.db.test.ts
           src/services/recommendations/watch-surface-migration.db.test.ts
-          src/services/recommendations/viewing-mode.service.db.test.ts
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
           --no-file-parallelism
-      - name: Create owned Co-watch PostgreSQL fixtures
+      - name: Create owned recommendation PostgreSQL fixture
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_test'
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_retention_standalone_test'
       - name: Apply owned retention fixture migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
         run: pnpm --filter @forge/admin exec prisma migrate deploy
-      - name: Exercise bounded recommendation retention tail against PostgreSQL
+      - name: Exercise retained ordinary retention and session context against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
           RECOMMENDATION_DB_TEST: "1"
         run: >-
           pnpm --filter @forge/admin test --
-          src/services/recommendations/retention-profile-tail.db.test.ts
-          src/services/recommendations/retention-composition.db.test.ts
+          src/services/recommendations/retention-retained.db.test.ts
+          src/services/recommendations/retention-precomputed-links.db.test.ts
+          src/services/recommendations/recent-context.db.test.ts
           --no-file-parallelism --testTimeout=60000
-      - name: Exercise loaded standalone retention against PostgreSQL
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_retention_standalone_test
-          RECOMMENDATION_DB_TEST: "1"
-        run: |
-          pnpm --filter @forge/admin exec prisma migrate deploy
-          pnpm --filter @forge/admin test -- src/services/recommendations/retention-standalone.db.test.ts src/services/recommendations/retention-decision-links.db.test.ts src/services/recommendations/retention-projection-run-links.db.test.ts --no-file-parallelism --testTimeout=60000
-      - name: Exercise Co-watch retirement, behavioral cleanup, audit expiry, and measurement reuse against PostgreSQL
+      - name: Exercise recommendation measurement reuse against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
           RECOMMENDATION_DB_TEST: "1"
         run: >-
           pnpm --filter @forge/admin test --
-          src/services/recommendations/cowatch/refresh.db.test.ts
-          src/services/recommendations/behavioral-retirement-cleanup.db.test.ts
           src/services/recommendations/integrity.measurement-reuse.db.test.ts
           --no-file-parallelism --testTimeout=30000
       - name: Exercise semantic retrieval budget against pgvector
@@ -290,16 +277,6 @@ jobs:
           RECOMMENDATION_DB_TEST: "1"
           RECOMMENDATION_DELIVERY_DB_FIXTURE: deterministic
         run: pnpm --filter @forge/admin test -- src/services/recommendations/delivery-retriever.db.test.ts
-      - name: Exercise historical profile storage invariants against deterministic pgvector
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          RECOMMENDATION_DB_TEST: "1"
-          RECOMMENDATION_PROFILE_DB_FIXTURE: deterministic
-        run: >-
-          pnpm --filter @forge/admin test --
-          src/services/recommendations/candidates/profile-candidate.db.test.ts
-          src/services/recommendations/profiles/profile-projection.service.db.test.ts
-          --no-file-parallelism
       - name: Exercise recommendation admission against Redis
         env:
           RECOMMENDATION_REDIS_TEST: "1"

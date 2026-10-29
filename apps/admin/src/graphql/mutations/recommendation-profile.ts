@@ -51,24 +51,6 @@ function publicReceipt(
   }
 }
 
-function scheduleErasure(
-  service: ReturnType<typeof createRecommendationProfileService>,
-  receipt: RecommendationProfileReceipt,
-) {
-  if (!receipt.profileId || receipt.erasureGeneration == null) return
-  queueMicrotask(() => {
-    void service
-      .completeErasure({
-        profileId: receipt.profileId!,
-        privacyGeneration: receipt.erasureGeneration!,
-      })
-      .catch(() => {
-        // The durable PENDING state is the retry signal. Privacy health
-        // surfaces this failure without delaying the viewer.
-      })
-  })
-}
-
 builder.mutationFields((t) => ({
   recommendationProfileStatus: t.field({
     type: ProfileReceiptRef,
@@ -92,7 +74,6 @@ builder.mutationFields((t) => ({
           consentReceiptDigest: args.consentReceiptDigest ?? null,
           profileDigest: args.profileDigest ?? null,
         })
-        scheduleErasure(service, receipt)
         return publicReceipt(receipt)
       }),
   }),
@@ -132,7 +113,6 @@ builder.mutationFields((t) => ({
           existingProfileDigest: args.existingProfileDigest ?? null,
           proposedProfileDigest: args.proposedProfileDigest ?? null,
         })
-        scheduleErasure(service, receipt)
         return publicReceipt(receipt)
       }),
   }),

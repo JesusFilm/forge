@@ -154,8 +154,6 @@ export async function runRecommendationRetentionJob(
             batchLimitReached: result.batchLimitReached,
             continuationRequired:
               recommendationRetentionNeedsContinuation(result),
-            profileVectorSweepSkipped:
-              result.profileVectorSweepSkipped ?? false,
             purgeStatus: result.status,
           },
         },

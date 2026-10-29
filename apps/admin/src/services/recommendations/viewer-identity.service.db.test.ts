@@ -1,14 +1,10 @@
-import { afterAll, describe, expect, it, vi } from "vitest"
+import { afterAll, describe, expect, it } from "vitest"
 import { prisma } from "@/db/client"
 import {
   RecommendationViewerService,
   resolveRecommendationIdentity,
 } from "./viewer-identity.service"
-import { RecommendationProfileService } from "./profile.service"
 import { createHash } from "node:crypto"
-vi.mock("./profiles/job", () => ({
-  dispatchRecommendationProfileProjection: vi.fn(async () => undefined),
-}))
 const caller = {
   id: null,
   role: "CONSUMER_BEARER" as const,
@@ -101,10 +97,6 @@ async function cleanPushRows(): Promise<void> {
   await prisma.pushCampaign.deleteMany({ where })
   await prisma.pushRegistration.deleteMany({ where })
 }
-const erasures = vi.spyOn(
-  RecommendationProfileService.prototype,
-  "completeErasure",
-)
 afterAll(async () => {
   await cleanPushRows()
   for (const token of handles) {
@@ -112,7 +104,6 @@ afterAll(async () => {
       where: { tokenDigest: createHash("sha256").update(token).digest("hex") },
     })
   }
-  await Promise.allSettled(erasures.mock.results.map((result) => result.value))
   await prisma.$disconnect()
 })
 describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(

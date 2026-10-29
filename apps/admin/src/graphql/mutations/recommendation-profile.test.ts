@@ -2,20 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const statusMock = vi.fn()
 const transitionMock = vi.fn()
-const completeErasureMock = vi.fn()
-const dispatchProjectionMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/services/recommendations/profile.service", () => ({
   createRecommendationProfileService: vi.fn(() => ({
     status: statusMock,
     transition: transitionMock,
-    completeErasure: completeErasureMock,
   })),
 }))
 vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/recommendations/profiles/job", () => ({
-  dispatchRecommendationProfileProjection: dispatchProjectionMock,
-}))
 
 import { schema } from "@/graphql/schema"
 
@@ -60,8 +54,6 @@ beforeEach(() => {
     profileId: "private-profile-id",
     erasureGeneration: 1,
   })
-  completeErasureMock.mockResolvedValue(true)
-  dispatchProjectionMock.mockResolvedValue({ queued: true })
 })
 
 describe("recommendation profile resolvers", () => {
@@ -87,11 +79,9 @@ describe("recommendation profile resolvers", () => {
     expect(result).not.toHaveProperty("tokenDigest")
     expect(result).not.toHaveProperty("profileId")
     expect(result).not.toHaveProperty("erasureGeneration")
-    await Promise.resolve()
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 
-  it("schedules historical erasure on status without restarting a learner", async () => {
+  it("keeps a historical pending erasure private without restarting a learner", async () => {
     statusMock.mockResolvedValueOnce({
       state: "session_only",
       choice: "session_only",
@@ -104,7 +94,7 @@ describe("recommendation profile resolvers", () => {
       erasureGeneration: 3,
     })
 
-    await mutation("recommendationProfileStatus")(
+    const result = await mutation("recommendationProfileStatus")(
       null,
       {
         contractVersion: "recommendation-profile-v1",
@@ -115,13 +105,9 @@ describe("recommendation profile resolvers", () => {
       {} as never,
     )
 
-    await vi.waitFor(() => {
-      expect(completeErasureMock).toHaveBeenCalledWith({
-        profileId: "private-profile-id",
-        privacyGeneration: 3,
-      })
-    })
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ erasureState: "pending" })
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
   })
 
   it("does not schedule a projection for an Essential-only receipt", async () => {
@@ -150,9 +136,6 @@ describe("recommendation profile resolvers", () => {
       { user: caller },
       {} as never,
     )
-
-    await Promise.resolve()
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 
   it("keeps erasure scheduling keys out of the public receipt", async () => {
@@ -181,12 +164,5 @@ describe("recommendation profile resolvers", () => {
     expect(result).not.toHaveProperty("tokenDigest")
     expect(result).not.toHaveProperty("profileId")
     expect(result).not.toHaveProperty("erasureGeneration")
-    await vi.waitFor(() => {
-      expect(completeErasureMock).toHaveBeenCalledWith({
-        profileId: "private-profile-id",
-        privacyGeneration: 1,
-      })
-    })
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 })

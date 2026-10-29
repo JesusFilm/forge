@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { Prisma } from "@prisma/client"
-import {
-  parseRetentionPhaseFailureLog,
-  retentionDiagnosticLogLimiter,
-} from "./retention-phase-diagnostics"
+import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -35,16 +32,13 @@ function retentionQuery(
       return (query.values[0] as string[]).map((id) => ({ id }))
     if (query.sql.includes("JOIN recommendation_eligibility_decision decision"))
       return [{ count: 0n }]
-    if (query.sql.includes("seed_sources AS MATERIALIZED"))
+    if (query.sql.includes("selected_assignments AS MATERIALIZED"))
       return [
         {
-          profiles: [],
           requests: [],
           episodes: [],
           outcomes: [],
           eligibility: [],
-          sources: [],
-          graphs: [],
           protocols: [],
           releases: [],
           studies: [],
@@ -366,45 +360,6 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
 }
 
 describe("recommendation retention service", () => {
-  it("manual stored-expiry mode keeps age-only cleanup out of an expired-root pass", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-09-17T00:00:00.000Z")
-
-    await expect(
-      purgeExpiredRecommendationRequests(
-        prisma as never,
-        now,
-        2,
-        "stored-expiry-only",
-      ),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      rootsDeleted: 2,
-      rowCounts: { expiredContentActions: 1 },
-    })
-    expect(transaction.recommendationRequest.deleteMany).toHaveBeenCalledWith({
-      where: { id: { in: ["request-1", "request-2"] } },
-    })
-    const sql = [
-      ...transaction.$executeRaw.mock.calls,
-      ...transaction.$queryRaw.mock.calls,
-    ]
-      .map(([query]) => rawSqlText(query))
-      .join("\n")
-    expect(sql).not.toContain("recommendation_profile_vector_snapshot")
-    expect(sql).not.toContain("recommendation_precomputed_generation g")
-    expect(sql).not.toContain("recommendation_cowatch_refresh_attempt")
-    expect(transaction.recommendationProfile.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          erasureState: "PENDING",
-          expiresAt: { lte: now },
-        }),
-      }),
-    )
-    expect(transaction.recommendationProfile.deleteMany).not.toHaveBeenCalled()
-  })
-
   it("continues a strict manual pass when the guarded proof page is full", async () => {
     const { prisma, transaction } = buildPrisma()
     transaction.recommendationRequest.findMany.mockResolvedValueOnce([])
@@ -471,295 +426,6 @@ describe("recommendation retention service", () => {
     expect(transaction.pushAttribution.deleteMany).not.toHaveBeenCalled()
     expect(transaction.pushOpen.deleteMany).not.toHaveBeenCalled()
     expect(transaction.pushRegistration.updateMany).not.toHaveBeenCalled()
-  })
-
-  it("skips only vector orphan collection while a publisher holds its shared lock", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const normalQuery = retentionQuery([])
-    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) =>
-      query.sql.includes("pg_try_advisory_xact_lock(368000002)")
-        ? [{ locked: false }]
-        : normalQuery(query),
-    )
-
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never, new Date(), 500),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      profileVectorSweepSkipped: true,
-      rowCounts: { orphanProfileVectorSnapshots: 0 },
-    })
-    expect(
-      transaction.$executeRaw.mock.calls.some(([query]) =>
-        rawSqlText(query).includes(
-          "DELETE FROM recommendation_profile_vector_snapshot",
-        ),
-      ),
-    ).toBe(false)
-  })
-
-  it("takes one advisory-locked bounded batch and records sanitized counts", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-09-17T00:00:00.000Z")
-
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never, now, 2),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      runId: "retention-run-1",
-      rootsDeleted: 2,
-      rowCounts: {
-        submissionBudgets: 0,
-        candidateRuns: 0,
-        candidateStageEvidence: 0,
-        expiredContentActions: 1,
-        expiredEligibilityDecisions: 0,
-        expiredProfilesFenced: 1,
-        expiredConsentReceipts: 2,
-        profileConsentReceiptsRevoked: 1,
-        profileErasuresCompleted: 1,
-        expiredProfileSessionLinks: 1,
-        expiredControlEvaluations: 2,
-        expiredShadowEvaluations: 1,
-        expiredPromotionEvents: 3,
-        expiredPromotionRuns: 2,
-        expiredPromotionApprovals: 1,
-      },
-      overdueAfterRun: false,
-      batchLimitReached: true,
-    })
-    expect(transaction.recommendationRequest.findMany).toHaveBeenCalledWith({
-      where: { expiresAt: { lte: now } },
-      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-      take: 2,
-      select: { id: true },
-    })
-    expect(transaction.recommendationRequest.deleteMany).toHaveBeenCalledWith({
-      where: { id: { in: ["request-1", "request-2"] } },
-    })
-    expect(
-      transaction.recommendationContentAction.findMany,
-    ).toHaveBeenCalledWith({
-      where: { requestId: null, expiresAt: { lte: now } },
-      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-      take: 2,
-      select: { id: true },
-    })
-    expect(
-      transaction.recommendationContentAction.deleteMany,
-    ).toHaveBeenCalledWith({
-      where: { id: { in: ["direct-action-1"] } },
-    })
-    expect(
-      transaction.recommendationContentAction.deleteMany,
-    ).toHaveBeenCalledWith({
-      where: {
-        requestId: { in: ["request-1", "request-2"] },
-        expiresAt: { lte: now },
-      },
-    })
-    expect(
-      transaction.recommendationContentAction.deleteMany,
-    ).toHaveBeenCalledBefore(transaction.recommendationRequest.deleteMany)
-    expect(
-      transaction.recommendationEligibilityDecision.count,
-    ).toHaveBeenCalledWith({
-      where: { contentActionId: { in: ["direct-action-1"] } },
-    })
-    const eligibilityQuery = transaction.$queryRaw.mock.calls
-      .map(([query]) => query as Prisma.Sql)
-      .find((query) =>
-        query.sql.includes("JOIN recommendation_eligibility_decision decision"),
-      )
-    expect(eligibilityQuery?.sql).toContain("UNION")
-    expect(eligibilityQuery?.values).toEqual([
-      ["request-1", "request-2"],
-      ["request-1", "request-2"],
-    ])
-    expect(
-      transaction.recommendationPlaybackEpisode.findFirst,
-    ).toHaveBeenCalledWith({
-      where: { requestId: null, expiresAt: { lte: now } },
-      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-      select: { expiresAt: true },
-    })
-    expect(transaction.recommendationProfile.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: { in: ["expired-profile-1"] },
-        }),
-        data: expect.objectContaining({
-          erasureState: "COMPLETED",
-        }),
-      }),
-    )
-    expect(
-      transaction.recommendationConsentReceipt.updateMany,
-    ).toHaveBeenNthCalledWith(1, {
-      where: { state: "ACTIVE", expiresAt: { lte: now } },
-      data: {
-        tokenDigest: null,
-        profileId: null,
-        state: "EXPIRED",
-        revokedAt: now,
-        revokeReason: "receipt_expired",
-      },
-    })
-    expect(
-      transaction.recommendationConsentReceipt.updateMany,
-    ).toHaveBeenNthCalledWith(2, {
-      where: {
-        profileId: { in: ["expired-profile-1"] },
-        state: "ACTIVE",
-      },
-      data: {
-        tokenDigest: null,
-        profileId: null,
-        state: "REVOKED",
-        revokedAt: now,
-        revokeReason: "profile_expired",
-      },
-    })
-    expect(transaction.recommendationProfile.findMany).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: { notIn: ["expired-profile-1"] },
-          erasureState: "PENDING",
-        }),
-        take: 1,
-      }),
-    )
-    expect(
-      transaction.recommendationExperimentAssignment.updateMany,
-    ).toHaveBeenCalledWith({
-      where: {
-        profileId: { in: ["expired-profile-1"] },
-        state: "ACTIVE",
-      },
-      data: {
-        state: "FENCED",
-        fencedAt: now,
-        fenceReason: "profile_expire",
-      },
-    })
-    expect(
-      transaction.recommendationControlEvaluation.deleteMany,
-    ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
-    expect(
-      transaction.recommendationShadowEvaluation.deleteMany,
-    ).toHaveBeenCalledWith({
-      where: { id: "expired-evaluation-1", expiresAt: { lte: now } },
-    })
-    expect(
-      transaction.recommendationExperimentEvaluation.deleteMany,
-    ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
-    expect(
-      transaction.recommendationPromotionApproval.deleteMany,
-    ).toHaveBeenCalledWith({
-      where: {
-        expiresAt: { lte: now },
-        pointers: { none: {} },
-        runs: { none: {} },
-      },
-    })
-    expect(
-      transaction.recommendationExperimentEvaluationRun.deleteMany,
-    ).toHaveBeenCalledWith({ where: { expiresAt: { lte: now } } })
-    expect(
-      transaction.recommendationConsentTransition.updateMany,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { profileId: { in: ["expired-profile-1"] } },
-      }),
-    )
-    expect(
-      transaction.recommendationProfileProjectionGeneration.deleteMany,
-    ).toHaveBeenCalledTimes(1)
-    expect(
-      transaction.recommendationShadowNomination.deleteMany,
-    ).toHaveBeenCalledWith({ where: { runId: { in: ["shadow-run-1"] } } })
-    expect(transaction.recommendationRetentionRun.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "retention-run-1" },
-        data: expect.objectContaining({
-          status: "SUCCEEDED",
-          rootsDeleted: 2,
-          reasonCode: null,
-        }),
-      }),
-    )
-  })
-
-  it("unlinks exact expired projection run references and keeps a full page continuing", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-09-17T00:00:00.000Z")
-    const selected = Array.from({ length: 100 }, (_, n) => ({
-      id: `run-${n}`,
-      projectionId: "generation-1",
-    }))
-    transaction.recommendationRequest.findMany.mockReset().mockResolvedValue([])
-    const fallback = retentionQuery()
-    transaction.$queryRaw.mockImplementation(async (query) => {
-      if (
-        query.sql.includes("WITH parents AS MATERIALIZED") &&
-        query.sql.includes("FROM recommendation_profile_projection_run")
-      )
-        return selected
-      return fallback(query)
-    })
-    transaction.recommendationProfileProjectionRun.updateMany.mockResolvedValue(
-      { count: 100 },
-    )
-    const result = await purgeExpiredRecommendationRequests(
-      prisma as never,
-      now,
-      100,
-      "stored-expiry-only",
-    )
-    expect(
-      transaction.recommendationProfileProjectionRun.updateMany,
-    ).toHaveBeenCalledWith({
-      where: { OR: selected, projection: { is: { expiresAt: { lte: now } } } },
-      data: { projectionId: null },
-    })
-    expect(result.rootsDeleted).toBe(0)
-    expect(result.rowCounts.expiredProjectionRunLinksUnlinked).toBe(100)
-    expect(result.batchLimitReached).toBe(true)
-  })
-
-  it("erases a newly expired profile before an older pending backlog", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-09-17T00:00:00.000Z")
-    transaction.recommendationProfile.findMany
-      .mockReset()
-      .mockResolvedValueOnce([
-        { id: "newly-expired-profile", privacyGeneration: 7 },
-      ])
-      .mockResolvedValueOnce([])
-    transaction.$queryRaw
-      .mockReset()
-      .mockImplementation(
-        retentionQuery([{ id: "newly-expired-profile", privacyGeneration: 7 }]),
-      )
-
-    await purgeExpiredRecommendationRequests(prisma as never, now, 1)
-
-    expect(
-      transaction.recommendationProfileProjectionRun.deleteMany,
-    ).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { profileId: { in: ["newly-expired-profile"] } },
-          { sessionDigest: { in: ["a".repeat(64)] } },
-        ],
-      },
-    })
-    expect(transaction.recommendationProfile.findMany).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ erasureState: "PENDING" }),
-      }),
-    )
   })
 
   it("reports a standalone playback backlog that remains after the bounded batch", async () => {
@@ -845,9 +511,6 @@ describe("recommendation retention service", () => {
     "direct actions",
     "standalone episodes",
     "viewers",
-    "expired profiles",
-    "pending profile erasures",
-    "retired profiles",
   ])("continues when the %s selection fills its batch", async (selection) => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")
@@ -881,23 +544,6 @@ describe("recommendation retention service", () => {
       transaction.recommendationViewer.findMany.mockResolvedValue([
         { tokenDigest: "digest-1" },
       ])
-    } else if (selection === "expired profiles") {
-      transaction.$queryRaw.mockImplementation(
-        retentionQuery([{ id: "profile-1", privacyGeneration: 1 }]),
-      )
-      transaction.recommendationProfile.findMany
-        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
-        .mockResolvedValue([])
-    } else if (selection === "pending profile erasures") {
-      transaction.recommendationProfile.findMany
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: "profile-1", privacyGeneration: 1 }])
-        .mockResolvedValue([])
-    } else {
-      transaction.recommendationProfile.findMany
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: "profile-1" }])
     }
 
     await expect(
@@ -1617,103 +1263,6 @@ describe("recommendation retention service", () => {
     }
   })
 
-  it.each(["select", "update", "commit"] as const)(
-    "attributes a decision %s failure without changing committed counters",
-    async (boundary) => {
-      const { prisma, transaction } = buildPrisma()
-      const original = new Prisma.PrismaClientKnownRequestError("private SQL", {
-        code: "P2028",
-        clientVersion: "test",
-      })
-      const query = transaction.$queryRaw.getMockImplementation()!
-      transaction.$queryRaw.mockImplementation(async (sql) => {
-        if (sql.sql.includes("FROM recommendation_personalization_decision")) {
-          if (boundary === "select") throw original
-          return [
-            {
-              requestId: "private-request",
-              projectionGenerationId: "private-generation",
-            },
-          ]
-        }
-        return query(sql)
-      })
-      if (boundary === "update")
-        transaction.recommendationPersonalizationDecision.updateMany.mockRejectedValueOnce(
-          original,
-        )
-      else
-        transaction.recommendationPersonalizationDecision.updateMany.mockResolvedValueOnce(
-          { count: 1 },
-        )
-      if (boundary === "commit") {
-        const transact = prisma.$transaction.getMockImplementation()!
-        prisma.$transaction.mockImplementation(async (callback) => {
-          const result = await transact(callback)
-          if (
-            transaction.recommendationPersonalizationDecision.updateMany.mock
-              .calls.length
-          )
-            throw original
-          return result
-        })
-      }
-      const permit = vi
-        .spyOn(retentionDiagnosticLogLimiter, "allow")
-        .mockReturnValue({ emit: true, suppressedPriorMinute: 0 })
-      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
-      try {
-        await expect(
-          purgeExpiredRecommendationRequests(
-            prisma as never,
-            new Date(),
-            100,
-            "stored-expiry-only",
-            "manual-cli",
-          ),
-        ).rejects.toBe(original)
-        expect(
-          prisma.recommendationRetentionRun.updateMany,
-        ).toHaveBeenCalledWith(
-          expect.objectContaining({
-            data: expect.objectContaining({ status: "FAILED" }),
-          }),
-        )
-        const event = parseRetentionPhaseFailureLog(
-          String(logged.mock.calls[0]?.[0]),
-        )
-        expect(event).toMatchObject({
-          version: 2,
-          errors: { phase: { prismaCode: "P2028" } },
-          decisionOperation: {
-            executionContext: "manual-cli",
-            boundary: boundary === "commit" ? "complete" : boundary,
-          },
-          failed: [
-            {
-              label: "projection_decision_unlink_page",
-              stage:
-                boundary === "commit" ? "commit_acknowledgement" : "operation",
-            },
-          ],
-        })
-        const durable = await prisma.recommendationRetentionRun.findUnique()
-        expect(durable?.rootsDeleted).toBe(2)
-        // The commit case deliberately loses acknowledgement after the mock's
-        // durable commit. Never overwrite that committed count on fallback.
-        expect(durable?.rowCounts.expiredProjectionDecisionLinksUnlinked).toBe(
-          boundary === "commit" ? 1 : undefined,
-        )
-        expect(JSON.stringify(event)).not.toMatch(
-          /private|requestId|projectionGenerationId/,
-        )
-      } finally {
-        logged.mockRestore()
-        permit.mockRestore()
-      }
-    },
-  )
-
   it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
     const { prisma, transaction } = buildPrisma()
     const original = new Error("owned phase failure")
@@ -1836,32 +1385,6 @@ describe("recommendation retention service", () => {
     )
   })
 
-  it("continues when an expired authority tombstone remains after the bounded purge", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-09-29T00:00:00Z")
-    const rawPopulationExpiresAt = new Date("2026-09-27T00:00:00Z")
-    transaction.recommendationRequest.findMany.mockResolvedValue([])
-    transaction.recommendationContentAction.findMany.mockResolvedValue([])
-    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
-    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
-    transaction.recommendationViewer.findMany.mockResolvedValue([])
-    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
-    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
-    transaction.recommendationCowatchTrialAuthority.findFirst.mockResolvedValue(
-      { rawPopulationExpiresAt },
-    )
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never, now, 1),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      rootsDeleted: 0,
-      batchLimitReached: true,
-      overdueAfterRun: true,
-      oldestExpiredAtAfter: rawPopulationExpiresAt.toISOString(),
-      rowCounts: { expiredCowatchTrialAuthorities: 1 },
-    })
-  })
-
   it("continues an expired request batch before the 24-hour propagation threshold", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-08-20T10:30:00.000Z")
@@ -1880,32 +1403,6 @@ describe("recommendation retention service", () => {
       purgeExpiredRecommendationRequests(prisma as never, now, 1),
     ).resolves.toMatchObject({
       status: "succeeded",
-      oldestExpiredAtAfter: oldestExpiry.toISOString(),
-      overdueAfterRun: false,
-      batchLimitReached: true,
-    })
-  })
-
-  it("continues a subfull profile-generation backlog before it is overdue", async () => {
-    const { prisma, transaction } = buildPrisma()
-    const now = new Date("2026-10-03T10:30:00.000Z")
-    const oldestExpiry = new Date("2026-10-03T10:00:00.000Z")
-    transaction.recommendationRequest.findMany.mockResolvedValue([])
-    transaction.recommendationContentAction.findMany.mockResolvedValue([])
-    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
-    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
-    transaction.recommendationViewer.findMany.mockResolvedValue([])
-    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
-    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
-    transaction.recommendationProfileProjectionGeneration.findFirst.mockResolvedValueOnce(
-      { expiresAt: oldestExpiry },
-    )
-
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never, now, 100),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      rootsDeleted: 0,
       oldestExpiredAtAfter: oldestExpiry.toISOString(),
       overdueAfterRun: false,
       batchLimitReached: true,

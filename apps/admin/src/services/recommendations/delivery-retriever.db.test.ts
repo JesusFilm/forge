@@ -36,7 +36,6 @@ import { createRecommendationDeliveryDependencies } from "./delivery.factory"
 import { createRecommendationTokenService } from "./token.service"
 import { getEligibleRecommendationVideoIds } from "@/services/scene-recommendations-retriever"
 import type { SemanticRetrievalDiagnostics } from "./delivery-diagnostics"
-import { loadCowatchPlayableRows } from "./cowatch/candidate.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const DELIVERY_FIXTURE_MODE = env.RECOMMENDATION_DELIVERY_DB_FIXTURE
@@ -1292,13 +1291,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                   "mandarin-china",
                 ),
               ).toEqual(new Set(expectedTargetIds))
-              const cowatchRows = await loadCowatchPlayableRows(
-                tx,
-                expectedTargetIds,
-                { locale: display!, audioLanguageSlug: "mandarin-china" },
-              )
-              expect(cowatchRows).toHaveLength(12)
-              expect(cowatchRows.every((row) => row.themes?.length)).toBe(true)
             }
             await tx.$executeRaw`DELETE FROM video_locale WHERE locale = 'zh-hant'`
             const missing: SemanticRetrievalDiagnostics[] = []
@@ -1325,14 +1317,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 "mandarin-china",
               ),
             ).toEqual(new Set())
-            await tx.$executeRaw`UPDATE video_transcript SET model = 'inactive-model' WHERE video_id = 'target-video-0'`
-            const incompatible = await loadCowatchPlayableRows(
-              tx,
-              ["target-video-0"],
-              { locale: "zh-hans", audioLanguageSlug: "mandarin-china" },
-            )
-            expect(incompatible).toHaveLength(1)
-            expect(incompatible[0]?.themes).toBeNull()
             throw rollback
           }),
         ).rejects.toBe(rollback)

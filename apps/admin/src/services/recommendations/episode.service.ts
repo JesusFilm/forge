@@ -214,7 +214,7 @@ export class RecommendationEpisodeService {
             manifestId: true,
             privatePrecomputedVisitId: true,
             experimentAssignment: {
-              include: { experiment: true, profile: true },
+              include: { experiment: true },
             },
           },
         },
@@ -559,7 +559,7 @@ export class RecommendationEpisodeService {
               state: true,
               expiresAt: true,
               sessionDigest: true,
-              experimentAssignment: { include: { profile: true } },
+              experimentAssignment: true,
             },
           },
           item: true,
