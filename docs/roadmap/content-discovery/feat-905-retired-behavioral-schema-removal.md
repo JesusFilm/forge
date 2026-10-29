@@ -3,7 +3,7 @@ id: "feat-905"
 title: "Remove drained behavioral recommendation schema and code"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-29"
 duration: 7
 depends_on:
