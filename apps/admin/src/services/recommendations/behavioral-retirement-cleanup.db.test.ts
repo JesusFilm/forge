@@ -6,6 +6,7 @@ import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationViewerService } from "./viewer-identity.service"
 import { RecommendationProfileService } from "./profile.service"
+import { runRecommendationProfileProjectionJob } from "./profiles/job"
 import { purgeExpiredRecommendationRequests } from "./retention.service"
 import {
   RetirementAdmissionError,
@@ -287,6 +288,89 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       await expect(run()).rejects.toBeInstanceOf(RetirementAdmissionError)
       await db.workflowRun.delete({ where: { id: ledger.id } })
+    })
+
+    it("fences pending and claimed projection runs under the terminal check without rewriting historical failures", async () => {
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + day)
+      const pendingId = `pending-retirement-${randomUUID()}`
+      const claimedId = `claimed-retirement-${randomUUID()}`
+      const historicalId = `failed-retirement-${randomUUID()}`
+      const ids = [pendingId, claimedId, historicalId]
+      await db.recommendationProfileProjectionRun.createMany({
+        data: [
+          {
+            id: pendingId,
+            scope: "SESSION",
+            sessionDigest: digest(pendingId),
+            state: "PENDING",
+            expiresAt,
+          },
+          {
+            id: claimedId,
+            scope: "SESSION",
+            sessionDigest: digest(claimedId),
+            state: "CLAIMED",
+            attemptCount: 1,
+            claimId: randomUUID(),
+            claimedAt: now,
+            heartbeatAt: now,
+            leaseExpiresAt: new Date(now.getTime() + 60_000),
+            expiresAt,
+          },
+          {
+            id: historicalId,
+            scope: "SESSION",
+            sessionDigest: digest(historicalId),
+            state: "FAILED",
+            completedAt: now,
+            failureReason: "historical_failure",
+            lastTransitionReason: "historical_failure",
+            expiresAt,
+          },
+        ],
+      })
+      try {
+        const historicalBefore =
+          await db.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: historicalId },
+          })
+        for (const id of [pendingId, claimedId]) {
+          await expect(
+            runRecommendationProfileProjectionJob(
+              { runId: id, expectedGeneration: 1 },
+              db,
+            ),
+          ).resolves.toMatchObject({
+            status: "fenced",
+            reason: "behavioral_recommendations_retired",
+          })
+          expect(
+            await db.recommendationProfileProjectionRun.findUniqueOrThrow({
+              where: { id },
+            }),
+          ).toMatchObject({
+            state: "FENCED",
+            failureReason: "behavioral_recommendations_retired",
+            lastTransitionReason: "behavioral_recommendations_retired",
+            completedAt: expect.any(Date),
+            leaseExpiresAt: null,
+          })
+        }
+        await runRecommendationProfileProjectionJob(
+          { runId: historicalId, expectedGeneration: 1 },
+          db,
+        )
+        expect(
+          await db.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: historicalId },
+          }),
+        ).toEqual(historicalBefore)
+      } finally {
+        await db.recommendationProfileProjectionRun.deleteMany({
+          where: { id: { in: ids } },
+        })
+      }
     })
 
     it("detaches historical experiment, shadow and decision references, then drains retired rows", async () => {

@@ -39,6 +39,12 @@ gone. Parent coordinates the release and every production invocation.
    The September 7 profile-reconciliation business row has a joined FAILED
    runtime completed at 2026-09-07 04:12:25.601 UTC; preserve both records.
    The operator still refuses any genuinely nonterminal known workflow runtime.
+6. Make the retired projection job's existing terminal fence satisfy the
+   database constraint: a FENCED run needs a completed timestamp and a
+   failure reason. Prove PENDING and CLAIMED transitions against populated
+   PostgreSQL, and prove an already terminal historical run is unchanged.
+   This repairs cutover fencing; it neither resumes learning nor authorizes
+   the cleanup operator to run.
 
 After the U4 drain, a separate normal-release follow-up must decide which
 retired tables, indexes and code can be physically dropped and measure actual
