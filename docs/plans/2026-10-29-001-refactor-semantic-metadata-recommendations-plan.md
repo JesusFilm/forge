@@ -157,34 +157,54 @@ valid without issuing new profile or consent credentials. Historical reset,
 withdrawal and deletion credentials may fence/erase old state; this is required
 privacy work rather than renewed learning.
 
-### U4. Reclaim data and remove retired schema
+### U4. Drain retired behavioral rows
 
-**Goal:** R5–R7. Delete only retired behavioral state with measured evidence.
+**Goal:** Satisfy R5's retired-data and active-control portion, plus R6–R7's
+preservation and measurement obligations. R5's obsolete-schema removal is
+deferred to feat-905; U4 alone does not complete all of R5.
 **Dependencies:** U1–U3 deployed and verified; inventory of every retained FK reader.
-**Files:** `apps/admin/prisma/schema.prisma`, a new ordered Prisma migration,
-`apps/admin/src/services/recommendations/retention.service.ts`,
-`retention-health.service.ts`, profile/co-watch services and their tests,
-`apps/admin/src/services/recommendations/behavioral-retirement.db.test.ts`.
-**Approach:** Inventory table sizes and external references. Remove kept-code
-references and obsolete health expectations, preserving historical A/B rows while
-unlinking retired optional lineage. Drop the retired tables only after old deployed
-readers/writers and workflows are gone. No broad CASCADE into retained evidence.
-Retain necessary operational raw events until remaining consumer/expiry inventory
-proves they are no longer needed. Update daily retention monitor after release.
+**Files:** `apps/admin/prisma/migrations/0164_retire_behavioral_recommendation_rows/migration.sql`,
+`apps/admin/src/services/recommendations/behavioral-retirement-cleanup.ts`,
+`apps/admin/src/scripts/retire-behavioral-recommendations.ts`, their native tests,
+and retained `retention.service.ts`/`retention-health.service.ts` checks.
+**Approach:** Inventory table sizes and external references. Release B leaves
+the retired schema in place and supplies a dedicated bounded row-drain operator.
+Detach three retained historical references explicitly, then delete only the
+19 retired direct-delete tables' rows with durable per-batch accounting. Preserve
+historical A/B rows and all other retained evidence. No broad CASCADE into kept
+data. Retain necessary operational raw events until remaining consumer/expiry
+inventory proves they are no longer needed. Keep ordinary retention separate.
 **Test scenarios:** A database containing profiles, session and durable projections,
 co-watch generations, linked historical requests and active precomputed visits
-migrates with retained playback/A/B rows intact; old native create/update-status/
-delete, selection/playback and push-unlink flows work after migration; kept retention runs without the
-retired tables; zero profile/graph rows can reappear on ordinary traffic.
-**Verification:** Applied migration, actual HTTP/worker revisions, removed-table
-catalog checks and retained-lane smoke; before/after bytes, filesystem free space
-and reusable space are reported separately. Rollback after deletion requires a
-forward code fix or explicit data restoration, never resurrecting old workers.
+drains with retained playback/A/B rows intact; old native create/update-status/
+delete, selection/playback and push-unlink flows continue; ordinary retention
+still runs; no retired profile/graph rows reappear on ordinary traffic.
+**Verification:** Applied migration checksum, actual HTTP/worker revisions,
+CLI completion followed by fresh exact zero counts for all 19 tables after the
+last profile deletion, three retained references detached, and retained-lane
+smoke. If the fresh read is nonzero, perform another bounded source-bound drain
+and repeat the zero check before accepting U4. This proves bounded observed
+database state under the deployed source, not eternal zero; no fixed wait,
+activity gate or extra clean days are required. Relation allocation and
+filesystem free space are reported separately; reusable pages were unmeasured
+in U4 and belong to feat-905's physical follow-up. Rollback
+after deletion requires a forward code fix or explicit data restoration, never
+resurrecting old workers.
+
+### U4 follow-up. Remove physical schema after the row drain
+
+[Feat-905](../roadmap/content-discovery/feat-905-retired-behavioral-schema-removal.md)
+owns later table/index/code removal through its own reviewed normal release.
+Its dependency is accepted U4 row and reference evidence, including a fresh
+all-19-table zero read after CLI completion and the last profile deletion,
+not merely a merged operator or an empty fixture.
+U4 does not claim physical file recovery.
 
 ### U5. Reconcile product and operational documentation
 
 **Goal:** R1–R7. Active instructions match the simplified product.
-**Dependencies:** U1–U4 evidence.
+**Dependencies:** Verified U1–U3 release and U4 evidence for final closeout;
+pending release/row-drain states may be documented explicitly beforehand.
 **Files:** `CONCEPTS.md`, `docs/analytics-and-recommendation-policy.md`,
 `docs/operations/user-recommendations.md`,
 `docs/reports/2026-10-02-recommendation-roadmap-closeout.md`,
@@ -195,7 +215,24 @@ live operating instructions. Keep original history. Record retained raw consumer
 and which parts of ClickHouse PR #2950 are obsolete versus independently useful.
 **Test expectation:** Documentation checks and cross-reference review; no runtime tests.
 **Verification:** No active instruction asks operators/agents to restore retired
-learners; task remains in-progress until runtime, data and release evidence close.
+learners. The bounded runtime/data result is independently accepted. See the
+accompanying documentation PR and root [#2541](https://github.com/JesusFilm/forge/pull/2541)
+for exact-head review, CI, merge and normal-deployment receipts.
+
+### October 29 U4 production evidence — independently accepted
+
+The D operator returned `complete` at 07:18:45 UTC. The 07:20 durable
+reconciliation matched **3,088,917 direct deletes**, **18,055 detached-reference
+updates** and **31,080 batches**; a later read found all 19 retired tables
+and all three historical reference categories at zero. Actual source roles,
+retained-lane presence, natural serving and dated capacity were observed.
+The [retirement report](../reports/2026-10-29-behavioral-recommendation-retirement.md)
+holds their precise receipts and limits. Feat-902 is complete for the
+independently accepted bounded cutover and U4 row drain. See the accompanying
+documentation PR and root [#2541](https://github.com/JesusFilm/forge/pull/2541)
+for exact-head review, CI, merge and normal-deployment receipts. Row DELETE does not prove physical
+filesystem recovery. Reusable pages were **unmeasured**; feat-905 owns later
+physical measurement and schema removal.
 
 ---
 
