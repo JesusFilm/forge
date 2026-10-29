@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "apps/admin/**"
+      - "packages/automation-contracts/**"
       - "packages/experience-schema/**"
       - "packages/feature-flags/**"
       - "packages/studio-contracts/**"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - "apps/admin/**"
+      - "packages/automation-contracts/**"
       - "packages/experience-schema/**"
       - "packages/feature-flags/**"
       - "packages/studio-contracts/**"
