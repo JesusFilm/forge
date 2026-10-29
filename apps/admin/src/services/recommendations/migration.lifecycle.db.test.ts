@@ -926,7 +926,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const otherRequestId = `${id}-other-request`
         const itemId = `${id}-item`
         const otherItemId = `${id}-other-item`
-        const expiresAt = "2026-10-29T12:00:00.000Z"
+        // Share the transaction clock used by the created_at defaults.
+        const expiry = await client.query<{ expires_at: Date }>(
+          "SELECT now() + interval '1 day' AS expires_at",
+        )
+        const expiresAt = expiry.rows[0].expires_at
 
         for (const [request, count] of [
           [requestId, 2],
