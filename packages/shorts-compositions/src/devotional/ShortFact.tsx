@@ -1346,6 +1346,12 @@ function FullDevotionalLabel({
   text: string
 }) {
   const a = interpolate(t, [0.1, 0.8], [0, 1], { ...clamp, easing: EASE_OUT })
+  // The solid gold tab read as hard against the soft film (owner, Jairus
+  // 2026-10-29): dark text on a see-through orange tab that blurs the film
+  // behind it, a thin gold-orange outline, a glow that breathes about once
+  // every seven seconds and a slow, soft band of light every ten.
+  const breath = 0.5 + 0.5 * Math.sin(t * 0.9)
+  const sweep = ((t - 0.6) % 10) / 4.5 // 0..1 while the light crosses, then rests
   return (
     <div
       style={{
@@ -1353,17 +1359,41 @@ function FullDevotionalLabel({
         top: f(254),
         left: "50%",
         transform: `translateX(-50%) translateY(${((1 - a) * f(8)).toFixed(2)}px)`,
-        opacity: 0.85 * a,
+        opacity: a,
         fontFamily: PT_SERIF,
         fontStyle: "italic",
-        fontSize: f(36),
-        lineHeight: `${f(50)}px`,
-        color: "rgba(255,255,255,0.92)",
+        // A size down (owner, Peter's Confession 2026-10-28: it reads well
+        // smaller).
+        fontSize: f(34),
+        lineHeight: `${f(46)}px`,
+        color: "#2a1d0e",
+        fontWeight: 400,
         whiteSpace: "nowrap",
-        textShadow: `0 ${f(2)}px ${f(12)}px rgba(0,0,0,0.5)`,
+        padding: `${f(3)}px ${f(21)}px ${f(5)}px`,
+        borderRadius: f(14),
+        background: "rgba(242,168,82,0.45)",
+        backdropFilter: `blur(${f(10)}px)`,
+        WebkitBackdropFilter: `blur(${f(10)}px)`,
+        border: `${f(1.4)}px solid rgba(250,190,105,0.95)`,
+        boxShadow: `0 0 ${f(14 + 10 * breath)}px rgba(246,170,80,${(0.25 + 0.25 * breath).toFixed(3)}), inset 0 0 ${f(10)}px rgba(246,186,96,0.25)`,
+        overflow: "hidden",
       }}
     >
-      {text}
+      {sweep >= 0 && sweep <= 1 ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${(-60 + 170 * sweep).toFixed(2)}%`,
+            width: "50%",
+            background:
+              "linear-gradient(100deg, rgba(255,226,170,0) 0%, rgba(255,238,200,0.38) 50%, rgba(255,226,170,0) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+      <span style={{ position: "relative" }}>{text}</span>
     </div>
   )
 }
