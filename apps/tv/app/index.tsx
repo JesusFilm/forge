@@ -10,6 +10,7 @@ import {
 import {
   Platform,
   BackHandler,
+  TVEventControl,
   ScrollView,
   StyleSheet,
   View,
@@ -20,6 +21,12 @@ import {
 import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
 import { HeroPager } from "../src/components/home/HeroPager"
 import { advanceByDelta } from "../src/components/home/heroPagerState"
+import {
+  heroPresentationKey,
+  clampHeroIndex,
+  shouldReturnHomeToTop,
+  claimHomeMenuKey,
+} from "../src/components/home/heroInteractionState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
@@ -554,13 +561,17 @@ export default function HomeScreen() {
   // no longer drives the backdrop — the pager covers it; backdrop is rail-browse.
   const featuredCount = model?.featured.length ?? 0
   const [heroIndex, setHeroIndex] = useState(0)
+  const presentedHeroIndex = clampHeroIndex(heroIndex, featuredCount)
+  const [heroFocused, setHeroFocused] = useState(false)
   // Direction of the last page: +1 next (slide in from the right), -1 previous
   // (from the left). Drives HeroPager's entry side.
   const [heroDirection, setHeroDirection] = useState(1)
   const advanceHero = useCallback(
     (delta: number) => {
       setHeroDirection(delta >= 0 ? 1 : -1)
-      setHeroIndex((i) => advanceByDelta(i, delta, featuredCount))
+      setHeroIndex((i) =>
+        advanceByDelta(clampHeroIndex(i, featuredCount), delta, featuredCount),
+      )
     },
     [featuredCount],
   )
@@ -572,6 +583,7 @@ export default function HomeScreen() {
     )
   }, [featuredCount])
   const handleHeroFocusChange = useCallback((isFocused: boolean) => {
+    setHeroFocused(isFocused)
     if (!isFocused) return
     if (IS_ANDROID) {
       lastFocusedRowRef.current = null
@@ -614,6 +626,67 @@ export default function HomeScreen() {
       onFocusNode={captureFocusedNode}
     />
   )
+
+  const homeActive = isFocused && !introActive && !playerState.isVisible
+  const [returnToTopRequested, setReturnToTopRequested] = useState(false)
+  const topFocusFrameRef = useRef<number | null>(null)
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        if (topFocusFrameRef.current != null)
+          cancelAnimationFrame(topFocusFrameRef.current)
+        topFocusFrameRef.current = null
+        setReturnToTopRequested(false)
+      },
+      [],
+    ),
+  )
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          if (!shouldReturnHomeToTop(homeActive, browseState)) return false
+          pendingScrollRowRef.current = null
+          handleChromeFocus()
+          setReturnToTopRequested(true)
+          return true
+        },
+      )
+      const releaseMenu = claimHomeMenuKey(
+        homeActive,
+        browseState,
+        appleTv,
+        TVEventControl,
+      )
+      return () => {
+        subscription.remove()
+        releaseMenu?.()
+      }
+    }, [homeActive, browseState, handleChromeFocus, appleTv]),
+  )
+  // Wait for the render which reveals and enables the real Search tab. Keeping
+  // this in the active-route effect cancels the request if another page opens.
+  useEffect(() => {
+    if (!homeActive) {
+      setReturnToTopRequested(false)
+      return
+    }
+    if (!returnToTopRequested || browseState !== "top" || searchTabNode == null)
+      return
+    const frame = requestAnimationFrame(() => {
+      topFocusFrameRef.current = null
+      ;(
+        searchTabNode as ViewType & { requestTVFocus?: () => void }
+      ).requestTVFocus?.()
+      setReturnToTopRequested(false)
+    })
+    topFocusFrameRef.current = frame
+    return () => {
+      cancelAnimationFrame(frame)
+      topFocusFrameRef.current = null
+    }
+  }, [homeActive, returnToTopRequested, browseState, searchTabNode])
 
   const screenState = resolveHomeScreenState({ model, loading, error })
 
@@ -678,8 +751,15 @@ export default function HomeScreen() {
           art + copy with an Apple-TV slide while the in-flow action row paints on
           top; fades out in "deep" so the backdrop's rail-card art shows. */}
       <HeroPager
+        // Remount only this noninteractive artwork/copy layer when focus enters
+        // or a focused viewer pages. Both layers then present the selected card
+        // immediately; the native action buttons below keep their focus.
+        key={heroPresentationKey(
+          model.featured[presentedHeroIndex]?.id ?? null,
+          heroFocused,
+        )}
         slides={model.featured}
-        index={heroIndex}
+        index={presentedHeroIndex}
         direction={heroDirection}
         visible={browseState !== "deep"}
       />
@@ -709,8 +789,9 @@ export default function HomeScreen() {
             destinations={ctaNode != null ? [ctaNode] : undefined}
           >
             <HomeHeroCarousel
+              active={homeActive}
               slides={model.featured}
-              index={heroIndex}
+              index={presentedHeroIndex}
               onSelect={handleCardPress}
               onFocusChange={handleHeroFocusChange}
               onRequestAdvance={advanceHero}

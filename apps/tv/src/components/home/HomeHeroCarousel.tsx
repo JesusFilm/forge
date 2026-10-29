@@ -1,6 +1,6 @@
 // Home hero controls (Apple-TV top-shelf); HeroPager owns slide artwork + copy.
 // This owns the pinned action row (Details CTA ↔ next chevron) + dots and signals
-// onRequestAdvance. Auto-advance runs only while focused so the index can't drift.
+// onRequestAdvance. Auto-advance pauses on either focused action and while Home is covered.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -21,12 +21,14 @@ import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { useFocusAnimation, useFocusVisual } from "../focus/useFocusVisual"
 import { HomeBillboard } from "./HomeBillboard"
+import { scheduleHeroRotation } from "./heroInteractionState"
 
 const AUTO_ADVANCE_MS = 7000
 const CTA_ICON_SIZE = Math.round(scale(24))
 const CHEVRON_ICON_SIZE = Math.round(scale(30))
 
 type HomeHeroCarouselProps = {
+  active: boolean
   /** The curated hero set (model.featured). */
   slides: WatchHomeCard[]
   /** Which slide is active (owned by the screen, mirrored to HeroPager). */
@@ -52,6 +54,7 @@ type HomeHeroCarouselProps = {
 }
 
 export function HomeHeroCarousel({
+  active,
   slides,
   index,
   onSelect,
@@ -90,16 +93,28 @@ export function HomeHeroCarousel({
   // Report hero focus to the screen only when it actually changes (moving See
   // more ↔ chevron keeps it true, so the feed never re-pins between buttons).
   useEffect(() => {
-    onFocusChange(heroFocused)
+    if (heroFocused) {
+      onFocusChange(true)
+      return
+    }
+    // A native Details → Next move may deliver blur and focus separately.
+    // Keep one focused presentation through that handoff instead of briefly
+    // remounting the ambient pager between the two native events.
+    const frame = requestAnimationFrame(() => onFocusChange(false))
+    return () => cancelAnimationFrame(frame)
   }, [heroFocused, onFocusChange])
 
-  // Auto-advance (next) only while the hero is focused; re-arm on each slide so
-  // a manual press resets the dwell, and pause when focus leaves the hero.
+  // Rotate only off the hero, while Home is active. Either focused button
+  // freezes the title for as long as the viewer is deciding.
   useEffect(() => {
-    if (!heroFocused || count <= 1) return
-    const timer = setTimeout(() => onRequestAdvance(1), AUTO_ADVANCE_MS)
-    return () => clearTimeout(timer)
-  }, [heroFocused, safeIndex, count, onRequestAdvance])
+    return scheduleHeroRotation(
+      active,
+      heroFocused,
+      count,
+      () => onRequestAdvance(1),
+      AUTO_ADVANCE_MS,
+    )
+  }, [active, heroFocused, safeIndex, count, onRequestAdvance])
 
   // RIGHT on the chevron → next; LEFT on Details → previous. A key that just
   // changed focus is skipped (focusMovedRef), so the press that LANDS focus on a
@@ -108,7 +123,7 @@ export function HomeHeroCarousel({
     (
       event: { eventType?: string; eventKeyAction?: number } | null | undefined,
     ) => {
-      if (event == null) return
+      if (!active || event == null) return
       // Android TV emits each D-pad press TWICE (key-down=0 + key-up=1) with the
       // same eventType; drop the Android key-up so a press pages once. Gated to
       // Android so a non-zero action value on tvOS can't suppress a real key.
@@ -133,7 +148,7 @@ export function HomeHeroCarousel({
         onRequestAdvance(-1)
       }
     },
-    [onRequestAdvance],
+    [active, onRequestAdvance],
   )
   useTVEventHandler(onTVEvent)
 
@@ -183,7 +198,9 @@ export function HomeHeroCarousel({
             <View style={styles.actionRow}>
               <HeroCtaButton
                 label="Details"
-                onPress={() => onSelect(current)}
+                onPress={() => {
+                  if (active) onSelect(current)
+                }}
                 onFocus={handleSeeMoreFocus}
                 onBlur={handleSeeMoreBlur}
                 onNode={handleSeeMoreNode}
@@ -192,7 +209,9 @@ export function HomeHeroCarousel({
               />
               <View>
                 <HeroChevronButton
-                  onPress={() => onRequestAdvance(1)}
+                  onPress={() => {
+                    if (active) onRequestAdvance(1)
+                  }}
                   onFocus={handleChevronFocus}
                   onBlur={handleChevronBlur}
                   onNode={handleChevronNode}
