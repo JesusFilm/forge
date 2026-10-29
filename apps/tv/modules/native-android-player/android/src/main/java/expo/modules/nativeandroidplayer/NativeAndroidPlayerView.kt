@@ -689,8 +689,7 @@ class NativeAndroidPlayerView(
         KeyEvent.KEYCODE_DPAD_LEFT,
         KeyEvent.KEYCODE_DPAD_RIGHT,
         KeyEvent.KEYCODE_DPAD_UP,
-        KeyEvent.KEYCODE_DPAD_DOWN,
-        KeyEvent.KEYCODE_BACK -> {
+        KeyEvent.KEYCODE_DPAD_DOWN -> {
           if (event.action == KeyEvent.ACTION_DOWN) {
             revealKeyCode = event.keyCode
             val revealedBy = event.keyCode
@@ -726,8 +725,9 @@ class NativeAndroidPlayerView(
       }
       return true
     }
-    if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-      onDismiss(Unit)
+    if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+      // Back exits even when chrome is hidden; own both halves of the key press.
+      if (event.action == KeyEvent.ACTION_UP) onDismiss(Unit)
       return true
     }
 
@@ -1310,13 +1310,14 @@ class NativeAndroidPlayerView(
 
   private fun scheduleHideControls() {
     handler.removeCallbacks(hideControllerWork)
-    if (foreground && player.isPlaying && currentDialog == null && scrub.candidateMs == null && !screenReaderEnabled && !hasPlaybackError) {
+    // Keep the exit action stable while the viewer is choosing it.
+    if (foreground && player.isPlaying && currentDialog == null && scrub.candidateMs == null && !screenReaderEnabled && !hasPlaybackError && !backButton.isFocused) {
       handler.postDelayed(hideControllerWork, 3_500)
     }
   }
 
   private fun hideControls() {
-    if (!controllerVisible || !player.isPlaying || currentDialog != null || scrub.candidateMs != null || screenReaderEnabled) return
+    if (!controllerVisible || !player.isPlaying || currentDialog != null || scrub.candidateMs != null || screenReaderEnabled || backButton.isFocused) return
     lastFocusedControl = findFocus()?.takeIf { it !== playerView && it !== this }
     controllerVisible = false
     focusedAudioLabel.visibility = View.GONE
