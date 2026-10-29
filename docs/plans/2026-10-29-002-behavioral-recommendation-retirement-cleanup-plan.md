@@ -53,5 +53,27 @@ physical-capacity work complete from row counts or DELETE receipts.
 
 The retired 19-table list and measured catalog are documented in
 `/home/nisal/.codex/research/recommendation-behavioral-retirement-cleanup-design/design.md`.
-Deleting rows makes PostgreSQL space reusable; it does not promise filesystem
-reclamation.
+Deleting rows can leave PostgreSQL pages available for reuse; U4 did not
+measure that reuse, and it does not promise filesystem reclamation.
+
+## October 29 independently accepted row-drain evidence
+
+The D CLI returned `complete` at 07:18:45 UTC. The same operation's CLI and
+durable ledger reconciled **3,088,917 direct deletes**, **18,055 explicit
+detached-reference updates** and **31,080 batches**. A post-completion read
+found all 19 direct-delete tables and all three historical reference categories
+at zero. The [retirement report](../reports/2026-10-29-behavioral-recommendation-retirement.md)
+records the source-bound roles, retained-lane checks, natural serving sample,
+ordinary-retention snapshot, capacity and historical transport limits.
+Independent production review accepted the bounded cutover and U4 drain;
+feat-902 is complete. See the accompanying documentation PR and root
+[#2541](https://github.com/JesusFilm/forge/pull/2541) for exact-head review,
+CI, merge and normal-deployment receipts.
+Reusable pages were **unmeasured**; feat-905 owns the later physical
+measurement/removal follow-up.
+
+The parent owns final source-bound acceptance and any later separately
+coordinated drain if a future read finds rows. No fixed wait or activity gate
+was added. Ordinary retention and Watch expiry remain separate; manual
+retirement earns no feat-554 cycle credit. [Feat-905](../roadmap/content-discovery/feat-905-retired-behavioral-schema-removal.md)
+tracks later physical schema/index/code removal, not U4 row deletion.
