@@ -14,26 +14,47 @@ const REDIS_RETRY_BACKOFF_MS = 1_000
 
 // Failure-only diagnostics: never pass Redis errors, keys, URLs or headers to
 // the logger. Durations distinguish a fired timer from delayed event-loop work.
+export type AdmissionFailureReason =
+  | "secret_missing"
+  | "redis_missing"
+  | "redis_unavailable"
+  | "retry_backoff"
+  | "unavailable"
+  | "timeout"
+  | "client_error"
+  | "budget_exhausted"
+  | "invalid_clock"
+  | "redis_deadline"
+  | "invalid_result"
+  | "worker_retiring"
+  | "pending_capacity"
+  | "worker_error"
+  | "worker_exit"
+  | "worker_timeout"
+  | "worker_dispatch_error"
+  | "worker_late_result"
+  | "worker_no_result"
+  | "worker_exception"
+  | "deadline_before_start"
+  | "worker_closed"
+
+export type AdmissionFailureStage =
+  | "configuration"
+  | "connect"
+  | "backoff"
+  | "load"
+  | "time"
+  | "eval"
+  | "worker"
+
+export type AdmissionWorkerDiagnostic = {
+  stage: AdmissionFailureStage
+  reason: AdmissionFailureReason
+}
+
 export function observeAdmissionFailure(
-  stage:
-    | "configuration"
-    | "connect"
-    | "backoff"
-    | "load"
-    | "time"
-    | "eval"
-    | "worker",
-  reason:
-    | "secret_missing"
-    | "redis_missing"
-    | "retry_backoff"
-    | "unavailable"
-    | "timeout"
-    | "client_error"
-    | "budget_exhausted"
-    | "invalid_clock"
-    | "redis_deadline"
-    | "invalid_result",
+  stage: AdmissionFailureStage,
+  reason: AdmissionFailureReason,
   elapsedMs = 0,
   budgetMs = COMMAND_TIMEOUT_MS,
 ): void {
@@ -118,14 +139,16 @@ async function withTimeout<T>(
   }
 }
 
-async function defaultRedis(): Promise<MutationRedis | null> {
+async function defaultRedis(
+  reportFailure: typeof observeAdmissionFailure = observeAdmissionFailure,
+): Promise<MutationRedis | null> {
   const url = process.env.REDIS_URL?.trim()
   if (!url) {
-    observeAdmissionFailure("configuration", "redis_missing")
+    reportFailure("configuration", "redis_missing")
     return null
   }
   if (Date.now() < redisRetryAt) {
-    observeAdmissionFailure("backoff", "retry_backoff")
+    reportFailure("backoff", "retry_backoff")
     return null
   }
   if (redisPromise) return redisPromise
@@ -145,7 +168,7 @@ async function defaultRedis(): Promise<MutationRedis | null> {
       redisConnection = { client, activeAdmissions: 0, retiring: false }
       return client
     } catch (error) {
-      observeAdmissionFailure(
+      reportFailure(
         "connect",
         error instanceof AdmissionTimeoutError ? "timeout" : "client_error",
         performance.now() - startedAt,
@@ -196,18 +219,23 @@ export async function runRedisAdmission(
     monotonicNow?: () => number
     redis?: () => Promise<MutationRedis | null>
     deadlineAt?: number
+    reportFailure?: typeof observeAdmissionFailure
   } = {},
 ): Promise<RecommendationMutationAdmissionResult | null> {
   const monotonicNow =
     dependencies.monotonicNow ?? performance.now.bind(performance)
-  const loadRedis = dependencies.redis ?? defaultRedis
-  const redis = await loadRedis().catch(() => null)
+  const reportFailure = dependencies.reportFailure ?? observeAdmissionFailure
+  const loadRedis = dependencies.redis ?? (() => defaultRedis(reportFailure))
+  const redis = await loadRedis().catch(() => {
+    reportFailure("load", "client_error")
+    return null
+  })
 
   if (redis) {
     const connection = dependencies?.redis ? null : redisConnection
     if (!dependencies?.redis && connection?.client !== redis) {
       // A different admission can retire the client while loadRedis yields.
-      observeAdmissionFailure("load", "unavailable")
+      reportFailure("load", "unavailable")
       return { allowed: false, reason: "admission_unavailable" }
     }
     if (connection) connection.activeAdmissions += 1
@@ -241,12 +269,7 @@ export async function runRedisAdmission(
         const elapsedMs = Math.max(0, monotonicNow() - startedAt)
         remainingMs = Math.floor(commandTimeoutMs - elapsedMs)
         if (remainingMs <= 0) {
-          observeAdmissionFailure(
-            "time",
-            "budget_exhausted",
-            elapsedMs,
-            commandTimeoutMs,
-          )
+          reportFailure("time", "budget_exhausted", elapsedMs, commandTimeoutMs)
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
@@ -254,12 +277,7 @@ export async function runRedisAdmission(
           Number(redisTime[0]) * 1_000 +
           Math.floor(Number(redisTime[1]) / 1_000)
         if (!Number.isSafeInteger(redisNowMs)) {
-          observeAdmissionFailure(
-            "time",
-            "invalid_clock",
-            elapsedMs,
-            commandTimeoutMs,
-          )
+          reportFailure("time", "invalid_clock", elapsedMs, commandTimeoutMs)
           retireDefaultRedis(redis)
           return { allowed: false, reason: "admission_unavailable" }
         }
@@ -292,7 +310,7 @@ export async function runRedisAdmission(
           )
           if (remainingMs > 0) continue
         }
-        observeAdmissionFailure(
+        reportFailure(
           "eval",
           result[0] === "unavailable" ? "redis_deadline" : "invalid_result",
           performance.now() - stageStartedAt,
@@ -301,7 +319,7 @@ export async function runRedisAdmission(
         return { allowed: false, reason: "admission_unavailable" }
       }
     } catch (error) {
-      observeAdmissionFailure(
+      reportFailure(
         stage,
         error instanceof AdmissionTimeoutError ? "timeout" : "client_error",
         performance.now() - stageStartedAt,

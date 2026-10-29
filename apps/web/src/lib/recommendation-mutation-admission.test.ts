@@ -9,6 +9,7 @@ import {
   createRecommendationMutationAdmission,
   resetRecommendationMutationAdmissionForTests,
 } from "./recommendation-mutation-admission"
+import { runRedisAdmission } from "./recommendation-redis-admission"
 
 function headers(address: string, cookie = "") {
   return new Headers({ "cf-connecting-ip": address, cookie })
@@ -156,6 +157,25 @@ describe("recommendation mutation admission", () => {
     expect(console.info).toHaveBeenCalledWith(
       expect.stringContaining("stage=time reason=budget_exhausted"),
     )
+  })
+
+  it("reports a fixed Redis failure code for worker-to-request logging", async () => {
+    const failures: string[] = []
+    await expect(
+      runRedisAdmission("digest-client", "digest-aggregate", "profile-status", {
+        redis: async () => ({
+          time: async () => {
+            throw new Error("redis://sensitive-host/private-key")
+          },
+          eval: async () => ["allowed"],
+        }),
+        reportFailure: (stage, reason) => {
+          failures.push(`${stage}:${reason}`)
+        },
+      }),
+    ).resolves.toEqual({ allowed: false, reason: "admission_unavailable" })
+    expect(failures).toEqual(["time:client_error"])
+    expect(failures.join(" ")).not.toContain("sensitive-host")
   })
 
   it("refreshes at most once when both Redis deadlines expire early", async () => {

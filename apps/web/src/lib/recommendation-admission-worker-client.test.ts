@@ -111,4 +111,48 @@ describe("admission worker lifecycle", () => {
     })
     await expect(playback).resolves.toEqual({ allowed: true })
   })
+
+  it("logs fixed refusal and worker-result causes in the calling request", async () => {
+    const messages: string[] = []
+    const logger = vi.spyOn(console, "info").mockImplementation((message) => {
+      messages.push(String(message))
+    })
+    try {
+      const absent = createAdmissionWorkerClient({ redisUrl: "" })
+      clients.push(absent)
+      await call(absent)
+
+      const capacity = fixture("diagnostic-capacity", success, 1)
+      const admitted = call(capacity)
+      await call(capacity)
+      await admitted
+
+      const redisFailure = fixture(
+        "diagnostic-redis",
+        `port.on('message', request => port.postMessage({id:request.id,result:{allowed:false,reason:'admission_unavailable'},diagnostic:{stage:'connect',reason:'timeout'},finishedAt:performance.timeOrigin+performance.now()}));`,
+      )
+      await call(redisFailure)
+
+      const exit = fixture("diagnostic-exit", "process.exit(1)")
+      await call(exit)
+      await call(exit)
+
+      expect(messages).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("stage=worker reason=redis_missing"),
+          expect.stringContaining("stage=worker reason=pending_capacity"),
+          expect.stringContaining("stage=connect reason=timeout"),
+          expect.stringContaining("stage=worker reason=worker_exit"),
+          expect.stringContaining("stage=worker reason=retry_backoff"),
+          expect.stringContaining(
+            "event=recommendation.admission_worker reason=worker_exit exitCode=1",
+          ),
+        ]),
+      )
+      expect(messages.join("\n")).not.toContain("redis://127.0.0.1:1")
+      expect(messages.join("\n")).not.toContain("digest-client")
+    } finally {
+      logger.mockRestore()
+    }
+  })
 })
