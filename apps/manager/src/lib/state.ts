@@ -1,3 +1,4 @@
+import { getAdminManagerServiceBearer } from "@/lib/admin-manager-session"
 // Job state access helpers for admin and mock manager data modes.
 
 import { AdminGraphqlClient } from "@/backend/admin-client"
@@ -70,7 +71,7 @@ function getAdminJobClient(): AdminGraphqlClient {
   }
   adminJobClient ??= new AdminGraphqlClient({
     graphqlUrl: env.ADMIN_GRAPHQL_URL,
-    apiKey: env.ADMIN_MANAGER_API_KEY,
+    getApiKey: getAdminManagerServiceBearer,
   })
   return adminJobClient
 }

@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "apps/manager/**"
+      - "packages/automation-contracts/**"
       - "packages/admin-graphql/**"
       - "packages/shorts-compositions/**"
       - "packages/studio-contracts/**"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - "apps/manager/**"
+      - "packages/automation-contracts/**"
       - "packages/admin-graphql/**"
       - "packages/shorts-compositions/**"
       - "packages/studio-contracts/**"

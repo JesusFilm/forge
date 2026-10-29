@@ -694,3 +694,22 @@ FFmpeg receives only staged local files. Clips are bounded to five minutes,
 32 MiB transfer, two concurrent decodes and a 128-entry numerical peak cache.
 Eligibility/access is checked before cache reads. Do not decode on playhead or
 zoom changes or make waveform generation part of player startup.
+
+## Mastra automation dry-run reports (PR870 / feat-907)
+
+`POST /api/automations/[id]/agentic-dry-run` accepts only the dedicated
+`MANAGER_AGENTIC_API_KEY`; it must not overlap `MANAGER_API_KEY` or
+`ADMIN_TRIGGER_API_KEYS` and grants no
+operator, session, scheduler or job privileges. The body contains a bounded
+`idempotencyKey` and optional service-supplied `requestedBy` attribution. Neither
+dry-run endpoint accepts a `runMode` field. Both use
+`src/features/agents/automation-dry-run.ts`, force `dry_run`, consume Admin's
+`beginDispatch` once, and pass the admitted lease through completion/failure.
+Terminal keys replay; inflight keys return 409. Manual runs leave cadence intact.
+
+`triggerAgenticAutomationDryRun` now targets the current Mastra
+`/forge-manager-automation-dry-run` route using existing `MASTRA_BASE_URL` and
+`MASTRA_SERVICE_API_KEY`. Optional `MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS` defaults
+to 70000 (1000–180000). The path requires an HTTPS origin, denies redirects and
+caps request/response JSON. Missing config returns unavailable without boot
+failure. See `docs/reports/2026-10-28-pr870-mastra-dry-run-recovery.md`.

@@ -123,3 +123,32 @@ describe("manager env mode validation", () => {
     expect(env.AUTH_MANAGER_SERVICE_CLIENT_ID).toBe("jfp_manager_service_local")
   })
 })
+
+describe("automation report bearer isolation", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+  it("keeps missing dry-run service config optional", async () => {
+    vi.stubEnv("MANAGER_AGENTIC_API_KEY", "")
+    vi.stubEnv("MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS", "")
+    const { env } = await import("./env")
+    expect(env.MANAGER_AGENTIC_API_KEY).toBeUndefined()
+    expect(env.MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS).toBeUndefined()
+  })
+  it.each(["MANAGER_API_KEY", "ADMIN_TRIGGER_API_KEYS"] as const)(
+    "rejects a dedicated bearer reused in %s",
+    async (name) => {
+      vi.stubEnv("MANAGER_AGENTIC_API_KEY", "dry-run-key")
+      vi.stubEnv(
+        name,
+        name === "ADMIN_TRIGGER_API_KEYS"
+          ? "other, dry-run-key"
+          : "dry-run-key",
+      )
+      await expect(import("./env")).rejects.toThrow(
+        "MANAGER_AGENTIC_API_KEY must not overlap",
+      )
+    },
+  )
+})

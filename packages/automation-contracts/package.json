@@ -1,0 +1,11 @@
+{
+  "name": "@forge/automation-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

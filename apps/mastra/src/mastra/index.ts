@@ -1,3 +1,6 @@
+import { managerAutomationDryRunWorkflow } from "./workflows/manager-automation-dry-run"
+import { managerAutomationDryRunTool } from "./tools/manager-automation-dry-run"
+import { handleManagerAutomationDryRunRequest } from "./manager-automation-dry-run-route"
 import { readStudioBytes } from "@forge/studio-server"
 import { studioRuntimeAvailable } from "../services/studio-authoring/availability"
 import { createCalendarRuntime } from "../services/studio-authoring/calendar-runtime"
@@ -315,7 +318,9 @@ export const mastra = new Mastra({
     ...experienceDraftSpecializedAgents,
     "auto-enrich": buildAutoEnrichAgent(),
   },
+  tools: { managerAutomationDryRunTool },
   workflows: {
+    managerAutomationDryRunWorkflow,
     transcriptEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
@@ -543,6 +548,11 @@ export const mastra = new Mastra({
             },
             410,
           ),
+      }),
+      registerApiRoute("/forge-manager-automation-dry-run", {
+        method: "POST",
+        handler: async (c) =>
+          handleManagerAutomationDryRunRequest(c.req.raw, serviceKeys),
       }),
       registerApiRoute("/forge-firecrawl-web-data", {
         method: "POST",

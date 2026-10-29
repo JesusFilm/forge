@@ -1,3 +1,4 @@
+import { assertAutomationJobAdmission } from "./manager-automation-job-admission"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
@@ -352,33 +353,47 @@ export class ManagerJobService {
     input: CreateInput
   }) {
     assertManagerJobAccess(user)
-    const row = await this.prisma.managerEnrichmentJob.create({
-      data: {
-        muxAssetId: input.muxAssetId,
-        muxPlaybackId: input.muxPlaybackId ?? "",
-        videoDocumentId: input.videoDocumentId,
-        languages: input.languages ?? [],
-        sourceLanguageId: input.sourceLanguageId,
-        sourceLanguageCode: input.sourceLanguageCode,
-        sourceSelectionReason: input.sourceSelectionReason,
-        primaryRequestedTargetLanguageCode:
-          input.primaryRequestedTargetLanguageCode,
-        resolvedTargetLanguageCodes: input.resolvedTargetLanguageCodes ?? [],
-        sourceCollectionTitle: input.sourceCollectionTitle,
-        sourceMediaTitle: input.sourceMediaTitle,
-        requestedLanguageAbbreviations:
-          input.requestedLanguageAbbreviations ?? [],
-        options: toPrismaJson(input.options, {}),
-        status: input.status ?? "pending",
-        currentStep: input.currentStep ?? input.steps?.[0]?.name,
-        retries: input.retries ?? 0,
-        artifacts: toPrismaJson(input.artifacts, {}),
-        steps: toPrismaJson(input.steps, []),
-        errors: toPrismaJson(input.errors, []),
-        startedAt: input.startedAt,
-        completedAt: input.completedAt,
-      },
-    })
+    const create = async (tx: Prisma.TransactionClient) => {
+      await assertAutomationJobAdmission(
+        tx,
+        input.artifacts,
+        input.videoDocumentId,
+      )
+      return tx.managerEnrichmentJob.create({
+        data: {
+          muxAssetId: input.muxAssetId,
+          muxPlaybackId: input.muxPlaybackId ?? "",
+          videoDocumentId: input.videoDocumentId,
+          languages: input.languages ?? [],
+          sourceLanguageId: input.sourceLanguageId,
+          sourceLanguageCode: input.sourceLanguageCode,
+          sourceSelectionReason: input.sourceSelectionReason,
+          primaryRequestedTargetLanguageCode:
+            input.primaryRequestedTargetLanguageCode,
+          resolvedTargetLanguageCodes: input.resolvedTargetLanguageCodes ?? [],
+          sourceCollectionTitle: input.sourceCollectionTitle,
+          sourceMediaTitle: input.sourceMediaTitle,
+          requestedLanguageAbbreviations:
+            input.requestedLanguageAbbreviations ?? [],
+          options: toPrismaJson(input.options, {}),
+          status: input.status ?? "pending",
+          currentStep: input.currentStep ?? input.steps?.[0]?.name,
+          retries: input.retries ?? 0,
+          artifacts: toPrismaJson(input.artifacts, {}),
+          steps: toPrismaJson(input.steps, []),
+          errors: toPrismaJson(input.errors, []),
+          startedAt: input.startedAt,
+          completedAt: input.completedAt,
+        },
+      })
+    }
+    const hasAutomation =
+      input.artifacts &&
+      typeof input.artifacts === "object" &&
+      "automation" in input.artifacts
+    const row = hasAutomation
+      ? await this.prisma.$transaction(create)
+      : await create(this.prisma)
     return toJobRecord(row)
   }
 

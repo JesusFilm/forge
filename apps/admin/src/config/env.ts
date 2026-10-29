@@ -741,6 +741,8 @@ export const env = createEnv({
     // when the trigger surface isn't configured; the outbound client
     // returns a typed `DISPATCH_FAILED { reason: "config_missing" }`
     // result per requested assetId in that case.
+    MANAGER_AUTOMATIONS_ENABLED: z.enum(["true", "false"]).default("false"),
+    MANAGER_AUTOMATION_API_KEY: z.string().min(1).optional(),
     MANAGER_API_BASE_URL: z.string().url().optional(),
     MANAGER_TRIGGER_API_KEY: z.string().min(1).optional(),
 
@@ -1339,6 +1341,10 @@ export const env = createEnv({
     ),
     MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_SECRET_ACCESS_KEY,
+    ),
+    MANAGER_AUTOMATIONS_ENABLED: process.env.MANAGER_AUTOMATIONS_ENABLED,
+    MANAGER_AUTOMATION_API_KEY: emptyToUndefined(
+      process.env.MANAGER_AUTOMATION_API_KEY,
     ),
     MANAGER_API_BASE_URL: emptyToUndefined(process.env.MANAGER_API_BASE_URL),
     MANAGER_TRIGGER_API_KEY: emptyToUndefined(

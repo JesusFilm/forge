@@ -168,6 +168,29 @@ export function authenticateServiceBearerRequest(
   )
 }
 
+/** Narrow bearer for Mastra automation reports. Never accepted by general auth. */
+export function authenticateAutomationDryRunServiceRequest(
+  request: Request,
+): NextResponse | null {
+  const key = env.MANAGER_AGENTIC_API_KEY
+  const token = request.headers
+    .get("authorization")
+    ?.match(/^Bearer (.+)$/)?.[1]
+  if (key && token) {
+    const a = Buffer.from(token),
+      b = Buffer.from(key)
+    if (a.length === b.length && timingSafeEqual(a, b)) return null
+  }
+  return NextResponse.json(
+    {
+      ok: false,
+      code: "unauthorized",
+      message: "Automation dry-run service bearer required.",
+    },
+    { status: 401 },
+  )
+}
+
 export async function authenticateInteractiveManagerRequest(
   request: Request,
 ): Promise<ManagerInteractiveActor | NextResponse> {

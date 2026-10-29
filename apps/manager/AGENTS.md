@@ -62,3 +62,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+Automation reports share `src/features/agents/automation-dry-run.ts`. The
+`agentic-dry-run` service lane uses only `MANAGER_AGENTIC_API_KEY`; never add this
+key to operator/session or scheduler authentication. Consume `beginDispatch`
+with the owned lease before executing any newly created or reused run.

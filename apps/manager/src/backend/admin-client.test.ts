@@ -26,6 +26,37 @@ describe("AdminGraphqlClient", () => {
     fetchMock.mockReset()
   })
 
+  it("resolves a fresh service bearer for each request on a cached client", async () => {
+    const getApiKey = vi
+      .fn()
+      .mockResolvedValueOnce("oauth-one")
+      .mockResolvedValueOnce("oauth-two")
+    fetchMock.mockImplementation(async () =>
+      Response.json({ data: { managerJob: managerJobPayload() } }),
+    )
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example/api/graphql",
+      getApiKey,
+      fetchImpl: fetchMock,
+    })
+    await client.getJob("admin-job-test")
+    await client.getJob("admin-job-test")
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer oauth-one" }),
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer oauth-two" }),
+      }),
+    )
+  })
+
   it("reads Manager video coverage from Admin with the service bearer", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(

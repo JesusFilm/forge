@@ -1539,6 +1539,47 @@ model WatchSeoManifestSnapshot {
   @@map("watch_seo_manifest_snapshot")
 }
 
+/// Durable recurring enrichment definitions. Definition uses the shared validated contract.
+model ManagerAutomation {
+  id             String                 @id @default(cuid())
+  definition     Json
+  status         String                 @default("active")
+  nextRunAt      DateTime?              @map("next_run_at")
+  lastRunAt      DateTime?              @map("last_run_at")
+  lastRunStatus  String?                @map("last_run_status")
+  leaseToken     String?                @map("lease_token")
+  leaseExpiresAt DateTime?              @map("lease_expires_at")
+  runs           ManagerAutomationRun[]
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+
+  @@index([status, nextRunAt])
+  @@map("manager_automation")
+}
+
+/// The nullable unique active key enforces one in-flight run per definition.
+model ManagerAutomationRun {
+  id                 String            @id @default(cuid())
+  automationId       String            @map("automation_id")
+  automation         ManagerAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  activeAutomationId String?           @unique @map("active_automation_id")
+  idempotencyKey     String?           @map("idempotency_key")
+  leaseToken         String            @map("lease_token")
+  dispatchStartedAt  DateTime?         @map("dispatch_started_at")
+  scheduled          Boolean           @default(false)
+  runMode            String            @map("run_mode")
+  status             String            @default("running")
+  scheduledFor       DateTime          @map("scheduled_for")
+  startedAt          DateTime          @default(now()) @map("started_at")
+  finishedAt         DateTime?         @map("finished_at")
+  result             Json              @default("{}")
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  @@unique([automationId, idempotencyKey])
+  @@index([automationId, startedAt])
+  @@map("manager_automation_run")
+}
+
 /// Admin-owned persistence for Manager enrichment jobs. Field names mirror the
 /// existing Manager JobRecord so Manager can move transport without UI churn.
 model ManagerEnrichmentJob {

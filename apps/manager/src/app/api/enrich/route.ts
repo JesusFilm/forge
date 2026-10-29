@@ -339,7 +339,9 @@ export async function createEnrichmentJobs(
   const sourceLanguagePriorityCodes = buildMuxSourceLanguagePriority(
     primaryRequestedTargetLanguageCode,
   )
-  const materializationTarget = getEnrichmentMaterializationTarget()
+  const materializationTarget = input.automation
+    ? "direct"
+    : getEnrichmentMaterializationTarget()
 
   if (normalizedTargets.unresolvedTargetLanguageIds.length > 0) {
     throw new EnrichmentJobCreationError(400, {
@@ -398,7 +400,10 @@ export async function createEnrichmentJobs(
       }
 
       try {
-        if (materialization.materializationMode === "direct_mux_asset_reuse") {
+        if (
+          !input.automation &&
+          materialization.materializationMode === "direct_mux_asset_reuse"
+        ) {
           await ensureGeneratedSubtitlesForAsset(
             materialization.targetMuxAssetId,
             materialization.sourceLanguageCode,

@@ -7,16 +7,25 @@ import { AutomationResponseError, requestAutomation } from "./automation-api"
 import type {
   AutomationDraft,
   EnrichmentAutomation,
+  EnrichmentAutomationRun,
 } from "./automation-contract"
 import { AutomationForm, type LanguageOption } from "./automation-form"
 import { AutomationList } from "./automation-list"
+import { AutomationRunHistory } from "./automation-run-history"
 
 export function AgentsPage({
   initialAutomations,
   languageOptions,
+  requestedReport,
+  reportError,
 }: {
   initialAutomations: EnrichmentAutomation[]
   languageOptions: LanguageOption[]
+  requestedReport?: {
+    automationName: string
+    run: EnrichmentAutomationRun
+  } | null
+  reportError?: string
 }) {
   const [automations, setAutomations] = useState(initialAutomations)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -289,6 +298,23 @@ export function AgentsPage({
 
       {statusMessage && (
         <p className="jobs-status jobs-status-success">{statusMessage}</p>
+      )}
+
+      {reportError && (
+        <p role="alert" className="jobs-status">
+          {reportError}
+        </p>
+      )}
+      {requestedReport && (
+        <section
+          className="agents-section"
+          aria-labelledby="requested-automation-report"
+        >
+          <h2 id="requested-automation-report" className="jobs-day-heading">
+            Run report: {requestedReport.automationName}
+          </h2>
+          <AutomationRunHistory runs={[requestedReport.run]} />
+        </section>
       )}
 
       <section className="agents-section">

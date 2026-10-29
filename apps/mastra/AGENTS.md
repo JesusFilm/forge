@@ -197,3 +197,8 @@ Follow the controlled build trust section in `CLAUDE.md`: filtered package trust
 production PostgreSQL/DuckDB image acceptance, existing private-network/gateway
 containment and separate dashboard binding. Never replace production storage with
 build-analysis memory settings or expose framework routes publicly.
+
+Manager automation reports use the committed `managerAutomationDryRunWorkflow`
+and its registered tool. Preserve strict dry-run-only inputs, the real Mastra
+run ID, partial outcomes, optional configuration and the dedicated Manager
+report bearer. This path never starts jobs or invokes model providers.

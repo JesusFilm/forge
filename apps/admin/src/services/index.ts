@@ -11,6 +11,7 @@ import { env, resolveWatchCatalogPublicationEnabled } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
 import { ExperiencePreviewService } from "@/services/experience-preview.service"
 import { ExperienceSearchService } from "@/services/experience.search"
+import { ManagerAutomationService } from "@/services/manager-automation.service"
 import { ManagerJobService } from "@/services/manager-job.service"
 import { ManagerReadModelService } from "@/services/manager-read-model.service"
 import { MediaAssetService } from "@/services/media-asset.service"
@@ -142,6 +143,7 @@ export function createServices(prisma: PrismaClient) {
     experiencePreview: new ExperiencePreviewService(prisma),
     experienceSearch: new ExperienceSearchService(prisma),
     managerJob: new ManagerJobService(prisma),
+    managerAutomation: new ManagerAutomationService(prisma),
     managerReadModel: new ManagerReadModelService(prisma),
     mediaAsset: new MediaAssetService(prisma),
     mediaFolder: new MediaFolderService(prisma),

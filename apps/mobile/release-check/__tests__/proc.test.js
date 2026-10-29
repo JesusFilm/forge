@@ -5,6 +5,7 @@
 const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
+const { Writable } = require("node:stream")
 
 const { activeChildCount, run, stopAll } = require("../lib/proc")
 
@@ -137,6 +138,58 @@ describe("run", () => {
     })
     expect(result.code).toBe(0)
     expect(result.logError).toMatch(/ENOENT/)
+  })
+
+  it("reports a final log error before the stream error event", async () => {
+    const log = new Writable({
+      write(_chunk, _encoding, callback) {
+        callback()
+      },
+      final(callback) {
+        setTimeout(() => callback(new Error("ENOSPC: log flush failed")), 0)
+      },
+    })
+    const createLog = jest
+      .spyOn(fs, "createWriteStream")
+      .mockReturnValueOnce(log)
+    try {
+      const result = await run("/bin/echo", ["hi"], {
+        timeoutMs: 5000,
+        env: { PATH: "/usr/bin:/bin" },
+        logFile: path.join(tempDir(), "flush-error.log"),
+      })
+      expect(result).toMatchObject({
+        code: 0,
+        stdout: "hi\n",
+        logError: "ENOSPC: log flush failed",
+      })
+    } finally {
+      createLog.mockRestore()
+    }
+  })
+
+  it("reports an already destroyed log when the child cannot spawn", async () => {
+    const log = new Writable({
+      write(_chunk, _encoding, callback) {
+        callback()
+      },
+    })
+    log.destroy(new Error("EIO: log stream unavailable"))
+    const createLog = jest
+      .spyOn(fs, "createWriteStream")
+      .mockReturnValueOnce(log)
+    try {
+      const result = await run("/bin/echo", ["hi"], {
+        cwd: 42,
+        timeoutMs: 5000,
+        env: { PATH: "/usr/bin:/bin" },
+        logFile: path.join(tempDir(), "destroyed.log"),
+      })
+      expect(result.error).toMatch(/cwd/)
+      expect(result.logError).toBe("EIO: log stream unavailable")
+    } finally {
+      createLog.mockRestore()
+    }
   })
 
   it("reports a command that cannot start, without a throw", async () => {

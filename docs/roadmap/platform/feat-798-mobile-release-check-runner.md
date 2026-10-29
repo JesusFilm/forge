@@ -78,3 +78,16 @@ Follow the plan's Requirements. In short:
 - Commit `2a9304bb4` repaired the journey. Partial run `2026-10-27T23-24-25Z-8526` (`bible-sheets` on the five devices, no speed pass) passed 10 of 10.
 - Production sets no Mux Data key, so the test settings need no Mux Data key digests.
 - Not verified yet: setup and a full run from a fresh clone (the first QA engineer's pilot does this), and two runs of one commit with the same result.
+
+## CI process-log correction — 2026-10-29
+
+`run()` preserves failures supplied to the log's end callback or exposed by an
+already destroyed stream before its error event is delivered. The existing
+listener still handles later events. Child deadlines, process groups, aborts,
+output bounds and successful-log flushing keep their existing behavior.
+
+Two deterministic regressions failed before the correction and pass afterward:
+an asynchronous final-flush failure and an already destroyed log during a
+synchronous spawn failure. All 15 process-helper tests pass on Node 24.22.1,
+including the original real-file ENOENT case. This correction changes the local
+runner's error reporting; the device-release results above retain their scope.

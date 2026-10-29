@@ -3,9 +3,11 @@ import { z } from "zod"
 import { authenticateServiceBearerRequest } from "@/lib/auth"
 import { enqueueAutomationRun } from "@/features/agents/automation-runner"
 import {
-  automationScheduleSchema,
-  type EnrichmentAutomation,
-} from "@/features/agents/automation-contract"
+  getAdminAutomationAdapter,
+  getAutomation,
+  getAutomationRun,
+} from "@/features/agents/automation-store"
+import { automationScheduleSchema } from "@/features/agents/automation-contract"
 
 const automationPayloadSchema = z.object({
   documentId: z.string().min(1),
@@ -39,6 +41,7 @@ const automationPayloadSchema = z.object({
 const enqueueSchema = z
   .object({
     automation: automationPayloadSchema,
+    leaseToken: z.string().uuid(),
   })
   .strict()
 
@@ -83,21 +86,41 @@ export async function POST(
   }
 
   const { id } = await context.params
-  const runMode = parsed.data.automation.runMode
-  const automation: EnrichmentAutomation = {
-    ...parsed.data.automation,
-    runMode,
-    timezone:
-      parsed.data.automation.timezone ??
-      parsed.data.automation.schedule.timezone,
-    runs: [],
+  try {
+    const [automation, run] = await Promise.all([
+      getAutomation(parsed.data.automation.documentId),
+      getAutomationRun(id),
+    ])
+    if (
+      !automation ||
+      !run ||
+      run.automationDocumentId !== automation.documentId ||
+      automation.leaseToken !== parsed.data.leaseToken ||
+      run.status !== "running"
+    ) {
+      return NextResponse.json(
+        { error: "Automation run is stale or not admitted" },
+        { status: 409 },
+      )
+    }
+    const adapter = await getAdminAutomationAdapter()
+    if (!(await adapter.beginDispatch(id, parsed.data.leaseToken))) {
+      return NextResponse.json(
+        { error: "Automation run was already dispatched or its lease expired" },
+        { status: 409 },
+      )
+    }
+    const result = await enqueueAutomationRun({
+      runDocumentId: id,
+      runMode: run.runMode,
+      automation,
+    })
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error("[automations/enqueue] Dispatch failed", error)
+    return NextResponse.json(
+      { error: "Automation dispatch failed" },
+      { status: 502 },
+    )
   }
-
-  const result = await enqueueAutomationRun({
-    runDocumentId: id,
-    runMode,
-    automation,
-  })
-
-  return NextResponse.json(result)
 }

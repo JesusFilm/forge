@@ -10,12 +10,38 @@ const [manifestSource, flow, step] = await Promise.all([
   readFile(new URL("step/route.js", generated), "utf8"),
 ])
 const manifest = JSON.parse(manifestSource)
-const workflowModule = "src/workflows/studioCalendar.ts"
-for (const [kind, name, source] of [
-  ["workflow", "runStudioCalendarScheduler", flow],
-  ["step", "stepStudioCalendarTick", step],
-  ["workflow", "runStudioCalendarPublicationScheduler", flow],
-  ["step", "stepStudioCalendarPublicationTick", step],
+for (const [workflowModule, kind, name, source] of [
+  [
+    "src/workflows/studioCalendar.ts",
+    "workflow",
+    "runStudioCalendarScheduler",
+    flow,
+  ],
+  ["src/workflows/studioCalendar.ts", "step", "stepStudioCalendarTick", step],
+  [
+    "src/workflows/studioCalendar.ts",
+    "workflow",
+    "runStudioCalendarPublicationScheduler",
+    flow,
+  ],
+  [
+    "src/workflows/studioCalendar.ts",
+    "step",
+    "stepStudioCalendarPublicationTick",
+    step,
+  ],
+  [
+    "src/workflows/managerAutomation.ts",
+    "workflow",
+    "runManagerAutomationScheduler",
+    flow,
+  ],
+  [
+    "src/workflows/managerAutomation.ts",
+    "step",
+    "stepManagerAutomationTick",
+    step,
+  ],
 ]) {
   const id = manifest[`${kind}s`]?.[workflowModule]?.[name]?.[`${kind}Id`]
   if (typeof id !== "string" || !source.includes(id)) {
