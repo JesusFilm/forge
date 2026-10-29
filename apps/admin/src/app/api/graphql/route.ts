@@ -15,6 +15,10 @@
 // Until then, Armor's cost-limit provides query-level cost protection.
 
 import { createYoga } from "graphql-yoga"
+// The installed Workflow Next builder discovers app-entry imports, including
+// this automation API. Instrumentation alone does not register the timer.
+// Importing its definition does not start it or enable automation execution.
+import "@/workflows/managerAutomation"
 import type { NextRequest } from "next/server"
 import { schema } from "@/graphql/schema"
 import { createContext } from "@/graphql/context"

@@ -2415,3 +2415,25 @@ one replica. Preserve private-only networking, Studio/gateway containment,
 service/lane authority and all existing scheduler/provider flags. The Docker
 TOML proposal requires the separate dashboard binding before it controls the
 production service. Source merge alone does not close the build finding.
+
+## Manager automation dry-run reports (PR870 / feat-907)
+
+`POST /forge-manager-automation-dry-run` uses the existing
+`MASTRA_SERVICE_API_KEYS` admission. It launches the registered committed
+`managerAutomationDryRunWorkflow` and its registered
+`managerAutomationDryRunTool`; it makes no model/provider calls. Workflow and
+tool output use the same Zod schema. The compatibility `agenticRunId` field
+contains the actual Mastra `run.runId`, and `partial` stays `partial`.
+
+Optional `MANAGER_AUTOMATION_BASE_URL` is an HTTPS origin and
+`MANAGER_AGENTIC_API_KEY` is Manager's dedicated report bearer. Missing/partial
+config never blocks startup. Optional `MANAGER_AUTOMATION_DRY_RUN_TIMEOUT_MS`
+is 1000–120000, default 60000. Outbound calls go only to
+`/api/automations/[id]/agentic-dry-run`; they deny redirects, cap JSON at 16 KiB,
+and apply the timeout through response consumption. Inbound bodies are capped
+at 8 KiB and five seconds. Neither tool, workflow nor route accepts `runMode`.
+`requestedBy` is service-supplied attribution and never confers authority.
+Terminal Manager statuses, including `failed`, are report outcomes; inflight
+conflicts remain 409. See
+`docs/reports/2026-10-28-pr870-mastra-dry-run-recovery.md` for exact contracts and
+validation limits.

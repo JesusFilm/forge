@@ -1,0 +1,108 @@
+{
+  "result": {
+    "claimed": 1,
+    "failed": 0
+  },
+  "jobs": 0,
+  "nextRunAt": "2026-11-02T13:00:00.000Z",
+  "runs": [
+    {
+      "status": "success",
+      "scheduled": true,
+      "mode": "dry_run",
+      "dispatchStartedAt": "2026-10-28T21:00:13.956Z",
+      "result": {
+        "errors": [],
+        "status": "success",
+        "summary": "Dry run would enqueue 1 video.",
+        "errorCount": 0,
+        "dryRunReport": {
+          "data": {
+            "runMode": "dry_run",
+            "summary": "Dry run would enqueue 1 video.",
+            "template": "source_subtitles_missing",
+            "generatedAt": "2026-10-28T21:00:13.964Z",
+            "refreshMode": "missing_only",
+            "eligibleCount": 1,
+            "maxVideosPerRun": 6,
+            "targetLanguageIds": [],
+            "wouldEnqueueCount": 1,
+            "selectedCandidates": [
+              {
+                "coreId": "source-core",
+                "outputOwner": "missing",
+                "automationKey": "source_subtitles_missing:source-fixture:source",
+                "videoDocumentId": "source-fixture"
+              }
+            ],
+            "automationDocumentId": "cmvsljdx10000lfpb4cpxkw4i",
+            "suppressedOperations": [
+              "createEnrichmentJobs",
+              "runVideoEnrichment",
+              "ensureGeneratedSubtitlesForAsset",
+              "syncTranslatedSubtitlesToMux",
+              "applySubtitleOverride",
+              "syncEmbeddingArtifact"
+            ],
+            "skippedDuplicateCount": 0,
+            "automationRunDocumentId": "cmvsllzch0001lfbm6r3iaomg"
+          },
+          "kind": "metadata"
+        },
+        "eligibleCount": 1,
+        "enqueuedCount": 0,
+        "jobDocumentIds": [],
+        "skippedDuplicateCount": 0
+      }
+    },
+    {
+      "status": "success",
+      "scheduled": false,
+      "mode": "dry_run",
+      "dispatchStartedAt": null,
+      "result": {
+        "errors": [],
+        "status": "success",
+        "summary": "Dry run would enqueue 1 video.",
+        "errorCount": 0,
+        "dryRunReport": {
+          "data": {
+            "runMode": "dry_run",
+            "summary": "Dry run would enqueue 1 video.",
+            "template": "source_subtitles_missing",
+            "generatedAt": "2026-10-28T20:59:48.022Z",
+            "refreshMode": "missing_only",
+            "eligibleCount": 1,
+            "maxVideosPerRun": 6,
+            "targetLanguageIds": [],
+            "wouldEnqueueCount": 1,
+            "selectedCandidates": [
+              {
+                "coreId": "source-core",
+                "outputOwner": "missing",
+                "automationKey": "source_subtitles_missing:source-fixture:source",
+                "videoDocumentId": "source-fixture"
+              }
+            ],
+            "automationDocumentId": "cmvsljdx10000lfpb4cpxkw4i",
+            "suppressedOperations": [
+              "createEnrichmentJobs",
+              "runVideoEnrichment",
+              "ensureGeneratedSubtitlesForAsset",
+              "syncTranslatedSubtitlesToMux",
+              "applySubtitleOverride",
+              "syncEmbeddingArtifact"
+            ],
+            "skippedDuplicateCount": 0,
+            "automationRunDocumentId": "cmvsllg310002lfpb8vj2vo2n"
+          },
+          "kind": "metadata"
+        },
+        "eligibleCount": 1,
+        "enqueuedCount": 0,
+        "jobDocumentIds": [],
+        "skippedDuplicateCount": 0
+      }
+    }
+  ]
+}

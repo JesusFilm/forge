@@ -240,6 +240,9 @@ async function startWorkflowWorld(): Promise<void> {
   const { ensureWatchCatalogPublicationWorkerStarted } =
     await import("@/services/watch-catalog-publication-worker")
   ensureWatchCatalogPublicationWorkerStarted(syncPrisma)
+  const { ensureManagerAutomationSchedulerStarted } =
+    await import("@/services/manager-automation-scheduler")
+  await ensureManagerAutomationSchedulerStarted()
   await ensureStudioCalendarSchedulerStarted()
   await ensureStudioCalendarPublicationSchedulerStarted()
   await ensureCoreSyncSchedulerStarted()

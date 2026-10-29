@@ -65,6 +65,7 @@ export const env = createEnv({
 
     // API authentication — required for production
     MANAGER_API_KEY: z.string().min(1).optional(),
+    MANAGER_AGENTIC_API_KEY: z.string().min(1).optional(),
     MANAGER_BASE_URL: z.string().url().optional(),
     MANAGER_SESSION_SECRET: z.string().min(32).optional(),
     AUTH_ISSUER_URL: z.string().url().optional(),
@@ -102,6 +103,12 @@ export const env = createEnv({
     // manager after transcript.json exists; Mastra owns chunking and vectors.
     MASTRA_BASE_URL: z.string().url().optional(),
     MASTRA_SERVICE_API_KEY: z.string().min(1).optional(),
+    MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(180_000)
+      .optional(),
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -196,6 +203,7 @@ export const env = createEnv({
       process.env.MANAGER_MOCK_DATA_PATH ?? ".tmp/mock-cms/store.json",
     WORKFLOW_API_KEY: process.env.WORKFLOW_API_KEY,
     MANAGER_API_KEY: process.env.MANAGER_API_KEY,
+    MANAGER_AGENTIC_API_KEY: process.env.MANAGER_AGENTIC_API_KEY || undefined,
     MANAGER_BASE_URL: process.env.MANAGER_BASE_URL,
     MANAGER_SESSION_SECRET: process.env.MANAGER_SESSION_SECRET,
     AUTH_ISSUER_URL: process.env.AUTH_ISSUER_URL,
@@ -218,6 +226,8 @@ export const env = createEnv({
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
     MASTRA_SERVICE_API_KEY: process.env.MASTRA_SERVICE_API_KEY,
+    MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS:
+      process.env.MASTRA_AUTOMATION_DRY_RUN_TIMEOUT_MS || undefined,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
     MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
@@ -274,4 +284,17 @@ if (managerAuthEnvRequired && !isNextProductionBuild) {
       `${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required when Manager auth is enabled`,
     )
   }
+}
+
+const otherManagerBearerKeys = [
+  env.MANAGER_API_KEY,
+  ...(env.ADMIN_TRIGGER_API_KEYS ?? "").split(",").map((key) => key.trim()),
+]
+if (
+  env.MANAGER_AGENTIC_API_KEY &&
+  otherManagerBearerKeys.includes(env.MANAGER_AGENTIC_API_KEY)
+) {
+  throw new Error(
+    "MANAGER_AGENTIC_API_KEY must not overlap MANAGER_API_KEY or ADMIN_TRIGGER_API_KEYS",
+  )
 }

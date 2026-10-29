@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_MOCK_CMS_SEED, cloneMockCmsSeed } from "@/cms/mock-seed"
 
-const { cmsGetMock, createEnrichmentJobsMock, getCmsGatewayMock, queryMock } =
-  vi.hoisted(() => ({
-    cmsGetMock: vi.fn(),
-    createEnrichmentJobsMock: vi.fn(),
-    getCmsGatewayMock: vi.fn(),
-    queryMock: vi.fn(),
-  }))
+const {
+  candidatesMock,
+  createEnrichmentJobsMock,
+  getCmsGatewayMock,
+  queryMock,
+} = vi.hoisted(() => ({
+  candidatesMock: vi.fn(),
+  createEnrichmentJobsMock: vi.fn(),
+  getCmsGatewayMock: vi.fn(),
+  queryMock: vi.fn(),
+}))
 
-vi.mock("@/services/cmsClient", () => ({
-  cmsGet: cmsGetMock,
+vi.mock("./automation-store", () => ({
+  getAdminAutomationAdapter: async () => ({ candidates: candidatesMock }),
 }))
 
 vi.mock("@/cms/client", () => ({
@@ -54,7 +58,7 @@ function buildAutomation(
 
 describe("enqueueAutomationRun", () => {
   beforeEach(() => {
-    cmsGetMock.mockReset()
+    candidatesMock.mockReset()
     createEnrichmentJobsMock.mockReset()
     getCmsGatewayMock.mockReset()
     queryMock.mockReset()
@@ -77,13 +81,13 @@ describe("enqueueAutomationRun", () => {
       errorCount: 0,
     })
     expect(result.summary).toContain("not available")
-    expect(cmsGetMock).not.toHaveBeenCalled()
+    expect(candidatesMock).not.toHaveBeenCalled()
     expect(queryMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
   })
 
   it("does not fetch aggregate subtitle coverage for stale multi-language target automations", async () => {
-    cmsGetMock.mockResolvedValue({ videos: [] })
+    candidatesMock.mockResolvedValue({ videos: [] })
     queryMock.mockResolvedValue({ data: { enrichmentJobs: [] } })
 
     const result = await enqueueAutomationRun({
@@ -102,13 +106,13 @@ describe("enqueueAutomationRun", () => {
       errorCount: 0,
     })
     expect(result.summary).toContain("one target language")
-    expect(cmsGetMock).not.toHaveBeenCalled()
+    expect(candidatesMock).not.toHaveBeenCalled()
     expect(queryMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
   })
 
   it("enqueues refreshable AI target subtitles using one target language", async () => {
-    cmsGetMock.mockResolvedValue({
+    candidatesMock.mockResolvedValue({
       candidates: [
         {
           documentId: "video-1",
@@ -136,9 +140,12 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
-    )
+    expect(candidatesMock).toHaveBeenCalledWith({
+      template: "target_subtitles_missing",
+      refreshMode: "refresh_ai_generated",
+      targetLanguageIds: ["529"],
+      limit: 1,
+    })
     expect(createEnrichmentJobsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         videoIds: ["core-1"],
@@ -153,25 +160,17 @@ describe("enqueueAutomationRun", () => {
     })
   })
 
-  it("uses lean CMS endpoints for automation dispatch", async () => {
-    cmsGetMock.mockImplementation(async (path: string) => {
-      if (
-        path ===
-        "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1"
-      ) {
-        return {
-          candidates: [
-            {
-              documentId: "video-1",
-              coreId: "core-1",
-              outputOwner: "ai",
-            },
-          ],
-          eligibleCount: 1,
-          skippedDuplicateCount: 0,
-        }
-      }
-      throw new Error(`Unexpected CMS path: ${path}`)
+  it("uses bounded Admin selection for automation dispatch", async () => {
+    candidatesMock.mockResolvedValue({
+      candidates: [
+        {
+          documentId: "video-1",
+          coreId: "core-1",
+          outputOwner: "ai",
+        },
+      ],
+      eligibleCount: 1,
+      skippedDuplicateCount: 0,
     })
     createEnrichmentJobsMock.mockResolvedValue({
       created: 1,
@@ -189,9 +188,12 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
-    )
+    expect(candidatesMock).toHaveBeenCalledWith({
+      template: "target_subtitles_missing",
+      refreshMode: "refresh_ai_generated",
+      targetLanguageIds: ["529"],
+      limit: 1,
+    })
     expect(queryMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: "success",
@@ -205,7 +207,7 @@ describe("enqueueAutomationRun", () => {
       refreshMode: "missing_only",
       maxVideosPerRun: 1,
     })
-    cmsGetMock.mockResolvedValue({
+    candidatesMock.mockResolvedValue({
       candidates: [
         {
           documentId: "video-1",
@@ -269,7 +271,7 @@ describe("enqueueAutomationRun", () => {
       refreshMode: "missing_only",
       maxVideosPerRun: 1,
     })
-    cmsGetMock.mockResolvedValue({
+    candidatesMock.mockResolvedValue({
       candidates: [],
       eligibleCount: 0,
       skippedDuplicateCount: 0,
@@ -297,7 +299,7 @@ describe("enqueueAutomationRun", () => {
     })
   })
 
-  it("selects candidates from mock state without calling CMS endpoints", async () => {
+  it("selects candidates from mock state without calling Admin endpoints", async () => {
     const mockState = cloneMockCmsSeed(DEFAULT_MOCK_CMS_SEED)
     getCmsGatewayMock.mockReturnValue({
       mode: "mock",
@@ -318,7 +320,7 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).not.toHaveBeenCalled()
+    expect(candidatesMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         videoIds: ["ep-2"],
@@ -332,7 +334,7 @@ describe("enqueueAutomationRun", () => {
   })
 
   it("does not enqueue human-owned target subtitles even in refresh mode", async () => {
-    cmsGetMock.mockResolvedValue({
+    candidatesMock.mockResolvedValue({
       candidates: [],
       eligibleCount: 0,
       skippedDuplicateCount: 0,
@@ -348,9 +350,12 @@ describe("enqueueAutomationRun", () => {
       }),
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage/automation-candidates?template=target_subtitles_missing&refreshMode=refresh_ai_generated&targetLanguageIds=529&limit=1",
-    )
+    expect(candidatesMock).toHaveBeenCalledWith({
+      template: "target_subtitles_missing",
+      refreshMode: "refresh_ai_generated",
+      targetLanguageIds: ["529"],
+      limit: 1,
+    })
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: "no_op",
@@ -366,18 +371,10 @@ describe("enqueueAutomationRun", () => {
       maxVideosPerRun: 1,
     })
 
-    cmsGetMock.mockImplementation(async (path: string) => {
-      if (
-        path ===
-        "/video-coverage/automation-candidates?template=metadata_missing&refreshMode=missing_only&limit=1"
-      ) {
-        return {
-          candidates: [],
-          eligibleCount: 0,
-          skippedDuplicateCount: 1,
-        }
-      }
-      throw new Error(`Unexpected CMS path: ${path}`)
+    candidatesMock.mockResolvedValue({
+      candidates: [],
+      eligibleCount: 0,
+      skippedDuplicateCount: 1,
     })
 
     const result = await enqueueAutomationRun({
@@ -385,9 +382,12 @@ describe("enqueueAutomationRun", () => {
       automation,
     })
 
-    expect(cmsGetMock).toHaveBeenCalledWith(
-      "/video-coverage/automation-candidates?template=metadata_missing&refreshMode=missing_only&limit=1",
-    )
+    expect(candidatesMock).toHaveBeenCalledWith({
+      template: "metadata_missing",
+      refreshMode: "missing_only",
+      targetLanguageIds: [],
+      limit: 1,
+    })
     expect(queryMock).not.toHaveBeenCalled()
     expect(createEnrichmentJobsMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({

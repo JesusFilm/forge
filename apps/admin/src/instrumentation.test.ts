@@ -35,6 +35,10 @@ const mockEnv = vi.hoisted(() => ({
   ),
 }))
 
+const ensureManagerAutomationSchedulerStarted = vi.hoisted(() => vi.fn())
+vi.mock("@/services/manager-automation-scheduler", () => ({
+  ensureManagerAutomationSchedulerStarted,
+}))
 const ensureStudioCalendarSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureStudioCalendarPublicationSchedulerStarted = vi.hoisted(() =>
   vi.fn(),
@@ -163,6 +167,7 @@ describe("workflow instrumentation", () => {
     vi.useRealTimers()
     vi.resetModules()
     ensurePushCampaignRecovery.mockClear()
+    ensureManagerAutomationSchedulerStarted.mockReset()
     ensureStudioCalendarSchedulerStarted.mockReset()
     ensureStudioCalendarPublicationSchedulerStarted.mockReset()
     worldStart.mockReset()
@@ -427,6 +432,7 @@ describe("workflow instrumentation", () => {
     expect(getWorld).toHaveBeenCalledTimes(1)
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
+    expect(ensureManagerAutomationSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
@@ -600,6 +606,7 @@ describe("workflow instrumentation", () => {
 
     expect(worldStart).toHaveBeenCalledTimes(2)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
+    expect(ensureManagerAutomationSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)

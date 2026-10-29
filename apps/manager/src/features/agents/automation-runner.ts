@@ -1,6 +1,6 @@
 import { createEnrichmentJobs } from "@/app/api/enrich/route"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
-import { cmsGet } from "@/services/cmsClient"
+import { getAdminAutomationAdapter } from "./automation-store"
 import {
   isCreatableAutomationTemplate,
   type AutomationDryRunReport,
@@ -112,26 +112,14 @@ async function fetchAutomationSelection(
     })
   }
 
-  const params = new URLSearchParams()
-  params.set("template", automation.template)
-  params.set("refreshMode", automation.refreshMode)
-  if (
-    automation.template === "target_subtitles_missing" &&
-    automation.targetLanguageIds.length > 0
-  ) {
-    params.set("targetLanguageIds", automation.targetLanguageIds.join(","))
-  }
-  params.set("limit", String(automation.maxVideosPerRun))
-
-  const response = await cmsGet<{
-    candidates?: unknown
-    eligibleCount?: unknown
-    skippedDuplicateCount?: unknown
-  }>(
-    `/video-coverage/automation-candidates${
-      params.size > 0 ? `?${params}` : ""
-    }`,
-  )
+  const response = await (
+    await getAdminAutomationAdapter()
+  ).candidates({
+    template: automation.template,
+    refreshMode: automation.refreshMode,
+    targetLanguageIds: automation.targetLanguageIds,
+    limit: automation.maxVideosPerRun,
+  })
 
   const selected = Array.isArray(response.candidates)
     ? response.candidates.filter(isAutomationCandidate).map((video) => ({

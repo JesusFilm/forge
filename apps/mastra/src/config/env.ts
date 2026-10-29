@@ -341,6 +341,14 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MANAGER_AUTOMATION_BASE_URL: z.string().url().optional(),
+  MANAGER_AGENTIC_API_KEY: z.string().min(1).optional(),
+  MANAGER_AUTOMATION_DRY_RUN_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(120_000)
+    .optional(),
   // Human devotional approval lane. Must be disjoint from the shared service
   // pool; unset keeps resume fail-closed until mastra-gateway is provisioned.
   DEVOTIONAL_APPROVAL_API_KEYS: z.string().min(1).optional(),
@@ -1010,6 +1018,15 @@ export const env = envSchema.parse({
   OLLAMA_BASE_URL: emptyToUndefined(process.env.OLLAMA_BASE_URL),
   OPENAI_BASE_URL: emptyToUndefined(process.env.OPENAI_BASE_URL),
   DATABASE_URL: emptyToUndefined(process.env.DATABASE_URL),
+  MANAGER_AUTOMATION_BASE_URL: emptyToUndefined(
+    process.env.MANAGER_AUTOMATION_BASE_URL,
+  ),
+  MANAGER_AGENTIC_API_KEY: emptyToUndefined(
+    process.env.MANAGER_AGENTIC_API_KEY,
+  ),
+  MANAGER_AUTOMATION_DRY_RUN_TIMEOUT_MS: emptyToUndefined(
+    process.env.MANAGER_AUTOMATION_DRY_RUN_TIMEOUT_MS,
+  ),
   NODE_ENV: process.env.NODE_ENV,
   NEXT_PHASE: process.env.NEXT_PHASE,
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(

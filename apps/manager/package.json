@@ -42,7 +42,8 @@
     "video.js": "^8.22.0",
     "workflow": "^4.2.2",
     "zod": "^4.3.6",
-    "@forge/studio-server": "workspace:*"
+    "@forge/studio-server": "workspace:*",
+    "@forge/automation-contracts": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.3",

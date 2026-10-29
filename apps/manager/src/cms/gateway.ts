@@ -1,3 +1,4 @@
+import { getAdminManagerServiceBearer } from "@/lib/admin-manager-session"
 import { createHmac, timingSafeEqual } from "node:crypto"
 import {
   DEFAULT_MOCK_CMS_SEED,
@@ -257,7 +258,7 @@ function createAdminGateway(): CmsGateway {
 
   const client = new AdminGraphqlClient({
     graphqlUrl,
-    apiKey: process.env.ADMIN_MANAGER_API_KEY,
+    getApiKey: getAdminManagerServiceBearer,
   })
 
   return {

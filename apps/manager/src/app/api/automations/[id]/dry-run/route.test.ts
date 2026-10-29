@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  beginAutomationRunDispatchMock,
   authenticateRequestMock,
   claimAutomationDryRunMock,
   completeAutomationRunMock,
@@ -12,6 +13,7 @@ const {
   markAutomationRunFailedIfInFlightMock,
   releaseAutomationDryRunClaimMock,
 } = vi.hoisted(() => ({
+  beginAutomationRunDispatchMock: vi.fn(),
   authenticateRequestMock: vi.fn(),
   claimAutomationDryRunMock: vi.fn(),
   completeAutomationRunMock: vi.fn(),
@@ -33,6 +35,8 @@ vi.mock("@/features/agents/automation-runner", () => ({
 }))
 
 vi.mock("@/features/agents/automation-store", () => ({
+  beginAutomationRunDispatch: beginAutomationRunDispatchMock,
+  getAutomationRunByIdempotencyKey: vi.fn(),
   claimAutomationDryRun: claimAutomationDryRunMock,
   completeAutomationRun: completeAutomationRunMock,
   createAutomationRun: createAutomationRunMock,
@@ -72,6 +76,7 @@ function buildRequest() {
 
 describe("POST /api/automations/[id]/dry-run", () => {
   beforeEach(() => {
+    beginAutomationRunDispatchMock.mockReset().mockResolvedValue(true)
     authenticateRequestMock.mockReset()
     claimAutomationDryRunMock.mockReset()
     completeAutomationRunMock.mockReset()
@@ -91,6 +96,8 @@ describe("POST /api/automations/[id]/dry-run", () => {
       leaseExpiresAt: "2026-04-12T09:10:00.000Z",
     })
     createAutomationRunMock.mockResolvedValue({
+      runMode: "dry_run",
+      automationDocumentId: "automation-1",
       documentId: "run-1",
       status: "running",
     })
@@ -158,6 +165,20 @@ describe("POST /api/automations/[id]/dry-run", () => {
     })
   })
 
+  it("rejects an explicit live request before admitting any run", async () => {
+    const response = await POST(
+      new Request("https://manager.test/api/automations/automation-1/dry-run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ runMode: "live" }),
+      }),
+      { params: Promise.resolve({ id: "automation-1" }) },
+    )
+    expect(response.status).toBe(400)
+    expect(claimAutomationDryRunMock).not.toHaveBeenCalled()
+    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+  })
+
   it("blocks manual dry-run while an automation has an active lease", async () => {
     getAutomationMock.mockResolvedValue({
       ...automation,
@@ -176,10 +197,12 @@ describe("POST /api/automations/[id]/dry-run", () => {
     expect(releaseAutomationDryRunClaimMock).not.toHaveBeenCalled()
   })
 
-  it("blocks manual dry-run when a broader in-flight run query finds running work", async () => {
+  it("lets the atomic claim recover expired work despite the broader in-flight read", async () => {
     hasInFlightAutomationRunMock.mockResolvedValue(true)
     getAutomationMock.mockResolvedValue({
       ...automation,
+      leaseToken: "expired-lease",
+      leaseExpiresAt: "2020-01-01T00:00:00.000Z",
       runs: Array.from({ length: 5 }, (_value, index) => ({
         documentId: `recent-run-${index}`,
         status: "success",
@@ -198,12 +221,10 @@ describe("POST /api/automations/[id]/dry-run", () => {
       params: Promise.resolve({ id: "automation-1" }),
     })
 
-    expect(response.status).toBe(409)
-    expect(hasInFlightAutomationRunMock).toHaveBeenCalledWith("automation-1")
-    expect(claimAutomationDryRunMock).not.toHaveBeenCalled()
-    expect(createAutomationRunMock).not.toHaveBeenCalled()
-    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
-    expect(releaseAutomationDryRunClaimMock).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(hasInFlightAutomationRunMock).not.toHaveBeenCalled()
+    expect(claimAutomationDryRunMock).toHaveBeenCalledWith("automation-1")
+    expect(enqueueAutomationRunMock).toHaveBeenCalledTimes(1)
   })
 
   it("blocks manual dry-run when the CMS atomic claim reports a conflict", async () => {
@@ -240,7 +261,7 @@ describe("POST /api/automations/[id]/dry-run", () => {
     expect(markAutomationRunFailedIfInFlightMock).toHaveBeenCalledWith(
       expect.objectContaining({
         runDocumentId: "run-1",
-        error: "database timeout",
+        error: "Automation dry run persistence failed.",
         finishedAt: expect.any(String),
       }),
     )
@@ -320,7 +341,7 @@ describe("POST /api/automations/[id]/dry-run", () => {
     expect(markAutomationRunFailedIfInFlightMock).toHaveBeenCalledWith(
       expect.objectContaining({
         runDocumentId: "run-1",
-        error: "response stream closed",
+        error: "Automation dry run persistence failed.",
       }),
     )
     await expect(response.json()).resolves.toMatchObject({

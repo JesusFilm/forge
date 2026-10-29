@@ -1,178 +1,118 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-const { enqueueAutomationRunMock } = vi.hoisted(() => ({
-  enqueueAutomationRunMock: vi.fn(),
+const { enqueue, getAutomation, getRun, beginDispatch } = vi.hoisted(() => ({
+  enqueue: vi.fn(),
+  getAutomation: vi.fn(),
+  getRun: vi.fn(),
+  beginDispatch: vi.fn(),
 }))
-
 vi.mock("@/features/agents/automation-runner", () => ({
-  enqueueAutomationRun: enqueueAutomationRunMock,
+  enqueueAutomationRun: enqueue,
 }))
-
-import { POST } from "@/app/api/automations/runs/[id]/enqueue/route"
-
-const body = {
-  automation: {
-    documentId: "automation-1",
-    name: "Missing metadata",
-    template: "metadata_missing",
-    status: "active",
-    schedule: { kind: "every_minute", timezone: "UTC" },
-    refreshMode: "missing_only",
-    targetLanguageIds: [],
-    maxVideosPerRun: 1,
-    nextRunAt: "2026-04-12T09:00:00.000Z",
-  },
+vi.mock("@/features/agents/automation-store", () => ({
+  getAutomation,
+  getAutomationRun: getRun,
+  getAdminAutomationAdapter: async () => ({ beginDispatch }),
+}))
+import { POST } from "./route"
+const leaseToken = "c013fb84-8d68-46c0-9b67-7fab8b96c008"
+const automation = {
+  documentId: "automation-1",
+  name: "Missing metadata",
+  template: "metadata_missing",
+  status: "active",
+  runMode: "live",
+  schedule: { kind: "every_minute", timezone: "UTC" },
+  timezone: "UTC",
+  refreshMode: "missing_only",
+  targetLanguageIds: [],
+  maxVideosPerRun: 1,
+  leaseToken,
+  runs: [],
 }
-
-function buildRequest(headers: HeadersInit) {
+const body = { automation, leaseToken }
+const context = { params: Promise.resolve({ id: "run-1" }) }
+function request(input: unknown = body, auth = "Bearer test-manager-api-key") {
   return new Request("http://example.test/api/automations/runs/run-1/enqueue", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  })
-}
-
-function buildRequestWithBody(input: unknown) {
-  return new Request("http://example.test/api/automations/runs/run-1/enqueue", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      authorization: "Bearer test-manager-api-key",
-    },
+    headers: { "content-type": "application/json", authorization: auth },
     body: JSON.stringify(input),
   })
 }
-
-describe("POST /api/automations/runs/[id]/enqueue", () => {
+describe("service automation dispatch admission", () => {
   beforeEach(() => {
-    enqueueAutomationRunMock.mockReset()
-    enqueueAutomationRunMock.mockResolvedValue({
-      status: "no_op",
-      eligibleCount: 0,
-      enqueuedCount: 0,
-      skippedDuplicateCount: 0,
-      errorCount: 0,
-      jobDocumentIds: [],
-      errors: [],
-      summary: "No eligible videos.",
+    vi.clearAllMocks()
+    getAutomation.mockResolvedValue(automation)
+    getRun.mockResolvedValue({
+      documentId: "run-1",
+      automationDocumentId: "automation-1",
+      status: "running",
+      runMode: "live",
     })
+    beginDispatch.mockResolvedValue(true)
+    enqueue.mockResolvedValue({ status: "no_op", enqueuedCount: 0 })
   })
-
-  it("rejects cookie-only session callers", async () => {
-    const response = await POST(buildRequest({ cookie: "strapi-jwt=test" }), {
-      params: Promise.resolve({ id: "run-1" }),
-    })
-
-    expect(response.status).toBe(403)
-    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+  it("rejects cookie-only callers", async () => {
+    expect((await POST(request(body, ""), context)).status).toBe(403)
+    expect(getRun).not.toHaveBeenCalled()
   })
-
-  it("accepts the configured bearer key for service-to-service enqueue", async () => {
-    const response = await POST(
-      buildRequest({ authorization: "Bearer test-manager-api-key" }),
-      {
-        params: Promise.resolve({ id: "run-1" }),
-      },
-    )
-
-    expect(response.status).toBe(200)
-    expect(enqueueAutomationRunMock).toHaveBeenCalledWith({
+  it("dispatches the canonical admitted definition", async () => {
+    expect((await POST(request(), context)).status).toBe(200)
+    expect(beginDispatch).toHaveBeenCalledWith("run-1", leaseToken)
+    expect(enqueue).toHaveBeenCalledWith({
       runDocumentId: "run-1",
       runMode: "live",
-      automation: {
-        ...body.automation,
-        runMode: "live",
-        timezone: "UTC",
-        runs: [],
-      },
-    })
-    await expect(response.json()).resolves.toMatchObject({
-      status: "no_op",
-      enqueuedCount: 0,
+      automation,
     })
   })
-
-  it("accepts dry-run mode for service-to-service enqueue", async () => {
-    const response = await POST(
-      buildRequestWithBody({
-        automation: {
-          ...body.automation,
-          runMode: "dry_run",
-        },
-      }),
-      {
-        params: Promise.resolve({ id: "run-1" }),
-      },
-    )
-
-    expect(response.status).toBe(200)
-    expect(enqueueAutomationRunMock).toHaveBeenCalledWith({
+  it("uses persisted dry-run mode despite a live request body", async () => {
+    getRun.mockResolvedValue({
+      documentId: "run-1",
+      automationDocumentId: "automation-1",
+      status: "running",
+      runMode: "dry_run",
+    })
+    expect((await POST(request(), context)).status).toBe(200)
+    expect(enqueue).toHaveBeenCalledWith({
       runDocumentId: "run-1",
       runMode: "dry_run",
-      automation: {
-        ...body.automation,
-        runMode: "dry_run",
-        timezone: "UTC",
-        runs: [],
-      },
+      automation,
     })
   })
-
-  it("rejects top-level run mode payloads before enqueue", async () => {
-    const response = await POST(
-      buildRequestWithBody({
-        ...body,
-        runMode: "dry_run",
-        automation: {
-          ...body.automation,
-          runMode: "live",
-        },
-      }),
-      {
-        params: Promise.resolve({ id: "run-1" }),
+  it.each([
+    { ...body, runMode: "dry_run" },
+    { automation },
+    {
+      ...body,
+      automation: {
+        ...automation,
+        template: "target_subtitles_missing",
+        targetLanguageIds: ["a", "b"],
       },
-    )
-
-    expect(response.status).toBe(400)
-    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+    },
+  ])("rejects malformed or conflicting payloads", async (input) => {
+    expect((await POST(request(input), context)).status).toBe(400)
+    expect(enqueue).not.toHaveBeenCalled()
   })
-
-  it("rejects malformed target language payloads before enqueue", async () => {
-    const response = await POST(
-      buildRequestWithBody({
-        automation: {
-          ...body.automation,
-          template: "target_subtitles_missing",
-          targetLanguageIds: "529",
-        },
-      }),
-      {
-        params: Promise.resolve({ id: "run-1" }),
-      },
-    )
-
-    expect(response.status).toBe(400)
-    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+  it("rejects foreign runs before consuming dispatch", async () => {
+    getRun.mockResolvedValue({
+      automationDocumentId: "foreign",
+      status: "running",
+    })
+    expect((await POST(request(), context)).status).toBe(409)
+    expect(beginDispatch).not.toHaveBeenCalled()
   })
-
-  it("rejects target subtitle enqueue payloads with more than one target language", async () => {
-    const response = await POST(
-      buildRequestWithBody({
-        automation: {
-          ...body.automation,
-          template: "target_subtitles_missing",
-          targetLanguageIds: ["529", "6414"],
-        },
-      }),
-      {
-        params: Promise.resolve({ id: "run-1" }),
-      },
-    )
-
-    expect(response.status).toBe(400)
-    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
+  it("rejects stale leases and duplicate dispatch", async () => {
+    beginDispatch.mockResolvedValue(false)
+    expect((await POST(request(), context)).status).toBe(409)
+    expect(enqueue).not.toHaveBeenCalled()
+  })
+  it("returns JSON when canonical storage fails", async () => {
+    getRun.mockRejectedValue(new Error("storage offline"))
+    const response = await POST(request(), context)
+    expect(response.status).toBe(502)
+    expect(await response.json()).toEqual({
+      error: "Automation dispatch failed",
+    })
+    expect(enqueue).not.toHaveBeenCalled()
   })
 })

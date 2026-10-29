@@ -23,6 +23,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
 COPY apps/manager/package.json apps/manager/package.json
 COPY packages/admin-graphql/package.json packages/admin-graphql/package.json
+COPY packages/automation-contracts/package.json packages/automation-contracts/package.json
 COPY packages/shorts-compositions/package.json packages/shorts-compositions/package.json
 COPY packages/studio-contracts/package.json packages/studio-contracts/package.json
 COPY packages/studio-server/package.json packages/studio-server/package.json
@@ -31,6 +32,7 @@ COPY packages/watch-url-policy/package.json packages/watch-url-policy/package.js
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filter @forge/manager...
 COPY apps/manager apps/manager
 COPY packages/admin-graphql packages/admin-graphql
+COPY packages/automation-contracts packages/automation-contracts
 COPY packages/shorts-compositions packages/shorts-compositions
 COPY packages/studio-contracts packages/studio-contracts
 COPY packages/studio-server packages/studio-server

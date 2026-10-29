@@ -2019,21 +2019,26 @@ type Mutation {
   archiveExperience(id: ID!): Experience
   assignManagerSubtitleEvalSpecialist(input: ManagerSubtitleEvalAssignSpecialistInput!): ManagerSubtitleEvalOperationResult
   attachShortsExperimentCandidate(input: JSON!): JSON
+  beginManagerAutomationDispatch(id: ID!, leaseToken: String!): Boolean
   captureShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
   """
   castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
+  claimManagerAutomationRun(id: ID!): JSON
   claimManagerSubtitleEvalCell(leaseSeconds: Int!, runCellId: ID!): ManagerSubtitleEvalOperationResult
   claimManagerSubtitleEvalMachineRecovery(leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   claimManagerSubtitleEvalRecovery(assertion: String!, leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
+  completeManagerAutomationRun(id: ID!, leaseToken: String!, result: JSON!): JSON
   completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
   """
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
+  createManagerAutomation(input: JSON!): JSON
+  createManagerAutomationRun(input: JSON!): JSON
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   createManagerSubtitleEvalAssignment(input: ManagerSubtitleEvalCreateAssignmentInput!): ManagerSubtitleEvalOperationResult
   createManagerSubtitleEvalComparison(input: ManagerSubtitleEvalCreateComparisonInput!): ManagerSubtitleEvalOperationResult
@@ -2059,6 +2064,7 @@ type Mutation {
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller. Each copied locale starts with an active draft and preview capability; the copy never becomes the live homepage, and a homepage copy keeps homepageLayout instead.
   """
   duplicateExperience(id: ID!, sourceVersion: ExperienceDuplicationSourceVersion = EFFECTIVE): Experience!
+  failManagerAutomationRun(error: String!, id: ID!, leaseToken: String!): Boolean
   failManagerSubtitleEvalCell(input: ManagerSubtitleEvalFailCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalCell(input: ManagerSubtitleEvalFinalizeCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalRun(input: ManagerSubtitleEvalFinalizeRunInput!): ManagerSubtitleEvalOperationResult
@@ -2088,6 +2094,7 @@ type Mutation {
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   registerPushDevice(input: RegisterPushDeviceInput!): PushDeviceRegistrationReceipt!
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  releaseManagerAutomationRun(id: ID!, leaseToken: String!): Boolean
   reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
@@ -2193,6 +2200,7 @@ type Mutation {
   Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
   """
   updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  updateManagerAutomationStatus(id: ID!, status: String!): JSON
   updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
@@ -2355,6 +2363,13 @@ type Query {
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
   """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
+  managerAutomation(id: ID!): JSON
+  managerAutomationCandidates(input: JSON!): JSON
+  managerAutomationHasInFlight(id: ID!): Boolean
+  managerAutomationLanguages: [JSON!]
+  managerAutomationRun(id: ID!): JSON
+  managerAutomationRunByKey(automationId: ID!, key: String!): JSON
+  managerAutomations: [JSON!]
   managerCoverageSnapshots(endDate: String, latest: Boolean, startDate: String): [ManagerCoverageSnapshot!]
   managerJob(id: ID!): ManagerJob
   managerJobs(limit: Int, offset: Int): [ManagerJob!]

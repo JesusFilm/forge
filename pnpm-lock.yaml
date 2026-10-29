@@ -133,6 +133,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@forge/automation-contracts':
+        specifier: workspace:*
+        version: link:../../packages/automation-contracts
       '@ai-sdk/google':
         specifier: 3.0.79
         version: 3.0.79(zod@4.3.6)
@@ -567,6 +570,9 @@ importers:
 
   apps/manager:
     dependencies:
+      '@forge/automation-contracts':
+        specifier: workspace:*
+        version: link:../../packages/automation-contracts
       '@apollo/client':
         specifier: ^4.1.4
         version: 4.1.9(graphql-ws@6.0.8(graphql@16.13.1)(ws@8.21.1))(graphql@16.13.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rxjs@7.8.2)
@@ -1652,6 +1658,12 @@ importers:
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(terser@5.51.2)(tsx@4.21.0)(yaml@2.8.3)
+
+  packages/automation-contracts:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   packages/devotional-workspace:
     dependencies:

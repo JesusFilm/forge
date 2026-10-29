@@ -1,3 +1,4 @@
+import { createAdminAutomationAdapter } from "./automation-client"
 import { createStudioAdminAdapter } from "./studio-client"
 import type {
   MockCoverageSnapshot,
@@ -46,6 +47,7 @@ export type CoverageSnapshotQuery =
 export type AdminGraphqlClientOptions = {
   graphqlUrl: string
   apiKey?: string
+  getApiKey?: () => Promise<string>
   fetchImpl?: FetchLike
 }
 
@@ -706,13 +708,19 @@ function readField<T>(
 export class AdminGraphqlClient {
   private readonly graphqlUrl: string
   private readonly apiKey?: string
+  private readonly getApiKey?: () => Promise<string>
   private readonly fetchImpl: FetchLike
 
   constructor(options: AdminGraphqlClientOptions) {
     this.graphqlUrl = options.graphqlUrl
     this.apiKey = options.apiKey
+    this.getApiKey = options.getApiKey
     this.fetchImpl = options.fetchImpl ?? fetch
   }
+
+  readonly automations = createAdminAutomationAdapter((query, variables) =>
+    this.request<Record<string, unknown>>(query, variables),
+  )
 
   readonly studio = createStudioAdminAdapter((query, variables) =>
     this.request(query, variables),
@@ -725,9 +733,8 @@ export class AdminGraphqlClient {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     }
-    if (this.apiKey) {
-      headers.Authorization = `Bearer ${this.apiKey}`
-    }
+    const apiKey = this.getApiKey ? await this.getApiKey() : this.apiKey
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`
 
     const response = await this.fetchImpl(this.graphqlUrl, {
       method: "POST",

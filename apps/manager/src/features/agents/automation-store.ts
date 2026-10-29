@@ -1,61 +1,35 @@
-import { gql } from "@apollo/client"
-import { z } from "zod"
-import getClient from "@/cms/client"
+import { randomUUID } from "node:crypto"
+import { env } from "@/config/env"
+import { AdminGraphqlClient } from "@/backend/admin-client"
+import { getAdminManagerServiceBearer } from "@/lib/admin-manager-session"
 import {
   getCmsGateway,
   readMockCmsState,
-  updateMockCmsState,
+  updateMockCmsState as updateMockState,
+  type CmsGateway,
 } from "@/cms/gateway"
-import { cmsPost } from "@/services/cmsClient"
-import {
-  normalizeErrors,
-  normalizeTargetLanguageIds,
-  type AutomationDryRunReport,
-  type AutomationDraft,
-  type AutomationRunMode,
-  type AutomationSchedule,
-  type AutomationRunStatus,
-  type AutomationTemplate,
-  type EnrichmentAutomation,
-  type EnrichmentAutomationRun,
+import type {
+  AutomationDraft,
+  AutomationRunMode,
+  EnrichmentAutomation,
+  EnrichmentAutomationRun,
 } from "./automation-contract"
 import type { AutomationRunResult } from "./automation-runner"
 
-type RawAutomationRun = {
-  documentId: string
-  status: AutomationRunStatus
-  runMode?: AutomationRunMode | null
-  scheduledFor: string
-  startedAt?: string | null
-  finishedAt?: string | null
-  eligibleCount?: number | null
-  enqueuedCount?: number | null
-  skippedDuplicateCount?: number | null
-  errorCount?: number | null
-  jobDocumentIds?: unknown
-  errors?: unknown
-  summary?: string | null
-  report?: unknown
-}
-
-type RawAutomation = {
-  documentId: string
-  name: string
-  template: AutomationTemplate
-  status: "active" | "paused"
-  runMode?: AutomationRunMode | null
-  schedule: AutomationSchedule
-  scheduleSummary?: string | null
-  timezone?: string | null
-  nextRunAt?: string | null
-  lastRunAt?: string | null
-  lastRunStatus?: EnrichmentAutomation["lastRunStatus"]
-  refreshMode: "missing_only" | "refresh_ai_generated"
-  targetLanguageIds?: unknown
-  maxVideosPerRun: number
-  leaseToken?: string | null
-  leaseExpiresAt?: string | null
-  runs?: Array<RawAutomationRun | null> | null
+// Demo storage is single-process. Serialize automation updates on its singleton
+// gateway so async snapshot reads cannot lose a competing mock claim/run update.
+const mockUpdates = new WeakMap<CmsGateway, Promise<unknown>>()
+function updateMockCmsState(
+  ...[gateway, updater]: Parameters<typeof updateMockState>
+) {
+  const next = (mockUpdates.get(gateway) ?? Promise.resolve()).then(() =>
+    updateMockState(gateway, updater),
+  )
+  mockUpdates.set(
+    gateway,
+    next.catch(() => undefined),
+  )
+  return next
 }
 
 type AutomationDryRunClaim = {
@@ -63,255 +37,27 @@ type AutomationDryRunClaim = {
   leaseToken: string
   leaseExpiresAt: string
 }
-
-const AUTOMATION_RUN_FIELDS = gql`
-  fragment AutomationRunFields on EnrichmentAutomationRun {
-    documentId
-    status
-    runMode
-    scheduledFor
-    startedAt
-    finishedAt
-    eligibleCount
-    enqueuedCount
-    skippedDuplicateCount
-    errorCount
-    jobDocumentIds
-    errors
-    summary
-    report
+export class AutomationStoreError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "AutomationStoreError"
   }
-`
-
-const AUTOMATION_FIELDS = gql`
-  fragment AutomationFields on EnrichmentAutomation {
-    documentId
-    name
-    template
-    status
-    runMode
-    schedule
-    scheduleSummary
-    timezone
-    nextRunAt
-    lastRunAt
-    lastRunStatus
-    refreshMode
-    targetLanguageIds
-    maxVideosPerRun
-    leaseToken
-    leaseExpiresAt
-    runs(sort: ["startedAt:desc"], pagination: { pageSize: 5 }) {
-      ...AutomationRunFields
-    }
-  }
-  ${AUTOMATION_RUN_FIELDS}
-`
-
-const LIST_AUTOMATIONS = gql`
-  query ListEnrichmentAutomations {
-    enrichmentAutomations(
-      sort: ["createdAt:desc"]
-      pagination: { pageSize: 100 }
-    ) {
-      ...AutomationFields
-    }
-  }
-  ${AUTOMATION_FIELDS}
-`
-
-const GET_AUTOMATION = gql`
-  query GetEnrichmentAutomation($documentId: ID!) {
-    enrichmentAutomation(documentId: $documentId) {
-      ...AutomationFields
-    }
-  }
-  ${AUTOMATION_FIELDS}
-`
-
-const GET_AUTOMATION_RUN = gql`
-  query GetEnrichmentAutomationRun($documentId: ID!) {
-    enrichmentAutomationRun(documentId: $documentId) {
-      ...AutomationRunFields
-    }
-  }
-  ${AUTOMATION_RUN_FIELDS}
-`
-
-const CREATE_AUTOMATION = gql`
-  mutation CreateEnrichmentAutomation($data: EnrichmentAutomationInput!) {
-    createEnrichmentAutomation(data: $data) {
-      ...AutomationFields
-    }
-  }
-  ${AUTOMATION_FIELDS}
-`
-
-const UPDATE_AUTOMATION = gql`
-  mutation UpdateEnrichmentAutomation(
-    $documentId: ID!
-    $data: EnrichmentAutomationInput!
-  ) {
-    updateEnrichmentAutomation(documentId: $documentId, data: $data) {
-      ...AutomationFields
-    }
-  }
-  ${AUTOMATION_FIELDS}
-`
-
-const CREATE_AUTOMATION_RUN = gql`
-  mutation CreateEnrichmentAutomationRun($data: EnrichmentAutomationRunInput!) {
-    createEnrichmentAutomationRun(data: $data) {
-      ...AutomationRunFields
-    }
-  }
-  ${AUTOMATION_RUN_FIELDS}
-`
-
-const UPDATE_AUTOMATION_RUN = gql`
-  mutation UpdateEnrichmentAutomationRun(
-    $documentId: ID!
-    $data: EnrichmentAutomationRunInput!
-  ) {
-    updateEnrichmentAutomationRun(documentId: $documentId, data: $data) {
-      ...AutomationRunFields
-    }
-  }
-  ${AUTOMATION_RUN_FIELDS}
-`
-
-const HAS_IN_FLIGHT_AUTOMATION_RUN = gql`
-  query HasInFlightAutomationRun(
-    $automationDocumentId: ID!
-    $statuses: [String]
-  ) {
-    enrichmentAutomationRuns(
-      filters: {
-        automation: { documentId: { eq: $automationDocumentId } }
-        status: { in: $statuses }
-      }
-      pagination: { pageSize: 1 }
-    ) {
-      documentId
-    }
-  }
-`
-
-const GET_LANGUAGES_BY_CORE_ID = gql`
-  query GetAutomationLanguages($filters: LanguageFiltersInput) {
-    languages(filters: $filters, pagination: { pageSize: 100 }) {
-      coreId
-    }
-  }
-`
-
-const automationDryRunClaimSchema = z.object({
-  documentId: z.string(),
-  leaseToken: z.string(),
-  leaseExpiresAt: z.string(),
-})
-
-const automationDryRunReleaseSchema = z.object({
-  released: z.boolean(),
-})
-
-const automationRunFailedIfInFlightSchema = z.object({
-  updated: z.boolean(),
-})
-
-function normalizeRunMode(value: AutomationRunMode | null | undefined) {
-  return value ?? "live"
 }
-
-function nextMockDocumentId(prefix: string, values: string[]): string {
-  const nextNumber =
+export async function getAdminAutomationAdapter() {
+  if (!env.ADMIN_GRAPHQL_URL)
+    throw new AutomationStoreError("Admin automation backend is not configured")
+  const apiKey = await getAdminManagerServiceBearer()
+  return new AdminGraphqlClient({ graphqlUrl: env.ADMIN_GRAPHQL_URL, apiKey })
+    .automations
+}
+function nextMockDocumentId(prefix: string, values: string[]) {
+  return `${prefix}-${
     values.reduce((max, value) => {
       const match = value.match(new RegExp(`^${prefix}-(\\d+)$`))
       return match ? Math.max(max, Number(match[1])) : max
     }, 0) + 1
-  return `${prefix}-${nextNumber}`
+  }`
 }
-
-const dryRunReportSchema = z.object({
-  kind: z.literal("metadata"),
-  data: z.object({
-    runMode: z.literal("dry_run"),
-    automationDocumentId: z.string(),
-    automationRunDocumentId: z.string(),
-    template: z.enum([
-      "source_subtitles_missing",
-      "target_subtitles_missing",
-      "metadata_missing",
-      "transcript_embeddings_missing",
-    ]),
-    refreshMode: z.enum(["missing_only", "refresh_ai_generated"]),
-    targetLanguageIds: z.array(z.string()),
-    maxVideosPerRun: z.number(),
-    eligibleCount: z.number(),
-    skippedDuplicateCount: z.number(),
-    wouldEnqueueCount: z.number(),
-    selectedCandidates: z.array(
-      z.object({
-        videoDocumentId: z.string(),
-        coreId: z.string(),
-        outputOwner: z.enum(["missing", "ai", "human"]),
-        automationKey: z.string(),
-      }),
-    ),
-    suppressedOperations: z.array(z.string()),
-    summary: z.string(),
-    generatedAt: z.string(),
-  }),
-})
-
-function normalizeDryRunReport(value: unknown): AutomationDryRunReport | null {
-  const parsed = dryRunReportSchema.safeParse(value)
-  return parsed.success ? parsed.data : null
-}
-
-function normalizeRun(run: RawAutomationRun): EnrichmentAutomationRun {
-  return {
-    documentId: run.documentId,
-    status: run.status,
-    runMode: normalizeRunMode(run.runMode),
-    scheduledFor: run.scheduledFor,
-    startedAt: run.startedAt,
-    finishedAt: run.finishedAt,
-    eligibleCount: run.eligibleCount ?? 0,
-    enqueuedCount: run.enqueuedCount ?? 0,
-    skippedDuplicateCount: run.skippedDuplicateCount ?? 0,
-    errorCount: run.errorCount ?? 0,
-    jobDocumentIds: normalizeTargetLanguageIds(run.jobDocumentIds),
-    errors: normalizeErrors(run.errors),
-    summary: run.summary,
-    report: normalizeDryRunReport(run.report),
-  }
-}
-
-function normalizeAutomation(raw: RawAutomation): EnrichmentAutomation {
-  return {
-    documentId: raw.documentId,
-    name: raw.name,
-    template: raw.template,
-    status: raw.status,
-    runMode: normalizeRunMode(raw.runMode),
-    schedule: raw.schedule,
-    scheduleSummary: raw.scheduleSummary,
-    timezone: raw.timezone ?? raw.schedule.timezone,
-    nextRunAt: raw.nextRunAt,
-    lastRunAt: raw.lastRunAt,
-    lastRunStatus: raw.lastRunStatus,
-    refreshMode: raw.refreshMode,
-    targetLanguageIds: normalizeTargetLanguageIds(raw.targetLanguageIds),
-    maxVideosPerRun: raw.maxVideosPerRun,
-    leaseToken: raw.leaseToken,
-    leaseExpiresAt: raw.leaseExpiresAt,
-    runs: (raw.runs ?? [])
-      .filter((run): run is RawAutomationRun => run != null)
-      .map(normalizeRun),
-  }
-}
-
 export async function getAutomation(
   documentId: string,
 ): Promise<EnrichmentAutomation | null> {
@@ -324,17 +70,7 @@ export async function getAutomation(
     )
   }
 
-  const client = getClient()
-  const result = await client.query<{
-    enrichmentAutomation?: RawAutomation | null
-  }>({
-    query: GET_AUTOMATION,
-    variables: { documentId },
-    fetchPolicy: "no-cache",
-  })
-
-  const automation = result.data?.enrichmentAutomation
-  return automation ? normalizeAutomation(automation) : null
+  return (await getAdminAutomationAdapter()).get(documentId)
 }
 
 export async function listAutomations(): Promise<EnrichmentAutomation[]> {
@@ -343,17 +79,7 @@ export async function listAutomations(): Promise<EnrichmentAutomation[]> {
     return mockState.readModels.automations
   }
 
-  const client = getClient()
-  const result = await client.query<{
-    enrichmentAutomations?: Array<RawAutomation | null>
-  }>({
-    query: LIST_AUTOMATIONS,
-    fetchPolicy: "no-cache",
-  })
-
-  return (result.data?.enrichmentAutomations ?? [])
-    .filter((automation): automation is RawAutomation => automation != null)
-    .map(normalizeAutomation)
+  return (await getAdminAutomationAdapter()).list()
 }
 
 export async function getAutomationRun(
@@ -368,17 +94,76 @@ export async function getAutomationRun(
     )
   }
 
-  const client = getClient()
-  const result = await client.query<{
-    enrichmentAutomationRun?: RawAutomationRun | null
-  }>({
-    query: GET_AUTOMATION_RUN,
-    variables: { documentId },
-    fetchPolicy: "no-cache",
-  })
+  return (await getAdminAutomationAdapter()).getRun(documentId)
+}
 
-  const run = result.data?.enrichmentAutomationRun
-  return run ? normalizeRun(run) : null
+export async function getAutomationRunByIdempotencyKey(input: {
+  automationDocumentId: string
+  idempotencyKey: string
+}): Promise<EnrichmentAutomationRun | null> {
+  const state = await readMockCmsState(getCmsGateway())
+  if (state) {
+    return (
+      state.readModels.automations
+        .find(
+          (automation) => automation.documentId === input.automationDocumentId,
+        )
+        ?.runs.find(
+          (run) =>
+            run.automationDocumentId === input.automationDocumentId &&
+            run.idempotencyKey === input.idempotencyKey,
+        ) ?? null
+    )
+  }
+  return (await getAdminAutomationAdapter()).findRun(
+    input.automationDocumentId,
+    input.idempotencyKey,
+  )
+}
+
+/** Consume the admitted run once. An existing key returned by createRun is not admission. */
+export async function beginAutomationRunDispatch(
+  runDocumentId: string,
+  leaseToken: string,
+): Promise<boolean> {
+  const gateway = getCmsGateway()
+  if (await readMockCmsState(gateway)) {
+    let admitted = false
+    await updateMockCmsState(gateway, (state) => ({
+      ...state,
+      readModels: {
+        ...state.readModels,
+        automations: state.readModels.automations.map((automation) => {
+          if (
+            automation.leaseToken !== leaseToken ||
+            !automation.leaseExpiresAt ||
+            Date.parse(automation.leaseExpiresAt) <= Date.now()
+          )
+            return automation
+          return {
+            ...automation,
+            runs: automation.runs.map((run) => {
+              if (
+                run.documentId !== runDocumentId ||
+                run.status !== "running" ||
+                !("leaseToken" in run) ||
+                run.leaseToken !== leaseToken ||
+                ("dispatchStartedAt" in run && run.dispatchStartedAt)
+              )
+                return run
+              admitted = true
+              return { ...run, dispatchStartedAt: new Date().toISOString() }
+            }),
+          }
+        }),
+      },
+    }))
+    return admitted
+  }
+  return (await getAdminAutomationAdapter()).beginDispatch(
+    runDocumentId,
+    leaseToken,
+  )
 }
 
 export async function hasInFlightAutomationRun(
@@ -396,30 +181,7 @@ export async function hasInFlightAutomationRun(
     )
   }
 
-  const client = getClient()
-  const result = await client.query<{
-    enrichmentAutomationRuns?: Array<{ documentId?: string | null } | null>
-  }>({
-    query: HAS_IN_FLIGHT_AUTOMATION_RUN,
-    variables: {
-      automationDocumentId,
-      statuses: ["claimed", "running"],
-    },
-    fetchPolicy: "no-cache",
-  })
-
-  return (result.data?.enrichmentAutomationRuns ?? []).some(
-    (run) => run?.documentId != null,
-  )
-}
-
-function isCmsConflict(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error != null &&
-    "status" in error &&
-    (error as { status?: unknown }).status === 409
-  )
+  return (await getAdminAutomationAdapter()).hasInFlight(automationDocumentId)
 }
 
 export async function claimAutomationDryRun(
@@ -428,53 +190,39 @@ export async function claimAutomationDryRun(
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    const automation = mockState.readModels.automations.find(
-      (candidate) => candidate.documentId === automationDocumentId,
-    )
-    if (!automation) return null
-    if (
-      automation.leaseToken &&
-      automation.leaseExpiresAt &&
-      new Date(automation.leaseExpiresAt).getTime() > Date.now()
-    ) {
-      return null
-    }
-
-    const claim: AutomationDryRunClaim = {
-      documentId: automationDocumentId,
-      leaseToken: `lease-${Date.now()}`,
-      leaseExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
-    }
+    let claim: AutomationDryRunClaim | null = null
     await updateMockCmsState(gateway, (current) => ({
       ...current,
       readModels: {
         ...current.readModels,
-        automations: current.readModels.automations.map((candidate) =>
-          candidate.documentId === automationDocumentId
-            ? {
-                ...candidate,
-                leaseToken: claim.leaseToken,
-                leaseExpiresAt: claim.leaseExpiresAt,
-              }
-            : candidate,
-        ),
+        automations: current.readModels.automations.map((automation) => {
+          if (
+            automation.documentId !== automationDocumentId ||
+            (automation.leaseToken &&
+              automation.leaseExpiresAt &&
+              Date.parse(automation.leaseExpiresAt) > Date.now()) ||
+            automation.runs.some(
+              (run) => run.status === "claimed" || run.status === "running",
+            )
+          )
+            return automation
+          claim = {
+            documentId: automationDocumentId,
+            leaseToken: randomUUID(),
+            leaseExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+          }
+          return {
+            ...automation,
+            leaseToken: claim.leaseToken,
+            leaseExpiresAt: claim.leaseExpiresAt,
+          }
+        }),
       },
     }))
     return claim
   }
 
-  try {
-    const response = await cmsPost<unknown>(
-      `/enrichment-automation/${encodeURIComponent(
-        automationDocumentId,
-      )}/manual-dry-run-claim`,
-      {},
-    )
-    return automationDryRunClaimSchema.parse(response)
-  } catch (error) {
-    if (isCmsConflict(error)) return null
-    throw error
-  }
+  return (await getAdminAutomationAdapter()).claim(automationDocumentId)
 }
 
 export async function releaseAutomationDryRunClaim(
@@ -484,35 +232,36 @@ export async function releaseAutomationDryRunClaim(
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
+    let released = false
     await updateMockCmsState(gateway, (current) => ({
       ...current,
       readModels: {
         ...current.readModels,
-        automations: current.readModels.automations.map((candidate) =>
-          candidate.documentId === automationDocumentId &&
-          candidate.leaseToken === leaseToken
-            ? {
-                ...candidate,
-                leaseToken: null,
-                leaseExpiresAt: null,
-              }
-            : candidate,
-        ),
+        automations: current.readModels.automations.map((automation) => {
+          if (
+            automation.documentId !== automationDocumentId ||
+            automation.leaseToken !== leaseToken ||
+            automation.runs.some(
+              (run) => run.status === "claimed" || run.status === "running",
+            )
+          )
+            return automation
+          released = true
+          return { ...automation, leaseToken: null, leaseExpiresAt: null }
+        }),
       },
     }))
-    return true
+    return released
   }
 
-  const response = await cmsPost<unknown>(
-    `/enrichment-automation/${encodeURIComponent(
-      automationDocumentId,
-    )}/manual-dry-run-release`,
-    { leaseToken },
+  return (await getAdminAutomationAdapter()).release(
+    automationDocumentId,
+    leaseToken,
   )
-  return automationDryRunReleaseSchema.parse(response).released
 }
 
 export async function markAutomationRunFailedIfInFlight(input: {
+  leaseToken?: string
   runDocumentId: string
   error: string
   finishedAt: string
@@ -534,6 +283,15 @@ export async function markAutomationRunFailedIfInFlight(input: {
             ) {
               return run
             }
+            if (
+              input.leaseToken &&
+              (automation.leaseToken !== input.leaseToken ||
+                !("leaseToken" in run) ||
+                run.leaseToken !== input.leaseToken ||
+                !automation.leaseExpiresAt ||
+                Date.parse(automation.leaseExpiresAt) <= Date.now())
+            )
+              return run
             updated = true
             return {
               ...run,
@@ -550,16 +308,13 @@ export async function markAutomationRunFailedIfInFlight(input: {
     return updated
   }
 
-  const response = await cmsPost<unknown>(
-    `/enrichment-automation-run/${encodeURIComponent(
-      input.runDocumentId,
-    )}/mark-failed-if-in-flight`,
-    {
-      error: input.error,
-      finishedAt: input.finishedAt,
-    },
+  if (!input.leaseToken)
+    throw new AutomationStoreError("Run lease token required")
+  return (await getAdminAutomationAdapter()).fail(
+    input.runDocumentId,
+    input.leaseToken,
+    input.error,
   )
-  return automationRunFailedIfInFlightSchema.parse(response).updated
 }
 
 export async function createAutomation(
@@ -607,37 +362,12 @@ export async function createAutomation(
     return automation
   }
 
-  const client = getClient()
-  const result = await client.mutate<{
-    createEnrichmentAutomation?: RawAutomation | null
-  }>({
-    mutation: CREATE_AUTOMATION,
-    variables: {
-      data: {
-        name: input.name,
-        template: input.template,
-        status: input.status,
-        runMode: input.runMode,
-        schedule: input.schedule,
-        scheduleSummary: input.scheduleSummary,
-        timezone: input.timezone,
-        nextRunAt: input.nextRunAt,
-        refreshMode: input.refreshMode,
-        targetLanguageIds: input.targetLanguageIds,
-        maxVideosPerRun: input.maxVideosPerRun,
-      },
-    },
-  })
-
-  const automation = result.data?.createEnrichmentAutomation
-  if (!automation) {
-    throw new Error("Failed to create enrichment automation")
-  }
-
-  return normalizeAutomation(automation)
+  return (await getAdminAutomationAdapter()).create(input)
 }
 
 export async function createAutomationRun(input: {
+  leaseToken?: string
+  idempotencyKey?: string
   automationDocumentId: string
   runMode: AutomationRunMode
   scheduledFor: string
@@ -646,71 +376,74 @@ export async function createAutomationRun(input: {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
-    const run: EnrichmentAutomationRun = {
-      documentId: nextMockDocumentId(
-        "mock-automation-run",
-        mockState.readModels.automations.flatMap((automation) =>
-          automation.runs.map((candidate) => candidate.documentId),
-        ),
-      ),
-      status: "running",
-      runMode: input.runMode,
-      scheduledFor: input.scheduledFor,
-      startedAt: input.startedAt,
-      finishedAt: null,
-      eligibleCount: 0,
-      enqueuedCount: 0,
-      skippedDuplicateCount: 0,
-      errorCount: 0,
-      jobDocumentIds: [],
-      errors: [],
-      summary: null,
-    }
+    let created: EnrichmentAutomationRun | null = null
     await updateMockCmsState(gateway, (current) => ({
       ...current,
       readModels: {
         ...current.readModels,
-        automations: current.readModels.automations.map((automation) =>
-          automation.documentId === input.automationDocumentId
-            ? { ...automation, runs: [run, ...automation.runs] }
-            : automation,
-        ),
+        automations: current.readModels.automations.map((automation) => {
+          if (automation.documentId !== input.automationDocumentId)
+            return automation
+          const existing =
+            input.idempotencyKey &&
+            automation.runs.find(
+              (run) => run.idempotencyKey === input.idempotencyKey,
+            )
+          if (existing) {
+            created = existing
+            return automation
+          }
+          if (input.runMode !== "dry_run")
+            throw new AutomationStoreError(
+              "Manual automation runs must use dry_run",
+            )
+          if (
+            input.leaseToken &&
+            (automation.leaseToken !== input.leaseToken ||
+              !automation.leaseExpiresAt ||
+              Date.parse(automation.leaseExpiresAt) <= Date.now())
+          ) {
+            throw new AutomationStoreError("Run lease token required")
+          }
+          const run = {
+            documentId: nextMockDocumentId(
+              "mock-automation-run",
+              current.readModels.automations.flatMap((item) =>
+                item.runs.map((run) => run.documentId),
+              ),
+            ),
+            automationDocumentId: input.automationDocumentId,
+            idempotencyKey: input.idempotencyKey ?? null,
+            leaseToken: input.leaseToken,
+            status: "running" as const,
+            runMode: input.runMode,
+            scheduledFor: input.scheduledFor,
+            startedAt: input.startedAt,
+            finishedAt: null,
+            eligibleCount: 0,
+            enqueuedCount: 0,
+            skippedDuplicateCount: 0,
+            errorCount: 0,
+            jobDocumentIds: [],
+            errors: [],
+            summary: null,
+          }
+          created = run
+          return { ...automation, runs: [run, ...automation.runs] }
+        }),
       },
     }))
-    return run
+    if (!created) throw new AutomationStoreError("Automation not found")
+    return created
   }
 
-  const client = getClient()
-  const result = await client.mutate<{
-    createEnrichmentAutomationRun?: RawAutomationRun | null
-  }>({
-    mutation: CREATE_AUTOMATION_RUN,
-    variables: {
-      data: {
-        automation: input.automationDocumentId,
-        status: "running",
-        runMode: input.runMode,
-        scheduledFor: input.scheduledFor,
-        startedAt: input.startedAt,
-        eligibleCount: 0,
-        enqueuedCount: 0,
-        skippedDuplicateCount: 0,
-        errorCount: 0,
-        jobDocumentIds: [],
-        errors: [],
-      },
-    },
-  })
-
-  const run = result.data?.createEnrichmentAutomationRun
-  if (!run) {
-    throw new Error("Failed to create enrichment automation run")
-  }
-
-  return normalizeRun(run)
+  if (!input.leaseToken)
+    throw new AutomationStoreError("Run lease token required")
+  return (await getAdminAutomationAdapter()).createRun(input)
 }
 
 export async function completeAutomationRun(input: {
+  leaseToken?: string
   runDocumentId: string
   result: AutomationRunResult
   finishedAt: string
@@ -732,6 +465,23 @@ export async function completeAutomationRun(input: {
               return run
             }
 
+            if (
+              input.leaseToken &&
+              (automation.leaseToken !== input.leaseToken ||
+                !("leaseToken" in run) ||
+                run.leaseToken !== input.leaseToken ||
+                !automation.leaseExpiresAt ||
+                Date.parse(automation.leaseExpiresAt) <= Date.now())
+            ) {
+              throw new AutomationStoreError("Run lease token required")
+            }
+            if (
+              run.runMode === "dry_run" &&
+              (input.result.enqueuedCount !== 0 ||
+                input.result.jobDocumentIds.length !== 0)
+            ) {
+              throw new AutomationStoreError("Dry runs cannot enqueue jobs")
+            }
             completedRun = {
               ...run,
               status: input.result.status,
@@ -773,39 +523,13 @@ export async function completeAutomationRun(input: {
     return completedRun
   }
 
-  const client = getClient()
-  const result = await client.mutate<{
-    updateEnrichmentAutomationRun?: RawAutomationRun | null
-  }>({
-    mutation: UPDATE_AUTOMATION_RUN,
-    variables: {
-      documentId: input.runDocumentId,
-      data: {
-        status: input.result.status,
-        finishedAt: input.finishedAt,
-        eligibleCount: input.result.eligibleCount,
-        enqueuedCount: input.result.enqueuedCount,
-        skippedDuplicateCount: input.result.skippedDuplicateCount,
-        errorCount: input.result.errorCount,
-        jobDocumentIds: input.result.jobDocumentIds,
-        errors: input.result.errors,
-        summary: input.result.summary,
-        ...(input.result.dryRunReport
-          ? {
-              runMode: "dry_run",
-              report: input.result.dryRunReport,
-            }
-          : {}),
-      },
-    },
-  })
-
-  const run = result.data?.updateEnrichmentAutomationRun
-  if (!run) {
-    throw new Error("Failed to complete enrichment automation run")
-  }
-
-  return normalizeRun(run)
+  if (!input.leaseToken)
+    throw new AutomationStoreError("Run lease token required")
+  return (await getAdminAutomationAdapter()).complete(
+    input.runDocumentId,
+    input.leaseToken,
+    input.result,
+  )
 }
 
 export async function updateAutomationStatus(
@@ -825,12 +549,6 @@ export async function updateAutomationStatus(
                 ...automation,
                 status: input.status,
                 nextRunAt: input.nextRunAt,
-                ...(input.status === "paused"
-                  ? {
-                      leaseToken: null,
-                      leaseExpiresAt: null,
-                    }
-                  : {}),
               }
             : automation,
         ),
@@ -846,32 +564,10 @@ export async function updateAutomationStatus(
     return automation
   }
 
-  const client = getClient()
-  const result = await client.mutate<{
-    updateEnrichmentAutomation?: RawAutomation | null
-  }>({
-    mutation: UPDATE_AUTOMATION,
-    variables: {
-      documentId,
-      data: {
-        status: input.status,
-        nextRunAt: input.nextRunAt,
-        ...(input.status === "paused"
-          ? {
-              leaseToken: null,
-              leaseExpiresAt: null,
-            }
-          : {}),
-      },
-    },
-  })
-
-  const automation = result.data?.updateEnrichmentAutomation
-  if (!automation) {
-    throw new Error("Failed to update enrichment automation")
-  }
-
-  return normalizeAutomation(automation)
+  return (await getAdminAutomationAdapter()).updateStatus(
+    documentId,
+    input.status,
+  )
 }
 
 export async function findMissingLanguageIds(
@@ -887,21 +583,10 @@ export async function findMissingLanguageIds(
     return languageIds.filter((languageId) => !available.has(languageId))
   }
 
-  const client = getClient()
-  const result = await client.query<{
-    languages?: Array<{ coreId?: string | null } | null>
-  }>({
-    query: GET_LANGUAGES_BY_CORE_ID,
-    variables: {
-      filters: { coreId: { in: languageIds } },
-    },
-    fetchPolicy: "no-cache",
-  })
-
-  const found = new Set(
-    (result.data?.languages ?? [])
-      .map((language) => language?.coreId)
-      .filter((coreId): coreId is string => coreId != null),
+  const available = new Set(
+    (await (await getAdminAutomationAdapter()).languages()).map(
+      (language) => language.coreId,
+    ),
   )
-  return languageIds.filter((languageId) => !found.has(languageId))
+  return languageIds.filter((id) => !available.has(id))
 }

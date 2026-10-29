@@ -1,21 +1,18 @@
-import { gql } from "@apollo/client"
-import getClient from "@/cms/client"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { AgentsPage } from "@/features/agents/agents-page"
 import type { LanguageOption } from "@/features/agents/automation-form"
-import { listAutomations } from "@/features/agents/automation-store"
-import type { EnrichmentAutomation } from "@/features/agents/automation-contract"
+import {
+  getAdminAutomationAdapter,
+  getAutomation,
+  getAutomationRun,
+  listAutomations,
+} from "@/features/agents/automation-store"
+import type {
+  EnrichmentAutomation,
+  EnrichmentAutomationRun,
+} from "@/features/agents/automation-contract"
 
 export const dynamic = "force-dynamic"
-
-const GET_AGENT_LANGUAGE_OPTIONS = gql`
-  query GetAgentLanguageOptions {
-    languages(sort: ["name:asc"], pagination: { pageSize: 100 }) {
-      coreId
-      name
-    }
-  }
-`
 
 function buildLanguageOptions(
   languages: Array<{ coreId: string; name: string }>,
@@ -56,46 +53,86 @@ async function loadLiveAgentsPageData(): Promise<{
   let languageOptions: LanguageOption[] = []
 
   try {
-    const client = getClient()
+    const adapter = await getAdminAutomationAdapter()
     const [automationResult, languageResult] = await Promise.all([
       listAutomations(),
-      client.query<{
-        languages?: Array<{
-          coreId?: string | null
-          name?: string | null
-        } | null>
-      }>({
-        query: GET_AGENT_LANGUAGE_OPTIONS,
-        fetchPolicy: "no-cache",
-      }),
+      adapter.languages(),
     ])
-
     automations = automationResult
-    languageOptions = buildLanguageOptions(
-      (languageResult.data?.languages ?? []).filter(
-        (language): language is { coreId: string; name: string } =>
-          language?.coreId != null && language.name != null,
-      ),
-    )
+    languageOptions = buildLanguageOptions(languageResult)
   } catch (error) {
-    console.error("[agents/page] Failed to fetch data from Strapi:", error)
+    console.error(
+      "[agents/page] Failed to fetch automation data from Admin:",
+      error,
+    )
   }
 
   return { automations, languageOptions }
 }
 
-export default async function AgentsDashboardPage() {
+type ReportQuery = {
+  automationId?: string | string[]
+  runId?: string | string[]
+}
+type RequestedReport = { automationName: string; run: EnrichmentAutomationRun }
+const unavailableReport = "The requested automation report is unavailable."
+
+async function loadRequestedReport(query: ReportQuery | undefined): Promise<{
+  requestedReport: RequestedReport | null
+  reportError?: string
+}> {
+  if (!query?.automationId && !query?.runId) return { requestedReport: null }
+  const { automationId, runId } = query
+  if (
+    typeof automationId !== "string" ||
+    typeof runId !== "string" ||
+    !automationId ||
+    !runId ||
+    automationId.length > 160 ||
+    runId.length > 160
+  ) {
+    return { requestedReport: null, reportError: unavailableReport }
+  }
+  try {
+    // A report URL is durable even after its run leaves the five-row list slice.
+    const [automation, run] = await Promise.all([
+      getAutomation(automationId),
+      getAutomationRun(runId),
+    ])
+    if (
+      automation &&
+      run &&
+      run.automationDocumentId === automation.documentId
+    ) {
+      return { requestedReport: { automationName: automation.name, run } }
+    }
+  } catch (error) {
+    console.error("[agents/page] Failed to load requested report:", error)
+  }
+  return { requestedReport: null, reportError: unavailableReport }
+}
+
+export default async function AgentsDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<ReportQuery>
+} = {}) {
   const gateway = getCmsGateway()
-  const { automations, languageOptions } =
+  const [{ automations, languageOptions }, report] = await Promise.all([
     gateway.mode === "mock"
-      ? await loadMockAgentsPageData(gateway)
-      : await loadLiveAgentsPageData()
+      ? loadMockAgentsPageData(gateway)
+      : loadLiveAgentsPageData(),
+    searchParams
+      ? searchParams.then(loadRequestedReport)
+      : Promise.resolve({ requestedReport: null }),
+  ])
 
   return (
     <div className="studio-page studio-page--agents">
       <AgentsPage
         initialAutomations={automations}
         languageOptions={languageOptions}
+        {...report}
       />
     </div>
   )
