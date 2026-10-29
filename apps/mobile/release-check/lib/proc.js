@@ -79,7 +79,12 @@ function run(command, args, options) {
     let settled = false
     // A caller may read the log at once, so resolve only after it is flushed.
     function finish(outcome) {
-      const done = () => resolve({ ...outcome, logError })
+      const done = (error) => {
+        // Completion can observe the failure before the "error" event does.
+        const failure = error ?? log?.errored
+        if (failure) logError ??= String(failure.message ?? failure)
+        resolve({ ...outcome, logError })
+      }
       if (!log || log.destroyed) done()
       else log.end(done)
     }
