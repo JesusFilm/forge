@@ -104,6 +104,7 @@ export async function runRecommendationProfileProjectionJob(
       state: "FENCED",
       completedAt: new Date(),
       leaseExpiresAt: null,
+      failureReason: "behavioral_recommendations_retired",
       lastTransitionReason: "behavioral_recommendations_retired",
     },
   })

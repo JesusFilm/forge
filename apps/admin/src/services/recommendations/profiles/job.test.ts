@@ -62,7 +62,10 @@ describe("retired profile projection", () => {
     expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "old", state: { in: ["PENDING", "CLAIMED"] } },
-        data: expect.objectContaining({ state: "FENCED" }),
+        data: expect.objectContaining({
+          state: "FENCED",
+          failureReason: "behavioral_recommendations_retired",
+        }),
       }),
     )
     expect(start).not.toHaveBeenCalled()

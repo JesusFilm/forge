@@ -40,8 +40,13 @@ Remove behavioral candidate sources, profile creation and learner dispatch acros
 Web/native callers. Keep semantic retrieval, video metadata summaries, precomputed
 recommendations and their A/B measurements. Remove personalization UI and clear
 retired credentials. Shut down persisted learners safely before deleting their
-rows and dropping the retired schema in a subsequent normal release. Record exact
-release revisions, row counts and physical storage separately.
+rows. U4 requires zero rows in the 19 retired behavioral direct-delete tables,
+explicit detachment of three retained historical references, and verification
+that request, playback, native viewer, eligibility and precomputed A/B evidence
+remains. Release B retains the emptied tables and their schema. Physical
+table/index removal needs a separately scoped normal-release follow-up after
+the row drain. Record exact release revisions, row counts, reusable PostgreSQL
+pages, relation allocation and physical filesystem space separately.
 
 ## Constraints
 
@@ -59,4 +64,6 @@ bootstrap returns personalization false. Profile and co-watch jobs cannot restar
 on boot, replay, feedback, manual routes or CLI. Semantic/precomputed tests retain
 language eligibility and experiment accounting. Real PostgreSQL tests prove the
 retirement cleanup preserves kept data. Production receipts prove retired rows
-are absent and distinguish reusable space from physical file reclamation.
+are absent and distinguish reusable space from physical file reclamation. A
+historical queued business ledger does not by itself mean a learner is running:
+adjudicate its joined actual workflow runtime without rewriting history.

@@ -487,7 +487,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await db.recommendationProfile.delete({ where: { id: profileId } })
     }, 30_000)
 
-    it("locks sibling graphs reached by private source suppression before deleting a graph", async () => {
+    it("locks sibling graphs reached by private source references before deleting a retired graph", async () => {
       const f = await fixture(false)
       const locked = latch(),
         resume = latch()
@@ -504,9 +504,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       await locked.promise
       try {
-        // A concurrent invalidator cannot own the sibling while deletion owns
-        // the selected graph. Without the dependency closure this succeeds,
-        // allowing sibling->selected and selected->sibling to form a cycle.
+        // A concurrent graph locker cannot own the sibling while deletion owns
+        // the selected graph; the retained dependency closure still covers it.
         await expect(
           db.$transaction((tx) =>
             tx.$queryRaw(Prisma.sql`
@@ -519,11 +518,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
       await deletion
       expect(
-        (
-          await db.recommendationCowatchGeneration.findUniqueOrThrow({
-            where: { id: f.siblingGraphId },
-          })
-        ).invalidatedAt,
+        await db.recommendationCowatchGeneration.findUnique({
+          where: { id: f.graphId },
+        }),
+      ).toBeNull()
+      expect(
+        await db.recommendationCowatchGeneration.findUniqueOrThrow({
+          where: { id: f.siblingGraphId },
+        }),
+      ).toMatchObject({ invalidatedAt: null, invalidationReason: null })
+      expect(
+        await db.recommendationOutcomeRevision.findUnique({
+          where: { id: f.sourceOutcomeId },
+        }),
       ).not.toBeNull()
       expect(
         (
@@ -665,7 +672,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await single.$disconnect()
       }
     }, 15000)
-    it("includes retained session aliases before suppressing a shared source outcome", async () => {
+    it("includes retained session aliases in the lock closure without recreating retired suppression", async () => {
       const f = await fixture(false)
       const oldSource =
         await db.recommendationCowatchSourceContribution.findFirstOrThrow({
@@ -778,15 +785,23 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
       await deletion
       expect(
-        (
-          await db.recommendationCowatchGeneration.findUniqueOrThrow({
-            where: { id: graphC },
-          })
-        ).invalidatedAt,
-      ).not.toBeNull()
+        await db.recommendationCowatchGeneration.findUnique({
+          where: { id: f.graphId },
+        }),
+      ).toBeNull()
+      expect(
+        await db.recommendationCowatchGeneration.findUniqueOrThrow({
+          where: { id: graphC },
+        }),
+      ).toMatchObject({ invalidatedAt: null, invalidationReason: null })
       expect(
         await db.recommendationCowatchSuppression.findUnique({
           where: { episodeId: episodeC },
+        }),
+      ).toBeNull()
+      expect(
+        await db.recommendationOutcomeRevision.findUnique({
+          where: { id: outcomeC },
         }),
       ).not.toBeNull()
     }, 15000)
