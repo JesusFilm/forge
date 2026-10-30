@@ -114,16 +114,19 @@ same-origin guard falls back to the request Host when this is unset),
 `MASTRA_BASE_URL`, `MASTRA_SERVICE_API_KEY`, and Mux credentials.
 
 > **There is no `WORKFLOW_API_KEY`.** An earlier version of this runbook listed
-> one as required for durable Lab execution. The Workflow SDK
-> (<https://workflow-sdk.dev>) has no hosted tier and no API key — persistence
-> is a pluggable "World" (`WORKFLOW_TARGET_WORLD`), and Manager uses the local
-> default, as Smart Crop already does in production. The variable was declared
-> in Manager's env schema but read by nothing; it has been removed. Do not
-> re-add it.
+> one as required for durable Lab execution. Manager did not read it; the
+> unused schema entry has been removed. Workflow persistence is selected by
+> the SDK's "World" (`WORKFLOW_TARGET_WORLD`), rather than this credential.
+> Do not re-add it as a Lab prerequisite.
 >
-> The consequence worth knowing: on the local World a workflow lives in the
-> process, so a Manager restart loses an in-flight run. That is precisely what
-> step 6 recovers.
+> In the pinned `@workflow/world-local` 4.1.0 implementation, run and event
+> state is stored as files in `WORKFLOW_LOCAL_DATA_DIR` (default
+> `.workflow-data`), while queue delivery and timers live in memory. World
+> startup can re-enqueue active runs from the stored state. Recovery therefore
+> depends on preserving that directory and successfully starting the World;
+> a process restart alone does not prove that a run was lost or recovered.
+> This source check does not attest the deployed World or persistent volume.
+> Keep step 6's Lab recovery caller and verify its per-run outcomes.
 
 Production cloud launches additionally require Railway's
 `RAILWAY_GIT_COMMIT_SHA`, or an explicit `GIT_COMMIT_SHA`. A missing or

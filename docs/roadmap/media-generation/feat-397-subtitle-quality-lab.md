@@ -60,6 +60,14 @@ Forge has a reproducible local subtitle-translation evaluator but no durable clo
 
 ## Operations Handoff
 
+PR #2347 documentation follow-up (2026-10-30): removed the unused Workflow
+credential prerequisite and its orphan environment comment. The turn-on
+runbook now distinguishes the pinned local World's file-backed state from its
+in-memory delivery and startup re-enqueue behavior. This does not verify the
+deployed World, persistent storage, or Lab recovery. Broader acceptance and
+this ticket remain in progress. See
+`docs/plans/2026-10-30-pr2347-doc-clarity-plan.md` for the bounded scope.
+
 The implementation is local-only while this ticket is `in-progress`. The
 package runbooks are authoritative for operations:
 
