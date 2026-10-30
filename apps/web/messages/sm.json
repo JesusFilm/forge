@@ -530,6 +530,9 @@
     "scrollToVideo": "Fa'asolo i le vitio {title}",
     "forYou": "Mo oe"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Oso i le anotusi autū"
+  },
   "WatchFooter": {
     "home": "Itulau autū o Jesus Film Project",
     "navigation": "Su'ega i le footer",

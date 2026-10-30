@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrola uye kuvidiyo ka-{title}",
     "forYou": "Okwakho"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Yeqela kokuqukethwe okuyinhloko"
+  },
   "WatchFooter": {
     "home": "Ikhaya le-Jesus Film Project",
     "navigation": "Ukuzulazula kwe-footer",

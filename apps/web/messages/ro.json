@@ -395,6 +395,9 @@
     "backToWatch": "Înapoi la Watch",
     "browseVideos": "Răsfoiește videoclipurile"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Salt la conținutul principal"
+  },
   "WatchFooter": {
     "home": "Pagina principală Jesus Film Project",
     "navigation": "Navigare în subsol",

@@ -530,6 +530,9 @@
     "scrollToVideo": "I-scroll ngadto ha video nga {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumaktaw ngadto ha panguna nga sulod"
+  },
   "WatchFooter": {
     "home": "Home han Jesus Film Project",
     "navigation": "Paglakat han footer",

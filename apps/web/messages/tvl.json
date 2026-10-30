@@ -530,6 +530,9 @@
     "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Oso ki te mataupu tāua"
+  },
   "WatchFooter": {
     "home": "Te kāiga o Jesus Film Project",
     "navigation": "Navigation i te footer",

@@ -63,3 +63,11 @@ live-manifest qualification remain separate gates.
   `apps/web/e2e/watch-manifest-document-status.spec.ts`.
 - Shared-root browser RSC-to-DOM continuity and matched local document loading
   observations; preserve normal streaming in the `(content)` route group.
+
+## Explicit PR dependency chain
+
+This route-group change is stacked on PR #2849, after #2637 and #2838. Their
+skip-link and error focus contracts remain intact. The two root-level error
+and skip-target tests import the relocated `(content)/[...rest]/error` module.
+Retarget each child to main only after its parent merges, then rerun CI and
+related tests. This is a source dependency, not authorization to merge.

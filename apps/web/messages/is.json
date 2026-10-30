@@ -530,6 +530,9 @@
     "scrollToVideo": "Fletta að myndbandinu {title}",
     "forYou": "Fyrir þig"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Fara beint í aðalefni"
+  },
   "WatchFooter": {
     "home": "Forsíða Jesus Film Project",
     "navigation": "Fótstillingaleiðsögn",

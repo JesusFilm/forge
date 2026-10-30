@@ -530,6 +530,9 @@
     "scrollToVideo": "I-scroll so video a {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Laktaw ed pangunan laman"
+  },
   "WatchFooter": {
     "home": "Home na Jesus Film Project",
     "navigation": "Pag-navigar ed footer",

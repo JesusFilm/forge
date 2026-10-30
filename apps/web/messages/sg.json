@@ -530,6 +530,9 @@
     "scrollToVideo": "Kende ti video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Pika na yâ ti kode ti kozo"
+  },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
     "navigation": "Navigation ya nse",

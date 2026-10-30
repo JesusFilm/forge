@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} व्हिडिओक सरकात",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "मुखेल मजकुराचेर वचात"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project मुखपान",
     "navigation": "तळाची नेव्हिगेशन",
