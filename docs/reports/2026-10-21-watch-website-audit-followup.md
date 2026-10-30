@@ -20,6 +20,25 @@ evidence.
 
 Nothing was merged or deployed. Every fix below is in an open PR.
 
+## October 30 merge-preparation update
+
+This report preserves the October 21 measurements and PR snapshot. Current
+main is a672f688b; it has since retired viewer profiles/co-watch and added the
+published audience journeys. Historical observations below do not authorize
+restoring retired behavior or rebuilding working audience flows.
+
+Current preparation has updated stale branches, renumbered History to feat-909
+and routing freshness to feat-908, corrected the single-row large-text header,
+and verified search focus containment. #2849 also fixes the in-place retry
+intent and temporary-main-focus cleanup residuals. Error/routing prerequisites
+are now explicit: #2637 → #2838 → #2849 → #2848. Download integration uses
+#2826 → #2836; the compact header uses #2663 → #2835.
+
+#2845 remains draft with a demonstrated empty/partial outcome regression.
+#2626 is superseded by #2829 and excluded. The combined production build,
+browser/loading qualification and exact-head CI are still separate gates.
+No merge or production deployment is performed by this preparation task.
+
 ## Answer first
 
 - 34 open PRs are linked to this audit: 23 active first-pass PRs, 9 new

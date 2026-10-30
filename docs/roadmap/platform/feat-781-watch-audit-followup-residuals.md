@@ -3,7 +3,7 @@ id: "feat-781"
 title: "Close the remaining Watch website audit follow-ups"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-21"
 duration: 3
 depends_on: []
@@ -14,6 +14,20 @@ tags:
   - "accessibility"
   - "performance"
 ---
+
+## October 30 disposition
+
+The header overlap is corrected in #2835 with compact single-row controls;
+combined hero/loading qualification is pending. #2849 now clears retry intent
+on a new in-place error and removes only its temporary main focus attributes
+on blur. The download integration repair in #2836 retains one-Escape Terms
+close after the shared picker migration. Prepared code is not merged code.
+
+Keep this ticket in progress for the remaining random-hero crossfade,
+non-English/markup snippet vocabulary, physical-device/screen-reader checks,
+and any qualification still pending. #2845's recommendation-slot layout issue
+stays in feat-775. These residuals do not authorize reviving profiles/co-watch
+retired by the October 29 owner decision.
 
 ## Problem
 
