@@ -4,7 +4,19 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { WatchRoleTabs } from "./WatchRoleTabs"
+import { WatchRoleTabs, watchRolePanelProps } from "./WatchRoleTabs"
+import { useWatchRole } from "./watch-role"
+
+/** Tabs plus the host-owned panel, wired the way the Watch hosts wire them. */
+function Frame({ idBase, children }: { idBase: string; children?: string }) {
+  const { role } = useWatchRole()
+  return createElement(
+    "div",
+    null,
+    createElement(WatchRoleTabs, { idBase }),
+    createElement("div", watchRolePanelProps(idBase, role), children),
+  )
+}
 
 let root: Root
 let container: HTMLDivElement
@@ -29,7 +41,7 @@ function tabs() {
 
 describe("WatchRoleTabs", () => {
   it("uses arrow, Home and End keys to select and focus one roving tab", () => {
-    act(() => root.render(createElement(WatchRoleTabs, null, "Panel")))
+    act(() => root.render(createElement(Frame, { idBase: "a" }, "Panel")))
     const buttons = tabs()
     act(() => buttons[0].focus())
     for (const [key, expected] of [
@@ -63,8 +75,8 @@ describe("WatchRoleTabs", () => {
         createElement(
           "div",
           null,
-          createElement(WatchRoleTabs, null, "First panel"),
-          createElement(WatchRoleTabs, null, "Second panel"),
+          createElement(Frame, { idBase: "first" }, "First panel"),
+          createElement(Frame, { idBase: "second" }, "Second panel"),
         ),
       ),
     )
@@ -78,15 +90,17 @@ describe("WatchRoleTabs", () => {
     expect(localStorage.getItem("forge.watch.role")).toBe("share")
   })
 
-  it("renders default Explore and a reserved panel on the server", () => {
+  it("renders default Explore on the server with the prototype tab classes", () => {
     localStorage.setItem("forge.watch.role", "partner")
-    const html = renderToString(createElement(WatchRoleTabs, null, "Panel"))
-    container.innerHTML = html
-    expect(
-      container.querySelector('[aria-selected="true"]')?.textContent,
-    ).toContain("Explore faith")
-    expect(container.querySelector('[role="tabpanel"]')?.className).toContain(
-      "min-h-",
+    container.innerHTML = renderToString(
+      createElement(WatchRoleTabs, { idBase: "s" }),
     )
+    const selected = container.querySelector('[aria-selected="true"]')!
+    expect(selected.textContent).toContain("Explore faith")
+    expect(selected.className).toContain("after:border-[9px]")
+    expect(selected.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-brand-red",
+    )
+    expect(selected.className).toContain("focus-visible:outline-[#2563eb]")
   })
 })

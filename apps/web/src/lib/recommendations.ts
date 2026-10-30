@@ -26,13 +26,13 @@ import {
   RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/recommendation-timeouts"
 
 // Keep Admin delivery bounded below the browser's 12-second deadline, leaving
 // room for admission, serialization, network transit, and bounded retries.
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
-const SELECTION_UPSTREAM_TIMEOUT_MS = 700
 
 export async function issueWatchSurfaceDelivery(
   variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
@@ -92,7 +92,10 @@ function hasRecommendationGraphqlCode(
 // envelopes for compatible callers without relying on human-readable messages.
 async function withRecommendationDomainErrors<T>(
   operation: Promise<T>,
-  invalidInputCode: "playback_request_invalid" | "evidence_request_invalid",
+  invalidInputCode:
+    | "playback_request_invalid"
+    | "evidence_request_invalid"
+    | "exposure_request_invalid",
 ): Promise<T> {
   let result: T
   try {
@@ -453,7 +456,7 @@ export async function selectSemanticRecommendation(
       mutation: adminSelectSemanticRecommendationOperation,
       variables,
       fetchPolicy: "no-cache",
-      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
     }),
     "evidence_request_invalid",
   )
@@ -473,7 +476,7 @@ export async function selectPrivatePrecomputedRecommendation(
       mutation: adminSelectPrivatePrecomputedRecommendationOperation,
       variables,
       fetchPolicy: "no-cache",
-      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
     }),
     "evidence_request_invalid",
   )
@@ -558,14 +561,17 @@ export async function recordRecommendationContentAction(
 export async function recordWatchSurfaceExposure(
   events: Record<string, unknown>[],
 ) {
-  const result = await client.mutate({
-    mutation: adminRecordWatchSurfaceExposureOperation,
-    variables: { events },
-    fetchPolicy: "no-cache",
-    context: upstreamContext(
-      RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
-    ),
-  })
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordWatchSurfaceExposureOperation,
+      variables: { events },
+      fetchPolicy: "no-cache",
+      context: upstreamContext(
+        RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
+      ),
+    }),
+    "exposure_request_invalid",
+  )
   if (result.error || !result.data?.recordWatchSurfaceExposure) {
     throw new RecommendationRuntimeError("evidence_failed")
   }

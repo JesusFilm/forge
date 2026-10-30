@@ -46,7 +46,6 @@ test(
           durationInFrames: 30,
           tracks: [{ id: "visual", kind: "visual" }],
           components: [],
-          packRevisionIds: [],
           items: [
             {
               id: "text",

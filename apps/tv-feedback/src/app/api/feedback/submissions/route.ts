@@ -149,7 +149,10 @@ export async function POST(request: Request) {
   const report: ReportForLinear = {
     id: grant.reference,
     category: input.category,
-    message: input.message,
+    message:
+      grant.source === "signed-simulator"
+        ? `[SIMULATOR TEST] ${input.message}`
+        : input.message,
     expected: input.expected ?? null,
     steps: input.steps ?? null,
     blocked: input.blocked ?? false,
@@ -162,7 +165,12 @@ export async function POST(request: Request) {
   }
   let issueId: string | undefined
   try {
-    issueId = await createIssue(report)
+    issueId = await createIssue(
+      report,
+      grant.source === "signed-simulator"
+        ? { title: `[SIMULATOR TEST] ${input.message}` }
+        : undefined,
+    )
     await recordIssueId(sessionId, input.idempotencyKey, issueId)
     for (const file of files) {
       if (!file?.assetUrl) throw new Error("files_not_ready")

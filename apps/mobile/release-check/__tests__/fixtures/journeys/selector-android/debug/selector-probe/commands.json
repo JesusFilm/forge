@@ -1,0 +1,179 @@
+[
+  {
+    "command": {
+      "defineVariablesCommand": {
+        "env": {
+          "MAESTRO_CLI_NO_ANALYTICS": "1",
+          "MAESTRO_DISABLE_UPDATE_CHECK": "true",
+          "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED": "true",
+          "MAESTRO_FILENAME": "sel",
+          "MAESTRO_DEVICE_UDID": "emulator-5640",
+          "MAESTRO_SHARD_ID": "1",
+          "MAESTRO_SHARD_INDEX": "0"
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792638112664,
+      "duration": 2,
+      "sequenceNumber": 0,
+      "depth": 0,
+      "evaluatedCommand": {
+        "defineVariablesCommand": {
+          "env": {
+            "MAESTRO_CLI_NO_ANALYTICS": "1",
+            "MAESTRO_DISABLE_UPDATE_CHECK": "true",
+            "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED": "true",
+            "MAESTRO_FILENAME": "sel",
+            "MAESTRO_DEVICE_UDID": "emulator-5640",
+            "MAESTRO_SHARD_ID": "1",
+            "MAESTRO_SHARD_INDEX": "0"
+          },
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "applyConfigurationCommand": {
+        "config": {
+          "appId": "org.jesusfilm.forgewatch",
+          "name": "selector-probe"
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792638112666,
+      "duration": 1,
+      "sequenceNumber": 1,
+      "depth": 0,
+      "evaluatedCommand": {
+        "applyConfigurationCommand": {
+          "config": {
+            "appId": "org.jesusfilm.forgewatch",
+            "name": "selector-probe"
+          },
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "launchAppCommand": {
+        "appId": "org.jesusfilm.forgewatch",
+        "permissions": {
+          "notifications": "deny"
+        },
+        "label": "Launch the app",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792638112667,
+      "duration": 88,
+      "sequenceNumber": 2,
+      "depth": 0,
+      "evaluatedCommand": {
+        "launchAppCommand": {
+          "appId": "org.jesusfilm.forgewatch",
+          "permissions": {
+            "notifications": "deny"
+          },
+          "label": "Launch the app",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "idRegex": "screen-tab-home",
+            "optional": false
+          }
+        },
+        "timeout": "60000",
+        "label": "Home shows",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792638112755,
+      "duration": 1660,
+      "sequenceNumber": 3,
+      "depth": 0,
+      "evaluatedCommand": {
+        "assertConditionCommand": {
+          "condition": {
+            "visible": {
+              "idRegex": "screen-tab-home",
+              "optional": false
+            }
+          },
+          "timeout": "60000",
+          "label": "Home shows",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "tapOnElement": {
+        "selector": {
+          "idRegex": "screen-tab-nowhere",
+          "optional": false
+        },
+        "retryIfNoChange": false,
+        "waitUntilVisible": false,
+        "longPress": false,
+        "label": "Tap a control that does not exist",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "FAILED",
+      "timestamp": 1792638114415,
+      "duration": 15390,
+      "error": {
+        "message": "Element not found: Id matching regex: screen-tab-nowhere",
+        "debugMessage": "Element with Id matching regex: screen-tab-nowhere not found. Check the UI hierarchy in debug artifacts to verify if the element exists.\n\nPossible causes:\n- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.\n- Element may be temporarily unavailable due to loading state.\n- This could be a real regression that needs to be addressed."
+      },
+      "sequenceNumber": 4,
+      "depth": 0,
+      "evaluatedCommand": {
+        "tapOnElement": {
+          "selector": {
+            "idRegex": "screen-tab-nowhere",
+            "optional": false
+          },
+          "retryIfNoChange": false,
+          "waitUntilVisible": false,
+          "longPress": false,
+          "label": "Tap a control that does not exist",
+          "optional": false
+        }
+      },
+      "artifacts": [
+        {
+          "type": "SCREEN_HIERARCHY",
+          "path": "screen-hierarchy/step-005-tapOnElement-screen-tab-nowhere.json"
+        },
+        {
+          "type": "SCREENSHOT",
+          "path": "screenshots/step-005-tapOnElement-screen-tab-nowhere.png"
+        }
+      ]
+    }
+  }
+]

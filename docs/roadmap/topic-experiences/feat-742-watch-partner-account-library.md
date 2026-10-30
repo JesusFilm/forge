@@ -3,7 +3,7 @@ id: "feat-742"
 title: "Partner real-account library and download tools"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-17"
 duration: 6
 depends_on:
@@ -93,3 +93,7 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Demonstrated local verification
+
+267 focused integration/download-boundary tests and 24 return-flow tests passed; Web lint/typecheck and production build passed. All eight browser cases ran with a genuine hosted-Auth/PKCE cookie (none skipped), including any-account access with the existing account gate off and lock on session loss. Real multilingual metadata/capabilities and browser download events prove initiation, cancellation, failed-only retry and refreshed lookups at desktop/390px. External resources remain public links and existing download security/rollout defaults are unchanged. Matched parent/candidate initial load and deferred mount evidence, exact files/base/head, fixture corrections and limitations are retained under `/home/lado/.local/share/forge-watch-stack-20261017/`.

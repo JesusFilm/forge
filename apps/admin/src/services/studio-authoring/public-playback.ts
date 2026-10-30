@@ -3,7 +3,6 @@ import { SignJWT } from "jose"
 import { studioDocumentSchema } from "@forge/studio-contracts"
 import { stagedStudioReleaseSchema } from "./catalog-readiness"
 import { assertStudioRenderSources } from "./sources"
-import { resolveStudioPackSources } from "./packs"
 import { studioPlaybackConfiguration } from "./playback-config"
 import { StudioPlaybackGateway } from "./playback"
 
@@ -46,19 +45,9 @@ export async function authorizeStudioPublicPlayback(
       try {
         const sources = await assertStudioRenderSources(tx, document)
         signal?.throwIfAborted()
-        const packs = await resolveStudioPackSources(
-          tx,
-          document.packRevisionIds,
-        )
-        signal?.throwIfAborted()
         if (
           sources.some((source) =>
             source.eligibility.restrictions.includes("watch"),
-          ) ||
-          packs.some((pack) =>
-            pack.sources.some((source) =>
-              source.eligibility.restrictions.includes("watch"),
-            ),
           )
         )
           return null

@@ -1,5 +1,12 @@
 # Owner-approved co-watch and MMR activation
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 The owner approved direct activation without a trial. This release implements
 that decision without creating study assignments, shadow/composition PASS records,
 calibration or efficacy evidence. Usefulness remains unmeasured. The wider

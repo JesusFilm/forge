@@ -49,7 +49,6 @@ const context = {
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   }),
 }
 const request = (input: unknown) =>

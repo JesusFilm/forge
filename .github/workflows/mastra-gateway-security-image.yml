@@ -1,0 +1,55 @@
+name: Mastra Gateway production image
+on:
+  pull_request:
+    paths:
+      - "apps/mastra-gateway/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/mastra-gateway-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/mastra-gateway/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/mastra-gateway-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the actual production image with filtered package trust
+        run: docker build -f apps/mastra-gateway/Dockerfile -t gateway-security-ci .
+      - name: Verify independent runtime and OS trust contexts
+        run: docker run --rm --entrypoint sh gateway-security-ci apps/mastra-gateway/verify-image-trust.sh
+      - name: Start isolated disposable PostgreSQL
+        run: |
+          docker network create --internal gateway-security-ci
+          docker run -d --name gateway-security-db --network gateway-security-ci \
+            -e POSTGRES_USER=forge -e POSTGRES_PASSWORD=synthetic-only-test-password \
+            -e POSTGRES_DB=forge_gateway_image pgvector/pgvector:pg18-trixie
+          for attempt in $(seq 1 60); do
+            if docker exec gateway-security-db pg_isready -h 127.0.0.1 -U forge -d forge_gateway_image; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify migrations and actual production startup without external networking
+        run: |
+          docker run --rm --network gateway-security-ci \
+            -e GATEWAY_IMAGE_FIXTURE=isolated \
+            -e DATABASE_URL=postgresql://forge:synthetic-only-test-password@gateway-security-db:5432/forge_gateway_image \
+            --entrypoint sh gateway-security-ci -c \
+            'node apps/mastra-gateway/verify-production-image.mjs'
+      - name: Remove disposable services
+        if: always()
+        run: |
+          docker rm -f gateway-security-db || true
+          docker network rm gateway-security-ci || true

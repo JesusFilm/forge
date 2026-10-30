@@ -15,7 +15,6 @@ import { montserrat } from "@/lib/watch-font"
 import { WATCH_APP_METADATA } from "@/lib/watch-app-metadata"
 import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
-import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
@@ -75,7 +74,6 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <GoogleAnalytics />
-          <RecommendationConsentShell />
           <WatchModalActivityProvider>{children}</WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>

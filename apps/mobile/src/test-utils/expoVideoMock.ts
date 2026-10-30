@@ -62,6 +62,11 @@ export type FakePlayer = {
   ) => void
   __pendingReplaceCount: () => number
   /**
+   * Releases the native player, as the real hook does first on unmount: every
+   * read, write and call then throws. `__reset` restores it.
+   */
+  __release: () => void
+  /**
    * Moves the playhead and emits `timeUpdate` only while
    * `timeUpdateEventInterval` is above 0, as a device does. Returns whether it
    * emitted, so no case can pass on an event that production never sends.
@@ -104,8 +109,31 @@ export type ExpoVideoMock = {
  */
 type MockImpl = ReturnType<jest.Mock["getMockImplementation"]>
 
+// The state a released native player refuses to read or write.
+const RELEASED_FIELDS = [
+  "muted",
+  "loop",
+  "volume",
+  "playing",
+  "playbackRate",
+  "preservesPitch",
+  "currentTime",
+  "duration",
+  "status",
+  "bufferOptions",
+  "bufferedPosition",
+  "subtitleTrack",
+  "allowsExternalPlayback",
+  "timeUpdateEventInterval",
+] as const
+
+function releasedError(): Error {
+  return new Error("expo-video test double: the player is released")
+}
+
 export function makeFakePlayer(): FakePlayer {
   const listeners = new Map<string, Set<FakeListener>>()
+  let released = false
   const pendingReplaces: Array<
     (reason?: unknown, withholdLoad?: boolean) => void
   > = []
@@ -135,10 +163,12 @@ export function makeFakePlayer(): FakePlayer {
     allowsExternalPlayback: true,
     timeUpdateEventInterval: 0,
     play: jest.fn(() => {
+      if (released) throw releasedError()
       player.playing = true
       player.__emit("playingChange", { isPlaying: true })
     }),
     pause: jest.fn(() => {
+      if (released) throw releasedError()
       player.playing = false
       player.__emit("playingChange", { isPlaying: false })
     }),
@@ -150,6 +180,7 @@ export function makeFakePlayer(): FakePlayer {
       player.currentTime += seconds
     }),
     replace: jest.fn((source: VideoSource) => {
+      if (released) throw releasedError()
       player.currentTime = 0
       // The synchronous path lands the item immediately, so its load event
       // fires here rather than a tick later. The payload names the source that
@@ -160,6 +191,7 @@ export function makeFakePlayer(): FakePlayer {
     replaceAsync: jest.fn(
       (source: VideoSource) =>
         new Promise<void>((resolve, reject) => {
+          if (released) throw releasedError()
           pendingReplaces.push((reason, withholdLoad) => {
             if (reason !== undefined) {
               reject(reason)
@@ -203,6 +235,21 @@ export function makeFakePlayer(): FakePlayer {
       settle(reason, options?.withholdLoad === true)
     },
     __pendingReplaceCount: () => pendingReplaces.length,
+    __release: () => {
+      released = true
+      for (const field of RELEASED_FIELDS) {
+        Object.defineProperty(player, field, {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            throw releasedError()
+          },
+          set: () => {
+            throw releasedError()
+          },
+        })
+      }
+    },
     __tick: ({ currentTime, bufferedPosition }) => {
       player.currentTime = currentTime
       if (bufferedPosition !== undefined)
@@ -219,6 +266,15 @@ export function makeFakePlayer(): FakePlayer {
     __reset: () => {
       listeners.clear()
       pendingReplaces.length = 0
+      released = false
+      for (const field of RELEASED_FIELDS) {
+        Object.defineProperty(player, field, {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: undefined,
+        })
+      }
       player.muted = false
       player.loop = false
       player.volume = 1

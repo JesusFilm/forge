@@ -49,6 +49,7 @@ import {
   type ManagerTheme,
 } from "@/lib/manager-theme"
 import { cn } from "@/lib/utils"
+import { MANAGER_SIDEBAR_COOKIE } from "@/lib/manager-sidebar"
 
 export type ManagerShellUser = {
   username: string
@@ -778,8 +779,10 @@ export function ManagerShellSidebarSlot({ children }: { children: ReactNode }) {
 export function ManagerDashboardShell({
   children,
   user,
+  initialSidebarCollapsed = false,
 }: {
   children: ReactNode
+  initialSidebarCollapsed?: boolean
   user: ManagerShellUser
 }) {
   const pathname = usePathname()
@@ -865,6 +868,10 @@ export function ManagerDashboardShell({
               aria-label="Collapse sidebar"
               className="design-system-sidebar-checkbox sr-only"
               id={toggleId}
+              defaultChecked={initialSidebarCollapsed}
+              onChange={(event) => {
+                document.cookie = `${MANAGER_SIDEBAR_COOKIE}=${event.currentTarget.checked ? "collapsed" : "expanded"}; Path=/; Max-Age=31536000; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`
+              }}
               type="checkbox"
             />
 
@@ -885,6 +892,8 @@ export function ManagerDashboardShell({
                 <Link
                   href="/dashboard/shorts"
                   className="design-system-workspace-button"
+                  aria-label="Shorts"
+                  title="Shorts"
                 >
                   <span className="design-system-avatar design-system-avatar--report">
                     <Clapperboard size={18} />
@@ -908,6 +917,7 @@ export function ManagerDashboardShell({
                       key={item.key}
                       href={item.href}
                       aria-label={item.label}
+                      title={item.label}
                       className={isActive ? "is-active" : undefined}
                       {...(isActive ? { "aria-current": "page" as const } : {})}
                     >

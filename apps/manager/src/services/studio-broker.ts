@@ -1,3 +1,4 @@
+import { sourceAdmissionDocument } from "./studio-source-admission"
 import {
   StudioHlsError,
   studioHlsRendition,
@@ -377,7 +378,10 @@ export async function prepareStudioRenderSources(
     directory = await mkdtemp(join(tmpdir(), "studio-preview-"))
     let document = studioDocumentSchema.parse(rawDocument)
     const resolved = resolvedSchema.parse(
-        await call("preview-sources", { projectId, document }),
+        await call("preview-sources", {
+          projectId,
+          document: sourceAdmissionDocument(document),
+        }),
       ),
       assets = createStudioAssetBroker(call, signal)
     const download = createStudioSourceDownload(signal)

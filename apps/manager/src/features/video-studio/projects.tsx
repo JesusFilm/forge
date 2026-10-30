@@ -43,7 +43,6 @@ export const newDocument = (
   ],
   items: [],
   components: [],
-  packRevisionIds: [],
 })
 export function StudioProjects() {
   const [rows, setRows] = useState<Summary[] | null>(null),

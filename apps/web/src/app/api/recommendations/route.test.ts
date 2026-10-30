@@ -414,10 +414,10 @@ describe("POST /watch/api/recommendations", () => {
     expect(response.headers.get("set-cookie")).toBeNull()
   })
 
-  it("keeps a legacy profile dormant until a fresh consent receipt is present", async () => {
+  it("ignores a legacy profile cookie", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
-    await POST(
+    const response = await POST(
       request(
         JSON.stringify({
           seedMediaId: "seed-1",
@@ -430,12 +430,13 @@ describe("POST /watch/api/recommendations", () => {
       ),
     )
 
+    expect(response.headers.get("set-cookie")).toBeNull()
     const variables = query.mock.calls[0]?.[0]?.variables
     expect(variables.consentReceiptDigest).toBeNull()
     expect(variables.profileTokenDigest).toBeNull()
   })
 
-  it("forwards only the digests of one valid consent receipt and profile cookie", async () => {
+  it("ignores retired consent and profile credentials while retaining the session", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
     const consent = "c".repeat(43)
@@ -453,17 +454,13 @@ describe("POST /watch/api/recommendations", () => {
     )
 
     const variables = query.mock.calls[0]?.[0]?.variables
-    expect(variables.profileTokenDigest).toBe(
-      createHash("sha256").update(profile).digest("hex"),
-    )
-    expect(variables.consentReceiptDigest).toBe(
-      createHash("sha256").update(consent).digest("hex"),
-    )
+    expect(variables.profileTokenDigest).toBeNull()
+    expect(variables.consentReceiptDigest).toBeNull()
     expect(JSON.stringify(variables)).not.toContain(profile)
     expect(JSON.stringify(variables)).not.toContain(consent)
   })
 
-  it("recovers consent and profile digests from the one cookie production preserves", async () => {
+  it("ignores retired credentials in the combined legacy consent cookie", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
     const consent = "c".repeat(43)
@@ -481,12 +478,8 @@ describe("POST /watch/api/recommendations", () => {
     )
 
     const variables = query.mock.calls[0]?.[0]?.variables
-    expect(variables.profileTokenDigest).toBe(
-      createHash("sha256").update(profile).digest("hex"),
-    )
-    expect(variables.consentReceiptDigest).toBe(
-      createHash("sha256").update(consent).digest("hex"),
-    )
+    expect(variables.profileTokenDigest).toBeNull()
+    expect(variables.consentReceiptDigest).toBeNull()
   })
 
   it.each([
