@@ -7,6 +7,18 @@ round 01 (#2821), round 02 (#2825), round 03 (#2827).
 This is not a WCAG conformance claim and not user research. Every finding
 cites a measured value or a capture.
 
+## October 29 merge-preparation note
+
+The findings below describe the October 20 audit window. #2831 and #2830 retain
+their tablet/phone fixes. #2835 now replaces the rejected second header row with
+compact single-row controls; sixteen current-main Chromium geometry cases pass
+at 320/390/768/1280px and 100/200% root text. #2663 passes current focus and
+320px fit checks. Both await their final combined production qualification.
+
+The earlier second-row implementation and old draft/CI states below are
+historical, not instructions to restore that layout or current merge approval.
+feat-767 remains in progress until the header and hero are accepted together.
+
 ## Method
 
 - **Responsive sweep.** Headless Chromium with viewport emulation (touch +
