@@ -6,6 +6,7 @@ import {
   languageBadgeCodeFor,
   languageCodeFor,
   primaryLanguageCode,
+  subtitleTrackLanguageTag,
 } from "./language-code"
 
 describe("primaryLanguageCode", () => {
@@ -112,5 +113,66 @@ describe("languageBadgeCodeFor", () => {
     expect(
       Math.max(...codes.map((code) => code?.length ?? 0)),
     ).toBeLessThanOrEqual(10)
+  })
+})
+
+describe("subtitleTrackLanguageTag", () => {
+  it.each([
+    // Sibling languages that share a primary subtag must stay distinct.
+    [{ bcp47: "zh-Hans", slug: "chinese-simplified" }, "zh-Hans"],
+    [{ bcp47: "zh-hant", slug: "chinese-traditional" }, "zh-Hant"],
+    [{ bcp47: "pt-br", slug: "portuguese-brazil" }, "pt-BR"],
+    [{ bcp47: "es-419", slug: "spanish-latin-american" }, "es-419"],
+    [{ bcp47: "en", slug: "english" }, "en"],
+  ])("keeps script and region from %o", (source, expected) => {
+    expect(subtitleTrackLanguageTag(source)).toBe(expected)
+  })
+
+  it("uses the Watch slug map when a row has no bcp47", () => {
+    expect(
+      subtitleTrackLanguageTag({ bcp47: null, slug: "chinese-traditional" }),
+    ).toBe("zh-Hant")
+  })
+
+  it("keeps an extended language subtag as its preferred form", () => {
+    // `Intl` rejects `ar-arz`; dropping to `ar` would merge it with Arabic.
+    expect(
+      subtitleTrackLanguageTag({
+        bcp47: "ar-arz",
+        slug: "arabic-egyptian-colloquial",
+      }),
+    ).toBe("arz")
+  })
+
+  it.each([
+    // Not extlangs: the second subtag canonicalizes to an unrelated language
+    // (`kal` is Greenlandic, `nai` a language family), so keep the primary.
+    [{ bcp47: "rmy-kal", slug: "romani-kalderash-western" }, "rmy"],
+    [{ bcp47: "en-nai", slug: "english-north-american-indigenous" }, "en"],
+    [{ bcp47: "th-nod", slug: "thai-northern" }, "th"],
+    // Registered extlang prefixes keep the dialect.
+    [{ bcp47: "ms-abs", slug: "malay-ambonese" }, "abs"],
+    [{ bcp47: "sw-swc", slug: "swahili-congo" }, "sw-CD"],
+  ])(
+    "only treats registered extlang prefixes as extlangs (%o)",
+    (source, expected) => {
+      expect(subtitleTrackLanguageTag(source)).toBe(expected)
+    },
+  )
+
+  it("gives every mapped Watch language a well-formed srclang", () => {
+    for (const [slug, bcp47] of Object.entries(LANGUAGE_BCP47_MAP)) {
+      const srclang = subtitleTrackLanguageTag({ bcp47, slug })
+      expect(srclang, slug).not.toBeNull()
+      expect(() => Intl.getCanonicalLocales(srclang!), slug).not.toThrow()
+    }
+  })
+
+  it.each([
+    [{ bcp47: "not a tag!", iso3: "eng", slug: "english" }, "en"],
+    [{ bcp47: "", iso3: "fra", slug: "unknown-language" }, "fra"],
+    [{ bcp47: null, iso3: null, slug: null }, null],
+  ])("falls back to the primary code for %o", (source, expected) => {
+    expect(subtitleTrackLanguageTag(source)).toBe(expected)
   })
 })

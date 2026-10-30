@@ -20,6 +20,7 @@ type SeriesHeroProps = {
   playableLanguageCount?: number
   hasSubtitleOptions?: boolean
   subtitleLanguageCode?: string | null
+  subtitleLanguageTag?: string | null
   subtitleVttSrc?: string | null
   audioLanguageCountLabel?: string | null
   subtitleLanguageCountLabel?: string | null
@@ -49,6 +50,7 @@ export function SeriesHero({
   playableLanguageCount,
   hasSubtitleOptions = false,
   subtitleLanguageCode = null,
+  subtitleLanguageTag = null,
   subtitleVttSrc = null,
   audioLanguageCountLabel = null,
   subtitleLanguageCountLabel = null,
@@ -73,6 +75,7 @@ export function SeriesHero({
         playableLanguageCount={playableLanguageCount}
         hasSubtitleOptions={hasSubtitleOptions}
         subtitleLanguageCode={subtitleLanguageCode}
+        subtitleLanguageTag={subtitleLanguageTag}
         subtitleVttSrc={subtitleVttSrc}
         overlay={overlay}
       />

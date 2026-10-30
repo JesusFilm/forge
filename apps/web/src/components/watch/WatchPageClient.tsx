@@ -65,7 +65,7 @@ import type {
 import { isWatchBlock } from "@/lib/watch-blocks"
 import type { InitialSubtitleTranscript } from "@/lib/subtitle-transcript"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageCodeFor, subtitleTrackLanguageTag } from "@/lib/language-code"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -488,6 +488,9 @@ export function WatchPageClient({
 
   const subtitleLanguageCode = selectedSubtitle
     ? languageCodeFor(selectedSubtitle.language)
+    : null
+  const subtitleLanguageTag = selectedSubtitle
+    ? subtitleTrackLanguageTag(selectedSubtitle.language)
     : null
 
   const handleSubtitleChange = useCallback(
@@ -918,6 +921,7 @@ export function WatchPageClient({
         locale={locale}
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
+        subtitleLanguageTag={subtitleLanguageTag}
         subtitleVttSrc={subtitleVttSrc}
         shareHref={shareHref}
         hideBibleQuotes={hideBibleQuotes}
