@@ -530,6 +530,9 @@
     "scrollToVideo": "Igid a {title} a video",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumaktaw iti kangrunaan a linaon"
+  },
   "WatchFooter": {
     "home": "Balay ti Jesus Film Project",
     "navigation": "Panagdaliasat iti footer",

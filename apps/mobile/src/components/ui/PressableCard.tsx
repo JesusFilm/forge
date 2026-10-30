@@ -25,6 +25,7 @@ export interface PressableCardProps {
   accessibilityLabel: string
   accessibilityHint?: string
   accessibilityRole?: AccessibilityRole
+  testID?: string
   /** Outer pressable box — margins, and for carousels the surface + sizing. */
   style?: StyleProp<ViewStyle>
   /** Inner clipping surface, when the card needs a box distinct from the outer. */
@@ -61,6 +62,7 @@ export function PressableCard({
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole = "button",
+  testID,
   style,
   surfaceStyle,
   background,
@@ -95,6 +97,7 @@ export function PressableCard({
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      testID={testID}
     >
       {surfaceStyle != null ? (
         <View style={surfaceStyle}>{layers}</View>

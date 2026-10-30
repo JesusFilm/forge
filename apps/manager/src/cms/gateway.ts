@@ -60,7 +60,10 @@ export interface CmsGateway {
   ): Promise<MockCmsState>
   getLanguageGeo(): Promise<MockLanguageGeo>
   getVideoCoverage(languageIds?: string[]): Promise<MockVideoCoverage[]>
-  getVideosForEnrichment(ids?: string[]): Promise<AdminVideoForEnrichment[]>
+  getVideosForEnrichment(
+    ids?: string[],
+    includeArtwork?: boolean,
+  ): Promise<AdminVideoForEnrichment[]>
   getCoverageSnapshots(
     query?: CoverageSnapshotQuery,
   ): Promise<MockCoverageSnapshot[]>
@@ -279,8 +282,8 @@ function createAdminGateway(): CmsGateway {
     getVideoCoverage(languageIds) {
       return client.getVideoCoverage(languageIds)
     },
-    getVideosForEnrichment(ids) {
-      return client.getVideosForEnrichment(ids)
+    getVideosForEnrichment(ids, includeArtwork) {
+      return client.getVideosForEnrichment(ids, includeArtwork)
     },
     getCoverageSnapshots(query) {
       return client.getCoverageSnapshots(query)
@@ -390,6 +393,7 @@ function createMockGateway(options: CmsGatewayOptions): CmsGateway {
         )
         .map((video) => ({
           documentId: video.documentId,
+          imageUrl: video.imageUrl,
           coreId: video.coreId,
           title: video.title ?? null,
           label: video.label ?? null,

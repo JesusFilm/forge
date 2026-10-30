@@ -530,6 +530,9 @@
     "scrollToVideo": "Wonaa {title} video bi",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tëb ba ci li gën a am solo"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project kër",
     "navigation": "Navigation bu footer bi",

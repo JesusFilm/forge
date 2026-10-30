@@ -1,31 +1,10 @@
-import { getWorkflowMetadata } from "workflow"
-import type { RecommendationProfileProjectionJobInput } from "@/services/recommendations/profiles/job"
+import { RecommendationConflictError } from "@/services/recommendations/errors"
 
-export async function runRecommendationProfileProjection(
-  input: RecommendationProfileProjectionJobInput,
-) {
+/** Historical workflow identity remains registered for stored replay. */
+export async function runRecommendationProfileProjection(_input: {
+  runId: string
+  expectedGeneration: number
+}): Promise<never> {
   "use workflow"
-  await stepMarkRecommendationProfileProjectionStarted(input)
-  return stepRunRecommendationProfileProjection(input)
-}
-
-async function stepMarkRecommendationProfileProjectionStarted(
-  input: RecommendationProfileProjectionJobInput,
-): Promise<void> {
-  "use step"
-  const { markRecommendationProfileProjectionRuntimeStarted } =
-    await import("@/services/recommendations/profiles/job")
-  await markRecommendationProfileProjectionRuntimeStarted(
-    input,
-    getWorkflowMetadata().workflowRunId,
-  )
-}
-
-async function stepRunRecommendationProfileProjection(
-  input: RecommendationProfileProjectionJobInput,
-) {
-  "use step"
-  const { runRecommendationProfileProjectionJob } =
-    await import("@/services/recommendations/profiles/job")
-  return runRecommendationProfileProjectionJob(input)
+  throw new RecommendationConflictError("behavioral_recommendations_retired")
 }

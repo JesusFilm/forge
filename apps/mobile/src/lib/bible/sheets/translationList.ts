@@ -2,6 +2,7 @@
 // languages first, then every other catalog language by its English name.
 // Pure; the picker passes the download states in.
 import type { UiT } from "../../../i18n/useT"
+import { type StatusPart, statusPartsLabel } from "../../sheetStatus"
 import { compareIds, nameComparator } from "../../collation"
 import type { Catalog, CatalogTranslation } from "../data/catalog"
 import { LANGUAGE_DEFAULT_TRANSLATIONS } from "../data/languageDefaults.generated"
@@ -116,18 +117,24 @@ function downloadStatus(
   t: TranslationPickerT,
   translation: CatalogTranslation,
   state: TranslationDownloadState,
-): string[] {
+): StatusPart[] {
   switch (state.kind) {
+    // BSB ships inside the app; to the viewer it reads like a download.
     case "bundled":
-      return [t("onDevice")]
+      return [{ text: t("downloaded"), strong: true }]
     case "downloaded":
       return isUpdateAvailable(translation, state)
-        ? [t("onDevice"), t("updateAvailable")]
-        : [t("onDevice")]
+        ? [
+            { text: t("downloaded"), strong: true },
+            { text: t("updateAvailable") },
+          ]
+        : [{ text: t("downloaded"), strong: true }]
     case "downloading":
-      return [t("downloading", { percent: Math.round(state.percent) })]
+      return [
+        { text: t("downloading", { percent: Math.round(state.percent) }) },
+      ]
     case "failed":
-      return [t("downloadStopped")]
+      return [{ text: t("downloadStopped") }]
     case "checking":
     case "not-downloaded":
       return []
@@ -177,16 +184,27 @@ export function coverageLabel(
     : t("someBooks", { count: names.length, total: BIBLE_BOOKS.length })
 }
 
-/** R23: the books it has, then the download state. A screen reader reads it. */
+/** R23: the books it has, then the download state, on one line. */
+export function translationStatusParts(
+  t: TranslationPickerT,
+  translation: CatalogTranslation,
+  state: TranslationDownloadState,
+): StatusPart[] {
+  return [
+    {
+      text: translation.complete
+        ? t("completeBible")
+        : coverageLabel(t, translation.books),
+    },
+    ...downloadStatus(t, translation, state),
+  ]
+}
+
+/** The status parts as a screen reader reads them. */
 export function translationStatusLabel(
   t: TranslationPickerT,
   translation: CatalogTranslation,
   state: TranslationDownloadState,
 ): string {
-  return [
-    translation.complete
-      ? t("completeBible")
-      : coverageLabel(t, translation.books),
-    ...downloadStatus(t, translation, state),
-  ].join(", ")
+  return statusPartsLabel(translationStatusParts(t, translation, state))
 }

@@ -83,7 +83,7 @@ export async function deliverPrivatePrecomputedWatchVisit(
       consentReceiptDigest: input.consentReceiptDigest,
       profileTokenDigest: input.profileTokenDigest,
       eligibleHuman: true,
-      // Preserve optional profile personalization and owner routing while
+      // Preserve the content-only semantic control while
       // preventing a second, unrelated experiment from assigning this visit.
       suppressExperimentEnrollment: true,
       trafficCategory: input.trafficCategory,

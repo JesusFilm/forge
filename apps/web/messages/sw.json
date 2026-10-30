@@ -530,6 +530,9 @@
     "scrollToVideo": "Sogeza hadi video ya {title}",
     "forYou": "Kwa ajili yako"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ruka hadi maudhui makuu"
+  },
   "WatchFooter": {
     "home": "Nyumbani kwa Jesus Film Project",
     "navigation": "Urambazaji wa kijachini",

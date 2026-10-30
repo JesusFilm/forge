@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { View } from "react-native"
 import { useRouter } from "expo-router"
 
 import { BibleReader } from "../../src/components/bible/BibleReader"
@@ -14,10 +15,12 @@ export default function BibleTabScreen() {
   const floatingObstacles = useFloatingObstacles()
 
   return (
-    <BibleReader
-      host="tab"
-      floatingObstacles={floatingObstacles}
-      {...callbacks}
-    />
+    <View testID="screen-tab-bible" style={{ flex: 1 }}>
+      <BibleReader
+        host="tab"
+        floatingObstacles={floatingObstacles}
+        {...callbacks}
+      />
+    </View>
   )
 }

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title}-mik video-mut ingerlaarit",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Imaqarniutip pingaarnerpaanut ingerlagit"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-imi angerlarsimaffik",
     "navigation": "Najoqqutassaq qulaaniittoq",

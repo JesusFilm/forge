@@ -1,3 +1,4 @@
+import { refuseBehavioralRecommendations } from "../behavioral-retirement"
 import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "../candidate"
 import { randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
@@ -64,6 +65,8 @@ export class RecommendationStudyService {
   ) {}
 
   async prepare(actor: Principal, value: unknown) {
+    operator(actor)
+    refuseBehavioralRecommendations()
     const actorId = operator(actor),
       protocol = parseStudyProtocol(value),
       digest = studyProtocolDigest(protocol),
@@ -151,6 +154,8 @@ export class RecommendationStudyService {
       evidence: unknown
     },
   ) {
+    operator(actor)
+    refuseBehavioralRecommendations()
     const actorId = operator(actor),
       now = this.now()
     const study = await this.prisma.recommendationStudy.findUniqueOrThrow({

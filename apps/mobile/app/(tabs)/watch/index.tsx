@@ -763,7 +763,10 @@ export default function DiscoverScreen() {
   )
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View
+      testID="screen-tab-watch"
+      style={[styles.container, { paddingTop: insets.top }]}
+    >
       {nativeSearch ? (
         <Stack.SearchBar
           ref={searchBarRef}

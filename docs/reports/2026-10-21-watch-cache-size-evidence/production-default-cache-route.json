@@ -1,0 +1,49 @@
+{
+  "result": "passed",
+  "scope": "Actual route source with controlled dependencies; not production latency evidence.",
+  "requests": [
+    {
+      "surface": "static",
+      "locale": "en",
+      "language": "english",
+      "calls": 1,
+      "headersMs": 304.39036399999895
+    },
+    {
+      "surface": "static",
+      "locale": "en",
+      "language": "english",
+      "calls": 0,
+      "headersMs": 14.543614999998681
+    },
+    {
+      "surface": "render",
+      "locale": "en",
+      "language": "german",
+      "calls": 1,
+      "headersMs": 91.06392399999822
+    },
+    {
+      "surface": "render",
+      "locale": "en",
+      "language": "german",
+      "calls": 1,
+      "headersMs": 207.91007600000012
+    },
+    {
+      "surface": "render",
+      "locale": "de",
+      "language": "german",
+      "calls": 1,
+      "headersMs": 76.36901900000157
+    },
+    {
+      "surface": "render",
+      "locale": "en",
+      "language": "urdu",
+      "calls": 1,
+      "headersMs": 69.50776400000177
+    }
+  ],
+  "comparison": []
+}

@@ -69,10 +69,8 @@ import {
 import {
   attachRecommendationSession,
   ensureRecommendationSession,
-  readRecommendationProfileCookie,
 } from "@/lib/recommendation-session"
-import { readRecommendationConsentCookie } from "@/lib/recommendation-consent"
-import { requestHasRecommendationWithdrawalPending } from "@/lib/recommendation-withdrawal-pending"
+
 import { resolvePosterUrl } from "@/lib/url"
 
 export const dynamic = "force-dynamic"
@@ -135,11 +133,6 @@ export async function POST(request: Request) {
     }
     await assertRecommendationMutationAdmission(request.headers, "delivery")
     const session = excluded ? null : ensureRecommendationSession(request)
-    const profile = excluded ? null : readRecommendationProfileCookie(request)
-    const consent = excluded ? null : readRecommendationConsentCookie(request)
-    const withdrawalPending = requestHasRecommendationWithdrawalPending(request)
-    const consentReceiptDigest =
-      !withdrawalPending && consent?.kind === "valid" ? consent.digest : null
     const semanticInput = {
       seedMediaId: parsed.data.seedMediaId,
       locale: parsed.data.locale,
@@ -172,11 +165,8 @@ export async function POST(request: Request) {
     const visitInput = privateVisitId
       ? {
           visitId: privateVisitId,
-          consentReceiptDigest,
-          profileTokenDigest:
-            consentReceiptDigest != null && profile?.kind === "valid"
-              ? profile.digest
-              : null,
+          consentReceiptDigest: null,
+          profileTokenDigest: null,
           ...semanticInput,
           sessionDigest: session?.digest ?? "0".repeat(64),
           trafficCategory,
@@ -444,11 +434,8 @@ export async function POST(request: Request) {
                 {
                   ...semanticInput,
                   sessionDigest: session?.digest ?? "0".repeat(64),
-                  consentReceiptDigest,
-                  profileTokenDigest:
-                    consentReceiptDigest != null && profile?.kind === "valid"
-                      ? profile.digest
-                      : null,
+                  consentReceiptDigest: null,
+                  profileTokenDigest: null,
                   eligibleHuman: !excluded,
                   clientDeliveryContract:
                     request.headers.get(

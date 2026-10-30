@@ -530,6 +530,9 @@
     "scrollToVideo": "Rullat {title} videoa guvlui",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Njuikes váldosisdollui"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ruovttusiidu",
     "navigation": "Duohkenavigašuvdna",

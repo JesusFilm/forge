@@ -101,7 +101,11 @@ const HERO_SWIPE_COMMIT_PX = 40
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function HomeScreen() {
+type HomeScreenProps = {
+  testID?: string
+}
+
+export function HomeScreen({ testID }: HomeScreenProps) {
   const t = useT("Home")
   const epoch = useLocaleEpoch()
   const uiTag = useUiTag()
@@ -117,6 +121,7 @@ export function HomeScreen() {
   const {
     model,
     recommendationsInsertIndex,
+    bodySource,
     loading,
     refreshing,
     error,
@@ -573,7 +578,11 @@ export function HomeScreen() {
   }
 
   return (
-    <View style={layout.screenContainer} {...heroPanResponder.panHandlers}>
+    <View
+      testID={testID}
+      style={layout.screenContainer}
+      {...heroPanResponder.panHandlers}
+    >
       {heroVisible && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <HomeHeroPager
@@ -596,6 +605,9 @@ export function HomeScreen() {
       <HomeLogo topInset={insets.top} hidden={logoHidden} />
 
       <FlashList
+        testID={
+          bodySource === "experience" ? "home-body-live" : "home-body-fallback"
+        }
         data={feedItems}
         renderItem={renderItem}
         keyExtractor={keyExtractor}

@@ -530,6 +530,9 @@
     "scrollToVideo": "Tatzijin pa ri video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ruxaq alaxik",
     "navigation": "Ruwäch navigation richin footer",

@@ -2,6 +2,7 @@ package expo.modules.tvfeedbackintegrity
 
 import android.app.UiModeManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -24,6 +25,10 @@ import java.util.UUID
 class TvFeedbackIntegrityModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("TvFeedbackIntegrity")
+
+    Constants {
+      mapOf("isFeedbackSimulator" to isFeedbackSimulator())
+    }
 
     AsyncFunction("attestGrant") { challengeId: String, nonce: String, utcDay: String, cloudProjectNumber: String, promise: Promise ->
       try {
@@ -71,6 +76,19 @@ class TvFeedbackIntegrityModule : Module() {
         promise.reject("INTEGRITY_REQUEST_FAILED", "Verified feedback unavailable", error)
       }
     }
+  }
+
+  private fun isFeedbackSimulator(): Boolean {
+    if (!BuildConfig.DEBUG) return false
+    val context = appContext.reactContext ?: return false
+    if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) == 0) return false
+    val tvManager = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+    val tvMode = tvManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+      context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    // Restrict the opt-in to Android SDK emulators, not arbitrary debug hardware.
+    val sdkEmulator = (Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish") &&
+      Build.PRODUCT.startsWith("sdk")
+    return tvMode && sdkEmulator
   }
 
   private fun encode(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
