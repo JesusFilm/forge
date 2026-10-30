@@ -62,7 +62,6 @@ run(
           tracks: [],
           items: [],
           components: [],
-          packRevisionIds: [],
         })
       await executeStudioInteractive(db, human, {
         action: "create",

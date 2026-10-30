@@ -41,7 +41,8 @@ export function recommendationError(error: unknown): NextResponse {
   if (
     error instanceof RecommendationRuntimeError &&
     (error.code === "playback_request_invalid" ||
-      error.code === "evidence_request_invalid")
+      error.code === "evidence_request_invalid" ||
+      error.code === "exposure_request_invalid")
   ) {
     return recommendationJson({ error: error.code }, 400)
   }

@@ -8,7 +8,6 @@ import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
-import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent"
 
 vi.mock("next/image", () => ({
   default: ({
@@ -185,7 +184,7 @@ describe("WatchHomeFooter", () => {
     expect(contactGrid?.children).toHaveLength(3)
 
     const contactActions = contactGrid?.querySelectorAll("a, button") ?? []
-    expect(contactActions).toHaveLength(3)
+    expect(contactActions).toHaveLength(2)
     expect(
       contactActions[0]?.parentElement?.classList.contains("flex-col"),
     ).toBe(true)
@@ -217,25 +216,14 @@ describe("WatchHomeFooter", () => {
     expect(resourcesLink?.textContent).toBe("Resources")
   })
 
-  it("keeps Cookie settings in the footer without covering page controls", () => {
-    const listener = vi.fn()
-    window.addEventListener(RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT, listener)
+  it("does not expose retired recommendation personalization controls", () => {
     renderFooter()
-
-    const settings = Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Cookie settings",
-    )
-
-    expect(settings?.closest("footer")).not.toBeNull()
-    expect(settings?.classList.contains("min-h-11")).toBe(true)
-    expect(settings?.className).not.toContain("fixed")
-    act(() => settings?.click())
-    expect(listener).toHaveBeenCalledOnce()
-    expect((listener.mock.calls[0]?.[0] as CustomEvent).detail).toBe(settings)
-    window.removeEventListener(
-      RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT,
-      listener,
-    )
+    expect(
+      Array.from(container.querySelectorAll("button")).some(
+        (button) => button.textContent === "Cookie settings",
+      ),
+    ).toBe(false)
+    expect(container.querySelector("footer")).not.toBeNull()
   })
 
   it("paints its complete white surface above preceding sticky media", () => {

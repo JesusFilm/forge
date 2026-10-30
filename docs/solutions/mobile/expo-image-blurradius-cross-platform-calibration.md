@@ -23,6 +23,19 @@ tags:
 
 # expo-image blurRadius is not calibrated equally across iOS and Android
 
+> **Superseded for Android on 2026-10-23 (feat-784).** Do not send `blurRadius`
+> to Android in `apps/mobile`. On Android, expo-image blurs with RenderScript
+> (`glide-transformations` `RSBlur`), and two blurs at the same time can crash
+> the app. iOS keeps the values below. Android gets its soft look from
+> `stretchedDecodeStyle` (`apps/mobile/src/lib/stretchedDecode.ts`), and
+> `apps/mobile/src/components/__tests__/noAndroidBlurRadius.guard.test.js`
+> rejects any `blurRadius` that can reach Android. See "Never send an expo-image
+> `blurRadius` to Android" in `apps/mobile/CLAUDE.md`. `apps/tv` is not covered:
+> `apps/tv/src/components/search/SearchBrowse.tsx` still sends the Android value,
+> and the guard does not scan `apps/tv`. The crash, its proof, and the Android
+> replacement are in
+> `docs/solutions/runtime-errors/expo-image-android-blur-renderscript-crash.md`.
+
 ## Context
 
 The mobile Discover category cards render a faint, blurred video thumbnail
@@ -93,6 +106,9 @@ show from a single device.
 
 ## Related
 
+- `docs/solutions/runtime-errors/expo-image-android-blur-renderscript-crash.md` —
+  the successor for the Android half of this doc: why `blurRadius` crashes
+  Android, and the stretched decode that replaces it in `apps/mobile`.
 - `docs/solutions/mobile/full-bleed-video-hero-with-scroll-over-content.md` — the
   sibling blur learning. Establishes the "platform-specific blur" convention, but
   for a different mechanism: expo-blur's `BlurView` (iOS-only, Android dim

@@ -1,5 +1,36 @@
 # Watch TV beta feedback deployment gates
 
+## Staging recovery — 27 October 2026
+
+The previous web service was deleted on 25 October. The owner approved recreating
+`web` in the existing `watch-tv-feedback` staging environment. New service ID:
+`9e0904a0-664c-454f-a1c1-fbf788e30b27`; new hostname:
+`https://web-staging-7801.up.railway.app`. Deployment `064a0a89-d9d4-498a-86ca-216b1f014aad` reached `SUCCESS` on
+27 October. `/api/health`, `/api/live` and `/tv/simulator` returned 200.
+Both actual simulator QR links passed signed-token claim and session checks;
+invalid tokens, cross-origin claims, anonymous native sessions and cross-session
+upload access were rejected. Local development routes remain 404 in production.
+Historical evidence below refers to the former service and hostname.
+Existing release builds have not been rebuilt or repointed by this recovery.
+They still contain the deleted hostname; release migration is tracked in
+`docs/roadmap/platform/feat-790-tv-feedback-release-hostname-migration.md`.
+The existing Turnstile widget now allows both hostnames, retaining its managed
+mode and existing keys. Rotated Linear/Apple/Google credentials were reused;
+Redis data was preserved and a new server session secret was generated.
+The recreated native allowlists are Apple build 15 and Android version 11.
+No additional Linear issue or physical beta submission was made in this recovery.
+
+The complete local evidence is `.local-tools/feedback-staging-20261027/` in the
+feature worktree. Signed QR images and bearer-link files are private. The
+build-tracing warning is tracked in feat-791; it did not prevent this deployment.
+
+## Historical deployment evidence
+
+Simulator receiving, developer key setup and the separate signed staging entry
+are documented in [LOCAL-FEEDBACK.md](LOCAL-FEEDBACK.md). The signed entry is off
+by default and uses only a dedicated public verification key on the server.
+Preserve the deployed Linear/device credentials when enabling it in staging.
+
 The replacement service is deployed to Railway staging at `https://web-staging-920a.up.railway.app` (deployment `d118b25f-9aa5-49ad-b6f6-68ccd3066c75`, 2026-09-25). Production still uses the reviewed PR-to-main path.
 
 1. Create one Railway web service from the Forge repository. Set Config-as-code Path to `/apps/tv-feedback/railway.toml`, provide a Railway HTTPS domain, and attach Redis. Set `REDIS_URL` and `FEEDBACK_BASE_URL` in the web service. Configure Redis persistence and no-eviction behavior; a lost/evicted grant must fail closed.

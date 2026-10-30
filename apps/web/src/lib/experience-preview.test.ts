@@ -1,4 +1,4 @@
-import { parse } from "graphql"
+import { parse, print } from "graphql"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // The mock stands in for gql.tada's document builder, but it PARSES what it is
@@ -10,8 +10,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const { adminGraphqlMock, queryMock } = vi.hoisted(() => ({
   adminGraphqlMock: vi.fn(
     (source: string, _dependencies?: readonly unknown[]) => {
-      parse(source)
-      return { kind: "Document", definitions: [], source }
+      const parsed = parse(source)
+      const definitions = (_dependencies ?? []).flatMap((dependency) => {
+        if (
+          typeof dependency !== "object" ||
+          dependency === null ||
+          !("definitions" in dependency) ||
+          !Array.isArray(dependency.definitions)
+        )
+          return []
+        return dependency.definitions
+      })
+      return {
+        ...parsed,
+        definitions: [...parsed.definitions, ...definitions],
+        source,
+      }
     },
   ),
   queryMock: vi.fn(),
@@ -49,6 +63,7 @@ vi.mock("@forge/admin-graphql/fragments", () => ({
     definitions: [],
   },
   adminWatchHomeHeroFragment: {},
+  adminWatchAudienceFragment: { kind: "Document", definitions: [] },
 }))
 vi.mock("@/lib/admin-client", () => ({
   default: { query: queryMock },
@@ -599,4 +614,179 @@ describe("getExperiencePreviewLayout", () => {
     await expect(failure).rejects.toThrow("Experience preview query failed")
     await expect(failure).rejects.not.toThrow("secret-token")
   })
+})
+
+describe("Watch audience preview schema lag", () => {
+  it.each(["returned", "thrown"])(
+    "retries only the missing audience block selection (%s validation error)",
+    async (kind) => {
+      const error = {
+        errors: [
+          {
+            message: 'Unknown type "WatchAudienceBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      }
+      if (kind === "thrown") queryMock.mockRejectedValueOnce(error)
+      else queryMock.mockResolvedValueOnce(error)
+      queryMock.mockResolvedValueOnce({
+        data: { experiencePreview: { locale: "en", blocks: [] } },
+      })
+      await expect(
+        getExperiencePreview("private-test-capability"),
+      ).resolves.toMatchObject({ locale: "en" })
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      const first = queryMock.mock.calls[0]![0]
+      const retry = queryMock.mock.calls[1]![0]
+      expect(print(first.query)).toContain("... on WatchAudienceBlock")
+      expect(print(retry.query)).not.toContain("... on WatchAudienceBlock")
+      expect(print(retry.query)).toContain("... on WatchHomeCategoryRailBlock")
+      expect(retry).toMatchObject({
+        fetchPolicy: "no-cache",
+        context: { fetchOptions: { cache: "no-store" } },
+      })
+    },
+  )
+
+  it.each([
+    {
+      errors: [
+        { message: 'Unknown type "WatchAudienceBlock".' },
+        { message: "Database failure", path: ["experiencePreview"] },
+      ],
+    },
+    {
+      errors: [
+        {
+          message: 'Unknown type "WatchAudienceBlock".',
+          path: ["experiencePreview"],
+        },
+      ],
+    },
+  ])(
+    "does not mask unrelated or execution errors as audience lag",
+    async (error) => {
+      queryMock.mockResolvedValueOnce(error)
+      await expect(
+        getExperiencePreview("private-test-capability"),
+      ).rejects.toThrow("Experience preview query failed")
+      expect(queryMock).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  // The audience questionnaire is previewed only for the default template, so
+  // the preview selects the selected Watch-template identity beside the audience block.
+  it("selects the selected-template identity with the audience block", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        experiencePreview: {
+          locale: "en",
+          isDefaultTemplate: true,
+          blocks: [],
+        },
+      },
+    })
+    await expect(
+      getExperiencePreview("private-test-capability"),
+    ).resolves.toMatchObject({ isDefaultTemplate: true })
+    expect(print(queryMock.mock.calls[0]![0].query)).toMatch(
+      /\bisDefaultTemplate\b/,
+    )
+  })
+
+  // An Admin that has the block but predates the flag must degrade to a
+  // preview with neither: no flag means no audience, never an ungated one.
+  it.each(["returned", "thrown"])(
+    "retries without the audience block and selected-template identity when Admin predates the flag (%s)",
+    async (kind) => {
+      const error = {
+        errors: [
+          {
+            message:
+              'Cannot query field "isDefaultTemplate" on type "ExperiencePreview".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      }
+      if (kind === "thrown") queryMock.mockRejectedValueOnce(error)
+      else queryMock.mockResolvedValueOnce(error)
+      const oldPreview = {
+        locale: "en",
+        isTemplate: true,
+        blocks: [{ __typename: "TextBlock", sectionKey: "old-admin-text" }],
+      }
+      queryMock.mockResolvedValueOnce({
+        data: { experiencePreview: oldPreview },
+      })
+      const preview = await getExperiencePreview("private-test-capability")
+      expect(preview).toMatchObject({ locale: "en" })
+      expect(preview).toBe(oldPreview)
+      expect(preview).not.toHaveProperty("isDefaultTemplate")
+      expect(queryMock).toHaveBeenCalledTimes(2)
+      const first = print(queryMock.mock.calls[0]![0].query)
+      expect(first).toMatch(/\bisDefaultTemplate\b/)
+      expect(first).toContain("... on WatchAudienceBlock")
+      const retry = print(queryMock.mock.calls[1]![0].query)
+      expect(retry).not.toMatch(/\bisDefaultTemplate\b/)
+      expect(retry).not.toContain("... on WatchAudienceBlock")
+      expect(retry).toContain("... on WatchHomeCategoryRailBlock")
+    },
+  )
+
+  it("does not mask an execution or unrelated error beside the flag lag", async () => {
+    queryMock.mockResolvedValueOnce({
+      errors: [
+        {
+          message:
+            'Cannot query field "isDefaultTemplate" on type "ExperiencePreview".',
+        },
+        { message: "Database failure", path: ["experiencePreview"] },
+      ],
+    })
+    await expect(
+      getExperiencePreview("private-test-capability"),
+    ).rejects.toThrow("Experience preview query failed")
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+  it.each(["returned", "thrown"])(
+    "does not classify a wrong type/field or execution error as selected-identity lag (%s)",
+    async (kind) => {
+      for (const error of [
+        {
+          errors: [
+            {
+              message:
+                'Cannot query field "isDefaultTemplate" on type "Experience".',
+            },
+          ],
+        },
+        {
+          errors: [
+            {
+              message:
+                'Cannot query field "isTemplate" on type "ExperiencePreview".',
+            },
+          ],
+        },
+        {
+          errors: [
+            {
+              message:
+                'Cannot query field "isDefaultTemplate" on type "ExperiencePreview".',
+              path: ["experiencePreview"],
+            },
+          ],
+        },
+      ]) {
+        queryMock.mockReset()
+        if (kind === "thrown") queryMock.mockRejectedValueOnce(error)
+        else queryMock.mockResolvedValueOnce(error)
+        await expect(
+          getExperiencePreview("private-test-capability"),
+        ).rejects.toThrow("Experience preview query failed")
+        expect(queryMock).toHaveBeenCalledTimes(1)
+      }
+    },
+  )
 })

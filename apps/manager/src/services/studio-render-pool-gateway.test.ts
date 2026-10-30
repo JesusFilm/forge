@@ -45,7 +45,6 @@ function fixture(
       height: 180,
       fps: 30,
       durationInFrames: 30,
-      packRevisionIds: [],
       tracks: [],
       components: [],
       items: [],

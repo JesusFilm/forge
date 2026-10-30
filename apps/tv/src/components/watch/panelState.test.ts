@@ -348,3 +348,23 @@ describe("annotateVariantRows", () => {
     expect(rows.map((r) => r.variant.languageSlug)).toEqual(["amharic", "zulu"])
   })
 })
+
+describe("seeded video recovery on either TV platform", () => {
+  it("never treats a poster seed as playable metadata, and recovers after Retry", () => {
+    const states = [
+      { loading: true, error: false, currentVideoReady: false },
+      { loading: false, error: true, currentVideoReady: false },
+      { loading: true, error: true, currentVideoReady: false },
+      { loading: false, error: false, currentVideoReady: true },
+    ].map(deriveDetailsDataState)
+    expect(states).toEqual(["loading", "error", "loading", "ready"])
+    expect(deriveDetailsPlayState(states[0] === "ready", null)).toBe("loading")
+    expect(deriveDetailsPlayState(states[2] === "ready", null)).toBe("loading")
+    expect(
+      deriveDetailsPlayState(
+        states[3] === "ready",
+        "https://stream.mux.com/video.m3u8",
+      ),
+    ).toBe("ready")
+  })
+})

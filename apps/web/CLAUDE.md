@@ -240,6 +240,33 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
+`forge.watch.audience` (default `false`, fallback env
+`FORGE_WATCH_AUDIENCE_DEFAULT`) gates every Watch audience surface: the home
+band, the watch-page questionnaire and its Explore/Share/Partner/Grow panels,
+`/watch/api/film-finder`, `/watch/api/learning-progress` GET/POST (its DELETE
+reset stays available, with its origin/subject/payload/revision checks), the
+Partner
+collection Server Action, and the audience frame in capability previews. Every
+read fails closed (an unreadable flag is off). Admin evaluates the same key
+for `Query.watchFilmFinder`, `WatchSetting.watchAudience`, own learning
+read/save, the editor's Watch Audience controls, and service writes that
+create, change, duplicate or publish a `watchAudience` block (see
+`apps/admin/.env.example`);
+serve Web and Admin the same value, and remember an LD flip reaches Admin only
+when Admin has `LAUNCHDARKLY_SDK_KEY`. Erasure, reset and account deletion are
+never gated.
+
+Rollout and rollback timing: home and catch-all Watch pages are `force-static`
+with `revalidate = 3600`, so the flag is read at render time, not per request.
+After a flip, cached pages keep the old state for up to about an hour plus CDN
+time. Do not add client polling to shorten that. For an instant change,
+revalidate the Watch cache tags (`watch:home`, `watch:settings`,
+`watch:experience`, `watch:video`, `watch:series`) through `/api/revalidate`,
+then purge the Cloudflare cache for Watch paths. During a rollback window,
+stale pages that still show the band get 404s from the finder and from
+progress reads/saves and show their unavailable states; resetting saved
+progress still works.
+
 One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the

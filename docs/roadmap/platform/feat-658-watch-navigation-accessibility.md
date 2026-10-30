@@ -78,3 +78,12 @@ Watch category tiles place white labels over unrestricted gradient backgrounds, 
 - Performance limits: the CSS compilation and static surface fixture are **not a full-app trace or Next route bundle**. They do not measure application hydration, media startup, field LCP/CLS, or production transfer sizes. No cached Next build was used. Independent review, authoritative validation, and publication remain with the parent QA loop.
 
 - Independent N66 review confirmed the approved style/cascade and contrast, and found one stale integration assertion in `HeroPlayer.test.tsx` still expecting the old red class. Only that existing assertion was updated. The complete affected HeroPlayer suite then passed **124 tests with one pre-existing todo**; the approved production colors were preserved. This supplements the 462 tests above.
+
+## October 29 current-main update
+
+Preserve the owner's retirement of profile controls in PR #2957. The removed
+cookie settings trigger and its test remain deleted; footer coverage asserts
+that retired controls are absent and checks the two remaining legal links.
+The approved navigation colors and target sizes remain in this change.
+Seven focused suites pass: 525 tests and one existing todo. Current-main
+integration performance qualification and exact-head CI remain separate gates.

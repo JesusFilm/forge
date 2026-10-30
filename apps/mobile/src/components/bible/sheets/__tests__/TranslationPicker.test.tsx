@@ -426,14 +426,53 @@ describe("TranslationPicker", () => {
     expect(info).not.toHaveBeenCalled()
   })
 
-  it("shows the credit under each row", async () => {
-    const { renderer } = await render()
+  it("shows the credit on the Current card only", async () => {
+    const credits = (renderer: TestInstance) =>
+      renderer.root.findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.children === SYNODAL.credit,
+      )
+    const listed = await render()
+    await search(listed.renderer, "Synodal")
+    expect(credits(listed.renderer)).toHaveLength(0)
+    await unmount(listed.renderer)
+    mounted = null
+
+    const current = await render({ activeId: SYNODAL.id })
+    expect(credits(current.renderer)).toHaveLength(1)
+  })
+
+  it("puts the language, the books, and the download state on one line", async () => {
+    const downloads = fakeDownloads({ rus_syn: downloadedState(SYNODAL) })
+    const { renderer } = await render({ downloads })
     await search(renderer, "Synodal")
-    const credits = renderer.root.findAll(
+    const textOf = (children: unknown): string => {
+      if (typeof children === "string") return children
+      if (Array.isArray(children)) return children.map(textOf).join("")
+      if (children != null && typeof children === "object") {
+        const props = (children as { props?: { children?: unknown } }).props
+        return textOf(props?.children)
+      }
+      return ""
+    }
+    const lines = renderer.root.findAll(
       (node) =>
-        typeof node.type === "string" && node.props.children === SYNODAL.credit,
+        node.type === "Text" &&
+        textOf(node.props.children) ===
+          "русский · Russian • Complete Bible • Downloaded",
     )
-    expect(credits).toHaveLength(1)
+    expect(lines).toHaveLength(1)
+    const bold = renderer.root.findAll((node) => {
+      if (node.type !== "Text" || node.props.children !== "Downloaded") {
+        return false
+      }
+      const style = StyleSheet.flatten(node.props.style as never) as {
+        fontWeight?: string
+      } | null
+      return style?.fontWeight === "700"
+    })
+    expect(bold).toHaveLength(1)
   })
 
   it("draws in the reader's colors", async () => {

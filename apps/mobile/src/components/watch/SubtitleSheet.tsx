@@ -3,14 +3,10 @@ import { StyleSheet, Switch, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { SheetTitleRow } from "../sheets/SheetTitleRow"
 import { useTypography } from "../../hooks/useTypography"
 import { useT } from "../../i18n/useT"
-import {
-  ACCENT,
-  SURFACE_COLOR,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
+import { ACCENT, SURFACE_COLOR, TEXT_SECONDARY } from "../../lib/color"
 import type { WatchSubtitle } from "../../lib/normalizeVideo"
 
 const getSelectionId = (s: WatchSubtitle) => s.languageSlug
@@ -32,6 +28,7 @@ export type SubtitleSheetProps = {
     isUserSelection: boolean,
   ) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SubtitleSheetContent({
@@ -40,6 +37,7 @@ export function SubtitleSheetContent({
   activeSubtitleSlug,
   onSubtitleChange,
   onClose,
+  testID,
 }: SubtitleSheetProps) {
   const typography = useTypography()
   const t = useT("Watch")
@@ -78,7 +76,7 @@ export function SubtitleSheetContent({
 
   if (subtitles.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="chatbubble-ellipses-outline"
           size={48}
@@ -92,23 +90,24 @@ export function SubtitleSheetContent({
   }
 
   const toggleRow = (
-    <View style={styles.toggleRow}>
-      <Text style={[styles.toggleLabel, typography.titleSmall]}>
-        {t("subtitles")}
-      </Text>
-      <Switch
-        value={localToggle}
-        onValueChange={handleToggle}
-        trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
-        thumbColor="#ffffff"
-        accessibilityRole="switch"
-        accessibilityLabel={t("enableSubtitlesAriaLabel")}
-      />
-    </View>
+    <SheetTitleRow
+      title={t("subtitles")}
+      trailing={
+        <Switch
+          value={localToggle}
+          onValueChange={handleToggle}
+          trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
+          thumbColor="#ffffff"
+          accessibilityRole="switch"
+          accessibilityLabel={t("enableSubtitlesAriaLabel")}
+        />
+      }
+    />
   )
 
   return (
     <SearchableListSheet
+      testID={testID}
       rows={subtitles}
       activeId={activeSubtitleSlug}
       getSelectionId={getSelectionId}
@@ -137,15 +136,5 @@ const styles = StyleSheet.create({
   emptyText: {
     color: TEXT_SECONDARY,
     textAlign: "center",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  toggleLabel: {
-    color: TEXT_PRIMARY,
-    fontWeight: "600",
   },
 })

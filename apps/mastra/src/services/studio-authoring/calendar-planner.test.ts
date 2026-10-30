@@ -17,14 +17,7 @@ const input = {
     {
       date: "2026-09-22",
       version: 0,
-      packRevisionIds: ["pack"],
       weeklyTheme: "",
-    },
-  ],
-  packs: [
-    {
-      revisionId: "pack",
-      document: { title: "Hope", guidance: "Titles about hope", sources: [] },
     },
   ],
 }
@@ -66,15 +59,13 @@ it("returns admitted weekly themes without tools and attaches native provenance"
   const week = {
     startDate: "2026-09-28",
     theme: "A week of hope",
-    packRevisionId: "pack",
-    sourceIndices: [],
   }
   const fixture = modelFor(JSON.stringify({ items: [], weeks: [week] }))
   const result = await streamCalendarPlan({
     input: {
       ...input,
       slots: [],
-      weeks: [{ startDate: week.startDate, packRevisionIds: ["pack"] }],
+      weeks: [{ startDate: week.startDate }],
     },
     frozen,
     model: fixture.model,
@@ -92,8 +83,6 @@ it("uses a single tool-free native turn and attaches server-frozen provenance to
         expectedVersion: 0,
         title: "Hope for today",
         theme: "Finding hope",
-        packRevisionId: "pack",
-        sourceIndices: [],
       },
     ],
   }
@@ -121,8 +110,6 @@ it("rejects script fields and off-admission dates without a repair/provider retr
       expectedVersion: 0,
       title: "Hope",
       theme: "Hope",
-      packRevisionId: "pack",
-      sourceIndices: [],
       script: "Generate this",
     },
     {
@@ -130,15 +117,12 @@ it("rejects script fields and off-admission dates without a repair/provider retr
       expectedVersion: 0,
       title: "Hope",
       theme: "Hope",
-      packRevisionId: "pack",
-      sourceIndices: [],
     },
     {
       date: "2026-09-22",
       expectedVersion: 0,
       title: "Hope",
       theme: "Hope",
-      packRevisionId: "pack",
       sourceIndices: [0],
     },
   ]) {
@@ -155,13 +139,12 @@ it("rejects script fields and off-admission dates without a repair/provider retr
   }
 })
 
-it("does not call a model when no admitted slot has an assigned or default pack", async () => {
+it("does not call a model when no dates or weeks are admitted", async () => {
   const fixture = modelFor('{"items":[]}')
   const result = await streamCalendarPlan({
     input: {
       ...input,
-      packs: [],
-      slots: input.slots.map((slot) => ({ ...slot, packRevisionIds: [] })),
+      slots: [],
     },
     frozen,
     model: fixture.model,

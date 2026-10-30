@@ -1,5 +1,5 @@
 // Home hero controls (Apple-TV top-shelf); HeroPager owns slide artwork + copy.
-// This owns the pinned action row (See more CTA ↔ next chevron) + dots and signals
+// This owns the pinned action row (Details CTA ↔ next chevron) + dots and signals
 // onRequestAdvance. Auto-advance runs only while focused so the index can't drift.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -31,15 +31,15 @@ type HomeHeroCarouselProps = {
   slides: WatchHomeCard[]
   /** Which slide is active (owned by the screen, mirrored to HeroPager). */
   index: number
-  /** Select on the See more CTA opens the active slide. */
+  /** Select on the Details CTA opens the active slide. */
   onSelect: (card: WatchHomeCard) => void
   /** Hero focus gained/lost — the screen pins the feed to 0 and sets browse
    *  state (and the pager stays visible). */
   onFocusChange: (focused: boolean) => void
   /** Page the hero: +1 next (chevron Select / Right / auto-advance), -1
-   *  previous (See more Left). */
+   *  previous (Details Left). */
   onRequestAdvance: (delta: number) => void
-  /** Exposes the See more CTA's node so the first section rail can wire it as
+  /** Exposes the Details CTA's node so the first section rail can wire it as
    *  the D-pad-up destination for ALL its cards. */
   onCtaNode?: (node: ViewType | null) => void
   /** Top bar's Search tab node — the D-pad-up destination for BOTH hero buttons.
@@ -47,7 +47,7 @@ type HomeHeroCarouselProps = {
    *  this explicit destination bridges Up from the hero to the top bar. */
   upFocusTarget?: ViewType | null
   /** Reports the focused hero button's node so the screen can re-focus it after
-   *  a nav push/pop (the See more CTA is a valid "last focused element"). */
+   *  a nav push/pop (the Details CTA is a valid "last focused element"). */
   onFocusNode?: (node: ViewType | null) => void
 }
 
@@ -101,7 +101,7 @@ export function HomeHeroCarousel({
     return () => clearTimeout(timer)
   }, [heroFocused, safeIndex, count, onRequestAdvance])
 
-  // RIGHT on the chevron → next; LEFT on See more → previous. A key that just
+  // RIGHT on the chevron → next; LEFT on Details → previous. A key that just
   // changed focus is skipped (focusMovedRef), so the press that LANDS focus on a
   // button doesn't also page — only a press with focus already there does.
   const onTVEvent = useCallback(
@@ -160,7 +160,7 @@ export function HomeHeroCarousel({
     setChevronFocused(false)
   }, [])
 
-  // See more's node feeds BOTH the rail's D-pad-up wiring (onCtaNode) and the
+  // The Details node feeds BOTH the rail's D-pad-up wiring (onCtaNode) and the
   // self-target nextFocusLeft below.
   const handleSeeMoreNode = useCallback(
     (node: ViewType | null) => {
@@ -182,7 +182,7 @@ export function HomeHeroCarousel({
           current != null ? (
             <View style={styles.actionRow}>
               <HeroCtaButton
-                label="See more"
+                label="Details"
                 onPress={() => onSelect(current)}
                 onFocus={handleSeeMoreFocus}
                 onBlur={handleSeeMoreBlur}
@@ -190,14 +190,21 @@ export function HomeHeroCarousel({
                 selfNode={seeMoreNode}
                 upFocusTarget={upFocusTarget}
               />
-              <HeroChevronButton
-                onPress={() => onRequestAdvance(1)}
-                onFocus={handleChevronFocus}
-                onBlur={handleChevronBlur}
-                onNode={handleChevronNode}
-                selfNode={chevronNode}
-                upFocusTarget={upFocusTarget}
-              />
+              <View>
+                <HeroChevronButton
+                  onPress={() => onRequestAdvance(1)}
+                  onFocus={handleChevronFocus}
+                  onBlur={handleChevronBlur}
+                  onNode={handleChevronNode}
+                  selfNode={chevronNode}
+                  upFocusTarget={upFocusTarget}
+                />
+                {chevronFocused ? (
+                  <Text pointerEvents="none" style={styles.nextTitleLabel}>
+                    Next title
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null
         }
@@ -257,7 +264,7 @@ function HeroCtaButton({
         setFocused(false)
         onBlur()
       }}
-      // Stay on See more on Left (no real neighbour) so the capture turns Left
+      // Stay on Details on Left (no real neighbour) so the capture turns Left
       // into a previous-slide instead of letting focus escape the hero.
       nextFocusLeft={selfNode ?? undefined}
       // Up bridges to the top bar's Search tab — geometry alone dead-ends here
@@ -329,7 +336,7 @@ function HeroChevronButton({
       // Right into an advance rather than letting focus escape the hero.
       nextFocusRight={selfNode ?? undefined}
       // Up bridges to the top bar's Search tab — same offset-geometry dead-end
-      // as See more (both hero buttons share the one Up destination).
+      // as Details (both hero buttons share the one Up destination).
       nextFocusUp={upFocusTarget ?? undefined}
       accessibilityRole="button"
       accessibilityLabel="Next featured title"
@@ -374,7 +381,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: WATCH_THEME.accentText,
   },
-  // Square next-slide button, same height/radius as the See more CTA. backgroundColor +
+  // Square next-slide button, same height/radius as the Details CTA. backgroundColor +
   // shadowOpacity are animated in HeroChevronButton (dark glass → white fill on focus);
   // the static dark drop shadow is revealed by the focus shadowOpacity ramp.
   chevron: {
@@ -386,6 +393,16 @@ const styles = StyleSheet.create({
     shadowColor: "#000000",
     shadowRadius: scale(14),
     shadowOffset: { width: 0, height: scale(6) },
+  },
+  nextTitleLabel: {
+    position: "absolute",
+    left: scale(76),
+    top: scale(17),
+    width: scale(150),
+    fontFamily: "System",
+    fontSize: readableFontSize(21),
+    fontWeight: "600",
+    color: WATCH_THEME.text,
   },
   // Page indicator: bottom-center of the hero region, just above the peeking
   // first rail.

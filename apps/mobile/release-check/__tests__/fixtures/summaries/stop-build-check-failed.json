@@ -1,0 +1,112 @@
+{
+  "identity": {
+    "runId": "2026-10-21T14-00-00Z-0006",
+    "commit": "2bcf98e19a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "scope": "release",
+    "startedAt": "2026-10-22T09:00:00.000Z",
+    "endedAt": "2026-10-22T10:30:00.000Z",
+    "inputDigests": {
+      "apps/mobile/package.json": "1111111111111111111111111111111111111111111111111111111111111111",
+      "pnpm-lock.yaml": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "listDigests": {
+      "known-bugs.json": "3333333333333333333333333333333333333333333333333333333333333333",
+      "not-tested.json": "4444444444444444444444444444444444444444444444444444444444444444",
+      "test-settings.json": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "toolVersions": {
+      "xcode": "26.5 (17F42)",
+      "maestro": "2.11.0",
+      "node": "24.14.1",
+      "java": "Amazon Corretto 17.0.13"
+    },
+    "devicePins": {
+      "iphone-se": {
+        "runtime": "iOS 26.5",
+        "locale": "en_US",
+        "hardwareKeyboard": false
+      },
+      "android-phone": {
+        "image": "system-images;android-35;google_apis;arm64-v8a r3",
+        "locale": "en_US",
+        "timezone": "UTC",
+        "gpu": "host",
+        "memoryMb": 4096
+      }
+    },
+    "macTimeZone": "Pacific/Auckland"
+  },
+  "outcome": {
+    "stopReason": "build_check_failed",
+    "completedPhases": ["preflight", "build"]
+  },
+  "attempts": [],
+  "checks": {
+    "build": {
+      "passed": false,
+      "findings": [
+        {
+          "code": "DATADOG_CLIENT_TOKEN_FOUND",
+          "message": "The Android bundle holds a Datadog client token.",
+          "setting": "EXPO_PUBLIC_DATADOG_CLIENT_TOKEN",
+          "file": null,
+          "deviceId": null
+        },
+        {
+          "code": "SETTING_DIFFERS",
+          "message": "The iOS build reads EXPO_PUBLIC_RECOMMENDATIONS_ENABLED from /Users/qa-engineer/Library/Caches/forge-release-check/worktree/apps/mobile/.env.local.",
+          "setting": "EXPO_PUBLIC_RECOMMENDATIONS_ENABLED",
+          "file": "apps/mobile/.env.local",
+          "deviceId": null
+        }
+      ]
+    },
+    "log": null,
+    "screens": {
+      "gaps": [],
+      "notReached": [],
+      "skippedPlatforms": [
+        {
+          "screen": "tab-explore",
+          "platform": "android",
+          "setting": "EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED"
+        }
+      ]
+    },
+    "settingsProbe": null
+  },
+  "server": {
+    "routes": {},
+    "rateLimitRefusals": []
+  },
+  "notTested": [
+    {
+      "kind": "step",
+      "target": "sign-in",
+      "platforms": ["ios", "android"],
+      "reason": "Production leaves sign-in off, and a sign-in writes to production auth."
+    },
+    {
+      "kind": "screen",
+      "target": "account",
+      "platforms": ["ios", "android"],
+      "reason": "Only a signed-in viewer can open the Account screen, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "my-watch-signed-in",
+      "platforms": ["ios", "android"],
+      "reason": "Signed-in My Watch needs a sign-in, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "for-you-shelf",
+      "platforms": ["ios", "android"],
+      "reason": "Recommendations are off in the test build, because they cannot work without writes."
+    }
+  ],
+  "staleKnownBugs": [],
+  "restarts": [],
+  "speed": null,
+  "proposedActions": []
+}

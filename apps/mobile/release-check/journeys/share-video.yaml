@@ -1,0 +1,79 @@
+# Open the system share sheet and cancel it. The journey never shares, because
+# a share sends the video link out of the device (not-tested.json).
+appId: org.jesusfilm.forgewatch
+name: share-video
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- tapOn:
+    text: Share
+    label: Open the share sheet
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ActivityListView
+          timeout: 10000
+          label: The iOS share sheet shows
+      - tapOn:
+          point: 50%,10%
+          label: Tap outside the share sheet
+      - extendedWaitUntil:
+          notVisible:
+            id: ActivityListView
+          timeout: 10000
+          label: The iOS share sheet closes
+    label: Cancel the iOS share sheet
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Sharing link
+          timeout: 10000
+          label: The Android share sheet shows
+      - pressKey:
+          key: back
+          label: Press the Android back button
+      - extendedWaitUntil:
+          notVisible:
+            text: Sharing link
+          timeout: 10000
+          label: The Android share sheet closes
+    label: Cancel the Android share sheet
+- assertVisible:
+    id: screen-watch
+    label: The watch page shows after the share sheet

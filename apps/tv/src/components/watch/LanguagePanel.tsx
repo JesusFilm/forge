@@ -12,7 +12,7 @@ import { PanelLoading } from "./PanelLoading"
 import { useVariantList } from "./useVariantList"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
-import { AndroidDetailsTrackPanel } from "./AndroidDetailsTrackPanel"
+import { NativeDetailsTrackPanel } from "./NativeDetailsTrackPanel"
 
 type Props = {
   visible: boolean
@@ -22,9 +22,9 @@ type Props = {
 }
 
 export function LanguagePanel(props: Props) {
-  if (Platform.OS === "android")
+  if (Platform.OS === "android" || Platform.OS === "ios")
     return props.visible ? (
-      <AndroidDetailsTrackPanel kind="audio" {...props} />
+      <NativeDetailsTrackPanel kind="audio" {...props} />
     ) : null
   return <ReactLanguagePanel {...props} />
 }
