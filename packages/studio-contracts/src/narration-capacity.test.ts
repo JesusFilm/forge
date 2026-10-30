@@ -12,7 +12,6 @@ const doc = studioDocumentSchema.parse({
   durationInFrames: 30,
   tracks: [{ id: "main", kind: "visual" }],
   components: [],
-  packRevisionIds: [],
   items: [],
 })
 const speech = {

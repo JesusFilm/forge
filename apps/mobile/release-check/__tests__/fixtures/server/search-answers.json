@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "documentDigest": "aa46750de20072b142cd99daf280e6070f0dac7f1e10c0b8ed4a8a7b64cf8dd4",
+  "answers": [
+    {
+      "input": {
+        "query": "jesus",
+        "limit": 20,
+        "offset": 0,
+        "language": "english"
+      },
+      "response": {
+        "data": {
+          "watchSearch": {
+            "query": "jesus",
+            "hasMore": false,
+            "nextOffset": 1,
+            "requestId": "fixture-request",
+            "latencyMs": 12,
+            "degraded": false,
+            "searchMode": "hybrid",
+            "results": [
+              {
+                "type": "VIDEO",
+                "id": "1_jf-0-0",
+                "slug": "jesus",
+                "title": "JESUS",
+                "imageUrl": "https://example.com/jesus.jpg",
+                "snippet": null,
+                "startSeconds": null,
+                "playbackId": "fixture-playback",
+                "score": 0.9,
+                "label": null,
+                "childCount": null,
+                "durationSeconds": 7600
+              }
+            ]
+          }
+        }
+      },
+      "recordedAt": "2026-10-22T00:00:00.000Z"
+    }
+  ]
+}

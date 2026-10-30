@@ -1,0 +1,10 @@
+{
+  "verified_at_utc": "2026-10-20 23:18:01 UTC",
+  "patch_hash": "d775pmxr7lcqy4djkbxhcf2kxi",
+  "lock_references": 46,
+  "patch_applies_and_matches_installed_files": true,
+  "verified_files": 8,
+  "compiled_guard_width_unchanged": true,
+  "existing_startup_hook_preserved": true,
+  "production_changes": false
+}

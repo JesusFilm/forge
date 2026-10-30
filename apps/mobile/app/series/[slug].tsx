@@ -554,7 +554,7 @@ export default function SeriesScreen() {
   )
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-series" style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
       {/* Trailer plays → pin the player at the top so scrolling the list never

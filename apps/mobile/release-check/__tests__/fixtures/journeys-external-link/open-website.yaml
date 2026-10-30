@@ -1,0 +1,5 @@
+appId: org.jesusfilm.forgewatch
+---
+- openLink: https://www.jesusfilm.org/
+- assertVisible:
+    id: "screen-tab-home"

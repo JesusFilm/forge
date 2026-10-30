@@ -11,10 +11,12 @@ export function TransitionControls({
   item,
   document,
   onChange,
+  onPreview,
 }: {
   item: VideoItem
   document: StudioDocument
   onChange: (transition: VideoItem["transition"]) => void
+  onPreview?: (transition: VideoItem["transition"] | null) => void
 }) {
   const cut = studioCuts(document).find((c) => c.incomingId === item.id)
   return (
@@ -48,6 +50,16 @@ export function TransitionControls({
             value={item.transition.durationInFrames}
             min={1}
             max={300}
+            onPreview={(durationInFrames) =>
+              onPreview?.(
+                durationInFrames === null
+                  ? null
+                  : {
+                      type: item.transition!.type,
+                      durationInFrames,
+                    },
+              )
+            }
             onChange={(durationInFrames) =>
               onChange({ type: item.transition!.type, durationInFrames })
             }

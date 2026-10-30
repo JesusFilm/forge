@@ -256,6 +256,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
+import { isTabBarHidden } from "../../../lib/tabBarVisibility"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const [A, B] = video.__players
@@ -1358,6 +1359,24 @@ describe("the 2x hold (owner, 2026-10-14)", () => {
     }
     expect(A.playing).toBe(true)
     expect(B.playbackRate).toBe(1)
+  })
+
+  it("hides the iOS tab bar only while the hold plays the clip at 2x", async () => {
+    await startWithStandby()
+    expect(isTabBarHidden()).toBe(false)
+    await pressSide("onLongPress", "end")
+    expect(isTabBarHidden()).toBe(true)
+    await pressSide("onPressOut", "end")
+    expect(isTabBarHidden()).toBe(false)
+
+    // An unmount mid-hold must not strand the bar hidden.
+    await pressSide("onLongPress", "end")
+    expect(isTabBarHidden()).toBe(true)
+    await act(async () => {
+      renderer!.unmount()
+    })
+    renderer = null
+    expect(isTabBarHidden()).toBe(false)
   })
 
   it("pauses on a short tap on a side, as on the rest of the clip", async () => {

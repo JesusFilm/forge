@@ -1,5 +1,12 @@
 # Source-free user recommendations
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 The shared Admin API returns one ranked list without a seed video. Web renders
 six cards through the authored `HomepageRecommendationsBlock`, labeled
 “Recommended for You.” The homepage starter places it after Browse by category;

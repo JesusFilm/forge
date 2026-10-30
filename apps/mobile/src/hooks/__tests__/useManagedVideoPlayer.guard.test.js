@@ -55,6 +55,23 @@ function collectSourceFiles(dir, acc = []) {
 
 const ROOT = path.resolve(__dirname, "../../..")
 
+// U7: Mux Data monitors a player only through the adapter's monitor session.
+// The other raw players are heroes and the Explore feed, which the first
+// release does not monitor. U9 names the feed as the one later exception.
+const MUX_DATA_IMPORTERS = new Set(["src/hooks/useManagedVideoPlayer.ts"])
+const MUX_DATA_IMPORT =
+  /(?:\bfrom\s+|\brequire\s*\(\s*)["'][^"']*\/muxData(?:\/[^"']*)?["']/
+
+function findMuxDataImporters(entries) {
+  return entries
+    .filter((entry) => ALLOWED.has(entry.relative))
+    .filter((entry) => !MUX_DATA_IMPORTERS.has(entry.relative))
+    .filter((entry) =>
+      codeLines(entry.content).some((line) => MUX_DATA_IMPORT.test(line)),
+    )
+    .map((entry) => entry.relative)
+}
+
 function readFeedPlayers() {
   return {
     relative: FEED_PLAYERS,
@@ -133,5 +150,51 @@ describe("single expo-video adapter", () => {
     const code = codeLines(readFeedPlayers().content).join("\n")
     expect(code.match(/\buseVideoPlayer\(/g)).toHaveLength(2)
     expect(code).not.toMatch(/\bcreateVideoPlayer\b/)
+  })
+  it("no raw-player file except the adapter imports the Mux Data layer", () => {
+    const entries = [...ALLOWED].map((relative) => ({
+      relative,
+      content: fs.readFileSync(path.join(ROOT, relative), "utf8"),
+    }))
+    expect(findMuxDataImporters(entries)).toEqual([])
+    // Positive control on the real tree: the adapter does import it.
+    const adapter = entries.find(
+      (entry) => entry.relative === "src/hooks/useManagedVideoPlayer.ts",
+    )
+    expect(
+      codeLines(adapter.content).some((line) => MUX_DATA_IMPORT.test(line)),
+    ).toBe(true)
+  })
+
+  it("positive control: the Mux Data detector flags a raw player that imports it", () => {
+    const offenders = findMuxDataImporters([
+      {
+        relative: "src/components/home/HomeHeroPager.tsx",
+        content:
+          'import { createMuxMonitorSession } from "../../lib/muxData/monitorSession"',
+      },
+      {
+        relative: FEED_PLAYERS,
+        content: 'const mux = require("../lib/muxData/monitorSession")',
+      },
+      {
+        relative: "src/components/sections/VideoHeroRenderer.tsx",
+        content: "// mentions ../../lib/muxData in a comment only",
+      },
+      {
+        relative: "src/hooks/useManagedVideoPlayer.ts",
+        content:
+          'import { createMuxMonitorSession } from "../lib/muxData/monitorSession"',
+      },
+      {
+        relative: "src/components/watch/PlaybackHost.tsx",
+        content:
+          'import type { MuxDataOption } from "../../lib/muxData/monitorSession"',
+      },
+    ])
+    expect(offenders).toEqual([
+      "src/components/home/HomeHeroPager.tsx",
+      FEED_PLAYERS,
+    ])
   })
 })

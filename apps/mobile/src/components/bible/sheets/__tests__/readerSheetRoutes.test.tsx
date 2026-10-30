@@ -194,6 +194,8 @@ const PASSAGE = {
   verse: (verse: number) => passageT("verseAriaLabel", { verse }),
   notInTranslation: (shortName: string) =>
     passageT("notInTranslation", { shortName }),
+  oldTestament: passageT("oldTestament"),
+  newTestament: passageT("newTestament"),
 }
 const TRANSLATION = { onDeviceOnly: pickerT("onDeviceOnly") }
 const SETTINGS = {
@@ -380,7 +382,9 @@ describe("reader-passage route", () => {
 
     const deuteronomy = `Deuteronomy, ${PASSAGE.notInTranslation("WBT")}`
     expect(controls(renderer, deuteronomy)).toHaveLength(1)
+    await press(renderer, PASSAGE.newTestament)
     expect(controls(renderer, "MATEO")).toHaveLength(1)
+    await press(renderer, PASSAGE.oldTestament)
     // The current verse still shows, in BSB numbers for a book WBT lacks.
     await press(renderer, deuteronomy)
     const [chapterTwo] = controls(renderer, PASSAGE.chapter(2))
@@ -414,7 +418,9 @@ describe("reader-passage route", () => {
       for (let i = 0; i < 10; i += 1) await Promise.resolve()
     })
 
+    await press(renderer, PASSAGE.newTestament)
     expect(controls(renderer, "MATEO")).toHaveLength(1)
+    await press(renderer, PASSAGE.oldTestament)
     const psalms = `Псалтирь, ${PASSAGE.notInTranslation("WBT")}`
     await press(renderer, psalms)
     const [chapter22] = controls(renderer, PASSAGE.chapter(22))

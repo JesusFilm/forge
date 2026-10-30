@@ -259,7 +259,6 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
       durationInFrames: 60,
       tracks: [{ id: "video", kind: "visual" }],
       components: [],
-      packRevisionIds: [],
       items: [
         {
           id: "clip",
@@ -328,7 +327,6 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
           durationInFrames: 120,
           tracks: [{ id: "main", kind: "visual" }],
           components: [],
-          packRevisionIds: [],
           items: [
             {
               id: "source",
@@ -476,7 +474,6 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
         durationInFrames: 120,
         tracks: [{ id: "main", kind: "visual" }],
         components: [],
-        packRevisionIds: [],
         items: [
           {
             id: "source",

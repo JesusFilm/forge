@@ -1,12 +1,12 @@
 import {
+  requireContentOnlyManifest,
+  BEHAVIORAL_RETIREMENT_REASON,
+} from "../behavioral-retirement"
+import {
   RecommendationOwnerReleaseOperator,
   type OwnerReleaseOperatorInput,
 } from "./owner-operator"
-import {
-  lockOwnerReleaseForRevocation,
-  readActiveOwnerRelease,
-} from "./owner-authority"
-import { ownerReleaseInfluenceAllowed } from "./owner-influence"
+import { lockOwnerReleaseForRevocation } from "./owner-authority"
 import { assertStudyAuthority } from "../experiment/study-authority"
 import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "../experiment/assignment"
 import { STUDY_POLICY_VERSION } from "../experiment/study-protocol"
@@ -82,7 +82,11 @@ type ExecutionResult =
     }>
   | Readonly<{
       status: "fenced"
-      reason: "run_missing" | "claim_lost" | "pointer_changed"
+      reason:
+        | "run_missing"
+        | "claim_lost"
+        | "pointer_changed"
+        | "behavioral_recommendations_retired"
     }>
 
 export class RecommendationPromotionService {
@@ -121,6 +125,7 @@ export class RecommendationPromotionService {
     maxExposureBps: number
   }) {
     requirePermission(input.actor, "operate:recommendation-experiments")
+    requireContentOnlyManifest(input.manifestId)
     if (!input.actor.id) throw new ForbiddenError("Permission denied")
     if (
       !Number.isInteger(input.maxExposureBps) ||
@@ -220,6 +225,8 @@ export class RecommendationPromotionService {
 
   async createRun(input: CreatePromotionRunInput) {
     authorizeRunRequest(input)
+    if (!isRollback(input.action))
+      requireContentOnlyManifest(input.targetManifestId)
     if (
       !isRollback(input.action) &&
       input.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
@@ -446,6 +453,25 @@ export class RecommendationPromotionService {
 
         const action = policyAction(run.action)
         const rollback = isRollback(action)
+        if (
+          !rollback &&
+          ![
+            "semantic-transcript-pgvector-v1",
+            "semantic-experiment-aa-v1",
+          ].includes(run.targetManifestId)
+        ) {
+          await fencePromotionRun(
+            tx,
+            run.id,
+            input,
+            now,
+            BEHAVIORAL_RETIREMENT_REASON,
+          )
+          return {
+            status: "fenced",
+            reason: BEHAVIORAL_RETIREMENT_REASON,
+          } as const
+        }
         if (rollback && pointer.activeOwnerReleaseId) {
           await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
         }
@@ -885,68 +911,16 @@ export async function recordFirstEligiblePromotionExposure(
     receivedAt: Date
   },
 ) {
-  let pointer = await tx.recommendationPromotionPointer.findUnique({
+  const pointer = await tx.recommendationPromotionPointer.findUnique({
     where: { id: PROMOTION_POINTER_ID },
   })
   if (
     !pointer ||
     pointer.killSwitchEnabled ||
     pointer.stage === RecommendationPromotionStage.CONTROL ||
-    (pointer.stage !== RecommendationPromotionStage.OWNER_APPROVED &&
-      pointer.activeManifestId !== input.effectiveManifestId)
+    pointer.activeManifestId !== input.effectiveManifestId
   ) {
     return false
-  }
-  let ownerReleaseId: string | null = null
-  if (pointer.stage === RecommendationPromotionStage.OWNER_APPROVED) {
-    const request = await tx.recommendationRequest.findUnique({
-      where: { id: input.requestId },
-      select: {
-        id: true,
-        ownerReleaseId: true,
-        ownerReleaseGeneration: true,
-        manifestId: true,
-        personalizationDecision: {
-          select: { effectiveManifestId: true, executionMode: true },
-        },
-      },
-    })
-    if (
-      !request?.ownerReleaseId ||
-      request.ownerReleaseGeneration !== pointer.generation ||
-      request.ownerReleaseId !== pointer.activeOwnerReleaseId ||
-      request.manifestId !== input.effectiveManifestId ||
-      request.personalizationDecision?.effectiveManifestId !==
-        pointer.activeManifestId ||
-      request.personalizationDecision.executionMode !==
-        "cowatch_mmr_personalized"
-    )
-      return false
-    const release = await tx.recommendationOwnerRelease.findUnique({
-      where: { id: request.ownerReleaseId },
-    })
-    if (!release) return false
-    await tx.$queryRaw`SELECT id FROM recommendation_cowatch_generation WHERE id = ${release.graphGenerationId}::char(64) FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_owner_release WHERE id = ${release.id}::uuid FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer WHERE id = 'recommendation-promotion-pointer' FOR SHARE`
-    const authority = await readActiveOwnerRelease(tx, input.receivedAt)
-    if (
-      !authority ||
-      authority.releaseId !== request.ownerReleaseId ||
-      authority.pointerGeneration !== request.ownerReleaseGeneration ||
-      !(await ownerReleaseInfluenceAllowed(tx, request))
-    )
-      return false
-    pointer = await tx.recommendationPromotionPointer.findUnique({
-      where: { id: PROMOTION_POINTER_ID },
-    })
-    if (
-      !pointer ||
-      pointer.activeOwnerReleaseId !== authority.releaseId ||
-      pointer.generation !== authority.pointerGeneration
-    )
-      return false
-    ownerReleaseId = release.id
   }
   const created = await tx.recommendationPromotionEvent.createMany({
     data: [
@@ -970,9 +944,6 @@ export async function recordFirstEligiblePromotionExposure(
         }),
         details: {
           receivedAt: input.receivedAt.toISOString(),
-          ...(ownerReleaseId
-            ? { ownerReleaseId, ownerReleaseGeneration: pointer.generation }
-            : {}),
         },
         now: input.receivedAt,
       }),

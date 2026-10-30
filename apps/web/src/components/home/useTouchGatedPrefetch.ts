@@ -66,10 +66,14 @@ function serverHoverCapability(): boolean {
  *
  * Unlike that card latch, a hover-capable device is armed from hydration on,
  * which keeps the eager desktop posture these bounded links already had.
+ * The category rail opts out of eager desktop prefetch: the compact home
+ * band brings it into view during startup, before the visitor asks to browse.
  * Prefetch only ever runs client-side after mount, so the gated server render
  * loses nothing.
  */
-export function useTouchGatedPrefetch() {
+export function useTouchGatedPrefetch({
+  eagerOnHover = true,
+}: { eagerOnHover?: boolean } = {}) {
   const hoverCapable = useSyncExternalStore(
     subscribeToHoverCapability,
     isHoverCapableDevice,
@@ -88,7 +92,10 @@ export function useTouchGatedPrefetch() {
   }, [])
 
   return {
-    prefetch: hoverCapable || intentShown ? undefined : (false as const),
+    prefetch:
+      (eagerOnHover && hoverCapable) || intentShown
+        ? undefined
+        : (false as const),
     onFocus: arm,
     onPointerMove,
   }

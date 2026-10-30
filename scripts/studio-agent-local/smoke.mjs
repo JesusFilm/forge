@@ -89,7 +89,6 @@ await call("shorts.create", {
       { id: "caption", kind: "caption" },
     ],
     components: [],
-    packRevisionIds: [],
     items: [
       {
         id: "footage",
