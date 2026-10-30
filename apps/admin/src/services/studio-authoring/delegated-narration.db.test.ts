@@ -110,7 +110,6 @@ const acceptedSchema = z.object({
           durationInFrames: 60,
           tracks: [{ id: "main", kind: "visual" }],
           components: [],
-          packRevisionIds: [],
           items: [0, 1].map((i) => ({
             id: `speech${i}`,
             kind: "text",

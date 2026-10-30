@@ -14,7 +14,10 @@ class CalendarFixtureError extends Error {}
     studioAuthority: "interactive" as const,
   }
   beforeAll(async () => {
-    if (url !== "postgresql://tataihono@127.0.0.1:55461/forge_studio_461_test")
+    if (
+      url !== "postgresql://tataihono@127.0.0.1:55461/forge_studio_461_test" &&
+      url !== "postgresql://tataihono@127.0.0.1:55460/forge_studio_460_fresh"
+    )
       throw new CalendarFixtureError("Task-owned database required")
     db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) })
     await db.user.upsert({
@@ -43,7 +46,6 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["06:00"],
         automationEnabled: false,
-        defaultPackRevisionIds: [],
         language: "english",
       },
     }
@@ -58,7 +60,6 @@ class CalendarFixtureError extends Error {}
       date: before.slots[0].date,
       title: "My chosen title",
       theme: "My chosen theme",
-      packRevisionId: null,
       projectId: null,
     }
     await service.editSlot(user, edit)
@@ -88,7 +89,6 @@ class CalendarFixtureError extends Error {}
       deliveryWindowMinutes: 60,
       plannerTimes: ["06:00"],
       automationEnabled: false,
-      defaultPackRevisionIds: [],
       language: "english",
     }
     await service.configure(user, {
@@ -125,7 +125,6 @@ class CalendarFixtureError extends Error {}
       idempotencyKey: randomUUID(),
       startDate: today.toISOString().slice(0, 10),
       theme: "Human weekly theme",
-      packRevisionId: null,
     })
     try {
       await expect.poll(waiters).toBe(1)
@@ -154,29 +153,8 @@ class CalendarFixtureError extends Error {}
   it.each(["none", "week", "slot"] as const)(
     "suggests only complete future weeks and preserves human changes (%s)",
     async (humanEdit) => {
-      const { ContentPackService } = await import("./packs")
-      const pack = await new ContentPackService(db).write(user, {
-        packId: randomUUID(),
-        expectedRevision: 0,
-        idempotencyKey: randomUUID(),
-        document: {
-          title: "Weekly guidance",
-          guidance: "Hope together",
-          sources: [],
-        },
-      })
       const service = new StudioCalendarService(db),
         worker = { id: "system", role: "SYSTEM" as const }
-      const slotPack = await new ContentPackService(db).write(user, {
-        packId: randomUUID(),
-        expectedRevision: 0,
-        idempotencyKey: randomUUID(),
-        document: {
-          title: "One slot only",
-          guidance: "Local hope",
-          sources: [],
-        },
-      })
       const calendarId = randomUUID()
       await service.configure(user, {
         calendarId,
@@ -188,7 +166,6 @@ class CalendarFixtureError extends Error {}
           deliveryWindowMinutes: 60,
           plannerTimes: ["00:00"],
           automationEnabled: true,
-          defaultPackRevisionIds: [pack.id],
           language: "english",
         },
       })
@@ -209,7 +186,6 @@ class CalendarFixtureError extends Error {}
         title: "",
         theme: "",
         projectId: null,
-        packRevisionId: slotPack.id,
       })
       const run = await service.beginAutomaticPlanning(worker, calendarId)
       if (!run) throw new CalendarFixtureError("Expected automatic planning")
@@ -219,8 +195,6 @@ class CalendarFixtureError extends Error {}
       const week = {
         startDate: expectedWeeks[0],
         theme: "A week of hope",
-        packRevisionId: slotPack.id,
-        sourceIndices: [],
       }
       const result = {
         items: [],
@@ -248,7 +222,6 @@ class CalendarFixtureError extends Error {}
           idempotencyKey: randomUUID(),
           startDate: week.startDate,
           theme: "Operator wins",
-          packRevisionId: null,
         })
       if (humanEdit === "slot")
         await service.editSlot(user, {
@@ -259,7 +232,6 @@ class CalendarFixtureError extends Error {}
           title: "",
           theme: "",
           projectId: null,
-          packRevisionId: pack.id,
         })
       await service.finishPlanning(worker, run.id, result)
       const after = await service.read(user, calendarId)
@@ -276,15 +248,12 @@ class CalendarFixtureError extends Error {}
       }
       expect(after.weeks[0]).toMatchObject(
         humanEdit === "week"
-          ? { theme: "Operator wins", packRevisionId: null, provenance: null }
+          ? { theme: "Operator wins", provenance: null }
           : {
               theme: week.theme,
-              packRevisionId: null,
               provenance: {
-                packRevisionId: slotPack.id,
                 runId: run.id,
                 sourceState: "MISSING",
-                sourceIndices: [],
               },
             },
       )
@@ -293,30 +262,20 @@ class CalendarFixtureError extends Error {}
           calendarId,
           idempotencyKey: randomUUID(),
         })
-        for (const slot of next.input.slots.filter(
-          (slot) =>
-            slot.date >= assignedDate &&
-            Date.parse(slot.date + "T00:00Z") <
-              Date.parse(assignedDate + "T00:00Z") + 7 * 86400000,
-        ))
-          expect(slot.packRevisionIds).toEqual([
-            slot.date === assignedDate ? slotPack.id : pack.id,
-          ])
+        expect(
+          next.input.slots
+            .filter(
+              (slot) =>
+                slot.date >= assignedDate &&
+                Date.parse(slot.date + "T00:00Z") <
+                  Date.parse(assignedDate + "T00:00Z") + 7 * 86400000,
+            )
+            .every((slot) => slot.weeklyTheme === week.theme),
+        ).toBe(true)
       }
     },
   )
   it("admits planning once, preserves a racing manual override, and does not invent source evidence", async () => {
-    const { ContentPackService } = await import("./packs")
-    const pack = await new ContentPackService(db).write(user, {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Hope",
-        guidance: "Titles about hope; source selection is still missing",
-        sources: [],
-      },
-    })
     const service = new StudioCalendarService(db),
       calendarId = randomUUID()
     await service.configure(user, {
@@ -329,7 +288,6 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["06:00"],
         automationEnabled: false,
-        defaultPackRevisionIds: [pack.id],
         language: "english",
       },
     })
@@ -345,7 +303,6 @@ class CalendarFixtureError extends Error {}
       date: first.date,
       title: "Manual wins",
       theme: "Chosen",
-      packRevisionId: pack.id,
       projectId: null,
     })
     const result = {
@@ -354,8 +311,6 @@ class CalendarFixtureError extends Error {}
         expectedVersion: slot.version,
         title: "A hopeful morning",
         theme: "Hope today",
-        packRevisionId: pack.id,
-        sourceIndices: [],
       })),
       instructions: [
         {
@@ -386,14 +341,7 @@ class CalendarFixtureError extends Error {}
       }),
     ).rejects.toThrow()
   })
-  it("plans an empty pack-assigned slot and deduplicates simultaneous daily admissions", async () => {
-    const { ContentPackService } = await import("./packs")
-    const pack = await new ContentPackService(db).write(user, {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: { title: "Guidance", guidance: "Hope", sources: [] },
-    })
+  it("plans an empty slot and deduplicates simultaneous daily admissions", async () => {
     const service = new StudioCalendarService(db),
       calendarId = randomUUID()
     await service.configure(user, {
@@ -406,7 +354,6 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["00:00"],
         automationEnabled: true,
-        defaultPackRevisionIds: [],
         language: "english",
       },
     })
@@ -419,7 +366,6 @@ class CalendarFixtureError extends Error {}
       date: day,
       title: "",
       theme: "",
-      packRevisionId: pack.id,
       projectId: null,
     })
     const worker = { id: "system", role: "SYSTEM" as const }
@@ -444,8 +390,6 @@ class CalendarFixtureError extends Error {}
             expectedVersion: 0,
             title: "Outside admission",
             theme: "Hope",
-            packRevisionId: pack.id,
-            sourceIndices: [],
           },
         ],
         instructions: [
@@ -459,7 +403,9 @@ class CalendarFixtureError extends Error {}
       }),
     ).rejects.toMatchObject({ code: "INVALID" })
     expect(one?.input.slots.find((slot) => slot.date === day)).toMatchObject({
-      packRevisionIds: [pack.id],
+      date: day,
+      version: 1,
+      weeklyTheme: "",
     })
     expect(await db.shortPlanningRun.count({ where: { calendarId } })).toBe(1)
     await expect(
@@ -475,52 +421,18 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["00:00"],
         automationEnabled: false,
-        defaultPackRevisionIds: [],
         language: "english",
       },
     })
     expect(await service.beginAutomaticPlanning(worker, calendarId)).toBeNull()
   })
-  it("admits explicit production from verified selected pack bytes without modifying work or generating, and blocks missing sources", async () => {
+  it("admits explicit production from selected project footage without modifying work or generating, and blocks missing sources", async () => {
     const { StudioAuthoringService } = await import("./index"),
-      { StudioAssetService } = await import("./assets"),
-      { ContentPackService } = await import("./packs"),
       { admitCalendarProduction } = await import("./calendar-production")
     const calendar = new StudioCalendarService(db),
       commands = new StudioAuthoringService(db),
       calendarId = randomUUID(),
       projectId = randomUUID()
-    const source = await new StudioAssetService(db).register(
-      user,
-      {
-        filename: "editorial.txt",
-        mimeType: "text/plain",
-        role: "document",
-        idempotencyKey: randomUUID(),
-        provenance: {
-          status: "recorded",
-          recorded: { author: "Local editorial fixture" },
-        },
-      },
-      Buffer.from("Hope can grow through patient care."),
-      "LOCAL",
-    )
-    const pack = await new ContentPackService(db).write(user, {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Hope source",
-        guidance: "Use this editorial source",
-        sources: [
-          {
-            label: "Editorial source",
-            asset: source.reference,
-            excerpt: "Hope can grow through patient care.",
-          },
-        ],
-      },
-    })
     await calendar.configure(user, {
       calendarId,
       expectedVersion: 0,
@@ -531,11 +443,22 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["06:00"],
         automationEnabled: false,
-        defaultPackRevisionIds: [pack.id],
         language: "english",
       },
     })
     const date = (await calendar.read(user, calendarId)).slots[0].date
+    const language = "source-" + randomUUID()
+    await db.language.create({
+      data: {
+        coreId: language,
+        slug: language,
+        bcp47: "en",
+        name: { en: "Fixture" },
+      },
+    })
+    const { selectedSourceFixture } =
+      await import("./selected-source.test-support")
+    const footage = await selectedSourceFixture(db, user, language)
     await commands.create(user, {
       projectId,
       expectedRevision: 0,
@@ -543,16 +466,15 @@ class CalendarFixtureError extends Error {}
       document: {
         version: 1,
         title: "Human edited title",
-        language: "english",
+        language,
         runtimeVersion: "fixture",
         width: 320,
         height: 180,
         fps: 30,
         durationInFrames: 30,
-        tracks: [],
-        items: [],
+        tracks: [{ id: "source-track", kind: "visual" }],
+        items: [footage],
         components: [],
-        packRevisionIds: [pack.id],
       },
     })
     await calendar.editSlot(user, {
@@ -562,7 +484,6 @@ class CalendarFixtureError extends Error {}
       date,
       title: "Calendar title",
       theme: "Hope",
-      packRevisionId: pack.id,
       projectId,
     })
     const input = {
@@ -581,7 +502,6 @@ class CalendarFixtureError extends Error {}
       date: nextDate,
       title: "Another planned item",
       theme: "Hope",
-      packRevisionId: pack.id,
       projectId,
     })
     expect((await calendar.read(user, calendarId)).slots[1]).toHaveProperty(
@@ -609,7 +529,7 @@ class CalendarFixtureError extends Error {}
       projectId,
       expectedRevision: 1,
       idempotencyKey: randomUUID(),
-      operations: [{ kind: "assign-content-packs", packRevisionIds: [] }],
+      operations: [{ kind: "remove-item", itemId: footage.id }],
     })
     expect((await calendar.read(user, calendarId)).slots[0]).toHaveProperty(
       "projectSourcesSelected",
@@ -629,8 +549,7 @@ class CalendarFixtureError extends Error {}
       { StudioCatalogService } = await import("./catalog"),
       { StudioCalendarPublication } = await import("./calendar-publication"),
       { publishStudioProject } = await import("./publication"),
-      { StudioRenderJobs } = await import("./render-jobs"),
-      { ContentPackService } = await import("./packs")
+      { StudioRenderJobs } = await import("./render-jobs")
     const service = new StudioCalendarService(db),
       delivery = new StudioCalendarPublication(db),
       commands = new StudioAuthoringService(db),
@@ -659,41 +578,12 @@ class CalendarFixtureError extends Error {}
         deliveryWindowMinutes: 60,
         plannerTimes: ["06:00"],
         automationEnabled: false,
-        defaultPackRevisionIds: [],
         language,
       },
     })
-    const selectedSource = await assets.register(
-      user,
-      {
-        filename: "editorial.txt",
-        mimeType: "text/plain",
-        role: "document",
-        idempotencyKey: randomUUID(),
-        provenance: {
-          status: "recorded",
-          recorded: { author: "Owned transaction fixture" },
-        },
-      },
-      Buffer.from("Hope can grow through patient care."),
-      "LOCAL",
-    )
-    const selectedPack = await new ContentPackService(db).write(user, {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Transaction source",
-        guidance: "Hope",
-        sources: [
-          {
-            label: "Editorial",
-            asset: selectedSource.reference,
-            excerpt: "Hope can grow through patient care.",
-          },
-        ],
-      },
-    })
+    const { selectedSourceFixture } =
+      await import("./selected-source.test-support")
+    const footage = await selectedSourceFixture(db, user, language)
     await commands.create(user, {
       projectId,
       expectedRevision: 0,
@@ -707,10 +597,9 @@ class CalendarFixtureError extends Error {}
         height: 180,
         fps: 30,
         durationInFrames: 30,
-        tracks: [],
-        items: [],
+        tracks: [{ id: "source-track", kind: "visual" }],
+        items: [footage],
         components: [],
-        packRevisionIds: [selectedPack.id],
       },
     })
     const render = await commands.request(user, {
@@ -813,7 +702,6 @@ class CalendarFixtureError extends Error {}
       date,
       title: "Ready for review",
       theme: "",
-      packRevisionId: null,
       projectId,
     })
     const authorization = {

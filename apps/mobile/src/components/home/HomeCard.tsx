@@ -190,6 +190,13 @@ export const HomeCard = memo(function HomeCard({
             : t("opensVideoAriaHint")
           : undefined
       }
+      testID={
+        interactive
+          ? isSeries
+            ? "home-card-series"
+            : "home-card-video"
+          : undefined
+      }
     >
       {imageUrl != null && (
         <Image

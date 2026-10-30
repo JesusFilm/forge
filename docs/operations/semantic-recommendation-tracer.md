@@ -225,9 +225,35 @@ request-linked audit/conflict records inherit that root expiry and cannot
 extend it. Source-neutral standalone playback episodes receive the same
 29-day horizon and are purged as bounded roots with their cascading facts and
 outcomes. Reads hide expired roots immediately. The daily advisory-locked
-purge runs at 10:30 UTC in batches of 500 (hard maximum 5,000), deletes request
+purge runs at 10:30 UTC in batches of 100 (hard maximum 5,000), deletes request
 roots under database cascades, and fences late finalizers from recreating or
 publishing deleted generations.
+
+This is an application-owned durable job on the Admin worker; it does not
+depend on an operator, Codex, or the separate daily evidence monitor. The fixed
+UTC schedule is 23:30 in Auckland during NZDT and 22:30 during NZST. The worker
+bootstrap calls `ensureRecommendationRetentionSchedulerStarted` in
+`apps/admin/src/services/recommendations/retention/job.ts`; the durable loop is
+`apps/admin/src/workflows/recommendationRetention.ts`.
+
+The daily wake starts a bounded catch-up cycle. A full page or explicit
+continuation signal keeps cleanup running even when expired rows are still
+inside the 24-hour propagation window. Each step performs at most eight passes
+and checks its 30-second catch-up window between passes, then records a
+60-second continuation while more work is reported. Individual purges retain their five-second
+deadline. Budget yields preserve committed counts and unknown backlog; they do
+not advance the success watermark or establish completion. Actual failures
+remain failed attempts and use bounded retries. Once the cycle reports no
+remaining work, it sleeps until the next daily wake. Rows can expire during
+that sleep; a nonzero younger-expired count between daily runs does not alone
+prove the scheduler stopped or missed work.
+
+Verify the `recommendation-retention-scheduler` ledger's `nextRunAt`, schedule
+and error state **and** the linked workflow-runtime status. A ledger that still
+says `running` is not sufficient if its runtime has failed. Verify deletion
+through the separate purge and workflow ledgers, all retained-type backlogs,
+oldest expiry and successful watermark. The read-only daily evidence monitor
+checks those outcomes; it does not initiate or retry a manual purge.
 
 The purge has a 24-hour propagation SLA and a 30-day hard ceiling. Retention is
 overdue when a request or standalone playback root is more than 24 hours past

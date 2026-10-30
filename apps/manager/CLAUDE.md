@@ -660,3 +660,37 @@ worker is drained and disabled. The demand watcher remains retired;
 `/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` remain removed.
 Normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
 Read `docs/plans/2026-10-19-studio-always-on-ai.md` for current operating guidance.
+
+## Controlled image proposal
+
+`Dockerfile` filters OS trust before downloads and builds the existing Next
+standalone server with frozen filtered workspace dependencies. Public/static
+packaging and the workflow plugin remain. Its general media toolchain builds
+FFmpeg 7.1.5 with native TLS verification enabled by default, including nested
+HLS reads, and retains `libmp3lame` for audio cleanup. Explicitly configured
+`STUDIO_FFMPEG_PATH` / `STUDIO_FFPROBE_PATH` proof artifacts retain their own
+contract; the general binary is not a claim to reproduce those proofs.
+
+The source Railway configuration selects Docker; services without that config
+path continue to use dashboard settings until their owner approves a binding.
+Image acceptance covers actual startup, access denials, shipped assets and
+synthetic media extraction. It does not invoke providers or execute production
+content, renders or publication work.
+
+For a Railway `frontend grpc server closed unexpectedly` failure before any
+Dockerfile build step, compare the deployment log with the same commit's Manager
+production-image CI before changing application code. See
+`docs/roadmap/media-generation/feat-887-release-shorts-editor-to-production.md`
+for the observed build-stage failure and release evidence.
+
+### Studio timeline waveforms
+
+`src/services/studio-waveform.ts` uses `STUDIO_FFMPEG_PATH` (or `ffmpeg` on
+PATH) for read-only waveform previews of linked footage and retained audio.
+The production Docker image provides FFmpeg. Local preview hosts must configure
+an existing binary; an absent decoder returns an unavailable waveform, while
+editing/playback continue. Downloads use the existing source/asset brokers;
+FFmpeg receives only staged local files. Clips are bounded to five minutes,
+32 MiB transfer, two concurrent decodes and a 128-entry numerical peak cache.
+Eligibility/access is checked before cache reads. Do not decode on playhead or
+zoom changes or make waveform generation part of player startup.

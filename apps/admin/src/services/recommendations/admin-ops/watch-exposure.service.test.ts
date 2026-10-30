@@ -6,6 +6,47 @@ import {
 } from "./watch-exposure.service"
 
 describe("Watch exposure inspection", () => {
+  it.each([
+    { preset: "24h", anonymousDays: 1, signedDays: 1 },
+    { preset: "7d", anonymousDays: 7, signedDays: 7 },
+    { preset: "29d", anonymousDays: 14, signedDays: 29 },
+  ])(
+    "bounds $preset anonymous history separately from signed evidence",
+    async ({ preset, anonymousDays, signedDays }) => {
+      const now = new Date("2026-10-23T00:00:00.000Z")
+      vi.useFakeTimers()
+      vi.setSystemTime(now)
+      try {
+        const anonymousQuery = vi.fn().mockResolvedValue([])
+        const signedQuery = vi.fn().mockResolvedValue([])
+        const prisma = {
+          $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+            callback({ $executeRawUnsafe: vi.fn(), $queryRaw: anonymousQuery }),
+          $queryRaw: signedQuery,
+        } as unknown as PrismaClient
+        await loadAnonymousWatchExposureBreakdown(prisma, preset)
+        await loadWatchExposureBreakdown(prisma, preset)
+        for (const [query, days] of [
+          [anonymousQuery, anonymousDays],
+          [signedQuery, signedDays],
+        ] as const) {
+          const [strings, ...values] = query.mock.calls[0]
+          const bounds = Prisma.sql(strings, ...values)
+            .values.filter((value): value is Date => value instanceof Date)
+            .map((value) => value.toISOString())
+          expect(new Set(bounds)).toEqual(
+            new Set([
+              new Date(now.getTime() - days * 86_400_000).toISOString(),
+              now.toISOString(),
+            ]),
+          )
+        }
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
   it("binds registry scope values in both anonymous cohort and ranked queries", async () => {
     const filter = {
       surface: "watch-home' OR TRUE --",

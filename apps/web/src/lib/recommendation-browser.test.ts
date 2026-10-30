@@ -4,6 +4,7 @@ import {
   recommendationFetchWithRetry,
   recommendationJsonWithRetry,
 } from "./recommendation-browser"
+import { RecommendationRuntimeError } from "./recommendation-errors"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -46,7 +47,10 @@ describe("evidence acknowledgement retries", () => {
         { method: "POST", body: "exact-body" },
         700,
       ),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({
+      code: "request_failed",
+      status: 403,
+    } satisfies Partial<RecommendationRuntimeError>)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

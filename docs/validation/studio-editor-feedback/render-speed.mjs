@@ -34,7 +34,6 @@ for (const playbackRate of [0.5, 1, 2]) {
         durationInFrames,
         tracks: [{ id: "video", kind: "visual" }],
         components: [],
-        packRevisionIds: [],
         items: [
           {
             id: "film",

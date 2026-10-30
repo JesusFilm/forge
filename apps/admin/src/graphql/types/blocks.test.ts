@@ -10,6 +10,7 @@
 // Structural drift between Zod and Pothos lives in `blocks.drift.test.ts`.
 
 import { describe, expect, it, vi } from "vitest"
+import { createWatchAudienceConfiguration } from "@forge/experience-schema"
 
 vi.mock("@/services/video-image-blur-data-url.service", () => ({
   getOrScheduleVideoImageBlurDataUrl: vi.fn().mockResolvedValue(null),
@@ -97,6 +98,11 @@ function fieldResolver(
 // -----------------------------------------------------------------------------
 
 const fixtures: Readonly<Record<BlockKind, object>> = {
+  watchAudience: {
+    t: "watchAudience",
+    sectionKey: "watch-audience",
+    configuration: createWatchAudienceConfiguration(),
+  },
   adventCountdown: {
     t: "adventCountdown",
     title: "Advent",

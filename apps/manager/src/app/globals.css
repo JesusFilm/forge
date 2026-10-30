@@ -8600,8 +8600,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .design-system-shell:has(.design-system-sidebar-checkbox:checked) {
-  grid-template-columns: 88px minmax(0, 1fr);
-  --studio-sidebar-offset: 88px;
+  grid-template-columns: 56px minmax(0, 1fr);
+  --studio-sidebar-offset: 56px;
 }
 
 .design-system-shell-sidebar {
@@ -8683,8 +8683,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked) {
   justify-items: center;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -8982,17 +8982,17 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-sidebar-content {
   justify-items: center;
-  gap: 18px;
+  gap: 10px;
   width: 100%;
-  margin-top: 28px;
+  margin-top: 16px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-workspace-button {
   display: grid;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
   grid-template-columns: 1fr;
   place-items: center;
   padding: 0;
@@ -9006,7 +9006,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-shell-nav {
   justify-self: center;
-  width: 44px;
+  width: 36px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -9070,7 +9070,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-shell-nav {
-  gap: 10px;
+  gap: 4px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -9079,9 +9079,9 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-sidebar-footer-link {
   display: grid;
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
   place-items: center;
   padding: 0;
 }

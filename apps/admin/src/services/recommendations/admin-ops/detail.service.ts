@@ -194,18 +194,7 @@ export async function loadRecommendationRequestDetail(
             decision.interest_count AS "interestCount",
             decision.session_intent_present AS "sessionIntentPresent",
             decision.profile_retrieval_latency_ms AS "retrievalLatencyMs",
-            COALESCE(ARRAY(
-              SELECT DISTINCT contribution_request.id
-              FROM recommendation_profile_projection_contribution contribution
-              JOIN recommendation_outcome_revision source_outcome
-                ON source_outcome.id = contribution.source_outcome_id
-              JOIN recommendation_request contribution_request
-                ON contribution_request.id = source_outcome.request_id
-              WHERE contribution.generation_id = decision.projection_generation_id
-                AND contribution_request.expires_at > ${now}
-              ORDER BY contribution_request.id
-              LIMIT 16
-            ), ARRAY[]::text[]) AS "feedbackSourceRequestIds"
+            ARRAY[]::text[] AS "feedbackSourceRequestIds"
           FROM recommendation_personalization_decision decision
           WHERE decision.request_id = ${root.id}
             AND decision.expires_at > ${now}

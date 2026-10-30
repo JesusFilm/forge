@@ -8,6 +8,7 @@ export type NativePlayerOption = {
   label: string
   detail: string
   url: string
+  confirmationMessage?: string
 }
 
 export type NativePlayerMoment = {
@@ -53,6 +54,8 @@ export type NativeSwiftPlayerViewProps = ViewProps & {
   feedbackVisible?: boolean
   feedbackRows?: string[]
   feedbackReference?: string
+  feedbackSimulator?: boolean
+  feedbackHostedSimulator?: boolean
   feedbackLoading?: boolean
   feedbackError?: boolean
   onFeedbackOpen: () => void
