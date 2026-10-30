@@ -287,6 +287,23 @@ function useWindowLoaded() {
   return loaded
 }
 
+/**
+ * False until the carousel first moves off the slide it mounted with.
+ *
+ * The first slide's poster is the page's LCP image, so it must not fade in:
+ * on a slow phone the preloaded poster is often decoded before the hero
+ * reveals, its first paint lands on the fade's opacity-0 frame, and Chrome
+ * never counts it. LCP then falls to the next slide after the carousel
+ * advances, seconds later (lab: about 5.7 s instead of about 2.1 s). Later
+ * slides keep the crossfade.
+ */
+function useHasLeftInitialSlide(activeSlideId: string): boolean {
+  const [initialSlideId] = useState(activeSlideId)
+  const [hasLeft, setHasLeft] = useState(false)
+  if (!hasLeft && activeSlideId !== initialSlideId) setHasLeft(true)
+  return hasLeft || activeSlideId !== initialSlideId
+}
+
 function WatchHomeTvMedia({
   activeSlide,
   isMuted,
@@ -329,6 +346,7 @@ function WatchHomeTvMedia({
   const subtitleLanguageBcp47 = isMuted
     ? (activeSlide.subtitleLanguageBcp47 ?? null)
     : null
+  const animateEnteringMedia = useHasLeftInitialSlide(activeSlide.id)
 
   const pageLoaded = useWindowLoaded()
   const mediaAllowed = pageLoaded || viewerRequestedMedia
@@ -398,7 +416,7 @@ function WatchHomeTvMedia({
       <WatchHomeTvVisualLayer
         key={`${activeSlide.id}-entering`}
         slide={activeSlide}
-        className="watch-home-media-enter z-10"
+        className={cn(animateEnteringMedia && "watch-home-media-enter", "z-10")}
         priority
       />
       {previewSrc ? (

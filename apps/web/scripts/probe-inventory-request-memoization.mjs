@@ -23,13 +23,21 @@ const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repositoryRoot = resolve(webRoot, "../..")
 const require = createRequire(join(webRoot, "package.json"))
 const nextBin = require.resolve("next/dist/bin/next")
-const baselineCommit = process.argv[2]?.replace(/^--baseline-commit=/, "")
+const args = process.argv.slice(2)
+const customCacheHandler = args.includes("--custom-cache-handler")
+const baselineCommit = args
+  .find((arg) => arg.startsWith("--baseline-commit="))
+  ?.replace(/^--baseline-commit=/, "")
 assert.ok(
-  process.argv.length === 2 ||
-    (process.argv.length === 3 &&
-      process.argv[2].startsWith("--baseline-commit=") &&
-      /^[a-f0-9]{40}$/.test(baselineCommit)),
-  "Usage: node scripts/probe-inventory-request-memoization.mjs [--baseline-commit=<full SHA>]",
+  new Set(args).size === args.length &&
+    args.length <= 2 &&
+    args.every(
+      (arg) =>
+        arg === "--custom-cache-handler" ||
+        /^--baseline-commit=[a-f0-9]{40}$/.test(arg),
+    ) &&
+    args.filter((arg) => arg.startsWith("--baseline-commit=")).length <= 1,
+  "Usage: node scripts/probe-inventory-request-memoization.mjs [--baseline-commit=<full SHA>] [--custom-cache-handler]",
 )
 const scratchRoot = join(repositoryRoot, ".tmp")
 await mkdir(scratchRoot, { recursive: true })
@@ -95,6 +103,15 @@ try {
     "export default " +
       JSON.stringify({
         turbopack: { root: repositoryRoot, resolveAlias: aliases },
+        ...(customCacheHandler
+          ? {
+              cacheHandler: join(
+                webRoot,
+                "scripts/fixtures/cache-size-http-handler.mjs",
+              ),
+              cacheMaxMemorySize: 0,
+            }
+          : {}),
       }),
   )
   await write(
@@ -353,6 +370,7 @@ try {
         result: "passed",
         scope:
           "Actual route source with controlled dependencies; not production latency evidence.",
+        cacheHandler: customCacheHandler ? "custom fixture" : "default",
         requests: results,
         comparison,
       },
