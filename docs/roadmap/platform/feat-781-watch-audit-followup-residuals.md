@@ -18,14 +18,15 @@ tags:
 ## October 30 disposition
 
 The header overlap is corrected in #2835 with compact single-row controls;
-combined hero/loading qualification is pending. #2849 now clears retry intent
+combined production header, search and loading checks are recorded in the
+October 30 merge-preparation report. #2849 now clears retry intent
 on a new in-place error and removes only its temporary main focus attributes
 on blur. The download integration repair in #2836 retains one-Escape Terms
 close after the shared picker migration. Prepared code is not merged code.
 
 Keep this ticket in progress for the remaining random-hero crossfade,
 non-English/markup snippet vocabulary, physical-device/screen-reader checks,
-and any qualification still pending. #2845's recommendation-slot layout issue
+and the authenticated live-manifest qualification still pending. #2845's recommendation-slot layout issue
 stays in feat-775. These residuals do not authorize reviving profiles/co-watch
 retired by the October 29 owner decision.
 

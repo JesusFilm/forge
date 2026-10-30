@@ -35,8 +35,9 @@ are now explicit: #2637 → #2838 → #2849 → #2848. Download integration uses
 #2826 → #2836; the compact header uses #2663 → #2835.
 
 #2845 remains draft with a demonstrated empty/partial outcome regression.
-#2626 is superseded by #2829 and excluded. The combined production build,
-browser/loading qualification and exact-head CI are still separate gates.
+#2626 is superseded by #2829 and excluded. The combined production build and browser/loading evidence are recorded in
+[the October 30 merge-preparation report](2026-10-30-watch-audit-merge-preparation.md).
+Exact-head CI and authenticated live-manifest qualification remain separate gates.
 No merge or production deployment is performed by this preparation task.
 
 ## Answer first
