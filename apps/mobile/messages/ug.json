@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-ئايەتتىن {last}-ئايەتكىچە، جەمئىي {total}، {chapter}",
     "demoVerse": "كېيىنكى ئايەت ئۈچۈن ئۈستىگە سىيرىڭ",
     "demoChapter": "كېيىنكى باب ئۈچۈن سولغا سىيرىڭ",
+    "demoChapterRtl": "كېيىنكى باب ئۈچۈن ئوڭغا سىيرىڭ",
     "demoSkip": "ئاتلاش ئۈچۈن چېكىڭ",
     "demoSkipAriaLabel": "سىيرىش كۆرسەتمىسىدىن ئاتلاش",
     "selectVerseAriaHint": "بۇ ئايەتنى تاللاش ئۈچۈن قوش چېكىڭ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "كىتاب تاللاڭ",
+    "chooseChapter": "باب تاللاڭ",
+    "chooseVerse": "ئايەت تاللاڭ",
     "oldTestament": "كونا ئەھدە",
     "newTestament": "يېڭى ئەھدە",
     "books": "كىتابلار",
@@ -193,7 +196,7 @@
     "someBooks": "{count} / {total, plural, one {# كىتاب} other {# كىتاب}}",
     "twoNames": "{first} ۋە {second}",
     "threeNames": "{first}، {second} ۋە {third}",
-    "onDevice": "بۇ ئۈسكۈنىدە",
+    "downloaded": "چۈشۈرۈلدى",
     "downloading": "چۈشۈرۈۋاتىدۇ، {percent}%",
     "downloadStopped": "چۈشۈرۈش توختاپ قالدى",
     "updateAvailable": "يېڭىلانما بار",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "يۈرۈشلۈك ئافىشاسى",
     "videosHeading": "سىنلار",
     "detailsLoadError": "تولۇق تەپسىلاتنى يۈكلىگىلى بولمىدى.",
+    "languagesTitle": "سىننىڭ تىلى",
     "searchLanguagesPlaceholder": "تىل ئىزدەش…",
     "searchLanguagesAriaLabel": "تىل ئىزدەش",
     "noLanguagesFound": "تىل تېپىلمىدى",
@@ -502,6 +506,7 @@
     "resumeAt": "داۋاملاشتۇرۇش: {time}",
     "unknownLanguage": "نامەلۇم",
     "downloadedStatus": "چۈشۈرۈلدى",
+    "languagesTitle": "سىننىڭ تىلى",
     "searchLanguagesPlaceholder": "تىل ئىزدەش…",
     "searchLanguagesAriaLabel": "تىل ئىزدەش",
     "noLanguagesFound": "تىل تېپىلمىدى",
@@ -773,5 +778,8 @@
     "send": "يوللاش",
     "sending": "يوللىنىۋاتىدۇ…",
     "sendAriaLabel": "پىكىر يوللاش"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ئەپ سىن يوللىغىلى بولىدىغان ئۈسكۈنىلەرنى تېپىش ئۈچۈن يەرلىك تورىڭىزنى ئىشلىتىدۇ، شۇنىڭ بىلەن سىنلارنى تېلېۋىزورىڭىزدا قويالايسىز."
   }
 }

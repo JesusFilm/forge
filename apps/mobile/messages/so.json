@@ -138,6 +138,7 @@
     "versesAriaValue": "Aayadaha {first} ilaa {last} oo ka mid ah {total}, {chapter}",
     "demoVerse": "Kor u jiid si aad u aragto aayadda xigta",
     "demoChapter": "Bidix u jiid si aad u aragto cutubka xiga",
+    "demoChapterRtl": "Midig u jiid si aad u aragto cutubka xiga",
     "demoSkip": "Taabo si aad uga boodo",
     "demoSkipAriaLabel": "Ka bood tusaalaha jiidista",
     "selectVerseAriaHint": "Laba jeer taabo si aad aayaddan u doorato",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Dooro buug",
+    "chooseChapter": "Dooro cutub",
+    "chooseVerse": "Dooro aayad",
     "oldTestament": "Axdigii Hore",
     "newTestament": "Axdiga Cusub",
     "books": "Buugaagta",
@@ -193,7 +196,7 @@
     "someBooks": "{count} oo ka mid ah {total, plural, one {# buug} other {# buug}}",
     "twoNames": "{first} iyo {second}",
     "threeNames": "{first}, {second} iyo {third}",
-    "onDevice": "Qalabkan ku jira",
+    "downloaded": "La soo dejiyay",
     "downloading": "Soo degaya {percent}%",
     "downloadStopped": "Soo dejintu way istaagtay",
     "updateAvailable": "Cusboonaysiin ayaa diyaar ah",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Boostarka taxanaha",
     "videosHeading": "Fiidiyowyo",
     "detailsLoadError": "Faahfaahinta oo dhan lama soo rari karin.",
+    "languagesTitle": "Luqadda fiidiyowga",
     "searchLanguagesPlaceholder": "Raadi luqado…",
     "searchLanguagesAriaLabel": "Raadi luqado",
     "noLanguagesFound": "Luqado lama helin",
@@ -502,6 +506,7 @@
     "resumeAt": "Ka sii wad {time}",
     "unknownLanguage": "Lama yaqaan",
     "downloadedStatus": "La soo dejiyay",
+    "languagesTitle": "Luqadda fiidiyowga",
     "searchLanguagesPlaceholder": "Raadi luqado…",
     "searchLanguagesAriaLabel": "Raadi luqado",
     "noLanguagesFound": "Luqado lama helin",
@@ -773,5 +778,8 @@
     "send": "Dir",
     "sending": "Waa la dirayaa…",
     "sendAriaLabel": "Dir jawaab-celinta"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App-ku wuxuu isticmaalaa shabakaddaada maxalliga ah si uu u helo qalabka aad fiidiyowyada u diri karto, si aad fiidiyowyada ugu daari karto TV-gaaga."
   }
 }

@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
@@ -84,8 +85,7 @@ function makeRequest(
 ): ProxyRequest {
   // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
   // No cast needed — the factory's return type matches the production
-  // contract directly. NOTE: proxy() no longer reads cookies — the URL is
-  // the sole locale carrier, so there is no cookie field to mock.
+  // contract directly. Headers can model language and preference cookies.
   const url = new URL(pathname, options.origin ?? "https://www.jesusfilm.org")
   return {
     nextUrl: Object.assign(url, {
@@ -112,9 +112,10 @@ function expectNotFoundRewrite(
 ): void {
   expect(response.status).toBe(200)
   expect(rewritePath(response)).toBe(expectedInternalPathname)
-  expect(response.headers.get("content-security-policy")).toBe(
-    "frame-ancestors 'self'",
-  )
+  // CSP is deliberately NOT set here — next.config.mjs `headers()` owns it for
+  // every route. Middleware headers overwrite config ones, so a static value
+  // written here would clobber the promoted policy after WATCH_CSP_ENFORCE.
+  expect(response.headers.get("content-security-policy")).toBeNull()
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
@@ -380,11 +381,8 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
 })
 
 // ---------------------------------------------------------------------------
-// No cookie override: the URL is the sole locale carrier. An explicit locale
-// already named in a canonical watch URL must NEVER be redirected to some
-// other language — this is the regression guard for the production bug where
-// a stale `forge_watch_lang` cookie hijacked `/jesus.html/english.html` to
-// `/jesus.html/bangla-2.html`. proxy() no longer reads cookies at all.
+// The URL is the sole locale carrier. Cookies and browser language headers
+// must never redirect either an entry route or an explicit localized route.
 // ---------------------------------------------------------------------------
 
 describe("proxy — explicit locale URLs are never language-redirected", () => {
@@ -406,20 +404,78 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     )
   })
 
-  it("applies watch security headers (CSP) to the canonical 2-segment URL", async () => {
+  it("leaves Content-Security-Policy to next.config headers() on the canonical 2-segment URL", async () => {
+    // Middleware header writes overwrite the config-level ones for the same
+    // key, so setting a static CSP here would silently defeat the
+    // WATCH_CSP_ENFORCE promotion on every rewritten content route. The
+    // Referrer-Policy re-application stays, because its value matches and the
+    // /preview/experience override depends on middleware winning.
     const response = await proxy(makeRequest("/jesus.html/english.html"))
-    expect(response.headers.get("content-security-policy")).toBe(
-      "frame-ancestors 'self'",
-    )
+    expect(response.headers.get("content-security-policy")).toBeNull()
+    expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   })
 
-  it("does not emit a Vary: Cookie header (no cookie-dependent redirects)", async () => {
-    const response = await proxy(makeRequest("/jesus.html/english.html"))
+  it("ignores language state for explicit and bare routes", async () => {
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html", {
+        acceptLanguage: "ar-EG,ar;q=0.9",
+        headers: { cookie: "forge_watch_lang=spanish-castilian" },
+      }),
+    )
     expect(response.headers.get("vary") ?? "").not.toContain("Cookie")
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
+
+    for (const [publicPath, internalPath] of [
+      ["/", "/en/en"],
+      ["/languages", "/en/en/languages"],
+      ["/history", "/en/en/history"],
+      ["/whats-new", "/en/en/whats-new"],
+    ] as const) {
+      const entryResponse = await proxy(
+        makeRequest(publicPath, {
+          acceptLanguage: "ja-JP,ja;q=0.9",
+          headers: { cookie: "forge_watch_lang=japanese" },
+        }),
+      )
+      expect(entryResponse.status).not.toBe(307)
+      expect(rewritePath(entryResponse)).toBe(internalPath)
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain("Cookie")
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain(
+        "Accept-Language",
+      )
+    }
   })
 })
 
 describe("proxy — internal locale/htmlLang rewrites", () => {
+  it.each([
+    [
+      "/en/en/t%C3%BCml%C3%BCkden-nura.html/spanish.html",
+      "/t%C3%BCml%C3%BCkden-nura.html/spanish.html",
+    ],
+    [
+      "/en/en/conversation-starters.html/la-b%C3%BAsqueda-the-search/english.html",
+      "/conversation-starters.html/la-b%C3%BAsqueda-the-search.html",
+    ],
+    [
+      "/en/en/conversation-starters.html/la-libert%C3%A9-de-l-interieur-freedom-within/english.html",
+      "/conversation-starters.html/la-libert%C3%A9-de-l-interieur-freedom-within.html",
+    ],
+    [
+      "/en/en/j%C3%A4tku-leiba.html/spanish.html",
+      "/j%C3%A4tku-leiba.html/spanish.html",
+    ],
+  ])(
+    "redirects internal Unicode route %s to its canonical public URL",
+    async (path, expectedPath) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).toBe(308)
+      expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+        expectedPath,
+      )
+    },
+  )
+
   it("keeps root and language indexes public while internally adding locale/htmlLang", async () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
@@ -432,9 +488,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
         "/es/es-419/videos/spanish-latin-american",
       ],
     ] as const) {
-      const response = await proxy(
-        makeRequest(publicPath, { acceptLanguage: "es-ES,es;q=0.9" }),
-      )
+      const response = await proxy(makeRequest(publicPath))
       expect(response.status).not.toBe(307)
       expect(response.status).not.toBe(308)
       expect(rewritePath(response)).toBe(internalPath)
@@ -624,6 +678,35 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(explicit)).toBe("/en/en/discipleship.html/english.html")
   })
 
+  it("re-enters a Unicode content rewrite with consistent URL encoding", async () => {
+    const slug = "tümlükden-nura"
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: [slug, "nested-child"],
+      oneSegmentSlugs: [],
+      audioLanguageSlugs: ["english"],
+      audioLanguageIndexesByContent: { [slug]: [] },
+      audioLanguageIndexesByEpisode: {},
+      nestedContainerAudioLanguageIndexesByParent: {
+        [slug]: { "nested-child": [0] },
+      },
+    }))
+
+    const first = await proxy(makeRequest(`/${slug}.html`))
+    const internalPath = rewritePath(first)
+    expect(internalPath).toBe(`/en/en/${encodeURI(slug)}.html/english.html`)
+
+    const second = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+
+    expect(second.status).toBe(200)
+    expect(rewritePath(second)).toBeNull()
+  })
+
   it("keeps nested parent admission closed until a nested relation snapshot is generated", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
@@ -786,6 +869,101 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(explicitRussian)).toBe(
       "/ru/ru/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
     )
+  })
+
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])(
+    "rewrites an admitted contextual child with Unicode slug %s",
+    async (slug) => {
+      resetManifestSource?.()
+      resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+        ...TEST_MANIFEST,
+        contentSlugs: [
+          ...TEST_MANIFEST.contentSlugs,
+          "conversation-starters",
+          slug,
+        ],
+        episodePairsByParent: {
+          ...TEST_MANIFEST.episodePairsByParent,
+          "conversation-starters": [slug],
+        },
+        audioLanguageIndexesByEpisode: {
+          ...TEST_MANIFEST.audioLanguageIndexesByEpisode,
+          "conversation-starters": { [slug]: [2] },
+        },
+      }))
+
+      const response = await proxy(
+        makeRequest(`/conversation-starters.html/${slug}.html`),
+      )
+
+      expect(response.headers.get("location")).toBeNull()
+      expect(rewritePath(response)).toBe(
+        `/en/en/conversation-starters.html/${encodeURI(slug)}.html`,
+      )
+    },
+  )
+
+  it.each([
+    "çoğu-çay-mostly-tea",
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("admits upstream lowercased percent escapes for %s", async (slug) => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: [
+        ...TEST_MANIFEST.contentSlugs,
+        "conversation-starters",
+        slug,
+      ],
+      oneSegmentSlugs: [...TEST_MANIFEST.oneSegmentSlugs, slug],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        [slug]: [2],
+      },
+      episodePairsByParent: {
+        ...TEST_MANIFEST.episodePairsByParent,
+        "conversation-starters": [slug],
+      },
+      audioLanguageIndexesByEpisode: {
+        ...TEST_MANIFEST.audioLanguageIndexesByEpisode,
+        "conversation-starters": { [slug]: [2] },
+      },
+    }))
+    for (const path of [
+      `/${encodeURI(slug)}.html`,
+      `/conversation-starters.html/${encodeURI(slug)}.html`,
+    ]) {
+      const canonicalRequest = new NextRequest(
+        `https://www.jesusfilm.org/watch${path}`,
+        { nextConfig: { basePath: "/watch" } },
+      )
+      const upstreamRequest = new NextRequest(
+        `https://www.jesusfilm.org/watch${path.toLowerCase()}`,
+        { nextConfig: { basePath: "/watch" } },
+      )
+      expect(upstreamRequest.nextUrl.pathname).toBe(path.toLowerCase())
+      const canonicalResponse = await proxy(canonicalRequest)
+      const upstreamResponse = await proxy(upstreamRequest)
+      expect(upstreamResponse.headers.get("location")).toBeNull()
+      expect(rewritePath(upstreamResponse)).toBe(rewritePath(canonicalResponse))
+      const expected = path.startsWith("/conversation-starters")
+        ? `/watch/en/en/conversation-starters.html/${encodeURI(slug)}.html`
+        : `/watch/en/en/${encodeURI(slug)}.html/english.html`
+      expect(rewritePath(upstreamResponse)).toBe(expected)
+      expect(
+        rewrittenRequestHeaders(upstreamResponse).get(
+          WATCH_INTERNAL_REWRITE_HEADER,
+        ),
+      ).toBe(path)
+    }
   })
 
   it("rewrites a short legacy episode alias to its exact current English context", async () => {
@@ -1538,9 +1716,39 @@ describe("proxy — resilience on malformed inputs", () => {
     expectNotFoundRewrite(response)
   })
 
-  it("does not rewrite cyrillic slugs (positive allowlist rejects non-ASCII)", async () => {
+  it.each([
+    "/conversation-starters.html/t%c3%bcml%c3%bckden%2fnura.html",
+    "/conversation-starters.html/t%c3%bcml%c3%bckden%5cnura.html",
+    "/t%c3%bcml%c3%bckden%0anura.html",
+    "/t%c3%bcml%c3%bckden%00nura.html",
+    "/t%c3%bcml%c3%bckden%3fnura.html",
+    "/t%c3%bcml%c3%bckden%23nura.html",
+    "/%6aesus.html",
+    "/%25c3%25a7o%25c4%259fu-%25c3%25a7ay-mostly-tea.html",
+    "/tu%cc%88mlu%cc%88kden-nura.html",
+    "/conversation-starters.html/%2e%2e%2fjesus.html",
+    "/conversation-starters.html/%c3%9cber.html",
+    "/conversation-starters.html/%zz.html",
+    "/conversation-starters.html/%c3.html",
+    "/conversation-starters.html/t%C3%BCml%C3%BCkden%2Fnura.html",
+    "/conversation-starters.html/t%C3%BCml%C3%BCkden%5Cnura.html",
+    "/conversation-starters.html/%E0%A4.html",
+    "/%6Aesus.html",
+    "/%2E%2E/conversation-starters.html",
+    "/conversation-starters.html/%C3%9Cber.html",
+  ])(
+    "rejects unsafe or noncanonical Unicode route encoding %s",
+    async (path) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+      expectNotFoundRewrite(response)
+    },
+  )
+
+  it("does not rewrite cyrillic slugs that are absent from the route manifest", async () => {
     const response = await proxy(
-      makeRequest(`/${encodeURIComponent("Иисус")}/english`),
+      makeRequest(`/${encodeURIComponent("иисус")}/english`),
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)

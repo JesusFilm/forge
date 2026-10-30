@@ -1,0 +1,34 @@
+{
+  "devices": {
+    "com.apple.CoreSimulator.SimRuntime.iOS-26-5": [
+      {
+        "name": "Forge RC iPhone SE",
+        "udid": "AAAA0000-0000-0000-0000-00000000F0RC",
+        "state": "Booted",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation"
+      },
+      {
+        "name": "iPhone 17 Pro",
+        "udid": "BBBB0000-0000-0000-0000-0000000OTHER",
+        "state": "Booted",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro"
+      },
+      {
+        "name": "Forge E2E iPhone SE",
+        "udid": "CCCC0000-0000-0000-0000-000000SPIKE",
+        "state": "Booted",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation"
+      },
+      {
+        "name": "Forge RC iPad Pro 13",
+        "udid": "DDDD0000-0000-0000-0000-00000000IPAD",
+        "state": "Shutdown",
+        "isAvailable": true,
+        "deviceTypeIdentifier": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB"
+      }
+    ]
+  }
+}

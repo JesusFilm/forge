@@ -36,12 +36,15 @@ describe("readingFontFamily", () => {
     expect(readingFontFamily("serif", "Jesus wept.", "android")).toBe("serif")
   })
 
-  it("uses the system face for the sans option", () => {
-    expect(readingFontFamily("sans", "Jesus wept.", "ios")).toBe("System")
+  // No family is the system face. A named "System" draws Android weights
+  // 500 and 600 as Regular.
+  it("names no family for the sans option, on either platform", () => {
+    expect(readingFontFamily("sans", "Jesus wept.", "ios")).toBeUndefined()
+    expect(readingFontFamily("sans", "Jesus wept.", "android")).toBeUndefined()
   })
 
-  it("uses the system face for a script the serif does not cover", () => {
-    expect(readingFontFamily("serif", "神爱世人", "ios")).toBe("System")
+  it("names no family for a script the serif does not cover", () => {
+    expect(readingFontFamily("serif", "神爱世人", "ios")).toBeUndefined()
   })
 })
 

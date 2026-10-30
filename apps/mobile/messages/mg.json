@@ -138,6 +138,7 @@
     "versesAriaValue": "Andininy {first} ka hatramin’ny {last} amin’ny {total}, {chapter}",
     "demoVerse": "Ahisaho miakatra raha hijery ny andininy manaraka",
     "demoChapter": "Ahisaho mankavia raha hijery ny toko manaraka",
+    "demoChapterRtl": "Ahisaho mankavanana raha hijery ny toko manaraka",
     "demoSkip": "Tsindrio raha handingana",
     "demoSkipAriaLabel": "Dingano ny fampisehoana ny fanisahana",
     "selectVerseAriaHint": "Tsindrio indroa raha hifidy ity andininy ity",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Misafidiana boky",
+    "chooseChapter": "Misafidiana toko",
+    "chooseVerse": "Misafidiana andininy",
     "oldTestament": "Testamenta Taloha",
     "newTestament": "Testamenta Vaovao",
     "books": "Boky",
@@ -193,7 +196,7 @@
     "someBooks": "{count} amin’ny {total, plural, one {boky #} other {boky #}}",
     "twoNames": "{first} sy {second}",
     "threeNames": "{first}, {second} ary {third}",
-    "onDevice": "Ao amin’ity fitaovana ity",
+    "downloaded": "Voasintona",
     "downloading": "Misintona {percent}%",
     "downloadStopped": "Nijanona ny fisintonana",
     "updateAvailable": "Misy fanavaozana",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Sary afisy an’ny andian-dahatsary",
     "videosHeading": "Lahatsary",
     "detailsLoadError": "Tsy nety nisokatra ny antsipiriany feno.",
+    "languagesTitle": "Fitenin’ny lahatsary",
     "searchLanguagesPlaceholder": "Karohy ny fiteny…",
     "searchLanguagesAriaLabel": "Karohy ny fiteny",
     "noLanguagesFound": "Tsy nisy fiteny hita",
@@ -502,6 +506,7 @@
     "resumeAt": "Tohizo amin’ny {time}",
     "unknownLanguage": "Tsy fantatra",
     "downloadedStatus": "Voasintona",
+    "languagesTitle": "Fitenin’ny lahatsary",
     "searchLanguagesPlaceholder": "Karohy ny fiteny…",
     "searchLanguagesAriaLabel": "Karohy ny fiteny",
     "noLanguagesFound": "Tsy nisy fiteny hita",
@@ -773,5 +778,8 @@
     "send": "Alefaso",
     "sending": "Mandefa…",
     "sendAriaLabel": "Alefaso ny fanehoan-kevitra"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Mampiasa ny tambajotranao eo an-toerana ny fampiharana mba hitady fitaovana azo andefasana lahatsary, ka afaka mandefa lahatsary amin’ny fahitalavitrao ianao."
   }
 }

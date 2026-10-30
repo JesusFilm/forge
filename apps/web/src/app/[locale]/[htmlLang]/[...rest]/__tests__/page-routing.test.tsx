@@ -1,3 +1,4 @@
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 /**
  * @vitest-environment jsdom
  *
@@ -128,7 +129,20 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
+const returnPreloadMock = vi.hoisted(() => vi.fn(() => null))
+vi.mock("@/components/watch/WatchGrowReturnPreload", () => ({
+  WatchGrowReturnPreload: returnPreloadMock,
+}))
+const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/watch-audience-content", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
+    "@/lib/watch-audience-content",
+  )),
+  resolveWatchAudience: resolveWatchAudienceMock,
+}))
+
 vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
   isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
@@ -161,6 +175,10 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  returnPreloadMock.mockClear()
+  resolveWatchAudienceMock.mockReset()
+  resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
@@ -644,6 +662,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           carousel: { pools: [] },
           missingData: [],
         },
+        heroUnavailable: false,
         blocks: [],
         legacyCategoryRailCompatibility: true,
         locale: "es",
@@ -788,10 +807,133 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           carousel: { pools: [] },
           missingData: [],
         },
+        heroUnavailable: true,
         blocks,
       }),
       undefined,
     )
+  })
+
+  it("keeps a healthy localized hero when the authored body query fails operationally", async () => {
+    const model = {
+      heroSlides: [{ id: "hero-es" }],
+      sections: [],
+      carousel: { pools: [] },
+      missingData: [],
+    }
+    resolveWatchHomeMock.mockResolvedValue({ data: model, error: null })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        heroModel: model,
+        blocks: [],
+        locale: "es",
+        languageSlug: "spanish-castilian",
+      }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    expect(redirectMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves the missing-localized-home redirect even when the hero also fails", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    await expect(render1Seg("russian.html")).rejects.toThrow(
+      "NEXT_REDIRECT:/russian.html/videos",
+    )
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("shows localized empty state after successful empty responses", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: { kind: "experience", experience: { blocks: [] } },
+      error: null,
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(experienceEmptyMock).toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("shows localized error after both independent queries fail", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      { message: "Hero unavailable" },
+      undefined,
+    )
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("starts localized hero and body reads in parallel", async () => {
+    let finishHero!: (value: unknown) => void
+    let finishBody!: (value: unknown) => void
+    resolveWatchHomeMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishHero = resolve
+      }),
+    )
+    resolveWatchPageMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishBody = resolve
+      }),
+    )
+    const pending = render1Seg("spanish-castilian.html")
+    await vi.waitFor(() => expect(resolveWatchPageMock).toHaveBeenCalled())
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
+    finishBody({
+      data: {
+        kind: "experience",
+        experience: { blocks: [{ __typename: "TextBlock", heading: "Ready" }] },
+      },
+      error: null,
+    })
+    finishHero({ data: null, error: new Error("Resolved hero error") })
+    await pending
+    expect(watchHomeExperiencePageMock).toHaveBeenCalled()
+  })
+
+  it("keeps the raw audio language with English catalog fallback during hero failure", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [
+            { __typename: "TextBlock", heading: "Independent fallback body" },
+          ],
+        },
+      },
+      error: null,
+    })
+    await render1Seg("aari.html")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("en", "aari")
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: "en",
+        languageSlug: "aari",
+        publicDocumentPathname: "/watch/aari.html",
+      }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
   })
 
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
@@ -1115,6 +1257,37 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
+  it("declares Kurmanji Standard series JSON-LD from the corrected tag, not admin's ko-kmr", async () => {
+    const result = makeSeriesResult("storyclubs")
+    // Admin's real row: kurmanji-standard carries the invalid `ko-kmr` tag.
+    result.video.childDubLanguages = [
+      { slug: "kurmanji-standard", bcp47: "ko-kmr", name: "Kurmanji Standard" },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-23T00:00:00.000Z",
+      contentSlugs: ["ep-1"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["kurmanji-standard"],
+      audioLanguageIndexesByContent: { "ep-1": [0] },
+    })
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "kurmanji-standard.html"],
+      "kurmanji-standard",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const payload = JSON.parse(
+      document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "{}",
+    )
+
+    // `kmr` canonicalizes to `ku`; the raw `ko-kmr` would be dropped entirely.
+    expect(payload.inLanguage).toBe("ku")
+  })
+
   it("returns not found when the requested series language is unavailable", async () => {
     const result = makeSeriesResult("storyclubs")
     result.video.childDubLanguages = [
@@ -1293,6 +1466,15 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(jsonLdByType("CollectionPage")).toBeNull()
+  })
+
+  it("passes the explicit audience rollout to the synthetic video frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true }),
+    )
   })
 
   it("renders WatchPageClient when label is non-series (regression guard)", async () => {
@@ -3005,6 +3187,31 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
 })
 
 describe("Catch-all routing — 3-seg episode branch", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])(
+    "decodes a percent-encoded episode slug for resolution: %s",
+    async (slug) => {
+      resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+      await renderLanguageLessEpisode(
+        "conversation-starters.html",
+        `${encodeURIComponent(slug)}.html`,
+      )
+
+      expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+        "conversation-starters",
+        slug,
+        "english",
+      )
+      expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+      expect(notFoundMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("renders a language-less two-segment episode as contextual English", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
 
@@ -3758,5 +3965,96 @@ describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
     resolveManifest(null)
     await renderPromise
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("published audience configuration", () => {
+  const authored = {
+    kind: "authored",
+    sourceLocale: "en",
+    config: { roles: [] },
+    identity: "en:watch-audience:abc",
+  } as const
+
+  it("resolves one definition for the requested locale and hands it to the video frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(returnPreloadMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchAudienceMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+    )
+  })
+
+  it("resolves the same definition for a series episode", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+    expect(returnPreloadMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+    )
+  })
+
+  it("hands the same definition, for the same locale, to the localized home frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-es" }],
+        sections: [],
+        carousel: { pools: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        watchHomeCategoryRailCompatibility: "supported",
+        experience: {
+          id: "exp",
+          slug: "watch-home",
+          title: "Home",
+          blocks: [],
+        },
+      },
+      error: null,
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("es")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+      undefined,
+    )
+  })
+
+  it.each(["rejected", "unavailable"])(
+    "omits the return entry for a %s audience",
+    async (kind) => {
+      vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+      resolveWatchAudienceMock.mockResolvedValue({ kind })
+      mockRouteVideo(makeWatchVideoResult("featureFilm"))
+      await render2Seg("jesus", "english")
+      expect(returnPreloadMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it("never loads the configuration while the rollout is off", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(returnPreloadMock).not.toHaveBeenCalled()
+    expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
+    const props = watchPageClientMock.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >
+    expect(props.audienceEnabled).toBe(false)
+    expect(props.audience).toBeUndefined()
   })
 })

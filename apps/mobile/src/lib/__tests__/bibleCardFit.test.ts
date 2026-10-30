@@ -7,6 +7,9 @@
 
 import {
   CARD_CONTENT_PADDING,
+  REFERENCE_MAX_LINES,
+  TALL_SCRIPT_LINE_HEIGHT_RATIO,
+  cardRow,
   fitPassageCardRegions,
   passageCardStackHeight,
   type PassageCardFitInput,
@@ -130,5 +133,85 @@ describe("fitPassageCardRegions — the reader button", () => {
       copyright: false,
       link: false,
     })
+  })
+})
+
+// Plan 2026-10-08: a Myanmar row under a fixed line height loses the tops of
+// its letters on iOS, so it takes the font's own line height.
+describe("cardRow — the Myanmar rows", () => {
+  const typography = computeTypographyScale(375)
+  const MYANMAR_REFERENCE = "ကမ္ဘာဦးကျမ်း 1:26-27"
+
+  it("keeps the token for Latin, Khmer, and absent text", () => {
+    for (const text of ["GENESIS 1:26-27", "លោកុប្បត្តិ 1:26", null]) {
+      expect(cardRow(typography.bodySmall, text)).toEqual({
+        style: typography.bodySmall,
+        lineHeight: typography.bodySmall.lineHeight,
+      })
+    }
+  })
+
+  it("drops the fixed line height of a Myanmar row and budgets the font's", () => {
+    const row = cardRow(typography.bodySmall, MYANMAR_REFERENCE)
+
+    expect(row.style).toEqual({ fontSize: typography.bodySmall.fontSize })
+    expect(row.lineHeight).toBe(
+      typography.bodySmall.fontSize * TALL_SCRIPT_LINE_HEIGHT_RATIO,
+    )
+  })
+
+  // Measured 2026-10-09 with CoreText: the system font falls back to Noto Sans
+  // Myanmar, whose ascent and descent come to 2.18 em.
+  it("budgets at least the Noto Sans Myanmar line", () => {
+    expect(TALL_SCRIPT_LINE_HEIGHT_RATIO).toBeGreaterThanOrEqual(2.18)
+  })
+
+  it("adds the taller lines to the stack height", () => {
+    const base = cardInput(402, 1.3)
+    const all = {
+      verseLines: 2,
+      translation: true,
+      copyright: true,
+      link: true,
+    }
+    const reference = cardRow(base.typography.bodySmall, MYANMAR_REFERENCE)
+    const tall = { ...base, referenceLineHeight: reference.lineHeight }
+    const extra =
+      (reference.lineHeight - base.typography.bodySmall.lineHeight) *
+      base.fontScale *
+      REFERENCE_MAX_LINES
+
+    expect(passageCardStackHeight(tall, all)).toBeCloseTo(
+      passageCardStackHeight(base, all) + extra,
+    )
+  })
+
+  it("never overflows with Myanmar rows at any supported width and text size", () => {
+    let changed = 0
+    for (const width of SUPPORTED_WIDTHS) {
+      for (const fontScale of SUPPORTED_FONT_SCALES) {
+        const latin = cardInput(width, fontScale)
+        const { bodySmall, caption } = latin.typography
+        const input = {
+          ...latin,
+          referenceLineHeight: cardRow(bodySmall, MYANMAR_REFERENCE).lineHeight,
+          translationLineHeight: cardRow(caption, "မြန်မာကျမ်းစာ").lineHeight,
+          linkLineHeight: cardRow(bodySmall, "ကျမ်းပိုဒ် ဖတ်ပါ").lineHeight,
+        }
+        const regions = fitPassageCardRegions(input)
+
+        expect(passageCardStackHeight(input, regions)).toBeLessThanOrEqual(
+          input.contentHeight,
+        )
+        if (
+          JSON.stringify(regions) !==
+          JSON.stringify(fitPassageCardRegions(latin))
+        ) {
+          changed += 1
+        }
+      }
+    }
+    // Anti-vacuous: the taller budget changes the drop order somewhere.
+    expect(changed).toBeGreaterThan(0)
   })
 })

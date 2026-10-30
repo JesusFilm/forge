@@ -20,6 +20,7 @@ import {
   partTravelKeyframes,
   type SwipeDemoPart,
 } from "../../lib/bible/onboarding/swipeDemoTimeline"
+import { isLayoutRtl, layoutSign } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
@@ -33,14 +34,18 @@ type Part = {
   travel: Animated.AnimatedInterpolation<number>
 }
 
-function part(progress: Animated.Value, name: SwipeDemoPart): Part {
+function part(
+  progress: Animated.Value,
+  name: SwipeDemoPart,
+  sign: 1 | -1,
+): Part {
   return {
     opacity: progress.interpolate({
       ...partOpacityKeyframes(name),
       extrapolate: "clamp",
     }),
     travel: progress.interpolate({
-      ...partTravelKeyframes(name, TRAVEL),
+      ...partTravelKeyframes(name, TRAVEL, sign),
       extrapolate: "clamp",
     }),
   }
@@ -58,14 +63,18 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
   const t = useT("BibleReader")
   const [armed, setArmed] = useState(false)
   const [progress] = useState(() => new Animated.Value(0))
-  const [parts] = useState(() => ({
-    verse: part(progress, "verse"),
-    chapter: part(progress, "chapter"),
-    whole: progress.interpolate({
-      ...demoOpacityKeyframes(),
-      extrapolate: "clamp",
-    }),
-  }))
+  const [parts] = useState(() => {
+    // A transform never mirrors, so the chapter finger takes the sign (R14).
+    const sign = layoutSign()
+    return {
+      verse: part(progress, "verse", sign),
+      chapter: part(progress, "chapter", sign),
+      whole: progress.interpolate({
+        ...demoOpacityKeyframes(),
+        extrapolate: "clamp",
+      }),
+    }
+  })
   const done = useRef(onDone)
   useEffect(() => {
     done.current = onDone
@@ -139,7 +148,7 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
             { key: "verse", text: t("demoVerse"), opacity: verse.opacity },
             {
               key: "chapter",
-              text: t("demoChapter"),
+              text: t(isLayoutRtl() ? "demoChapterRtl" : "demoChapter"),
               opacity: chapter.opacity,
             },
           ].map((caption) => (
@@ -199,13 +208,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   skip: {
     marginTop: 16,
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: "System",
   },
 })

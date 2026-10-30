@@ -197,7 +197,6 @@ const styles = StyleSheet.create({
   copy: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 13,
     lineHeight: 16,
   },
@@ -208,7 +207,6 @@ const styles = StyleSheet.create({
   },
   signInLabel: {
     color: ACCENT,
-    fontFamily: "System",
     fontSize: 14,
     fontWeight: "700",
   },

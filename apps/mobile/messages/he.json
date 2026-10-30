@@ -138,6 +138,7 @@
     "versesAriaValue": "פסוקים {first} עד {last} מתוך {total}, {chapter}",
     "demoVerse": "החליקו למעלה לפסוק הבא",
     "demoChapter": "החליקו שמאלה לפרק הבא",
+    "demoChapterRtl": "החליקו ימינה לפרק הבא",
     "demoSkip": "הקישו כדי לדלג",
     "demoSkipAriaLabel": "דילוג על הדגמת ההחלקה",
     "selectVerseAriaHint": "הקישו פעמיים כדי לבחור את הפסוק הזה",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "בחירת ספר",
+    "chooseChapter": "בחירת פרק",
+    "chooseVerse": "בחירת פסוק",
     "oldTestament": "הברית הישנה",
     "newTestament": "הברית החדשה",
     "books": "ספרים",
@@ -193,7 +196,7 @@
     "someBooks": "{count} מתוך {total, plural, one {# ספר} two {# ספרים} other {# ספרים}}",
     "twoNames": "{first} ו־{second}",
     "threeNames": "{first}, {second} ו־{third}",
-    "onDevice": "במכשיר",
+    "downloaded": "הורד",
     "downloading": "בהורדה {percent}%",
     "downloadStopped": "ההורדה נעצרה",
     "updateAvailable": "יש עדכון",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "פוסטר הסדרה",
     "videosHeading": "סרטונים",
     "detailsLoadError": "לא ניתן היה לטעון את כל הפרטים.",
+    "languagesTitle": "שפת הסרטון",
     "searchLanguagesPlaceholder": "חיפוש שפות…",
     "searchLanguagesAriaLabel": "חיפוש שפות",
     "noLanguagesFound": "לא נמצאו שפות",
@@ -502,6 +506,7 @@
     "resumeAt": "המשך מ־{time}",
     "unknownLanguage": "שפה לא ידועה",
     "downloadedStatus": "הורד",
+    "languagesTitle": "שפת הסרטון",
     "searchLanguagesPlaceholder": "חיפוש שפות…",
     "searchLanguagesAriaLabel": "חיפוש שפות",
     "noLanguagesFound": "לא נמצאו שפות",
@@ -773,5 +778,8 @@
     "send": "שליחה",
     "sending": "בשליחה…",
     "sendAriaLabel": "שליחת משוב"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "האפליקציה משתמשת ברשת המקומית שלכם כדי למצוא מכשירים להעברה למסך, כך שתוכלו להפעיל סרטונים בטלוויזיה."
   }
 }

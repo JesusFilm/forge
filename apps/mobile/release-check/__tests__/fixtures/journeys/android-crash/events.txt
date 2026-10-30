@@ -1,0 +1,5 @@
+         1792637765.260   577   595 I am_proc_died: [0,835,WebViewLoader-arm64-v8a,-700,0]
+         1792637765.260   577   595 I am_low_memory: 3
+         1792637898.568   577   610 I am_kill : [0,3336,dev.mobile.maestro,0,stop dev.mobile.maestro due to deletePackageX,177552]
+         1792637920.943   577   595 I am_crash: [3402,0,org.jesusfilm.forgewatch,686308932,android.app.RemoteServiceException$CrashedByAdbException,shell-induced crash,ActivityThread.java,2257,0]
+         1792637920.983   577   595 I am_proc_died: [0,3402,org.jesusfilm.forgewatch,0,2]

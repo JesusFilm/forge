@@ -108,6 +108,7 @@ export function DeleteConfirmSheet({
         />
       </Animated.View>
       <Animated.View
+        testID="screen-library-delete-confirm"
         pointerEvents={visible ? "auto" : "none"}
         style={[
           styles.card,
@@ -181,14 +182,12 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },
   body: {
     marginTop: 8,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     textAlign: "center",
     opacity: 0.75,
   },
@@ -202,7 +201,6 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   cancelButton: {
@@ -215,7 +213,6 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
 })

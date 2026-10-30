@@ -1,3 +1,5 @@
+import { cookies } from "next/headers"
+import { MANAGER_SIDEBAR_COOKIE } from "@/lib/manager-sidebar"
 import "video.js/dist/video-js.css"
 import type { Metadata } from "next"
 import { ManagerDashboardShell } from "@/features/shell/manager-shell"
@@ -13,6 +15,15 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const user = await requireAuth()
+  const initialSidebarCollapsed =
+    (await cookies()).get(MANAGER_SIDEBAR_COOKIE)?.value === "collapsed"
 
-  return <ManagerDashboardShell user={user}>{children}</ManagerDashboardShell>
+  return (
+    <ManagerDashboardShell
+      user={user}
+      initialSidebarCollapsed={initialSidebarCollapsed}
+    >
+      {children}
+    </ManagerDashboardShell>
+  )
 }

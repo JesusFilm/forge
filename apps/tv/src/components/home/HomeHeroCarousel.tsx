@@ -1,6 +1,6 @@
 // Home hero controls (Apple-TV top-shelf); HeroPager owns slide artwork + copy.
-// This owns the pinned action row (See more CTA ↔ next chevron) + dots and signals
-// onRequestAdvance. Auto-advance runs only while focused so the index can't drift.
+// This owns the pinned action row (Details CTA ↔ next chevron) + dots and signals
+// onRequestAdvance. Auto-advance pauses on either focused action and while Home is covered.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -15,31 +15,33 @@ import {
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { useFocusAnimation, useFocusVisual } from "../focus/useFocusVisual"
 import { HomeBillboard } from "./HomeBillboard"
+import { scheduleHeroRotation } from "./heroInteractionState"
 
 const AUTO_ADVANCE_MS = 7000
 const CTA_ICON_SIZE = Math.round(scale(24))
 const CHEVRON_ICON_SIZE = Math.round(scale(30))
 
 type HomeHeroCarouselProps = {
+  active: boolean
   /** The curated hero set (model.featured). */
   slides: WatchHomeCard[]
   /** Which slide is active (owned by the screen, mirrored to HeroPager). */
   index: number
-  /** Select on the See more CTA opens the active slide. */
+  /** Select on the Details CTA opens the active slide. */
   onSelect: (card: WatchHomeCard) => void
   /** Hero focus gained/lost — the screen pins the feed to 0 and sets browse
    *  state (and the pager stays visible). */
   onFocusChange: (focused: boolean) => void
   /** Page the hero: +1 next (chevron Select / Right / auto-advance), -1
-   *  previous (See more Left). */
+   *  previous (Details Left). */
   onRequestAdvance: (delta: number) => void
-  /** Exposes the See more CTA's node so the first section rail can wire it as
+  /** Exposes the Details CTA's node so the first section rail can wire it as
    *  the D-pad-up destination for ALL its cards. */
   onCtaNode?: (node: ViewType | null) => void
   /** Top bar's Search tab node — the D-pad-up destination for BOTH hero buttons.
@@ -47,11 +49,12 @@ type HomeHeroCarouselProps = {
    *  this explicit destination bridges Up from the hero to the top bar. */
   upFocusTarget?: ViewType | null
   /** Reports the focused hero button's node so the screen can re-focus it after
-   *  a nav push/pop (the See more CTA is a valid "last focused element"). */
-  onFocusNode?: (node: ViewType | null) => void
+   *  a nav push/pop (the Details CTA is a valid "last focused element"). */
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 export function HomeHeroCarousel({
+  active,
   slides,
   index,
   onSelect,
@@ -90,25 +93,37 @@ export function HomeHeroCarousel({
   // Report hero focus to the screen only when it actually changes (moving See
   // more ↔ chevron keeps it true, so the feed never re-pins between buttons).
   useEffect(() => {
-    onFocusChange(heroFocused)
+    if (heroFocused) {
+      onFocusChange(true)
+      return
+    }
+    // A native Details → Next move may deliver blur and focus separately.
+    // Keep one focused presentation through that handoff instead of briefly
+    // remounting the ambient pager between the two native events.
+    const frame = requestAnimationFrame(() => onFocusChange(false))
+    return () => cancelAnimationFrame(frame)
   }, [heroFocused, onFocusChange])
 
-  // Auto-advance (next) only while the hero is focused; re-arm on each slide so
-  // a manual press resets the dwell, and pause when focus leaves the hero.
+  // Rotate only off the hero, while Home is active. Either focused button
+  // freezes the title for as long as the viewer is deciding.
   useEffect(() => {
-    if (!heroFocused || count <= 1) return
-    const timer = setTimeout(() => onRequestAdvance(1), AUTO_ADVANCE_MS)
-    return () => clearTimeout(timer)
-  }, [heroFocused, safeIndex, count, onRequestAdvance])
+    return scheduleHeroRotation(
+      active,
+      heroFocused,
+      count,
+      () => onRequestAdvance(1),
+      AUTO_ADVANCE_MS,
+    )
+  }, [active, heroFocused, safeIndex, count, onRequestAdvance])
 
-  // RIGHT on the chevron → next; LEFT on See more → previous. A key that just
+  // RIGHT on the chevron → next; LEFT on Details → previous. A key that just
   // changed focus is skipped (focusMovedRef), so the press that LANDS focus on a
   // button doesn't also page — only a press with focus already there does.
   const onTVEvent = useCallback(
     (
       event: { eventType?: string; eventKeyAction?: number } | null | undefined,
     ) => {
-      if (event == null) return
+      if (!active || event == null) return
       // Android TV emits each D-pad press TWICE (key-down=0 + key-up=1) with the
       // same eventType; drop the Android key-up so a press pages once. Gated to
       // Android so a non-zero action value on tvOS can't suppress a real key.
@@ -133,7 +148,7 @@ export function HomeHeroCarousel({
         onRequestAdvance(-1)
       }
     },
-    [onRequestAdvance],
+    [active, onRequestAdvance],
   )
   useTVEventHandler(onTVEvent)
 
@@ -160,7 +175,7 @@ export function HomeHeroCarousel({
     setChevronFocused(false)
   }, [])
 
-  // See more's node feeds BOTH the rail's D-pad-up wiring (onCtaNode) and the
+  // The Details node feeds BOTH the rail's D-pad-up wiring (onCtaNode) and the
   // self-target nextFocusLeft below.
   const handleSeeMoreNode = useCallback(
     (node: ViewType | null) => {
@@ -182,22 +197,39 @@ export function HomeHeroCarousel({
           current != null ? (
             <View style={styles.actionRow}>
               <HeroCtaButton
-                label="See more"
-                onPress={() => onSelect(current)}
+                label="Details"
+                onPress={() => {
+                  if (active) {
+                    onFocusNode?.(seeMoreNodeRef.current, true)
+                    onSelect(current)
+                  }
+                }}
                 onFocus={handleSeeMoreFocus}
                 onBlur={handleSeeMoreBlur}
                 onNode={handleSeeMoreNode}
                 selfNode={seeMoreNode}
                 upFocusTarget={upFocusTarget}
               />
-              <HeroChevronButton
-                onPress={() => onRequestAdvance(1)}
-                onFocus={handleChevronFocus}
-                onBlur={handleChevronBlur}
-                onNode={handleChevronNode}
-                selfNode={chevronNode}
-                upFocusTarget={upFocusTarget}
-              />
+              <View>
+                <HeroChevronButton
+                  onPress={() => {
+                    if (active) {
+                      onFocusNode?.(chevronNodeRef.current, true)
+                      onRequestAdvance(1)
+                    }
+                  }}
+                  onFocus={handleChevronFocus}
+                  onBlur={handleChevronBlur}
+                  onNode={handleChevronNode}
+                  selfNode={chevronNode}
+                  upFocusTarget={upFocusTarget}
+                />
+                {chevronFocused ? (
+                  <Text pointerEvents="none" style={styles.nextTitleLabel}>
+                    Next title
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null
         }
@@ -257,7 +289,7 @@ function HeroCtaButton({
         setFocused(false)
         onBlur()
       }}
-      // Stay on See more on Left (no real neighbour) so the capture turns Left
+      // Stay on Details on Left (no real neighbour) so the capture turns Left
       // into a previous-slide instead of letting focus escape the hero.
       nextFocusLeft={selfNode ?? undefined}
       // Up bridges to the top bar's Search tab — geometry alone dead-ends here
@@ -329,7 +361,7 @@ function HeroChevronButton({
       // Right into an advance rather than letting focus escape the hero.
       nextFocusRight={selfNode ?? undefined}
       // Up bridges to the top bar's Search tab — same offset-geometry dead-end
-      // as See more (both hero buttons share the one Up destination).
+      // as Details (both hero buttons share the one Up destination).
       nextFocusUp={upFocusTarget ?? undefined}
       accessibilityRole="button"
       accessibilityLabel="Next featured title"
@@ -370,11 +402,11 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     fontFamily: "System",
-    fontSize: Math.round(scale(25)),
+    fontSize: readableFontSize(25),
     fontWeight: "700",
     color: WATCH_THEME.accentText,
   },
-  // Square next-slide button, same height/radius as the See more CTA. backgroundColor +
+  // Square next-slide button, same height/radius as the Details CTA. backgroundColor +
   // shadowOpacity are animated in HeroChevronButton (dark glass → white fill on focus);
   // the static dark drop shadow is revealed by the focus shadowOpacity ramp.
   chevron: {
@@ -386,6 +418,16 @@ const styles = StyleSheet.create({
     shadowColor: "#000000",
     shadowRadius: scale(14),
     shadowOffset: { width: 0, height: scale(6) },
+  },
+  nextTitleLabel: {
+    position: "absolute",
+    left: scale(76),
+    top: scale(17),
+    width: scale(150),
+    fontFamily: "System",
+    fontSize: readableFontSize(21),
+    fontWeight: "600",
+    color: WATCH_THEME.text,
   },
   // Page indicator: bottom-center of the hero region, just above the peeking
   // first rail.

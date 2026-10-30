@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Tətbiq ötürmə cihazlarını tapmaq üçün yerli şəbəkənizdən istifadə edir ki, videoları televizorunuzda oynada biləsiniz."
+  }
+}

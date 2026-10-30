@@ -1,5 +1,12 @@
 # Co-watch restoration and bounded refresh
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 The explicit no-study owner decision in feat-565 remains in force. This release
 does not create a study, claim measured usefulness, revive G4/G5/G6, or relax
 privacy, deletion, source integrity or expiry. Initial investigation and subsequent
@@ -17,8 +24,11 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 - Source hydration preaggregates retained ownership and preferred identities by
   session/episode instead of multiplying every raw row by every retained receipt.
   Exact-row/graph equivalence and a 60-generation owned stress fixture preserve
-  semantics and the five-second read budget. Transaction-local JIT is disabled
-  only for bounded preflight/publication transactions.
+  semantics. The original five-second read budget is removed by the October 27
+  follow-up after repeated preflight refusals; the 30-second transaction bound
+  remains.
+  Transaction-local JIT is disabled only for bounded preflight/publication
+  transactions.
 - `RecommendationCowatchRefreshService` uses an explicit recent-auth human-owner
   grant tied to the active direct release, exact manifest/configuration and owner
   influence floor. The worker records that grant in activation audit instead of
@@ -45,7 +55,9 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 2. Declare the whole source window and cutoff before reading. Run the deployed
    `cowatch:shadow:rebuild` CLI with `--window-start`, `--window-end`,
    `--evaluation-as-of`. Its default mode is read-only preflight. Preserve the
-   five-second statement, one-second lock and 30-second transaction limits.
+   one-second lock and 30-second transaction limits. Graph preflight and
+   publication have no separate per-statement deadline with the October 27
+   follow-up; read-only monitoring queries still use five-second limits.
 3. Record raw/eligible sources, pairs, contributions, edges, row JSON bytes and
    exact generation. Recheck actual graph allocation, database bytes, filesystem
    free bytes, resident WAL, replication slots, transactions/lock waiters and

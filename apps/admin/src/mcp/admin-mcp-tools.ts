@@ -253,7 +253,7 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "experience.locale.update",
-    description: `Update an existing localized Experience draft. ${WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE}`,
+    description: `Update an existing localized Experience draft. homepageLayout is lifecycle context owned by duplication: a rollback payload may repeat its current value, but callers cannot change it. ${WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE}`,
     requiredScopes: ["experience:locale:update"],
     annotations: ADDITIVE_WRITE,
     inputSchema: {
@@ -387,13 +387,14 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.duplicate",
     description:
-      "Duplicate every locale of any readable Experience into a new unpublished DRAFT Experience owned by the delegated principal. Copies authored blocks, routing, SEO, OG content, and template classification; generates available -copy slugs; never copies homepage, publication, embedding, revision, or chat state. Success returns {ok:true, sourceExperienceId, experience, locales, editorUrl}.",
+      "Duplicate every locale of any readable Experience into a new unpublished DRAFT Experience owned by the delegated principal. sourceVersion selects what is copied per locale: EFFECTIVE (default) = the active saved draft when present, else the canonical row; CANONICAL = the stored canonical row only (the live published content for a published locale). Copies authored blocks, routing, SEO, OG content, and template classification; generates available -copy slugs; never copies the live homepage assignment, publication, embedding, revision history, or chat state. A homepage copy keeps homepageLayout so it previews and edits as a homepage without becoming the live homepage. Every copied locale starts with its own active draft, so its preview URL works immediately and the draft revision can be passed as expectedDraftRevision. Success returns {ok:true, sourceExperienceId, sourceVersion, experience, locales:[...locale, copiedFrom, sourceLocaleId, sourceDraftRevision, draft:{revision, previewUrl}], editorUrl}.",
     requiredScopes: ["experience:read", "experience:create"],
     annotations: ADDITIVE_WRITE,
     inputSchema: {
       type: "object",
       properties: {
         experienceId: { type: "string", minLength: 1 },
+        sourceVersion: { type: "string", enum: ["EFFECTIVE", "CANONICAL"] },
       },
       required: ["experienceId"],
       additionalProperties: false,

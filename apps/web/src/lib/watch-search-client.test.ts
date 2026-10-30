@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   parseWatchSearchSurfaceManifest,
   searchWatchDirect,
+  WATCH_SEARCH_TIMEOUT_MS,
   watchSearchErrorKind,
 } from "./watch-search-client"
 
@@ -15,6 +16,7 @@ vi.mock("@/env", () => ({
 describe("searchWatchDirect", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it("retries only the missing additive field against an old Admin schema with the same search identity", async () => {
@@ -50,10 +52,17 @@ describe("searchWatchDirect", () => {
         ),
       )
     vi.stubGlobal("fetch", fetchMock)
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
     const result = await searchWatchDirect({
       query: "Jesus",
       languageContext: { clientRequestId: "same-request" },
     })
+    // Both attempts share one deadline, so the retry cannot restart the clock.
+    expect(timeoutSpy).toHaveBeenCalledOnce()
+    expect(timeoutSpy).toHaveBeenCalledWith(WATCH_SEARCH_TIMEOUT_MS)
+    expect(fetchMock.mock.calls[1][1].signal).toBe(
+      fetchMock.mock.calls[0][1].signal,
+    )
     expect(result).toMatchObject({
       requestId: "legacy-request",
       surfaceManifest: null,
@@ -417,14 +426,66 @@ describe("searchWatchDirect", () => {
     })
   })
 
-  it("classifies a fetch rejection as a network search error", async () => {
+  it("classifies a fetch rejection as a network error only when offline", async () => {
+    vi.stubGlobal("navigator", { onLine: false })
     vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
       new TypeError("offline"),
     )
-
     await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
       kind: "network_error",
     })
+  })
+
+  it("does not blame the network for a fetch rejection while online (e.g. a WAF block)", async () => {
+    vi.stubGlobal("navigator", { onLine: true })
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new TypeError("Failed to fetch"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "unknown",
+    })
+  })
+
+  it("classifies an abort as a server error, not a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new DOMException("aborted", "AbortError"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "server_error",
+    })
+  })
+
+  it("does not blame the network when the browser exposes no online state", async () => {
+    vi.stubGlobal("navigator", undefined)
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new TypeError("Failed to fetch"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "unknown",
+    })
+  })
+
+  it("keeps a timeout as a server error even while offline", async () => {
+    vi.stubGlobal("navigator", { onLine: false })
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new DOMException("timed out", "TimeoutError"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "server_error",
+    })
+  })
+
+  it("bounds a search by one browser deadline well below the old 45s", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new DOMException("timed out", "TimeoutError"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toThrow()
+    expect(timeoutSpy).toHaveBeenCalledWith(WATCH_SEARCH_TIMEOUT_MS)
+    // Admin's own search deadline is 2.3s (WATCH_SEARCH_HARD_TIMEOUT_MS); keep
+    // several seconds above it for edge, TLS and cold-start latency.
+    expect(WATCH_SEARCH_TIMEOUT_MS).toBeGreaterThanOrEqual(2_300 + 5_000)
+    expect(WATCH_SEARCH_TIMEOUT_MS).toBeLessThanOrEqual(15_000)
   })
 
   it("does not report a request timeout as a network failure", async () => {

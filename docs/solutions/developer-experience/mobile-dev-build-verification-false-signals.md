@@ -476,6 +476,9 @@ Run the instrument-adequacy check before you judge:
 - A handover between two renderers, such as a native splash to a React tree.
 - A fine visual measurement, such as a gradient, a band edge, or a sub-pixel
   offset.
+- A playback rate measured on an Android emulator. The emulator can play slower
+  than the rate that the player and the media session report. Run a control on
+  a known speed path in the same session first.
 
 The checks are most valuable in this repo when you work from a worktree, when
 you have just pulled or rebased, or when you have more than one checkout of
@@ -589,3 +592,7 @@ colour, `(28,25,23)`, which matches `backgroundColor` at
 - `docs/solutions/best-practices/nextjs-hmr-reload-breaks-stateful-browser-verification.md`
   — the non-mobile sibling: a verification instrument that invalidates the
   state it was meant to observe.
+- `docs/solutions/developer-experience/android-emulator-plays-video-slower-than-its-reported-rate.md`
+  — an instrument-adequacy case on Android: the emulator reports 2x but plays
+  at about 1.5x, and a control run on the watch page's speed setting proves the
+  limit.

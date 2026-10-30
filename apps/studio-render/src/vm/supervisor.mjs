@@ -1,8 +1,5 @@
-import {
-  VmInvariantError,
-  VmUnconfirmedError,
-  isRetryableVmFailure,
-} from "./errors.mjs"
+import { executionProfile } from "./execution-profile.mjs"
+import { VmInvariantError, isRetryableVmFailure } from "./errors.mjs"
 import {
   mkdir,
   readdir,
@@ -12,7 +9,7 @@ import {
   rename,
   realpath,
 } from "node:fs/promises"
-import { randomUUID, createHash } from "node:crypto"
+import { randomUUID } from "node:crypto"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { readCycleState } from "./cycle-state.mjs"
@@ -20,11 +17,13 @@ import { pruneCycleArtifacts } from "./cycle-artifacts.mjs"
 import { loadHostConfig } from "./config.mjs"
 import { uploadVmOutput, MuxUploadUnresolvedError } from "./mux-upload.mjs"
 import { VmJournal } from "./journal.mjs"
+import { settleVmOutput } from "./retention.mjs"
 import { VmJobApi } from "./job-api.mjs"
 import { DockerJobRuntime } from "./docker-runtime.mjs"
 import { jobIdentity } from "./profile.mjs"
 import { createJobScope, cancelJobScope, retireJobScope } from "./job-scope.mjs"
 import { runHostCommand } from "./host-command.mjs"
+const { AbortController, setTimeout } = globalThis
 const root = "/var/lib/forge-studio/poll",
   now = () => Number(process.hrtime.bigint() / 1000000n)
 const boot = async () =>
@@ -62,109 +61,6 @@ async function cycle() {
   const path = join(root, randomUUID().replaceAll("-", ""))
   await mkdir(path, { mode: 0o700 })
   return path
-}
-async function settle(directory, config, claim) {
-  const journal = new VmJournal(directory),
-    api = new VmJobApi(config)
-  let envelope = await journal.read("settlement.json")
-  const prior = await journal.read("retention-window.json"),
-    currentBoot = await boot()
-  const window =
-    prior ??
-    (
-      await journal.writeOnce("retention-window.json", {
-        bootId: currentBoot,
-        deadlineMs: now() + 60000,
-      })
-    ).value
-  if (
-    !window ||
-    Object.keys(window).sort().join(",") !== "bootId,deadlineMs" ||
-    typeof window.bootId !== "string" ||
-    !/^[a-f0-9-]{36}$/.test(window.bootId) ||
-    !Number.isSafeInteger(window.deadlineMs) ||
-    window.deadlineMs <= 0
-  )
-    throw new VmInvariantError("Malformed retention window")
-  const remaining = () =>
-    window.bootId === currentBoot ? window.deadlineMs - now() : 0
-  if (envelope) {
-    const accepted = await api.json(
-      "receipt",
-      envelope,
-      undefined,
-      claim.capability,
-    )
-    if (accepted !== null) return accepted
-  }
-  if (remaining() <= 0)
-    throw new VmInvariantError(
-      "Recording window exhausted; retained receipt unresolved",
-    )
-  if (!envelope) {
-    const verified = await journal.read("verified-output.json"),
-      identity = jobIdentity(claim.assignment.dispatchId.replaceAll("-", ""))
-    let request = { status: "FAILED" }
-    if (verified !== null) {
-      if (
-        !verified ||
-        !Number.isSafeInteger(verified.bytes) ||
-        verified.bytes < 1 ||
-        verified.bytes > 134217728 ||
-        typeof verified.digest !== "string" ||
-        !/^[a-f0-9]{64}$/.test(verified.digest)
-      )
-        throw new VmInvariantError("Malformed verified output record")
-      const info = await stat(identity.directory + "/output.mp4")
-      if (!info.isFile() || info.size !== verified.bytes)
-        throw new VmInvariantError("Retained output changed")
-      const output = await readFile(identity.directory + "/output.mp4"),
-        proof = JSON.parse(
-          await readFile(identity.directory + "/proof.json", "utf8"),
-        )
-      if (
-        output.length !== verified.bytes ||
-        output.length > 134217728 ||
-        createHash("sha256").update(output).digest("hex") !== verified.digest ||
-        proof.outputDigest !== verified.digest
-      )
-        throw new VmInvariantError("Retained output changed")
-      request = {
-        status: "SUCCEEDED",
-        output: output.toString("base64"),
-        proof,
-      }
-    }
-    const budget = Math.min(45000, remaining() - 15000)
-    if (budget <= 0) throw new VmInvariantError("Retention allowance exhausted")
-    envelope = await api.json(
-      "retain",
-      request,
-      AbortSignal.timeout(Math.floor(budget)),
-      claim.capability,
-    )
-  }
-  const recording = Math.min(15000, remaining())
-  if (recording <= 0)
-    throw new VmInvariantError("Terminal recording allowance exhausted")
-  const signal = AbortSignal.timeout(Math.floor(recording))
-  try {
-    return await api.finish(journal, claim.capability, envelope, signal)
-  } catch {
-    // Read-only recovery does not renew the mutation window. Persisted exact
-    // bytes are reused by the next process if no receipt can yet be confirmed.
-    const saved = await journal.read("settlement.json")
-    if (saved) {
-      const receipt = await api.json(
-        "receipt",
-        saved,
-        undefined,
-        claim.capability,
-      )
-      if (receipt !== null) return receipt
-    }
-    throw new VmUnconfirmedError("Canonical terminal recording unconfirmed")
-  }
 }
 
 export async function runVmSupervisor() {
@@ -245,7 +141,10 @@ export async function runVmSupervisor() {
             now() +
             Math.max(
               1,
-              Math.min(900000, claim.assignment.expiresAt - Date.now() - 60000),
+              Math.min(
+                executionProfile.jobMs,
+                claim.assignment.expiresAt - Date.now() - 60000,
+              ),
             ),
           renderImage: config.renderImage,
           verifyImage: config.verifyImage,
@@ -350,7 +249,21 @@ export async function runVmSupervisor() {
           await journal.writeOnce("retired.json", { id, complete: true })
         }
       }
-      const receipt = await settle(directory, config, claim)
+      const retentionStop = new AbortController()
+      activeStop = () => retentionStop.abort()
+      if (stopping) retentionStop.abort()
+      let receipt
+      try {
+        receipt = await settleVmOutput({
+          journal,
+          api,
+          claim,
+          outputDirectory: identity.directory,
+          signal: retentionStop.signal,
+        })
+      } finally {
+        activeStop = undefined
+      }
       if (!receipt || typeof receipt.admitted !== "boolean")
         throw new VmInvariantError("Canonical receipt required")
       if (receipt.admitted && (await journal.read("verified-output.json"))) {

@@ -1,5 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
+}))
+
+const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/watch-audience-content", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
+    "@/lib/watch-audience-content",
+  )),
+  resolveWatchAudience: resolveWatchAudienceMock,
+}))
 
 const {
   resolveWatchHomeMock,
@@ -61,6 +74,9 @@ const heroModel = {
 }
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  resolveWatchAudienceMock.mockReset()
+  resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchHomeMock.mockReset()
   resolveWatchPageMock.mockReset()
   watchHomeExperiencePageMock.mockClear()
@@ -75,6 +91,54 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("passes the explicit audience rollout to the common homepage frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true }),
+      undefined,
+    )
+  })
+
+  it("hands the published audience configuration for the locale to the home frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    const authored = {
+      kind: "authored",
+      sourceLocale: "en",
+      config: { roles: [] },
+      identity: "en:watch-audience:abc",
+    }
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+      undefined,
+    )
+  })
+
+  it("does not load the configuration while the rollout is off", async () => {
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
+    expect(
+      (watchHomeExperiencePageMock.mock.calls as unknown[][])[0]?.[0],
+    ).toEqual(
+      expect.objectContaining({ audienceEnabled: false, audience: undefined }),
+    )
+  })
+
   it("uses the fixed seeker-focused page and social metadata", async () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
@@ -101,7 +165,17 @@ describe("Watch root homepage", () => {
   it("renders builder-authored homepage blocks under the static hero model", async () => {
     const blocks = [
       { __typename: "WatchHomeHeroBlock", t: "watchHomeHero" },
-      { __typename: "MediaCollectionBlock", t: "mediaCollection" },
+      {
+        __typename: "MediaCollectionBlock",
+        t: "mediaCollection",
+        items: [
+          {
+            videoId: "fixture-video",
+            resolvedTitle: "Fixture film",
+            videoSlug: "fixture-film",
+          },
+        ],
+      },
     ]
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -125,6 +199,8 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
+      heroUnavailable: false,
       heroModel,
       blocks,
       locale: "en",
@@ -136,7 +212,17 @@ describe("Watch root homepage", () => {
 
   it("keeps builder-authored homepage blocks when the hero query fails", async () => {
     const blocks = [
-      { __typename: "MediaCollectionBlock", t: "mediaCollection" },
+      {
+        __typename: "MediaCollectionBlock",
+        t: "mediaCollection",
+        items: [
+          {
+            videoId: "fixture-video",
+            resolvedTitle: "Fixture film",
+            videoSlug: "fixture-film",
+          },
+        ],
+      },
     ]
     resolveWatchHomeMock.mockResolvedValue({
       data: null,
@@ -156,6 +242,7 @@ describe("Watch root homepage", () => {
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual(
       expect.objectContaining({
+        heroUnavailable: true,
         heroModel: {
           heroSlides: [],
           sections: [],
@@ -164,6 +251,85 @@ describe("Watch root homepage", () => {
         },
         blocks,
       }),
+    )
+  })
+
+  it("preserves audience and legacy props while the hero is unavailable", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    const audience = {
+      kind: "authored",
+      sourceLocale: "en",
+      config: { roles: [] },
+      identity: "fixture",
+    }
+    resolveWatchAudienceMock.mockResolvedValue(audience)
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero failed"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [{ __typename: "TextBlock", heading: "Authored body" }],
+        },
+        watchHomeCategoryRailCompatibility: "legacy-schema",
+      },
+      error: null,
+    })
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audienceEnabled: true,
+        audience,
+        legacyCategoryRailCompatibility: true,
+        publicDocumentPathname: "/watch",
+      }),
+      undefined,
+    )
+  })
+
+  it("starts the hero and body together and waits for both resolved results", async () => {
+    let finishHero!: (value: unknown) => void
+    let finishBody!: (value: unknown) => void
+    resolveWatchHomeMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishHero = resolve
+      }),
+    )
+    resolveWatchPageMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishBody = resolve
+      }),
+    )
+    const pending = HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+    })
+    await vi.waitFor(() => expect(resolveWatchPageMock).toHaveBeenCalled())
+    expect(resolveWatchHomeMock).toHaveBeenCalled()
+    finishBody({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [{ __typename: "TextBlock", heading: "Body ready" }],
+        },
+      },
+      error: null,
+    })
+    let settled = false
+    void pending.then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    finishHero({ data: null, error: new Error("Resolved hero error") })
+    const element = await pending
+    expect(element.props.children.props.children.props.children[1].type).toBe(
+      watchHomeExperiencePageMock,
     )
   })
 
@@ -189,6 +355,8 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
+      heroUnavailable: false,
       heroModel,
       blocks: [],
       locale: "en",
@@ -196,6 +364,23 @@ describe("Watch root homepage", () => {
       legacyCategoryRailCompatibility: false,
       publicDocumentPathname: "/watch",
     })
+  })
+
+  it("keeps the healthy hero when the body query fails operationally", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ heroModel, blocks: [] }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
   })
 
   it("threads the old-schema category rail compatibility flag", async () => {

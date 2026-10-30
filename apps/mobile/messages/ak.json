@@ -138,6 +138,7 @@
     "versesAriaValue": "Nkyekyɛm {first} kosi {last} wɔ {total} mu, {chapter}",
     "demoVerse": "Pra kɔ soro ma nkyekyɛm a edi hɔ",
     "demoChapter": "Pra kɔ benkum ma ti a edi hɔ",
+    "demoChapterRtl": "Pra kɔ nifa ma ti a edi hɔ",
     "demoSkip": "Bɔ so na twa so",
     "demoSkipAriaLabel": "Twa pra nkyerɛkyerɛ no so",
     "selectVerseAriaHint": "Bɔ so mprenu na paw nkyekyɛm yi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Paw nhoma",
+    "chooseChapter": "Paw ti",
+    "chooseVerse": "Paw nkyekyɛm",
     "oldTestament": "Apam Dedaw",
     "newTestament": "Apam Foforo",
     "books": "Nhoma",
@@ -193,7 +196,7 @@
     "someBooks": "{count} wɔ {total, plural, one {nhoma # mu} other {nhoma # mu}}",
     "twoNames": "{first} ne {second}",
     "threeNames": "{first}, {second} ne {third}",
-    "onDevice": "Ɛwɔ fon yi so",
+    "downloaded": "Woatwe",
     "downloading": "Ɛretwe {percent}%",
     "downloadStopped": "Ntwe no agyae",
     "updateAvailable": "Foforo bi aba",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Ntoatoaso no mfonini kɛse",
     "videosHeading": "Video ahorow",
     "detailsLoadError": "Yɛantumi amfa nsɛm no nyinaa amma.",
+    "languagesTitle": "Video no kasa",
     "searchLanguagesPlaceholder": "Hwehwɛ kasa…",
     "searchLanguagesAriaLabel": "Hwehwɛ kasa",
     "noLanguagesFound": "Yɛanhu kasa biara",
@@ -502,6 +506,7 @@
     "resumeAt": "Toa so fi {time}",
     "unknownLanguage": "Yɛnnim",
     "downloadedStatus": "Woatwe",
+    "languagesTitle": "Video no kasa",
     "searchLanguagesPlaceholder": "Hwehwɛ kasa…",
     "searchLanguagesAriaLabel": "Hwehwɛ kasa",
     "noLanguagesFound": "Yɛanhu kasa biara",
@@ -773,5 +778,8 @@
     "send": "Soma",
     "sending": "Ɛresoma…",
     "sendAriaLabel": "Soma adwenkyerɛ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App no de wo mpɔtam network hwehwɛ mfiri a wubetumi de video akɔ so, sɛnea ɛbɛyɛ a wubetumi abɔ video ahorow wɔ wo TV so."
   }
 }

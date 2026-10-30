@@ -22,7 +22,6 @@ function weekStart(date: string) {
   return value.toISOString().slice(0, 10)
 }
 const calendarId = "shorts-calendar"
-type Pack = { id: string; document: { title: string } }
 type Project = {
   projectId: string
   title: string
@@ -36,13 +35,11 @@ const defaults: CalendarSettings = {
   deliveryWindowMinutes: 60,
   plannerTimes: ["06:00"],
   automationEnabled: false,
-  defaultPackRevisionIds: [],
   language: "english",
 }
 export function ShortCalendar() {
   const [view, setView] = useState<CalendarView | null>(null),
     [settings, setSettings] = useState(defaults),
-    [packs, setPacks] = useState<Pack[]>([]),
     [projects, setProjects] = useState<Project[]>([]),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
@@ -76,14 +73,12 @@ export function ShortCalendar() {
             return null
           throw error
         }),
-      studioCall<Pack[]>("packs", { limit: 100 }),
       studioCall<Project[]>("list", { limit: 100 }),
     ])
-      .then(([v, p, j]) => {
+      .then(([v, j]) => {
         if (active) {
           setView(v)
           setSettings(v?.settings ?? defaults)
-          setPacks(p)
           setProjects(j)
           setShowSettings(!v)
         }
@@ -141,7 +136,6 @@ export function ShortCalendar() {
         date: editing.date,
         title: editing.title,
         theme: editing.theme,
-        packRevisionId: editing.packRevisionId,
         projectId: editing.projectId,
       })
       setEditing(null)
@@ -283,27 +277,6 @@ export function ShortCalendar() {
                 />
               </label>
               <label>
-                Default Content Pack
-                <select
-                  value={settings.defaultPackRevisionIds[0] ?? ""}
-                  onChange={(event) =>
-                    setSettings({
-                      ...settings,
-                      defaultPackRevisionIds: event.target.value
-                        ? [event.target.value]
-                        : [],
-                    })
-                  }
-                >
-                  <option value="">No default pack</option>
-                  {packs.map((pack) => (
-                    <option key={pack.id} value={pack.id}>
-                      {pack.document.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
                 <input
                   type="checkbox"
                   checked={settings.automationEnabled}
@@ -390,7 +363,7 @@ export function ShortCalendar() {
                 are ready.
               </p>
               <details className="calendar-settings">
-                <summary>Weekly themes and Content Packs</summary>
+                <summary>Weekly themes</summary>
                 {[...new Set(days.map((slot) => weekStart(slot.date)))].map(
                   (startDate) => {
                     const week = view.weeks.find(
@@ -409,7 +382,6 @@ export function ShortCalendar() {
                               idempotencyKey: crypto.randomUUID(),
                               startDate,
                               theme: String(fields.get("theme") ?? ""),
-                              packRevisionId: fields.get("pack") || null,
                             })
                             setNotice(
                               "Weekly plan saved; existing titles and projects were preserved.",
@@ -420,13 +392,8 @@ export function ShortCalendar() {
                         <h2>Week of {startDate}</h2>
                         {week?.provenance ? (
                           <p>
-                            Planner suggestion from{" "}
-                            {packs.find(
-                              (pack) =>
-                                pack.id === week.provenance?.packRevisionId,
-                            )?.document.title ?? "the admitted Content Pack"}
-                            . Verify sources before production. Your pack
-                            assignments are unchanged.
+                            Planner suggestion. Select and verify project
+                            sources before production.
                           </p>
                         ) : week ? (
                           <p>Your weekly settings</p>
@@ -438,20 +405,6 @@ export function ShortCalendar() {
                             maxLength={2000}
                             defaultValue={week?.theme ?? ""}
                           />
-                        </label>
-                        <label>
-                          Week Content Pack
-                          <select
-                            name="pack"
-                            defaultValue={week?.packRevisionId ?? ""}
-                          >
-                            <option value="">Use default pack</option>
-                            {packs.map((pack) => (
-                              <option key={pack.id} value={pack.id}>
-                                {pack.document.title}
-                              </option>
-                            ))}
-                          </select>
                         </label>
                         <button disabled={busy}>Save week</button>
                       </form>
@@ -529,9 +482,7 @@ export function ShortCalendar() {
                       <p>
                         {slot.projectSourcesSelected
                           ? "Project sources selected; eligibility still needs validation"
-                          : slot.provenance?.sourceState === "SELECTED"
-                            ? "Source selection suggested; eligibility still needs validation"
-                            : "Source selection missing — unready"}
+                          : "Source selection missing — unready"}
                       </p>
                       {slot.projectId && (
                         <Link
@@ -613,25 +564,6 @@ export function ShortCalendar() {
                   setEditing({ ...editing, theme: event.target.value })
                 }
               />
-            </label>
-            <label>
-              Assigned Content Pack
-              <select
-                value={editing.packRevisionId ?? ""}
-                onChange={(event) =>
-                  setEditing({
-                    ...editing,
-                    packRevisionId: event.target.value || null,
-                  })
-                }
-              >
-                <option value="">Use week/default pack</option>
-                {packs.map((pack) => (
-                  <option value={pack.id} key={pack.id}>
-                    {pack.document.title}
-                  </option>
-                ))}
-              </select>
             </label>
             <label>
               Project

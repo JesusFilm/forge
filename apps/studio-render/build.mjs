@@ -16,5 +16,12 @@ await bundle({
   entryPoint: require.resolve("@forge/shorts-compositions/studio/entry"),
   outDir: resolve("dist/bundle"),
 })
-for (const file of ["child.mjs", "verify.mjs"])
+for (const file of [
+  "child.mjs",
+  "verify.mjs",
+  "parallel-child.mjs",
+  "parallel-render.mjs",
+  "frame-worker.mjs",
+  "frame-pool.mjs",
+])
   await copyFile("src/" + file, "dist/" + file)

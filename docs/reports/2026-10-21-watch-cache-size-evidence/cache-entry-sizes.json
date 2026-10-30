@@ -1,0 +1,40 @@
+{
+  "startedUtc": "2026-10-21T00:09:23.484Z",
+  "finishedUtc": "2026-10-21T00:09:23.545Z",
+  "deployment": "20f52ebd-0763-4146-9c80-00d6116cdaee",
+  "replica": "2177c2e4-9b0f-4a37-8921-670be3b1dc2b",
+  "publicRoute": "/watch",
+  "internalRoute": "/en/en",
+  "query": "GETRANGE <configured-prefix><Next-route-cache-key> 0 8388608",
+  "measurement": {
+    "kind": "APP_PAGE",
+    "totalStoredBytes": 1941303,
+    "totalStoredCharacters": 1941232,
+    "fields": {
+      "html": {
+        "storedJsonBytes": 968550,
+        "contentUtf8Bytes": 906511
+      },
+      "rscData": {
+        "storedJsonBytes": 482838,
+        "decodedBytes": 362126
+      },
+      "segmentData": {
+        "storedJsonBytes": 489273,
+        "segmentCount": 4,
+        "decodedBytes": 366893
+      }
+    },
+    "metadataAndJsonEnvelopeBytes": 642,
+    "htmlBreakdown": {
+      "embeddedRscScriptBytes": 390408,
+      "embeddedRscScriptCount": 9,
+      "remainingHtmlBytes": 516103
+    },
+    "metadataCounts": {
+      "tags": 9,
+      "headers": 2
+    },
+    "lastModifiedUtc": "2026-10-21T00:08:09.989Z"
+  }
+}

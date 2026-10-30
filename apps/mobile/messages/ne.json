@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पदमध्ये पद {first} देखि {last} सम्म, {chapter}",
     "demoVerse": "अर्को पदका लागि माथि स्वाइप गर्नुहोस्",
     "demoChapter": "अर्को अध्यायका लागि बायाँ स्वाइप गर्नुहोस्",
+    "demoChapterRtl": "अर्को अध्यायका लागि दायाँ स्वाइप गर्नुहोस्",
     "demoSkip": "छोड्न ट्याप गर्नुहोस्",
     "demoSkipAriaLabel": "स्वाइपको प्रदर्शन छोड्नुहोस्",
     "selectVerseAriaHint": "यो पद छान्न दुई पटक ट्याप गर्नुहोस्",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "पुस्तक छान्नुहोस्",
+    "chooseChapter": "अध्याय छान्नुहोस्",
+    "chooseVerse": "पद छान्नुहोस्",
     "oldTestament": "पुरानो करार",
     "newTestament": "नयाँ करार",
     "books": "पुस्तकहरू",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# पुस्तकमध्ये} other {# पुस्तकमध्ये}} {count}",
     "twoNames": "{first} र {second}",
     "threeNames": "{first}, {second} र {third}",
-    "onDevice": "यो डिभाइसमा छ",
+    "downloaded": "डाउनलोड भयो",
     "downloading": "डाउनलोड हुँदैछ {percent}%",
     "downloadStopped": "डाउनलोड रोकियो",
     "updateAvailable": "अपडेट उपलब्ध छ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "श्रृंखलाको पोस्टर",
     "videosHeading": "भिडियोहरू",
     "detailsLoadError": "पूरा विवरण लोड गर्न सकिएन।",
+    "languagesTitle": "भिडियोको भाषा",
     "searchLanguagesPlaceholder": "भाषा खोज्नुहोस्…",
     "searchLanguagesAriaLabel": "भाषाहरू खोज्नुहोस्",
     "noLanguagesFound": "कुनै भाषा भेटिएन",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} बाट जारी राख्नुहोस्",
     "unknownLanguage": "अज्ञात",
     "downloadedStatus": "डाउनलोड भयो",
+    "languagesTitle": "भिडियोको भाषा",
     "searchLanguagesPlaceholder": "भाषा खोज्नुहोस्…",
     "searchLanguagesAriaLabel": "भाषाहरू खोज्नुहोस्",
     "noLanguagesFound": "कुनै भाषा भेटिएन",
@@ -773,5 +778,8 @@
     "send": "पठाउनुहोस्",
     "sending": "पठाउँदै…",
     "sendAriaLabel": "प्रतिक्रिया पठाउनुहोस्"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "एपले कास्ट डिभाइसहरू खोज्न तपाईंको स्थानीय नेटवर्क प्रयोग गर्छ, जसले गर्दा तपाईं आफ्नो टिभीमा भिडियो चलाउन सक्नुहुन्छ।"
   }
 }

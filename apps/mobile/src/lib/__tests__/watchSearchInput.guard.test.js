@@ -74,7 +74,7 @@ describe("watchSearch language input stays behind the builder", () => {
     // path could make the real-tree assertion pass with zero scanning.
     const offenders = findInlineLanguageInput([
       {
-        relative: "app/(tabs)/watch.tsx",
+        relative: "app/(tabs)/watch/index.tsx",
         content: 'input: { query, displayLanguageSlug: "en" }',
       },
       {
@@ -118,7 +118,7 @@ describe("watchSearch language input stays behind the builder", () => {
       },
     ])
     expect(offenders).toEqual([
-      "app/(tabs)/watch.tsx",
+      "app/(tabs)/watch/index.tsx",
       "src/components/search/Rogue.tsx",
       "src/components/search/Shorthand.tsx",
       "src/components/search/Spread.tsx",

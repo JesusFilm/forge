@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Appin brúkar títt lokala net til at finna tól at senda til, so at tú kanst spæla videobrot á sjónvarpinum."
+  }
+}

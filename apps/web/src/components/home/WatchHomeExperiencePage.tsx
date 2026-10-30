@@ -1,3 +1,4 @@
+import { WatchHomeRoleBand } from "@/components/home/WatchHomeRoleBand"
 import {
   signWatchHomeHeroManifestCatalog,
   signWatchSurfaceManifest,
@@ -6,7 +7,7 @@ import {
   authoredWatchSurfaceSource,
   watchHomeHeroSource,
 } from "@/lib/watch-surface-manifest.sources"
-import { Fragment } from "react"
+import { Fragment, Suspense } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
@@ -24,9 +25,15 @@ import {
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 type WatchHomeExperiencePageProps = {
+  audienceEnabled?: boolean
+  /** Published audience configuration; absent keeps the code definitions. */
+  audience?: WatchAudienceResolution
   heroModel: WatchHomeModel
+  /** A resolved hero error left independent authored body content available. */
+  heroUnavailable?: boolean
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
@@ -58,6 +65,13 @@ function isWatchHomeHeroBlock(block: Section) {
     (block as { readonly __typename?: string | null }).__typename ===
     "WatchHomeHeroBlock"
   )
+}
+
+function watchHomeBlockKey(block: Section, index: number) {
+  const sectionKey = (block as { sectionKey?: string | null }).sectionKey
+  return typeof sectionKey === "string" && sectionKey.trim().length > 0
+    ? sectionKey
+    : index
 }
 
 type PageHeadingCandidate = {
@@ -139,7 +153,10 @@ function isDynamicMediaCollectionBlock(block: Section) {
 }
 
 export function WatchHomeExperiencePage({
+  audienceEnabled = false,
+  audience,
   heroModel,
+  heroUnavailable = false,
   blocks,
   locale = "en",
   languageSlug,
@@ -148,6 +165,7 @@ export function WatchHomeExperiencePage({
   dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
+  const tLoading = useTranslations("ExperienceSkeleton")
   const backdrop = findBackdropImage(heroModel)
   const normalized = normalizeAuthoredPageHeadings(blocks)
   const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
@@ -203,8 +221,7 @@ export function WatchHomeExperiencePage({
   ) : null
 
   const renderBlock = (block: Section, index: number) => {
-    const blockKey =
-      (block as { sectionKey?: string | null }).sectionKey ?? index
+    const blockKey = watchHomeBlockKey(block, index)
 
     if (isWatchHomeHeroBlock(block)) {
       // Reached only by a hero authored somewhere other than first — a leading
@@ -239,6 +256,11 @@ export function WatchHomeExperiencePage({
     )
     const typename = (block as { readonly __typename?: string | null })
       .__typename
+    // The audience frame is the one shared band above, fed by the published
+    // configuration. The authored block only carries that data: it keeps its
+    // place (and every other block's key and placement index) but mounts
+    // nothing, so the questionnaire never appears twice.
+    if (typename === "WatchAudienceBlock") return <Fragment key={blockKey} />
     const instrumentedBlock =
       typename === "LanguageGlobeBlock" ? (
         <Fragment key={blockKey}>{renderedBlock}</Fragment>
@@ -323,29 +345,71 @@ export function WatchHomeExperiencePage({
         {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
             rail to the viewport edges. `html`/`body` already clip the page,
             so nothing gains a horizontal scrollbar. */}
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
+        {/* An unavailable carousel has no height. Keep the restored body below
+            the fixed header without reserving a full empty hero viewport. */}
+        <div
+          className={`relative z-10 mx-auto -mt-[100vh] max-w-[1920px]${
+            heroUnavailable
+              ? " pt-[calc(5.5rem+env(safe-area-inset-top,0px))] md:pt-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:pt-[calc(4.25rem+env(safe-area-inset-top,0px))]"
+              : ""
+          }`}
+        >
           {normalized.hasAuthoredPageHeading ? null : (
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
           {heroAboveBodyZone ? (
-            <WatchHomeTvCarousel
-              heroManifestCatalog={
-                signWatchHomeHeroManifestCatalog(
-                  watchHomeHeroSource(heroModel),
-                ) ?? undefined
+            <Suspense
+              fallback={
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-label={tLoading("loadingContent")}
+                  className="relative h-[66svh] w-full animate-pulse bg-stone-900 md:h-[min(100svh,56.25vw)]"
+                >
+                  <div className="absolute bottom-8 left-6 right-6 flex flex-col gap-3 md:left-12 md:right-12">
+                    <div className="h-10 w-2/3 rounded bg-stone-800 md:h-14" />
+                    <div className="h-4 w-1/3 rounded bg-stone-800" />
+                  </div>
+                </div>
               }
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
+            >
+              <WatchHomeTvCarousel
+                heroManifestCatalog={
+                  signWatchHomeHeroManifestCatalog(
+                    watchHomeHeroSource(heroModel),
+                  ) ?? undefined
+                }
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+            </Suspense>
           ) : null}
           <WatchHomeBodyZone>
-            {heroAboveBodyZone ? compatibilityCategoryRail : null}
-            {bodyZoneBlocks.map((block, index) =>
+            {audienceEnabled ? (
+              <WatchHomeRoleBand
+                audience={audience}
+                languageSlug={languageSlug}
+              />
+            ) : null}
+            {heroAboveBodyZone ? (
+              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+            ) : null}
+            {bodyZoneBlocks.map((block, index) => {
               // Keep the original index so a block without a `sectionKey`
               // keeps the key it had before the hero was hoisted out.
-              renderBlock(block, leadsWithHeroBlock ? index + 1 : index),
-            )}
-            <WatchHomeFooter />
+              const renderIndex = leadsWithHeroBlock ? index + 1 : index
+              return (
+                <Suspense
+                  key={watchHomeBlockKey(block, renderIndex)}
+                  fallback={null}
+                >
+                  {renderBlock(block, renderIndex)}
+                </Suspense>
+              )
+            })}
+            <Suspense fallback={null}>
+              <WatchHomeFooter />
+            </Suspense>
           </WatchHomeBodyZone>
         </div>
       </div>

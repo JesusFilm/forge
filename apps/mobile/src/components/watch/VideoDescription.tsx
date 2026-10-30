@@ -31,7 +31,9 @@ export function VideoDescription({
 }: VideoDescriptionProps) {
   const typography = useTypography()
   const t = useT("Common")
-  const bodyDirection = useTextDirection().text(descriptionLang)
+  const bodyDirection = useTextDirection().text(descriptionLang, {
+    kind: "paragraph",
+  })
 
   // A mounted instance can go partial -> full under cache-first, so the hook
   // re-measures when the text changes.
@@ -102,7 +104,6 @@ const styles = StyleSheet.create({
   },
   body: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   // Zero height + clipped: the Text still lays out at full width, so its line
   // count is real, but it takes up no space and paints nothing.

@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} bis {last} vo {total}, {chapter}",
     "demoVerse": "Uffe wische für de nächschti Vers",
     "demoChapter": "Nach links wische für s’nächschte Kapitel",
+    "demoChapterRtl": "Nach rächts wische für s’nächschte Kapitel",
     "demoSkip": "Tippe zum Überspringe",
     "demoSkipAriaLabel": "Wisch-Vorfüehrig überspringe",
     "selectVerseAriaHint": "Doppelt tippe, zum de Vers uswähle",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Buech uswähle",
+    "chooseChapter": "Kapitel uswähle",
+    "chooseVerse": "Vers uswähle",
     "oldTestament": "Alts Testament",
     "newTestament": "Neus Testament",
     "books": "Büecher",
@@ -193,7 +196,7 @@
     "someBooks": "{count} vo {total, plural, one {# Buech} other {# Büecher}}",
     "twoNames": "{first} und {second}",
     "threeNames": "{first}, {second} und {third}",
-    "onDevice": "Uf dem Grät",
+    "downloaded": "Abeglade",
     "downloading": "Am Abelade: {percent} %",
     "downloadStopped": "Download abbroche",
     "updateAvailable": "Update verfüegbar",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serie-Poster",
     "videosHeading": "Videos i dere Serie",
     "detailsLoadError": "D’Details händ nöd ganz chöne glade werde.",
+    "languagesTitle": "Videosprach",
     "searchLanguagesPlaceholder": "Sprache sueche…",
     "searchLanguagesAriaLabel": "Sprache sueche",
     "noLanguagesFound": "Kei Sprache gfunde",
@@ -502,6 +506,7 @@
     "resumeAt": "Wiiterluege ab {time}",
     "unknownLanguage": "Unbekannt",
     "downloadedStatus": "Abeglade",
+    "languagesTitle": "Videosprach",
     "searchLanguagesPlaceholder": "Sprache sueche…",
     "searchLanguagesAriaLabel": "Sprache sueche",
     "noLanguagesFound": "Kei Sprache gfunde",
@@ -773,5 +778,8 @@
     "send": "Schicke",
     "sending": "Wird gschickt…",
     "sendAriaLabel": "Feedback schicke"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "D’App bruucht dis lokale Netz, zum Grät für d’Übertragig finde, damit du Videos uf dim Fernseh chasch abspiele."
   }
 }

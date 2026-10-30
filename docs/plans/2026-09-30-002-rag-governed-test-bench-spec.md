@@ -163,7 +163,7 @@ implemented and authorized, never merely because the planning PR was merged.
 
 ## Further Notes
 
-- Tracker: [feat-576](../roadmap/rag/feat-576-rag-governed-test-bench.md), tagged ready-for-agent and dependent on [feat-575](../roadmap/rag/feat-575-rag-consumer-manual.md).
+- Tracker: [feat-576](../roadmap/rag/feat-576-rag-governed-test-bench.md), tagged ready-for-agent and dependent on [feat-620](../roadmap/rag/feat-620-rag-consumer-manual.md).
 - UI contract: [manual spec](2026-09-30-001-rag-consumer-manual-spec.md). The future bounds are deliberately not enforced as public API changes in the initial manual ticket.
 - Operational precedents are the existing consumer-access, consumer-usage and environment/secrets runbooks, with normal Railway deployment and credential lifecycle. The broader usage-capacity review remains relevant before materially expanding bench volume.
 - The explicit numerical defaults in this document are proposed engineering starting points, not claims that production capacity has been measured. Enabling requires local evidence and owner-reviewed operational verification.

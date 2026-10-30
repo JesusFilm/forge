@@ -1,3 +1,5 @@
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+import { resolveWatchAudience } from "@/lib/watch-audience-content"
 import type { ReactNode } from "react"
 import type { Metadata } from "next"
 import { NextIntlClientProvider } from "next-intl"
@@ -24,7 +26,10 @@ import {
 } from "@/i18n/client-messages"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import { watchHomeCollectionStructuredDataJson } from "@/lib/watch-structured-data"
-import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
+import {
+  hasIndependentWatchHomeBody,
+  projectWatchHomeVisibleContent,
+} from "@/lib/watch-home-visible-content"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -108,7 +113,14 @@ export default async function HomePage({ params }: PageProps) {
     })
   }
 
-  if (heroResult.error && !builderBlocks.length) {
+  if (
+    heroResult.error &&
+    !hasIndependentWatchHomeBody(builderBlocks) &&
+    !(
+      pageResult.data?.kind === "experience" &&
+      pageResult.data.watchHomeCategoryRailCompatibility === "legacy-schema"
+    )
+  ) {
     return withMessages(<ExperienceError message={heroResult.error.message} />)
   }
 
@@ -140,11 +152,20 @@ export default async function HomePage({ params }: PageProps) {
     description: WATCH_HOME_DESCRIPTION,
   })
 
+  const audienceEnabled = await isWatchAudienceEnabled()
+  // One published definition for home and video; omitted when the rollout is off.
+  const audience = audienceEnabled
+    ? await resolveWatchAudience(locale)
+    : undefined
+
   return withMessages(
     <>
       <WatchStructuredData json={structuredData} />
       <WatchHomeExperiencePage
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         heroModel={heroModel}
+        heroUnavailable={Boolean(heroResult.error)}
         blocks={visibleContent.blocks}
         locale={locale}
         languageSlug={languageSlug}

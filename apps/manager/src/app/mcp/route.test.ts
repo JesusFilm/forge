@@ -293,3 +293,47 @@ it("offers read-scoped output inspection and returns actual MCP image blocks", a
     mimeType: "image/jpeg",
   })
 })
+
+it("discovers owner deletion only with edit consent and forwards exact retry identity", async () => {
+  const input = {
+    projectId: "owned-project",
+    expectedRevision: 3,
+    idempotencyKey: "delete-once",
+  }
+  const discovery = (await (await rpc("tools/list")).json()).result.tools
+  expect(
+    discovery.find(
+      (tool: { name: string }) => tool.name === "shorts.deleteProject",
+    ).annotations,
+  ).toEqual({ destructiveHint: true, idempotentHint: true })
+  vi.mocked(studioServiceCall).mockResolvedValue({
+    projectId: input.projectId,
+    revision: 3,
+    outcome: "ACCEPTED",
+  })
+  const response = await rpc("tools/call", {
+    name: "shorts.deleteProject",
+    arguments: input,
+  })
+  expect((await response.json()).result.structuredContent.result).toMatchObject(
+    { outcome: "ACCEPTED" },
+  )
+  expect(authenticateStudioMcp).toHaveBeenLastCalledWith(
+    expect.any(Request),
+    "shorts:edit",
+  )
+  expect(studioServiceCall).toHaveBeenLastCalledWith("admin", caller, {
+    action: "delete",
+    input,
+  })
+  vi.mocked(authenticateStudioMcp).mockResolvedValue({
+    ...caller,
+    scopes: ["shorts:read"],
+  })
+  const readOnly = (await (await rpc("tools/list")).json()).result.tools
+  expect(
+    readOnly.some(
+      (tool: { name: string }) => tool.name === "shorts.deleteProject",
+    ),
+  ).toBe(false)
+})

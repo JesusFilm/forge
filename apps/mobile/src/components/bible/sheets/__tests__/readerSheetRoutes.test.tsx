@@ -70,6 +70,16 @@ jest.mock("../../../../contexts/WatchPreferencesProvider", () => ({
 jest.mock("../../../../hooks/useIsTabletLayout", () => ({
   useIsTabletLayout: () => mockRoute.tablet,
 }))
+// The phone's own setting, which System mode follows (feat-705 KTD4).
+const mockPhone: { scheme: "light" | "dark" | null } = { scheme: null }
+jest.mock("../../../../hooks/usePhoneColorScheme", () => ({
+  usePhoneColorScheme: () => mockPhone.scheme,
+}))
+// feat-705 KTD10: each case sets the Liquid Glass gate; it is off by default.
+const mockGate = { glass: false }
+jest.mock("../../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
 // FlashList virtualizes against a layout jest never measures, so render the
 // header and every row inline instead.
 const mockPresentDownload = jest.fn((_context: unknown) => Promise.resolve())
@@ -184,6 +194,8 @@ const PASSAGE = {
   verse: (verse: number) => passageT("verseAriaLabel", { verse }),
   notInTranslation: (shortName: string) =>
     passageT("notInTranslation", { shortName }),
+  oldTestament: passageT("oldTestament"),
+  newTestament: passageT("newTestament"),
 }
 const TRANSLATION = { onDeviceOnly: pickerT("onDeviceOnly") }
 const SETTINGS = {
@@ -267,6 +279,8 @@ beforeEach(() => {
   mockRoute.screenOptions = []
   mockRoute.audioLanguage = null
   mockRoute.tablet = false
+  mockPhone.scheme = null
+  mockGate.glass = false
 })
 
 afterEach(async () => {
@@ -368,7 +382,9 @@ describe("reader-passage route", () => {
 
     const deuteronomy = `Deuteronomy, ${PASSAGE.notInTranslation("WBT")}`
     expect(controls(renderer, deuteronomy)).toHaveLength(1)
+    await press(renderer, PASSAGE.newTestament)
     expect(controls(renderer, "MATEO")).toHaveLength(1)
+    await press(renderer, PASSAGE.oldTestament)
     // The current verse still shows, in BSB numbers for a book WBT lacks.
     await press(renderer, deuteronomy)
     const [chapterTwo] = controls(renderer, PASSAGE.chapter(2))
@@ -402,7 +418,9 @@ describe("reader-passage route", () => {
       for (let i = 0; i < 10; i += 1) await Promise.resolve()
     })
 
+    await press(renderer, PASSAGE.newTestament)
     expect(controls(renderer, "MATEO")).toHaveLength(1)
+    await press(renderer, PASSAGE.oldTestament)
     const psalms = `Псалтирь, ${PASSAGE.notInTranslation("WBT")}`
     await press(renderer, psalms)
     const [chapter22] = controls(renderer, PASSAGE.chapter(22))
@@ -458,6 +476,17 @@ describe("reader-passage route", () => {
     await renderRoute(ReaderPassageRoute)
     expect(lastBackground()).toBe(readerTokens("trueDark").background)
   })
+
+  it.each(["light", "dark"] as const)(
+    "covers AE2: in System mode, a %s phone paints the sheet in that theme",
+    async (phone) => {
+      mockPhone.scheme = phone
+      const { settings } = install()
+      settings.update({ mode: "system" })
+      await renderRoute(ReaderPassageRoute)
+      expect(lastBackground()).toBe(readerTokens(phone).background)
+    },
+  )
 })
 
 describe("reader-translation route", () => {
@@ -756,5 +785,152 @@ describe("reader-settings route", () => {
     mockRoute.params = { translation: "a/b", offline: "maybe" }
     const renderer = await renderRoute(ReaderSettingsRoute)
     expect(hasText(renderer, SETTINGS.aboutTitle)).toBe(true)
+  })
+})
+
+// feat-705 U10, R15, KTD7: only the Dark theme shows the system glass sheet.
+// Light stays solid under the dark app style; True Dark stays pure black.
+describe("the system glass sheet in the reader's Dark theme", () => {
+  const ROUTES = [
+    ["reader-passage", ReaderPassageRoute, "reader-passage-picker"],
+    ["reader-translation", ReaderTranslationRoute, "reader-translation-picker"],
+    ["reader-settings", ReaderSettingsRoute, "reader-settings-sheet"],
+  ] as const
+
+  const fillOf = (node: RenderedNode) =>
+    (
+      StyleSheet.flatten(node.props.style as never) as
+        | { backgroundColor?: unknown }
+        | undefined
+    )?.backgroundColor
+
+  /** The fill on the sheet body's own root view. */
+  function bodyFill(renderer: TestInstance, testID: string): unknown {
+    const [root] = renderer.root.findAll(
+      (node) => typeof node.type === "string" && node.props.testID === testID,
+    )
+    if (!root) throw new Error(`no body with testID "${testID}"`)
+    return fillOf(root)
+  }
+
+  /** Every view fill, so no body or placeholder can keep the solid page. */
+  function hostFills(renderer: TestInstance): unknown[] {
+    return renderer.root
+      .findAll((node) => typeof node.type === "string")
+      .map(fillOf)
+  }
+
+  const DARK = readerTokens("dark").background
+
+  it.each(ROUTES)(
+    "%s: has no solid fill in Dark on iOS 26 (AE2)",
+    async (_name, Route, testID) => {
+      mockGate.glass = true
+      install().settings.update({ mode: "dark" })
+      const renderer = await renderRoute(Route)
+      expect(lastBackground()).toBe("transparent")
+      expect(bodyFill(renderer, testID) ?? "transparent").toBe("transparent")
+      expect(hostFills(renderer)).not.toContain(DARK)
+    },
+  )
+
+  it.each(
+    ROUTES.flatMap(([name, Route, testID]) =>
+      (["light", "trueDark"] as const).map(
+        (theme) => [name, theme, Route, testID] as const,
+      ),
+    ),
+  )(
+    "%s: keeps the solid %s fill on iOS 26",
+    async (_name, theme, Route, testID) => {
+      mockGate.glass = true
+      install().settings.update({ mode: theme })
+      const renderer = await renderRoute(Route)
+      expect(lastBackground()).toBe(readerTokens(theme).background)
+      expect(bodyFill(renderer, testID)).toBe(readerTokens(theme).background)
+    },
+  )
+
+  it.each(ROUTES)(
+    "%s: keeps the solid Dark fill without Liquid Glass",
+    async (_name, Route, testID) => {
+      install().settings.update({ mode: "dark" })
+      const renderer = await renderRoute(Route)
+      expect(lastBackground()).toBe(DARK)
+      expect(bodyFill(renderer, testID)).toBe(DARK)
+    },
+  )
+
+  it("covers AE2 on the translation sheet of a light-mode phone", async () => {
+    mockGate.glass = true
+    mockPhone.scheme = "light"
+    const { settings } = install()
+    settings.update({ mode: "system" })
+    const renderer = await renderRoute(ReaderTranslationRoute)
+    const body = () => bodyFill(renderer, "reader-translation-picker")
+    expect(lastBackground()).toBe(readerTokens("light").background)
+    expect(body()).toBe(readerTokens("light").background)
+
+    await act(async () => settings.update({ mode: "dark" }))
+    expect(lastBackground()).toBe("transparent")
+    expect(body() ?? "transparent").toBe("transparent")
+
+    await act(async () => settings.update({ mode: "trueDark" }))
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
+    expect(body()).toBe(readerTokens("trueDark").background)
+  })
+
+  it("turns solid when the viewer picks True Dark with the sheet open", async () => {
+    mockGate.glass = true
+    const { settings } = install()
+    settings.update({ mode: "dark" })
+    const renderer = await renderRoute(ReaderSettingsRoute)
+    expect(lastBackground()).toBe("transparent")
+
+    await press(renderer, SETTINGS.modes.trueDark)
+    expect(settings.getSnapshot().mode).toBe("trueDark")
+    expect(lastBackground()).toBe(readerTokens("trueDark").background)
+    expect(bodyFill(renderer, "reader-settings-sheet")).toBe(
+      readerTokens("trueDark").background,
+    )
+  })
+
+  it.each([
+    ["reader-passage", ReaderPassageRoute],
+    ["reader-translation", ReaderTranslationRoute],
+  ] as const)(
+    "%s: draws its loading placeholder clear in Dark on iOS 26",
+    async (_name, Route) => {
+      const { loadCatalog, settings } = install()
+      loadCatalog.mockImplementation(() => new Promise(() => {}))
+      settings.update({ mode: "dark" })
+      mockGate.glass = false
+      const solid = await renderRoute(Route)
+      // The placeholder is the only view in the loading state.
+      expect(hostFills(solid)).toEqual([DARK])
+      await unmount(solid)
+
+      mockGate.glass = true
+      mounted = await renderRoute(Route)
+      expect(lastBackground()).toBe("transparent")
+      expect(hostFills(mounted)).toHaveLength(1)
+      expect(hostFills(mounted)).not.toContain(DARK)
+    },
+  )
+
+  it("draws the catalog failure message clear in Dark on iOS 26", async () => {
+    mockGate.glass = true
+    const { loadCatalog, settings } = install()
+    loadCatalog.mockImplementation(() =>
+      Promise.resolve({ status: "failed", reason: "read-failed" }),
+    )
+    settings.update({ mode: "dark" })
+    const renderer = await renderRoute(ReaderTranslationRoute)
+    expect(hasText(renderer, readerT("catalogTitle"))).toBe(true)
+    expect(lastBackground()).toBe("transparent")
+    expect(bodyFill(renderer, "reader-sheet-message") ?? "transparent").toBe(
+      "transparent",
+    )
+    expect(hostFills(renderer)).not.toContain(DARK)
   })
 })

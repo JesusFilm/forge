@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 16.0.0",
+    "version": ">= 20.5.1",
     "appVersionSource": "remote"
   },
   "build": {
@@ -10,6 +10,9 @@
       "environment": "development",
       "env": {
         "EXPO_TV": "1",
+        "EXPO_TV_ALLOW_LOCAL_NETWORKING": "1",
+        "EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED": "true",
+        "EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED": "true",
         "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       }
     },
@@ -18,6 +21,8 @@
       "environment": "preview",
       "env": {
         "EXPO_TV": "1",
+        "EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED": "true",
+        "EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED": "true",
         "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       },
       "android": {
@@ -29,6 +34,21 @@
       "environment": "production",
       "env": {
         "EXPO_TV": "1",
+        "EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED": "false",
+        "EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED": "true",
+        "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "beta": {
+      "autoIncrement": true,
+      "environment": "preview",
+      "env": {
+        "EXPO_TV": "1",
+        "EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED": "true",
+        "EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED": "true",
         "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       },
       "android": {

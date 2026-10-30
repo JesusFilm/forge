@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} илә {last} арасы ајәләр, ҹәми {total}, {chapter}",
     "demoVerse": "Нөвбәти ајә үчүн јухары сүрүшдүрүн",
     "demoChapter": "Нөвбәти фәсил үчүн сола сүрүшдүрүн",
+    "demoChapterRtl": "Нөвбәти фәсил үчүн саға сүрүшдүрүн",
     "demoSkip": "Кечмәк үчүн тохунун",
     "demoSkipAriaLabel": "Сүрүшдүрмә нүмајишини кеч",
     "selectVerseAriaHint": "Бу ајәни сечмәк үчүн ики дәфә тохунун",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китаб сечин",
+    "chooseChapter": "Фәсил сечин",
+    "chooseVerse": "Ајә сечин",
     "oldTestament": "Әһди-Әтиг",
     "newTestament": "Әһди-Ҹәдид",
     "books": "Китаблар",
@@ -193,7 +196,7 @@
     "someBooks": "Мөвҹуд китаблар: {count}, үмуми сај: {total, plural, other {#}}",
     "twoNames": "{first} вә {second}",
     "threeNames": "{first}, {second} вә {third}",
-    "onDevice": "Бу ҹиһазда",
+    "downloaded": "Ендирилиб",
     "downloading": "Ендирилир: {percent}%",
     "downloadStopped": "Ендирмә дајанды",
     "updateAvailable": "Јениләмә вар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериал постери",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Там мәлуматы јүкләмәк мүмкүн олмады.",
+    "languagesTitle": "Видеонун дили",
     "searchLanguagesPlaceholder": "Дил ахтарын...",
     "searchLanguagesAriaLabel": "Дил ахтар",
     "noLanguagesFound": "Дил тапылмады",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} анындан давам ет",
     "unknownLanguage": "Намәлум",
     "downloadedStatus": "Ендирилиб",
+    "languagesTitle": "Видеонун дили",
     "searchLanguagesPlaceholder": "Дил ахтарын...",
     "searchLanguagesAriaLabel": "Дил ахтар",
     "noLanguagesFound": "Дил тапылмады",
@@ -773,5 +778,8 @@
     "send": "Ҝөндәр",
     "sending": "Ҝөндәрилир…",
     "sendAriaLabel": "Рәј ҝөндәр"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Тәтбиг јајым ҹиһазларыны тапмаг үчүн јерли шәбәкәниздән истифадә едир ки, видеолары телевизорунузда ојнада биләсиниз."
   }
 }

@@ -24,8 +24,6 @@ const schema = z
     action: z.enum([
       "assets",
       "asset",
-      "packs",
-      "pack",
       "source",
       "source-preview",
       "search",

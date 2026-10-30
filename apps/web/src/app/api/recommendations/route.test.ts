@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { adminSemanticRecommendationDeliveryOperation } from "@forge/admin-graphql/operations"
+import {
+  adminSemanticRecommendationDeliveryOperation,
+  adminSemanticRecommendationDeliveryQuery,
+} from "@forge/admin-graphql/operations"
 import {
   RECOMMENDATION_MUTATION_CLIENT_LIMIT,
   resetRecommendationMutationAdmissionForTests,
@@ -266,6 +269,9 @@ describe("POST /watch/api/recommendations", () => {
         fetchPolicy: "no-cache",
       }),
     )
+    expect(adminSemanticRecommendationDeliveryQuery).not.toContain(
+      "privatePreviewFallback",
+    )
     expect(variables).toMatchObject({
       seedMediaId: "seed-1",
       locale: "en",
@@ -273,6 +279,46 @@ describe("POST /watch/api/recommendations", () => {
       eligibleHuman: true,
     })
     expect(variables.sessionDigest).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it("reports legacy browser requests missing a stable navigation visit ID", async () => {
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        { "user-agent": "Mozilla/5.0" },
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(query).toHaveBeenCalledOnce()
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded experimentAdmission=missing_visit_id httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+    ])
+  })
+
+  it("reports missing signed browser configuration without enrolling a visit", async () => {
+    const response = await POST(
+      request(
+        JSON.stringify({
+          seedMediaId: "seed-1",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        {
+          "user-agent": "Mozilla/5.0",
+          "x-forge-recommendation-visit-id":
+            "22222222-2222-4222-8222-222222222222",
+        },
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(query).toHaveBeenCalledOnce()
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=seeded experimentAdmission=browser_identity_unavailable httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+    ])
   })
 
   it("preserves an editorial thumbnail on a served delivery", async () => {
@@ -368,10 +414,10 @@ describe("POST /watch/api/recommendations", () => {
     expect(response.headers.get("set-cookie")).toBeNull()
   })
 
-  it("keeps a legacy profile dormant until a fresh consent receipt is present", async () => {
+  it("ignores a legacy profile cookie", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
-    await POST(
+    const response = await POST(
       request(
         JSON.stringify({
           seedMediaId: "seed-1",
@@ -384,12 +430,13 @@ describe("POST /watch/api/recommendations", () => {
       ),
     )
 
+    expect(response.headers.get("set-cookie")).toBeNull()
     const variables = query.mock.calls[0]?.[0]?.variables
     expect(variables.consentReceiptDigest).toBeNull()
     expect(variables.profileTokenDigest).toBeNull()
   })
 
-  it("forwards only the digests of one valid consent receipt and profile cookie", async () => {
+  it("ignores retired consent and profile credentials while retaining the session", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
     const consent = "c".repeat(43)
@@ -407,17 +454,13 @@ describe("POST /watch/api/recommendations", () => {
     )
 
     const variables = query.mock.calls[0]?.[0]?.variables
-    expect(variables.profileTokenDigest).toBe(
-      createHash("sha256").update(profile).digest("hex"),
-    )
-    expect(variables.consentReceiptDigest).toBe(
-      createHash("sha256").update(consent).digest("hex"),
-    )
+    expect(variables.profileTokenDigest).toBeNull()
+    expect(variables.consentReceiptDigest).toBeNull()
     expect(JSON.stringify(variables)).not.toContain(profile)
     expect(JSON.stringify(variables)).not.toContain(consent)
   })
 
-  it("recovers consent and profile digests from the one cookie production preserves", async () => {
+  it("ignores retired credentials in the combined legacy consent cookie", async () => {
     const session = "a".repeat(43)
     const profile = "b".repeat(43)
     const consent = "c".repeat(43)
@@ -435,12 +478,8 @@ describe("POST /watch/api/recommendations", () => {
     )
 
     const variables = query.mock.calls[0]?.[0]?.variables
-    expect(variables.profileTokenDigest).toBe(
-      createHash("sha256").update(profile).digest("hex"),
-    )
-    expect(variables.consentReceiptDigest).toBe(
-      createHash("sha256").update(consent).digest("hex"),
-    )
+    expect(variables.profileTokenDigest).toBeNull()
+    expect(variables.consentReceiptDigest).toBeNull()
   })
 
   it.each([

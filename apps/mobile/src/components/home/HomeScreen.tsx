@@ -22,6 +22,7 @@ import { useNavigation, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { GlassSurface } from "../ui/GlassSurface"
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { useUiTag } from "../../hooks/useUiTag"
@@ -37,7 +38,9 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { useTabBarClearance } from "../../lib/tabBar"
+import { heroSwipeTarget } from "../../lib/horizontalPaging"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { nextHomeLogoHidden } from "../../lib/homeLogoVisibility"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
@@ -98,7 +101,11 @@ const HERO_SWIPE_COMMIT_PX = 40
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function HomeScreen() {
+type HomeScreenProps = {
+  testID?: string
+}
+
+export function HomeScreen({ testID }: HomeScreenProps) {
   const t = useT("Home")
   const epoch = useLocaleEpoch()
   const uiTag = useUiTag()
@@ -114,6 +121,7 @@ export function HomeScreen() {
   const {
     model,
     recommendationsInsertIndex,
+    bodySource,
     loading,
     refreshing,
     error,
@@ -289,12 +297,14 @@ export function HomeScreen() {
           const { slideCount } = swipeStateRef.current
           const index = gestureStartIndexRef.current
           if (slideCount === 0) return
-          if (gesture.dx < -HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.swipeToSlide(Math.min(index + 1, slideCount - 1))
-          } else if (gesture.dx > HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.swipeToSlide(Math.max(index - 1, 0))
-          }
+          const target = heroSwipeTarget({
+            dx: gesture.dx,
+            index,
+            slideCount,
+            commitPx: HERO_SWIPE_COMMIT_PX,
+          })
           // Sub-threshold drag: no slide change.
+          if (target != null) pagerRef.current?.swipeToSlide(target)
         },
       }),
     [],
@@ -568,7 +578,11 @@ export function HomeScreen() {
   }
 
   return (
-    <View style={layout.screenContainer} {...heroPanResponder.panHandlers}>
+    <View
+      testID={testID}
+      style={layout.screenContainer}
+      {...heroPanResponder.panHandlers}
+    >
       {heroVisible && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <HomeHeroPager
@@ -591,6 +605,9 @@ export function HomeScreen() {
       <HomeLogo topInset={insets.top} hidden={logoHidden} />
 
       <FlashList
+        testID={
+          bodySource === "experience" ? "home-body-live" : "home-body-fallback"
+        }
         data={feedItems}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
@@ -663,16 +680,22 @@ const HeroChrome = memo(function HeroChrome({
 }: HeroChromeProps) {
   const typography = useTypography()
   const t = useT("Home")
+  // Stop taking touches once half-faded: feed content starts overlapping
+  // at ~25% fade, and half-visible buttons must not intercept taps aimed
+  // at the feed beneath them.
+  const takesTouches = opacity >= 0.5
+  // KTD6: glass draws nothing under a fading ancestor, so on glass each part
+  // takes the fade, and the mute glass dissolves at the touch cut.
+  const glass = canUseLiquidGlass()
+  const partFade = glass ? { opacity } : null
 
   return (
     <View
-      style={[styles.heroChrome, { opacity }]}
-      // Stop taking touches once half-faded: feed content starts overlapping
-      // at ~25% fade, and half-visible buttons must not intercept taps aimed
-      // at the feed beneath them.
-      pointerEvents={opacity < 0.5 ? "none" : "box-none"}
+      testID="home-hero-chrome"
+      style={[styles.heroChrome, !glass && { opacity }]}
+      pointerEvents={takesTouches ? "box-none" : "none"}
     >
-      <View style={styles.heroChromeLeft} pointerEvents="box-none">
+      <View style={[styles.heroChromeLeft, partFade]} pointerEvents="box-none">
         {slide.kind === "video" && slide.slug != null && (
           <Pressable
             style={({ pressed }) => [
@@ -709,20 +732,27 @@ const HeroChrome = memo(function HeroChrome({
       </View>
       {slide.kind === "video" && (
         <Pressable
-          style={({ pressed }) => [
-            styles.muteButton,
-            pressed && feedback.pressed,
-          ]}
           onPress={onToggleMute}
           accessibilityLabel={muted ? t("unmuteAriaLabel") : t("muteAriaLabel")}
           accessibilityRole="button"
           {...{ "dd-action-name": "hero-mute-toggle" }}
         >
-          <Ionicons
-            name={muted ? "volume-mute" : "volume-high"}
-            size={20}
-            color={TEXT_ON_OVERLAY}
-          />
+          {({ pressed }) => (
+            <GlassSurface
+              style={styles.muteButton}
+              fallback={{ kind: "fill", style: styles.muteFill }}
+              visible={takesTouches}
+              fade={glass ? opacity : undefined}
+              interactive
+              pressed={pressed}
+            >
+              <Ionicons
+                name={muted ? "volume-mute" : "volume-high"}
+                size={20}
+                color={TEXT_ON_OVERLAY}
+              />
+            </GlassSurface>
+          )}
         </Pressable>
       )}
     </View>
@@ -775,15 +805,16 @@ const styles = StyleSheet.create({
   ctaText: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   muteButton: {
     width: HERO_CTA_HEIGHT,
     height: HERO_CTA_HEIGHT,
     borderRadius: HERO_CTA_HEIGHT / 2,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  muteFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),
@@ -799,7 +830,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: TEXT_SECONDARY,
     fontSize: 17,
-    fontFamily: "System",
     marginTop: 12,
   },
   errorMessageSpacing: {
@@ -817,11 +847,9 @@ const styles = StyleSheet.create({
     color: TEXT_ON_OVERLAY,
     fontSize: 17,
     fontWeight: "600",
-    fontFamily: "System",
   },
   emptyText: {
     color: TEXT_SECONDARY,
     fontSize: 17,
-    fontFamily: "System",
   },
 })

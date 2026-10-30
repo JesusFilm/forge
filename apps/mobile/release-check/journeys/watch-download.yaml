@@ -1,0 +1,77 @@
+# Open the download sheet and start a download (U1 proved that a signed iOS
+# simulator build finishes a download). The birth of Jesus has downloads.
+appId: org.jesusfilm.forgewatch
+name: watch-download
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- tapOn:
+    text: Download
+    label: Open the download sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 20000
+    label: The download sheet shows
+- tapOn:
+    text: "Select a file size, .+"
+    label: Open the file size list
+- tapOn:
+    text: "Low.*"
+    label: Pick the smallest file
+# On an iPad the button can sit under the sheet's lower edge, where a tap
+# closes the sheet, so the journey scrolls the sheet itself.
+- swipe:
+    from:
+      id: screen-watch-download
+    direction: UP
+    label: Scroll the sheet up
+- scrollUntilVisible:
+    element:
+      text: Download video
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the download button
+- tapOn:
+    text: Download video
+    label: Start the download
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 20000
+    label: The watch page shows after the sheet
+- extendedWaitUntil:
+    visible:
+      text: Downloaded
+    timeout: 180000
+    label: The download finishes

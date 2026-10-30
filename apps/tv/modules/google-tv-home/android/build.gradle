@@ -1,0 +1,26 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.googletvhome'
+version = '0.1.0'
+
+android {
+  namespace 'expo.modules.googletvhome'
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+  sourceSets {
+    release {
+      manifest.srcFile(System.getenv('GOOGLE_TV_ENGAGE_TESTING') == '1'
+        ? 'src/verification/AndroidManifest.xml'
+        : 'src/release/AndroidManifest.xml')
+    }
+  }
+}
+
+dependencies {
+  implementation 'com.google.android.engage:engage-tv:1.1.0'
+}

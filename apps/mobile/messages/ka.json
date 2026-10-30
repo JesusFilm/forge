@@ -138,6 +138,7 @@
     "versesAriaValue": "მუხლები {first}-დან {last}-მდე, სულ {total}, {chapter}",
     "demoVerse": "გადაფურცლეთ ზემოთ შემდეგი მუხლისთვის",
     "demoChapter": "გადაფურცლეთ მარცხნივ შემდეგი თავისთვის",
+    "demoChapterRtl": "გადაფურცლეთ მარჯვნივ შემდეგი თავისთვის",
     "demoSkip": "შეეხეთ გამოსატოვებლად",
     "demoSkipAriaLabel": "გადაფურცვლის დემონსტრაციის გამოტოვება",
     "selectVerseAriaHint": "ორჯერ შეეხეთ ამ მუხლის ასარჩევად",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "აირჩიეთ წიგნი",
+    "chooseChapter": "აირჩიეთ თავი",
+    "chooseVerse": "აირჩიეთ მუხლი",
     "oldTestament": "ძველი აღთქმა",
     "newTestament": "ახალი აღთქმა",
     "books": "წიგნები",
@@ -193,7 +196,7 @@
     "someBooks": "{count} წიგნი {total, plural, one {#-დან} other {#-დან}}",
     "twoNames": "{first} და {second}",
     "threeNames": "{first}, {second} და {third}",
-    "onDevice": "ამ მოწყობილობაზე",
+    "downloaded": "ჩამოტვირთულია",
     "downloading": "იტვირთება {percent}%",
     "downloadStopped": "ჩამოტვირთვა შეწყდა",
     "updateAvailable": "ხელმისაწვდომია განახლება",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "სერიის პოსტერი",
     "videosHeading": "ვიდეოები",
     "detailsLoadError": "სრული ინფორმაციის ჩატვირთვა ვერ მოხერხდა.",
+    "languagesTitle": "ვიდეოს ენა",
     "searchLanguagesPlaceholder": "ენების ძიება…",
     "searchLanguagesAriaLabel": "ენების ძიება",
     "noLanguagesFound": "ენები ვერ მოიძებნა",
@@ -502,6 +506,7 @@
     "resumeAt": "გაგრძელება {time}-დან",
     "unknownLanguage": "უცნობი",
     "downloadedStatus": "ჩამოტვირთულია",
+    "languagesTitle": "ვიდეოს ენა",
     "searchLanguagesPlaceholder": "ენების ძიება…",
     "searchLanguagesAriaLabel": "ენების ძიება",
     "noLanguagesFound": "ენები ვერ მოიძებნა",
@@ -773,5 +778,8 @@
     "send": "გაგზავნა",
     "sending": "იგზავნება…",
     "sendAriaLabel": "უკუკავშირის გაგზავნა"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "აპი იყენებს თქვენს ლოკალურ ქსელს ტრანსლირების მოწყობილობების მოსაძებნად, რათა შეძლოთ ვიდეოების დაკვრა თქვენს ტელევიზორზე."
   }
 }
