@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
 import { HYBRID_CANDIDATE_GENERATOR_SET_VERSION } from "@/services/recommendations/candidate"
 import {
   HYBRID_PERSONALIZED_MANIFEST_ID,
@@ -15,135 +15,11 @@ import type {
 import type { RecommendationOpsWindow } from "./shared"
 
 export async function loadProfileShadowOverview(
-  prisma: PrismaClient,
-  window: RecommendationOpsWindow,
-  now: Date,
+  _prisma: PrismaClient,
+  _window: RecommendationOpsWindow,
+  _now: Date,
 ): Promise<RecommendationProfileShadowOverviewData | null> {
-  type Row = {
-    manifestEnabled: boolean
-    generationCount: bigint | number
-    durableGenerationCount: bigint | number
-    sessionGenerationCount: bigint | number
-    failedRunCount: bigint | number
-    coverage: number | null
-    stability: number | null
-    inputWatermark: Date | null
-    expiryWatermark: Date | null
-    interests: unknown
-  }
-  const manifestId = "multi-interest-profile-shadow-v1"
-  const rows = await prisma.$queryRaw<Row[]>(Prisma.sql`
-    WITH scoped_generation AS (
-      SELECT generation.*
-      FROM recommendation_profile_projection_generation generation
-      WHERE generation.manifest_id = ${manifestId}
-        AND generation.created_at >= ${window.start}
-        AND generation.created_at < ${window.end}
-        AND generation.expires_at > ${now}
-    ), interest_summary AS (
-      SELECT COALESCE(jsonb_agg(summary ORDER BY summary.kind, summary.ordinal), '[]'::jsonb) AS interests
-      FROM (
-        SELECT
-          interest.kind::text AS kind,
-          interest.interest_ordinal AS ordinal,
-          COUNT(DISTINCT interest.generation_id) AS generations,
-          AVG(interest.stability) AS stability
-        FROM recommendation_profile_interest interest
-        JOIN scoped_generation generation ON generation.id = interest.generation_id
-        WHERE interest.expires_at > ${now}
-        GROUP BY interest.kind, interest.interest_ordinal
-      ) summary
-    )
-    SELECT
-      manifest.enabled AS "manifestEnabled",
-      COUNT(DISTINCT generation.id) AS "generationCount",
-      COUNT(DISTINCT generation.id) FILTER (WHERE generation.scope = 'durable') AS "durableGenerationCount",
-      COUNT(DISTINCT generation.id) FILTER (WHERE generation.scope = 'session') AS "sessionGenerationCount",
-      (
-        SELECT COUNT(*) FROM recommendation_profile_projection_run run
-        WHERE run.created_at >= ${window.start}
-          AND run.created_at < ${window.end}
-          AND run.state = 'failed'
-      ) AS "failedRunCount",
-      AVG(generation.coverage) FILTER (WHERE generation.state = 'published') AS coverage,
-      AVG(generation.stability) FILTER (WHERE generation.state = 'published') AS stability,
-      MAX(generation.input_watermark) AS "inputWatermark",
-      MIN(generation.expires_at) AS "expiryWatermark",
-      (SELECT interests FROM interest_summary) AS interests
-    FROM recommendation_strategy_manifest manifest
-    LEFT JOIN scoped_generation generation ON true
-    WHERE manifest.id = ${manifestId}
-    GROUP BY manifest.enabled
-  `)
-  const row = rows?.[0]
-  if (!row) return null
-  const generationCount = count(row.generationCount)
-  // U12's small-cohort rule applies to operational summaries too. Counts and
-  // watermarks remain visible; per-interest quality waits for three builds.
-  const metricsSuppressed = generationCount < 3
-  const evaluation = await prisma.recommendationShadowEvaluation.findFirst({
-    where: { manifestId, expiresAt: { gt: now } },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    include: { decision: true },
-  })
-  return {
-    manifestId,
-    manifestEnabled: row.manifestEnabled,
-    shadowOnly: true,
-    generationCount,
-    durableGenerationCount: count(row.durableGenerationCount),
-    sessionGenerationCount: count(row.sessionGenerationCount),
-    failedRunCount: count(row.failedRunCount),
-    metricsSuppressed,
-    coverage: metricsSuppressed ? null : finiteNumber(row.coverage),
-    stability: metricsSuppressed ? null : finiteNumber(row.stability),
-    inputWatermark: row.inputWatermark,
-    expiryWatermark: row.expiryWatermark,
-    interests: metricsSuppressed ? [] : profileInterestSummary(row.interests),
-    evaluation: evaluation
-      ? {
-          state: evaluation.state === "TERMINAL" ? "terminal" : "active",
-          sampledCount: evaluation.sampledCount,
-          processedCount: evaluation.processedCount,
-          failedCount: evaluation.failedCount,
-          coverage: evaluation.coverage,
-          overlap: evaluation.overlap,
-          novelty: evaluation.novelty,
-          diversity: evaluation.diversity,
-          cohortQuality: evaluation.cohortQuality,
-          latencyP95Ms: evaluation.latencyP95Ms,
-          inputWatermark: evaluation.inputWatermark,
-          decision: evaluation.decision?.decision ?? null,
-          reasonCode: evaluation.decision?.reasonCode ?? null,
-          reevaluationCondition:
-            evaluation.decision?.reevaluationCondition ?? null,
-        }
-      : null,
-  }
-}
-
-function profileInterestSummary(
-  value: unknown,
-): RecommendationProfileShadowOverviewData["interests"] {
-  if (!Array.isArray(value)) return []
-  return value.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return []
-    const row = entry as Record<string, unknown>
-    if (
-      (row.kind !== "durable" && row.kind !== "session") ||
-      !Number.isInteger(Number(row.ordinal))
-    ) {
-      return []
-    }
-    return [
-      {
-        kind: row.kind as "durable" | "session",
-        ordinal: Number(row.ordinal),
-        generations: count(row.generations as number),
-        stability: finiteNumber(row.stability as number | null),
-      },
-    ]
-  })
+  return null
 }
 
 export async function loadPromotionState(prisma: PrismaClient, now: Date) {
@@ -405,14 +281,4 @@ function experimentEvaluationState(
   return state === "DATA_UNHEALTHY"
     ? "data-unhealthy"
     : (state.toLowerCase() as RecommendationExperimentEvaluationData["state"])
-}
-
-function count(value: bigint | number): number {
-  const number = Number(value)
-  return Number.isSafeInteger(number) && number >= 0 ? number : 0
-}
-
-function finiteNumber(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null
-  return value
 }

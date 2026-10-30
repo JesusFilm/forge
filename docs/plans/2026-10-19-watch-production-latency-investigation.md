@@ -32,7 +32,7 @@ October 19, 2026, roughly 15:22–15:52 UTC:
 ## Access and exact entry points
 
 - Railway CLI authenticated; no project link in this checkout. Pass project 98952497-a4d9-4714-8fe8-0cdbff3147c9 and production environment 5f41e037-90e4-4674-a3ea-66bbd05fb3b4 explicitly. Web service 23b82451-0da1-4edc-bcde-096a9fd2a687; Redis 940d9914-3156-4e41-8165-af96bfe66a53; admin bdb15048-1ca9-4217-ae01-ef7cc19ca6f4. Use railway metrics --help and railway api describe/search before queries.
-- Checkly CLI authenticated to Jesus Film Project f02b7197-554a-4a15-8a40-3833838706e6. Skill /home/lado/.codex/skills/checkly/SKILL.md. Keyword check 54844597-f049-43fd-8808-06a2df8dbdfc; playback 380dc7b3-67c7-488d-a28f-e7d78e63b099; redirect 949a62aa-29d0-4e7f-8a3d-b8bb46a4d1aa.
+- Checkly CLI authenticated to Jesus Film Project f02b7197-554a-4a15-8a40-3833838706e6 at the original investigation. Discover the current host's installed Checkly skill and CLI, then verify authentication before use. Keyword check 54844597-f049-43fd-8808-06a2df8dbdfc; playback 380dc7b3-67c7-488d-a28f-e7d78e63b099; redirect 949a62aa-29d0-4e7f-8a3d-b8bb46a4d1aa.
 - Datadog connector returned reauthentication required. Chrome profile is authenticated at app.datadoghq.com; T3 preview default profile was logged out. Follow browser discovery/fallback instructions, never reuse old tab IDs blindly. APM service forge-web, operation web.request. Browser env:\* metrics require validating production scope.
 - Local evidence: /tmp/watch-recurrence.json, /tmp/checkly-\*.json, /tmp/watch-cache-headers-{1,2,3}, /tmp/forge-web-resources.json, /tmp/forge-deploy-config.json. Treat temporary artifacts as available starting evidence, not permanent storage. Sanitize durable evidence under docs/reports/.
 - Code: apps/web/cache-handler.mjs, apps/web/src/instrumentation.ts, apps/web/next.config.mjs, apps/web/railway.toml, apps/web/src/proxy.ts, apps/web/src/lib/feature-flags.ts, packages/feature-flags/src/launchdarkly.ts, apps/web/src/app/[locale]/[htmlLang]/page.tsx and [...rest]/page.tsx, `apps/web/scripts/*cache*`.
@@ -44,4 +44,17 @@ October 19, 2026, roughly 15:22–15:52 UTC:
 - Minimal reviewable diff with relevant tests, or a precise blocker/instrumentation requirement. Prepare PR through normal flow if implementation is ready; register it with T3. No merge or production mutation without owner authorization.
 - Proposed recovery acceptance: same-route warm-hit latency near the prior baseline, no 20–30 s stalls in a bounded verification window, Checkly paths passing, and preserved caching/analytics/content behavior. Set final thresholds from comparable baseline evidence, not arbitrary promises.
 
-All heavy filesystem work must use /home/lado/.local/bin/agent-io-guard -- <foreground command>. Includes branches/worktrees, fetch/checkout, installs, builds and broad tests. Do not weaken/bypass the gate; exit 75 retry later, exit 125 report/fix verification blocker. Use default disk thresholds and inherited full-access/auto-approval settings. Use Team subscription only; no API billing.
+Before heavy filesystem work (Git/worktree operations, installs, builds and broad
+tests), check free space on the checkout and temporary filesystems, and available
+inodes where supported. On Unix, use `df -h . "${TMPDIR:-/tmp}"` and
+`df -i . "${TMPDIR:-/tmp}"`; use equivalent native checks on other platforms.
+Run large jobs in the foreground and recheck headroom between them.
+
+If `agent-io-guard` is available on `PATH`, use
+`agent-io-guard -- <foreground command>` with its default thresholds; exit 75
+means retry later, and exit 125 means report/fix the guard failure. When that
+optional tool is absent, continue with native resource checks and normal
+validation. A missing machine-local utility alone does not require approval or
+block work. Stop for an actual resource shortage or an inability to verify
+headroom. Use inherited execution permissions and Team subscription only; no
+API billing.

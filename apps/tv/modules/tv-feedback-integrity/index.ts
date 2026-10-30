@@ -13,6 +13,7 @@ export type AttestedGrant = {
 }
 
 type NativeModule = {
+  readonly isFeedbackSimulator?: boolean
   attestGrant(
     challengeId: string,
     nonce: string,
@@ -26,6 +27,7 @@ export type AppleGrantProof = Omit<AttestedGrant, "integrityToken"> & {
 }
 
 type AppleModule = {
+  readonly isFeedbackSimulator?: boolean
   attestGrant(
     challengeId: string,
     nonce: string,
@@ -41,6 +43,13 @@ const appleModule =
   Platform.OS === "ios"
     ? requireOptionalNativeModule<AppleModule>("TvFeedbackAppleIntegrity")
     : null
+
+export function isFeedbackSimulatorNative(): boolean {
+  return (
+    (Platform.OS === "android" ? nativeModule : appleModule)
+      ?.isFeedbackSimulator === true
+  )
+}
 
 export async function attestFeedbackGrant(
   challengeId: string,

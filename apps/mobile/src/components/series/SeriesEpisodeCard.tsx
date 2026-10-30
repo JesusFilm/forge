@@ -105,6 +105,7 @@ export function SeriesEpisodeCard({
     <View style={styles.cardOuter}>
       <Pressable
         onPress={() => onSelect(episode)}
+        testID="series-episode-card"
         accessibilityRole="button"
         accessibilityLabel={labelParts.join(", ")}
         // The mark fits only a label that is the Admin title alone (R10).

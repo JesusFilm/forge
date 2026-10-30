@@ -183,6 +183,8 @@ describe("runFingerprint", () => {
 
       if (args.includes("null")) {
         expect(args).toEqual([
+          "-tls_verify",
+          "1",
           "-protocol_whitelist",
           whitelist,
           "-i",
@@ -205,6 +207,8 @@ describe("runFingerprint", () => {
       }
 
       expect(args).toEqual([
+        "-tls_verify",
+        "1",
         "-protocol_whitelist",
         whitelist,
         "-i",

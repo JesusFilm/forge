@@ -31,6 +31,11 @@ vi.mock("@/services/watch-film-finder.service", async () => {
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+const audienceEnabled = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: audienceEnabled,
+}))
+
 import { builder } from "@/graphql/builder"
 import "@/graphql/types/watch-film-finder"
 import {
@@ -81,7 +86,24 @@ function run(input: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  audienceEnabled.mockResolvedValue(true)
   findMock.mockResolvedValue({ cards: [], hasNextPage: false, endCursor: null })
+})
+
+describe("watchFilmFinder release gate", () => {
+  it("refuses before any service or SQL work while forge.watch.audience is off", async () => {
+    audienceEnabled.mockResolvedValueOnce(false)
+
+    const result = await run({ laneIds: ["KIDS"], languageSlug: "english" })
+
+    expect(result.errors?.[0]?.extensions).toMatchObject({
+      code: "FORBIDDEN",
+      reason: "watch_audience_disabled",
+    })
+    expect(result.data).toBeNull()
+    expect(constructed).not.toHaveBeenCalled()
+    expect(findMock).not.toHaveBeenCalled()
+  })
 })
 
 describe("watchFilmFinder schema contract", () => {

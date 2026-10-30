@@ -5,7 +5,6 @@ import {
   RecommendationExperimentAssignmentState,
   RecommendationExperimentState,
   RecommendationExperimentUnitKind,
-  RecommendationProfileState,
   type PrismaClient,
 } from "@prisma/client"
 import {
@@ -138,35 +137,16 @@ export async function resolveExperimentAssignment(
       !studyExperimentMatchesProtocol(experiment, protocol!))
   )
     return { assignment: null, bypassReason: "cohort_ineligible" }
-  const profile =
-    (usefulness || isHybridPersonalizedExperiment(experiment)) &&
-    input.profileTokenDigest
-      ? await prisma.recommendationProfile.findFirst({
-          where: {
-            tokenDigest: input.profileTokenDigest,
-            state: RecommendationProfileState.ACTIVE,
-            expiresAt: { gt: now },
-          },
-          select: { id: true, privacyGeneration: true },
-        })
-      : null
-  if (
-    (usefulness || isHybridPersonalizedExperiment(experiment)) &&
-    profile == null
-  ) {
+  if (usefulness || isHybridPersonalizedExperiment(experiment)) {
     return {
       assignment: null,
       bypassReason: "personalization_not_consented",
     }
   }
-  const unitKind = profile
-    ? RecommendationExperimentUnitKind.ANONYMOUS_PROFILE
-    : RecommendationExperimentUnitKind.ANONYMOUS_SESSION
+  const unitKind = RecommendationExperimentUnitKind.ANONYMOUS_SESSION
   const unitDigest = digestAssignmentUnit(
     experiment.id,
-    profile
-      ? `profile:${profile.id}:${profile.privacyGeneration}`
-      : `session:${input.sessionDigest}`,
+    `session:${input.sessionDigest}`,
   )
   const where = {
     experimentId_unitDigest_generation: {
@@ -185,10 +165,7 @@ export async function resolveExperimentAssignment(
       existing.generation !== experiment.generation ||
       existing.expiresAt <= now ||
       (usefulness &&
-        existing.assignedAt.getTime() + 86_400_000 <= now.getTime()) ||
-      (profile != null &&
-        (existing.profileId !== profile.id ||
-          existing.privacyGeneration !== profile.privacyGeneration))
+        existing.assignedAt.getTime() + 86_400_000 <= now.getTime())
     ) {
       return { assignment: null, bypassReason: "assignment_fenced" }
     }
@@ -322,8 +299,8 @@ export async function resolveExperimentAssignment(
         experimentId: experiment.id,
         unitKind,
         unitDigest,
-        profileId: profile?.id ?? null,
-        privacyGeneration: profile?.privacyGeneration ?? null,
+        profileId: null,
+        privacyGeneration: null,
         arm,
         assignmentProbability,
         configurationDigest: experiment.configurationDigest,

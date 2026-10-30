@@ -233,4 +233,23 @@ describe("mobile auth env", () => {
       apiKey: "erasure-key",
     })
   })
+
+  it.each([
+    ["unset", "", false],
+    ["false", "false", false],
+    ["true", "true", true],
+  ])(
+    "reads the learning-erasure rollout setting when %s",
+    async (_label, value, required) => {
+      // Read independently of the erasure endpoint config, so a missing
+      // endpoint cannot hide the requirement.
+      vi.stubEnv("ADMIN_WATCH_PROGRESS_BASE_URL", "")
+      vi.stubEnv("ADMIN_WATCH_PROGRESS_API_KEY", "")
+      vi.stubEnv("AUTH_WATCH_LEARNING_ERASURE_REQUIRED", value)
+
+      const { isWatchLearningErasureRequired } = await loadEnv()
+
+      expect(isWatchLearningErasureRequired()).toBe(required)
+    },
+  )
 })

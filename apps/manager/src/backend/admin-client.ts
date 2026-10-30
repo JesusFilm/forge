@@ -122,6 +122,7 @@ type UpdateAdminJobInput = Partial<
 >
 
 export type AdminVideoForEnrichment = {
+  imageUrl?: string | null
   documentId: string
   coreId?: string | null
   title?: string | null
@@ -966,6 +967,7 @@ export class AdminGraphqlClient {
 
   async getVideosForEnrichment(
     ids: string[] = [],
+    includeArtwork = false,
   ): Promise<AdminVideoForEnrichment[]> {
     const data = await this.request<Record<string, unknown>>(
       `
@@ -975,13 +977,57 @@ export class AdminGraphqlClient {
       `,
       { ids },
     )
-
-    return (
+    const rows =
       readField<AdminVideoForEnrichment[]>(
         data,
         "managerVideosForEnrichment",
       ) ?? []
-    )
+    if (!includeArtwork) return rows
+    const coreIds = [
+      ...new Set(
+        rows.map((row) => row.coreId).filter((id): id is string => Boolean(id)),
+      ),
+    ].slice(0, 100)
+    if (!coreIds.length) return rows
+    type Artwork = {
+      id: string
+      coreId: string | null
+      images:
+        | {
+            thumbnail?: string | null
+            videoStill?: string | null
+            url?: string | null
+          }[]
+        | null
+    }
+    // One public catalog batch avoids charging a separate query-field rate-limit
+    // entry per search result. Artwork failure must not discard source metadata.
+    let artwork: Artwork[]
+    try {
+      const data = await this.request<{ watchHomeVideos: Artwork[] }>(
+        `query ManagerVideoArtwork($coreIds: [String!]!) {
+          watchHomeVideos(coreIds: $coreIds) {
+            id coreId images { thumbnail videoStill url }
+          }
+        }`,
+        { coreIds },
+      )
+      artwork = data.watchHomeVideos
+    } catch {
+      return rows
+    }
+    return rows.map((row) => {
+      const images = artwork.find(
+        (video) =>
+          video.id === row.documentId ||
+          (row.coreId != null && video.coreId === row.coreId),
+      )?.images
+      const imageUrl =
+        images?.find((image) => image.thumbnail)?.thumbnail ??
+        images?.find((image) => image.videoStill)?.videoStill ??
+        images?.find((image) => image.url)?.url
+      return { ...row, imageUrl }
+    })
   }
 
   async getCoverageSnapshots(

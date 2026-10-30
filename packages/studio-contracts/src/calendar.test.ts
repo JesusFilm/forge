@@ -8,25 +8,17 @@ import {
 } from "./calendar"
 
 describe("calendar civil time", () => {
-  it("accepts only admitted weekly themes with exact pack/source bindings", () => {
+  it("accepts only admitted weekly themes with exact week bindings", () => {
     const context = calendarPlannerInputSchema.parse({
       calendarId: "calendar",
       version: 1,
       language: "english",
       slots: [],
-      weeks: [{ startDate: "2026-09-28", packRevisionIds: ["guidance"] }],
-      packs: [
-        {
-          revisionId: "guidance",
-          document: { title: "Hope", guidance: "Weekly hope", sources: [] },
-        },
-      ],
+      weeks: [{ startDate: "2026-09-28" }],
     })
     const week = {
       startDate: "2026-09-28",
       theme: "Hope together",
-      packRevisionId: "guidance",
-      sourceIndices: [],
     }
     expect(
       parseCalendarSuggestions({ items: [], weeks: [week] }, context).weeks,
@@ -40,45 +32,29 @@ describe("calendar civil time", () => {
         parseCalendarSuggestions({ items: [], weeks: [invalid] }, context),
       ).toThrow()
   })
-  it("accepts default packs plus distinct slot assignments without dropping pack context", () => {
-    const defaults = Array.from({ length: 16 }, (_, i) => `default-${i}`)
-    const input = {
+  it("binds title suggestions to admitted dates and revisions without sources", () => {
+    const context = calendarPlannerInputSchema.parse({
       calendarId: "calendar",
       version: 1,
       language: "english",
-      slots: [
-        {
-          date: "2026-09-22",
-          version: 1,
-          packRevisionIds: defaults,
-          weeklyTheme: "",
-        },
-        {
-          date: "2026-09-23",
-          version: 1,
-          packRevisionIds: ["assigned"],
-          weeklyTheme: "",
-        },
-      ],
-      packs: [...defaults, "assigned"].map((revisionId) => ({
-        revisionId,
-        document: {
-          title: revisionId,
-          guidance: "Title guidance",
-          sources: [],
-        },
-      })),
+      slots: [{ date: "2026-09-22", version: 2, weeklyTheme: "Hope" }],
+    })
+    const item = {
+      date: "2026-09-22",
+      expectedVersion: 2,
+      title: "Hope today",
+      theme: "Hope",
     }
-    expect(calendarPlannerInputSchema.parse(input).packs).toHaveLength(17)
-    expect(
-      calendarPlannerInputSchema.safeParse({
-        ...input,
-        packs: input.packs.map((pack) => ({
-          ...pack,
-          document: { ...pack.document, guidance: "x".repeat(16000) },
-        })),
-      }).success,
-    ).toBe(false)
+    expect(parseCalendarSuggestions({ items: [item] }, context).items).toEqual([
+      item,
+    ])
+    for (const invalid of [
+      { ...item, date: "2026-09-23" },
+      { ...item, expectedVersion: 1 },
+    ])
+      expect(() =>
+        parseCalendarSuggestions({ items: [invalid] }, context),
+      ).toThrow()
   })
   it("rejects fixed-offset zones but accepts UTC and supported IANA names and aliases", () => {
     for (const zone of ["+02:00", "-03:30", "+0200", "-0330"])

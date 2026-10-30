@@ -31,6 +31,7 @@ import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import { validateExperienceEditorDubSelections } from "./experience-editor-video.service"
 import { stripRetiredBlockVisualUrls } from "./experience-persisted-blocks"
+import { assertWatchAudienceWriteAllowed } from "./watch-audience-write-gate"
 import {
   CreateExperienceInput,
   DuplicateExperienceInput,
@@ -402,6 +403,15 @@ export class ExperienceService {
         })
         assertHomepageBlockPlacement(data.blocks, rendersAsHomepage(data))
         if (patch.blocks !== undefined) {
+          // Covers editor save, MCP, chat mutations, restore and the import
+          // script. The draft or the published canonical counts as existing.
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [
+              ...base.blocks,
+              ...(Array.isArray(canonical.blocks) ? canonical.blocks : []),
+            ],
+            nextBlocks: data.blocks,
+          })
           await assertNoNewUnavailableVideoDubs(
             tx,
             canonical.locale,
@@ -558,6 +568,10 @@ export class ExperienceService {
 
     assertHomepageBlockPlacement(input.blocks, false)
     boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
+    })
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -744,6 +758,16 @@ export class ExperienceService {
           }
         })
 
+        // A copy carrying a questionnaire is new audience authoring: it keeps
+        // `isTemplate` and can become the default template (oldest unarchived)
+        // once the source is archived. Ordinary duplicates never read the flag.
+        for (const copy of copies) {
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [],
+            nextBlocks: copy.data.blocks,
+          })
+        }
+
         const localeCodes = Array.from(
           new Set(copies.map((copy) => copy.locale)),
         )
@@ -869,6 +893,10 @@ export class ExperienceService {
 
     assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
     boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
+    })
 
     const { experienceId, ...data } = input
     return this.prisma.$transaction(
@@ -1131,7 +1159,9 @@ export class ExperienceService {
         const canonical = await tx.experienceLocale.findUniqueOrThrow({
           where: { id: input.id },
           include: {
-            experience: { select: { ownerId: true, archivedAt: true } },
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
           },
         })
         if (!canPublishExperienceLocale(user, canonical))
@@ -1163,7 +1193,9 @@ export class ExperienceService {
         if (!draft) {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
-        const draftData = effectiveDraftData(canonical, draft.snapshot)
+        const draftData = ExperienceLocaleDraftDataSchema.parse(
+          effectiveDraftData(canonical, draft.snapshot),
+        )
         // Publish checks the ASSIGNMENT, not the rendering context: a homepage
         // layout copy must be assigned as the homepage before it can go live,
         // even after its homepage-only blocks were removed.
@@ -1171,6 +1203,17 @@ export class ExperienceService {
           throw new ExperienceHomepageLayoutPublishError()
         }
         assertHomepageBlockPlacement(draftData.blocks, draftData.isHomepage)
+        // A draft staged while the flag was on cannot change the published
+        // questionnaire while it is off; an unchanged block republishes. The
+        // baseline is what is actually PUBLISHED: a never-published canonical
+        // row (e.g. a duplicate's copied DRAFT content) counts as empty.
+        await assertWatchAudienceWriteAllowed({
+          previousBlocks:
+            canonical.status === "PUBLISHED" && Array.isArray(canonical.blocks)
+              ? canonical.blocks
+              : [],
+          nextBlocks: draftData.blocks,
+        })
         const appliedAt = new Date()
 
         await tx.contentRevision.create({
@@ -1218,7 +1261,11 @@ export class ExperienceService {
         locale: previous.locale,
       })
     }
-    if (published.isHomepage || previous.isHomepage) {
+    if (
+      published.isHomepage ||
+      previous.isHomepage ||
+      previous.experience.isTemplate
+    ) {
       void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,
