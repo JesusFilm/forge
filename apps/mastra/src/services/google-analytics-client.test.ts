@@ -535,6 +535,78 @@ describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
     })
   })
 
+  it("counts an explicitly requested canonical Watch homepage", async () => {
+    let request: Record<string, unknown> = {}
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      pagePaths: ["/watch"],
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async (_url, init) => {
+        request = JSON.parse(String(init?.body)) as Record<string, unknown>
+        return Response.json({
+          rows: [row(["20260901", "page_view", "/watch"], 7)],
+          rowCount: 1,
+        })
+      }) as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      complete: true,
+      reconciliation: [
+        { pagePath: "/watch", eventName: "page_view", total: 7 },
+      ],
+    })
+    expect(request.dimensionFilter).toMatchObject({
+      andGroup: {
+        expressions: [
+          {
+            filter: {
+              fieldName: "pagePath",
+              inListFilter: { values: ["/watch"], caseSensitive: true },
+            },
+          },
+          { filter: { fieldName: "eventName" } },
+        ],
+      },
+    })
+  })
+
+  it("counts home, legacy root, and ASCII or Unicode descendants in the default namespace", async () => {
+    const paths = ["/watch", "/watch/", "/watch/jesus.html", "/watch/耶稣.html"]
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async () =>
+        Response.json({
+          rows: paths.map((path, index) =>
+            row(["20260901", "page_view", path], index + 1),
+          ),
+          rowCount: paths.length,
+        }),
+      ) as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({ ok: true, complete: true })
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reconciliation).toHaveLength(paths.length)
+    paths.forEach((pagePath, index) => {
+      expect(result.reconciliation).toContainEqual({
+        pagePath,
+        eventName: "page_view",
+        total: index + 1,
+        byRouteVariant: {},
+        unattributedShare: null,
+      })
+    })
+  })
+
   it("adds the registered route-variant and contract-version dimensions only at contract grain", async () => {
     let request: Record<string, unknown> = {}
     await queryWatchMeasurementReconciliation({
@@ -557,7 +629,7 @@ describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
       { name: "customEvent:watch_route_variant" },
       { name: "customEvent:event_contract_version" },
     ])
-    // No page-path list: the whole /watch/ prefix, never an unbounded scan.
+    // No page-path list: exact home OR descendants, never a lookalike namespace.
     expect(
       (
         request.dimensionFilter as {
@@ -565,13 +637,29 @@ describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
         }
       ).andGroup.expressions[0],
     ).toEqual({
-      filter: {
-        fieldName: "pagePath",
-        stringFilter: {
-          matchType: "BEGINS_WITH",
-          value: "/watch/",
-          caseSensitive: true,
-        },
+      orGroup: {
+        expressions: [
+          {
+            filter: {
+              fieldName: "pagePath",
+              stringFilter: {
+                matchType: "EXACT",
+                value: "/watch",
+                caseSensitive: true,
+              },
+            },
+          },
+          {
+            filter: {
+              fieldName: "pagePath",
+              stringFilter: {
+                matchType: "BEGINS_WITH",
+                value: "/watch/",
+                caseSensitive: true,
+              },
+            },
+          },
+        ],
       },
     })
   })
@@ -592,7 +680,11 @@ describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
       { eventNames: ["purchase"] },
       { eventNames: [] },
       { pagePaths: ["/account/reset-password"] },
+      { pagePaths: ["/watchdog"] },
+      { pagePaths: ["/watch?q=viewer@example.test"] },
+      { pagePaths: ["/watch#private"] },
       { pagePaths: ["/watch/jesus.html?q=viewer@example.test"] },
+      { pagePaths: ["/watch/jesus.html#private"] },
       { pagePaths: ["/watch/../admin"] },
       { pagePaths: ["/watch//jesus.html"] },
       {
@@ -782,6 +874,40 @@ describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
       retryable: true,
     })
   })
+
+  it.each([
+    "/account/settings",
+    "/watchdog",
+    "/watch?q=viewer@example.test",
+    "/watch#private",
+    "/watch/jesus.html?q=viewer@example.test",
+    "/watch/jesus.html#private",
+    "/watch/../admin",
+    "/watch//jesus.html",
+  ])(
+    "fails closed for an invalid default-scope provider path: %s",
+    async (pagePath) => {
+      const result = await queryWatchMeasurementReconciliation({
+        propertyId: "1234",
+        startDate: "2026-09-01",
+        endDate: "2026-09-28",
+        config,
+        tokenProvider,
+        fetchImpl: vi.fn(async () =>
+          Response.json({
+            rows: [row(["20260901", "page_view", pagePath], 1)],
+            rowCount: 1,
+          }),
+        ) as unknown as typeof fetch,
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        reason: "parse_error",
+        retryable: true,
+      })
+    },
+  )
 })
 
 describe("reconcileWatchMeasurementRows", () => {

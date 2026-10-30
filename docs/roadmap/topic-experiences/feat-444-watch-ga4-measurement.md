@@ -68,6 +68,14 @@ search, language, download, share, and CTA outcomes.
   and study-CTA outcomes), and the U6 read-only reconciliation query
   (`queryWatchMeasurementReconciliation`) implemented behind the same flag.
   v2 SPA page views now take the previous Watch page as referrer.
+- 2026-10-30: R4-2646-1 reproduced with injected GA4 responses: U6 rejected
+  exact canonical home `/watch` and omitted it from the default report. The
+  scoped correction admits home alongside `/watch/` descendants while retaining
+  bounded exact operator paths and rejecting lookalike, query, fragment, and
+  traversal paths. Legacy `/watch/` and Unicode provider rows remain counted.
+  All 28 focused client tests pass, including regressions that fail before the
+  correction. Independent review and repaired-head CI remain pending; this does
+  not establish live GA4 delivery or complete the broader draft integration.
 - Remaining, all operator-side: the property export, privacy audit,
   custom-dimension registration, Enhanced Measurement change, DebugView
   journeys, enablement, the 7-day and 28-day readouts, and the key-event

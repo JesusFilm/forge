@@ -473,8 +473,17 @@ const WATCH_MEASUREMENT_ROUTE_VARIANT_DIMENSION =
 const WATCH_MEASUREMENT_CONTRACT_VERSION_DIMENSION =
   "customEvent:event_contract_version"
 const WATCH_MEASUREMENT_MAX_PAGE_PATHS = 20
-const WATCH_MEASUREMENT_PAGE_PATH = /^\/watch\/[A-Za-z0-9._~/-]{1,200}$/
+const WATCH_MEASUREMENT_PAGE_PATH = /^\/watch(?:\/[A-Za-z0-9._~/-]{1,200})?$/
 const GA4_NOT_SET = "(not set)"
+
+function isWatchMeasurementPagePath(path: string): boolean {
+  return (
+    (path === "/watch" || path.startsWith("/watch/")) &&
+    !/[?#]/.test(path) &&
+    !path.includes("//") &&
+    !path.split("/").includes("..")
+  )
+}
 
 export type WatchMeasurementReconciliation = {
   pagePath: string
@@ -555,7 +564,7 @@ export function reconcileWatchMeasurementRows(
  * contract version (U6, R26, KTD8).
  *
  * Bounded on every axis: allowlisted property, allowlisted event names, at
- * most 20 exact `/watch/` page paths (or the whole `/watch/` prefix), the
+ * most 20 exact Watch page paths (or `/watch` plus the `/watch/` prefix), the
  * shared row cap, and the shared request budget. Thresholding, other-row data
  * loss, capped rows, an exhausted budget, and inconsistent timezones each add
  * a caveat and mark the result incomplete, so a partial result can never read
@@ -595,8 +604,7 @@ export async function queryWatchMeasurementReconciliation(input: {
     pagePaths.some(
       (path) =>
         !WATCH_MEASUREMENT_PAGE_PATH.test(path) ||
-        path.includes("//") ||
-        path.split("/").includes(".."),
+        !isWatchMeasurementPagePath(path),
     )
   ) {
     return { ok: false, reason: "rejected", retryable: false }
@@ -626,13 +634,29 @@ export async function queryWatchMeasurementReconciliation(input: {
           },
         }
       : {
-          filter: {
-            fieldName: "pagePath",
-            stringFilter: {
-              matchType: "BEGINS_WITH",
-              value: "/watch/",
-              caseSensitive: true,
-            },
+          orGroup: {
+            expressions: [
+              {
+                filter: {
+                  fieldName: "pagePath",
+                  stringFilter: {
+                    matchType: "EXACT",
+                    value: "/watch",
+                    caseSensitive: true,
+                  },
+                },
+              },
+              {
+                filter: {
+                  fieldName: "pagePath",
+                  stringFilter: {
+                    matchType: "BEGINS_WITH",
+                    value: "/watch/",
+                    caseSensitive: true,
+                  },
+                },
+              },
+            ],
           },
         }
   const report = await runGa4Report({
@@ -669,9 +693,8 @@ export async function queryWatchMeasurementReconciliation(input: {
     const eventName = row.dimensions.eventName ?? ""
     return (
       !eventNames.includes(eventName) ||
-      (pagePaths.length > 0
-        ? !pagePaths.includes(pagePath)
-        : !pagePath.startsWith("/watch/"))
+      !isWatchMeasurementPagePath(pagePath) ||
+      (pagePaths.length > 0 && !pagePaths.includes(pagePath))
     )
   })
   if (outOfScope) return { ok: false, reason: "parse_error", retryable: true }
