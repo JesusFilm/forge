@@ -17,7 +17,7 @@ export default function WatchLocaleError({
   reset: () => void
 }) {
   const t = useTranslations("ExperienceError")
-  const retry = useWatchErrorRetry(reset)
+  const retry = useWatchErrorRetry(reset, error)
   useEffect(() => {
     reportDatadogRumError(error, { boundary: "watch-locale" })
     if (process.env.NODE_ENV !== "production") {

@@ -17,7 +17,7 @@ export default function WatchPageError({
   reset: () => void
 }) {
   const t = useTranslations("ExperienceError")
-  const retry = useWatchErrorRetry(reset)
+  const retry = useWatchErrorRetry(reset, error)
   useEffect(() => {
     reportDatadogRumError(error, { boundary: "watch-page" })
     if (process.env.NODE_ENV !== "production") {

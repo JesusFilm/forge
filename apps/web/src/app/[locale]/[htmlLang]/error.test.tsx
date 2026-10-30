@@ -142,5 +142,57 @@ describe.each([
       expect(document.activeElement).toBe(elsewhere)
       elsewhere.remove()
     })
+
+    it("does not reuse a failed in-place retry on a later navigation", () => {
+      function InPlaceFailure() {
+        const [error, setError] = useState(() => new Error("first failure"))
+        return (
+          <Boundary
+            error={error}
+            reset={() => setError(new Error("failed again"))}
+          />
+        )
+      }
+      act(() => root.render(<InPlaceFailure />))
+      const retry = container.querySelector<HTMLButtonElement>("button")!
+      act(() => retry.focus())
+      act(() => retry.click())
+      flushFrames()
+      expect(document.activeElement).toBe(retry)
+      act(() => root.render(<main>Different navigation</main>))
+      flushFrames()
+      expect(document.activeElement).not.toBe(container.querySelector("main"))
+    })
+
+    it("removes only its temporary main focus attributes after blur", () => {
+      renderAndRetry(true)
+      flushFrames()
+      const main = container.querySelector("main")!
+      const next = document.createElement("button")
+      main.appendChild(next)
+      act(() => next.focus())
+      expect(main.hasAttribute("tabindex")).toBe(false)
+      expect(main.classList.contains("outline-none")).toBe(false)
+    })
+
+    it("preserves a main target's existing tabindex and outline class", () => {
+      renderBoundary(() =>
+        root.render(
+          <main tabIndex={-1} className="outline-none">
+            Recovered
+          </main>,
+        ),
+      )
+      const retry = container.querySelector<HTMLButtonElement>("button")!
+      act(() => retry.focus())
+      act(() => retry.click())
+      flushFrames()
+      const main = container.querySelector("main")!
+      const next = document.createElement("button")
+      main.appendChild(next)
+      act(() => next.focus())
+      expect(main.getAttribute("tabindex")).toBe("-1")
+      expect(main.classList.contains("outline-none")).toBe(true)
+    })
   })
 })

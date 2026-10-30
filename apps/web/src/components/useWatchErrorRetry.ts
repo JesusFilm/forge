@@ -17,14 +17,24 @@ export const WATCH_ERROR_RETRY_ATTRIBUTE = "data-watch-error-retry"
  * Nothing moves when focus already landed somewhere else, so a user who has
  * moved on is never pulled back.
  */
-export function useWatchErrorRetry(reset: () => void): () => void {
+export function useWatchErrorRetry(
+  reset: () => void,
+  error: Error,
+): () => void {
   const retrying = useRef(false)
+
+  // A new error can replace the failure in the same mounted boundary. That
+  // attempt has finished; a later navigation must not reuse its focus intent.
+  useEffect(() => {
+    retrying.current = false
+  }, [error])
 
   useEffect(
     () => () => {
       // Read at real unmount only. StrictMode's dev re-run happens before any
       // click, while this is still false.
       if (!retrying.current) return
+      retrying.current = false
       window.requestAnimationFrame(restoreFocusAfterRetry)
     },
     [],
@@ -58,7 +68,17 @@ export function restoreFocusAfterRetry(): void {
     main.tabIndex = -1
     // A focus ring around the whole page reads as a glitch; the next Tab
     // still shows the ring on the first control.
+    const addedOutline = !main.classList.contains("outline-none")
     main.classList.add("outline-none")
+    main.addEventListener(
+      "blur",
+      () => {
+        if (main.getAttribute("tabindex") === "-1")
+          main.removeAttribute("tabindex")
+        if (addedOutline) main.classList.remove("outline-none")
+      },
+      { once: true },
+    )
   }
   main.focus({ preventScroll: true })
 }
