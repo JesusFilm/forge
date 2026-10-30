@@ -64,7 +64,7 @@ import {
 setupWatchRecommendationsTestHarness()
 
 describe("WatchSemanticRecommendations", () => {
-  it("waits for first-visit consent initialization before delivery", async () => {
+  it("starts delivery without waiting for retired consent initialization", async () => {
     startRecommendationConsentBootstrap()
     const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
       jsonResponse({ delivery: sixItemDelivery }),
@@ -81,7 +81,11 @@ describe("WatchSemanticRecommendations", () => {
       )
     })
     await flush()
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toBe(true)
 
     completeRecommendationConsentBootstrap()
     await flush()
@@ -1101,7 +1105,7 @@ describe("WatchSemanticRecommendations", () => {
     )
   })
 
-  it("renders the recommendation explanation and personalization control from the active locale catalog", async () => {
+  it("renders the localized explanation without retired personalization controls", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
@@ -1138,10 +1142,7 @@ describe("WatchSemanticRecommendations", () => {
       const control = container.querySelector(
         `section[aria-label="${ru.personalizationLabel}"]`,
       )
-      expect(control?.textContent).toContain(ru.personalizationPrompt)
-      expect(control?.querySelector("button")?.textContent).toBe(
-        ru.openCookieSettings,
-      )
+      expect(control).toBeNull()
       expect(container.textContent).not.toContain(en.explanationHybrid)
       expect(container.textContent).not.toContain(en.personalizationPrompt)
     } finally {

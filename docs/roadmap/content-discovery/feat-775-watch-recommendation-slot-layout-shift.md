@@ -15,6 +15,21 @@ tags:
   - "recommendations"
 ---
 
+## October 29 current-main qualification — still draft
+
+Main's recommendation retirement and selection-write deadline changes are
+retained. This update does not clear the six-card reservation's empty/partial
+outcome regression and must not be merged as a layout fix.
+
+A separate read-only Chromium prototype on current main tested excluding the
+body texture from native scroll anchoring. When the slot was above the viewport,
+reader position stayed fixed for full, partial, empty and failed deliveries, but
+CLS did not improve; partial delivery moved from 0.8575 to 0.9279 in that probe.
+While the slot was visible, full (0.5000) and empty (0.1935) were unchanged.
+The prototype is not included in this PR. A steady final position alone does
+not establish a shift-free transition. The on-screen layout decision remains
+open; accepted empty and partial coverage must not become a regression.
+
 ## Problem
 
 The semantic recommendation slot after `WatchBody` rendered a fixed 192 px

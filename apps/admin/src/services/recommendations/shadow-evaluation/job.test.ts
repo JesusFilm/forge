@@ -85,11 +85,11 @@ describe("recommendation shadow evaluation job", () => {
       ),
     ).resolves.toMatchObject({
       status: "fenced",
-      reason: "cowatch_dispatch_generation_unpinned",
+      reason: "behavioral_recommendations_retired",
     })
     expect(service.sampleProfileShadowEvaluationContexts).not.toHaveBeenCalled()
     expect(() => resolveShadowGenerator(COWATCH_SHADOW_GENERATOR_KEY)).toThrow(
-      "unpinned",
+      "behavioral_recommendations_retired",
     )
   })
 
@@ -221,13 +221,13 @@ describe("recommendation shadow evaluation job", () => {
     )
   })
 
-  it("uses profile-bound contexts for the exact hybrid generator set", async () => {
+  it("retires an already queued hybrid generator without sampling profiles", async () => {
     await runRecommendationShadowEvaluationJob({
       ...input,
       generatorKey: HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY,
     })
 
-    expect(service.sampleProfileShadowEvaluationContexts).toHaveBeenCalledOnce()
+    expect(service.sampleProfileShadowEvaluationContexts).not.toHaveBeenCalled()
     expect(service.sampleShadowEvaluationContexts).not.toHaveBeenCalled()
   })
 

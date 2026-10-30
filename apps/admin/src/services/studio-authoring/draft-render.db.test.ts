@@ -62,7 +62,6 @@ const url = env.STUDIO_TEST_DATABASE_URL
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       }
       await executeStudioDelegated(db, caller, {
         action: "create",

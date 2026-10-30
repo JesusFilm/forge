@@ -14,7 +14,6 @@ import { StudioAssetService } from "./assets"
 import { MediaAssetService } from "../media-asset.service"
 import { StudioTransferService } from "./transfers"
 import { StudioExperimentService } from "./experiments"
-import { ContentPackService } from "./packs"
 import { StudioAuthoringService } from "./index"
 
 class AssetHarnessError extends Error {}
@@ -53,7 +52,7 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
   afterAll(async () => {
     await db?.$disconnect()
   })
-  it("exposes bounded asset and pack selection through authorized GraphQL", async () => {
+  it("exposes bounded asset selection through authorized GraphQL", async () => {
     const execute = (
       source: string,
       variables: Record<string, unknown>,
@@ -95,31 +94,15 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
         )
       ).errors,
     ).toBeDefined()
-    const input = {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Transport pack",
-        guidance: "Editorial instructions",
-        sources: [
-          {
-            label: "Evidence",
-            asset: bytes.reference,
-            excerpt: "Exact source",
-          },
-        ],
-      },
-    }
-    const created = await execute(
-      "mutation($input: JSON!) { writeShortsContentPack(input: $input) { id number document } }",
-      { input },
+    expect(schema.getQueryType()?.getFields()).not.toHaveProperty(
+      "shortsContentPacks",
     )
-    expect(created.errors).toBeUndefined()
-    expect(created.data?.writeShortsContentPack).toMatchObject({
-      number: 1,
-      document: input.document,
-    })
+    expect(schema.getQueryType()?.getFields()).not.toHaveProperty(
+      "shortsContentPackRevision",
+    )
+    expect(schema.getMutationType()?.getFields()).not.toHaveProperty(
+      "writeShortsContentPack",
+    )
     const read = await execute(
       "mutation($reference: JSON!) { issueShortsAssetRead(reference: $reference) { path method } }",
       { reference: bytes.reference },
@@ -290,7 +273,6 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
           },
         ],
         items: [],
-        packRevisionIds: [],
       },
     })
     const attempt = await service.request(user, {
@@ -549,107 +531,6 @@ suite("Studio immutable asset service with real Postgres and bytes", () => {
       expect(item.provenance.status).toBe("unknown")
     }
   }, 60000)
-  it("versions pack evidence separately from guidance and retains historical project edges", async () => {
-    const asset = await assets.register(
-      user,
-      {
-        filename: "evidence.txt",
-        mimeType: "text/plain",
-        role: "document",
-        provenance: { status: "unknown", recorded: {} },
-        idempotencyKey: randomUUID(),
-      },
-      Buffer.from("source quotation"),
-      "LOCAL",
-    )
-    const packs = new ContentPackService(db)
-    const packId = randomUUID()
-    const first = await packs.write(user, {
-      packId,
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Source pack",
-        guidance: "Prefer reflective pacing",
-        sources: [
-          {
-            label: "Evidence",
-            asset: asset.reference,
-            excerpt: "source quotation",
-          },
-        ],
-      },
-    })
-    const second = await packs.write(user, {
-      packId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Source pack",
-        guidance: "New direction",
-        sources: [],
-      },
-    })
-    expect((await packs.read(user, first.id)).document.guidance).toBe(
-      "Prefer reflective pacing",
-    )
-    expect((await packs.read(user, second.id)).document.sources).toEqual([])
-    const projects = new StudioAuthoringService(db)
-    const projectId = randomUUID()
-    await projects.create(user, {
-      projectId,
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        version: 1,
-        title: "Any arrangement",
-        language: "english",
-        runtimeVersion: "runtime-1",
-        width: 1280,
-        height: 720,
-        fps: 30,
-        durationInFrames: 300,
-        tracks: [],
-        items: [],
-        components: [],
-        packRevisionIds: [first.id],
-      },
-    })
-    await projects.apply(user, {
-      projectId,
-      expectedRevision: 1,
-      idempotencyKey: randomUUID(),
-      operations: [
-        { kind: "assign-content-packs", packRevisionIds: [second.id] },
-      ],
-    })
-    const usage = await new MediaAssetService(db).usage({
-      user,
-      id: asset.mediaAssetId,
-    })
-    expect(
-      usage.some(
-        (u) =>
-          u.resourceType === "SHORT_REVISION" &&
-          u.resourceId.includes(projectId),
-      ),
-    ).toBe(true)
-    expect(
-      usage.some(
-        (u) =>
-          u.resourceType === "CONTENT_PACK_REVISION" &&
-          u.resourceId === first.id,
-      ),
-    ).toBe(true)
-    await expect(
-      packs.write(user, {
-        packId,
-        expectedRevision: 1,
-        idempotencyKey: randomUUID(),
-        document: { title: "stale", guidance: "", sources: [] },
-      }),
-    ).rejects.toThrow("CONFLICT")
-  })
   it("protects retained versions from generic deletion, byte replacement and visibility changes", async () => {
     const asset = await assets.register(
       user,

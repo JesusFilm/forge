@@ -113,96 +113,25 @@ describe("owner-approved direct release operator", () => {
       ).rejects.toThrow(/recent/i)
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })
-  it("prepares without writes and binds the future experiment overlap interval to actual expiry", async () => {
-    const { operator, tx } = harness()
-    expect(await operator.prepare(input)).toMatchObject({
-      status: "prepared",
-      bindingDigest: input.bindingDigest,
-      validUntil: prepared.validUntil,
-    })
-    expect(tx.recommendationOwnerRelease.create).not.toHaveBeenCalled()
-    expect(tx.recommendationPromotionPointer.updateMany).not.toHaveBeenCalled()
-    expect(tx.recommendationExperiment.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          OR: expect.arrayContaining([
-            expect.objectContaining({ startsAt: { lt: prepared.validUntil } }),
-          ]),
-        }),
-      }),
-    )
-  })
-  it("activates without a study then replays one immutable receipt without changing the pointer", async () => {
-    const { operator, tx, pointer } = harness()
-    expect(await operator.activate(input)).toMatchObject({
-      status: "active",
-      pointerGeneration: 2,
-    })
-    expect(pointer).toMatchObject({
-      stage: "OWNER_APPROVED",
-      activeOwnerReleaseId: input.operationId,
-      generation: 2,
-    })
-    expect(await operator.activate(input)).toMatchObject({
-      status: "active",
-      pointerGeneration: 2,
-    })
-    expect(tx.recommendationOwnerRelease.create).toHaveBeenCalledTimes(1)
-    expect(tx.recommendationPromotionPointer.updateMany).toHaveBeenCalledTimes(
-      1,
-    )
-    expect(tx.recommendationPromotionEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          reasonCode: "owner_approved_without_trial",
-        }),
-      }),
-    )
-  })
-  it("refuses conflicting UUID replay, stale pointers, changed binding and active overlap", async () => {
-    const first = harness()
-    await first.operator.activate(input)
+  it.each(["prepare", "activate"] as const)(
+    "refuses %s even with recent owner authorization",
+    async (method) => {
+      const { operator, prisma, tx } = harness()
+      await expect(operator[method](input)).rejects.toThrow(
+        "behavioral_recommendations_retired",
+      )
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(tx.recommendationOwnerRelease.create).not.toHaveBeenCalled()
+      expect(
+        tx.recommendationPromotionPointer.updateMany,
+      ).not.toHaveBeenCalled()
+    },
+  )
+  it("keeps read-only reconciliation available for historical operation receipts", async () => {
+    const { operator, prisma } = harness()
     await expect(
-      first.operator.activate({ ...input, bindingDigest: "d".repeat(64) }),
-    ).rejects.toThrow(/already binds/i)
-    const stale = harness()
-    stale.pointer.generation = 3
-    await expect(stale.operator.activate(input)).rejects.toThrow(/stale/i)
-    const changed = harness()
-    await expect(
-      changed.operator.activate({ ...input, bindingDigest: "d".repeat(64) }),
-    ).rejects.toThrow(/changed/i)
-    const overlap = harness()
-    overlap.tx.recommendationExperiment.findFirst.mockResolvedValue({
-      id: "scheduled-study",
-    })
-    await expect(overlap.operator.activate(input)).rejects.toThrow(/overlap/i)
-    expect(overlap.tx.recommendationOwnerRelease.create).not.toHaveBeenCalled()
-  })
-  it("reconciles committed activation after lost acknowledgement with stale authentication, never reactivating", async () => {
-    const { operator, prisma, tx } = harness()
-    prisma.$transaction.mockImplementationOnce(async (work) => {
-      await work(tx)
-      throw new Error("transport acknowledgement lost")
-    })
-    await expect(operator.activate(input)).rejects.toThrow(/acknowledgement/)
-    expect(
-      await operator.reconcile({ ...input, authenticatedAt: null }),
-    ).toMatchObject({ status: "active", pointerGeneration: 2 })
-    expect(await operator.activate(input)).toMatchObject({ status: "active" })
-    expect(tx.recommendationOwnerRelease.create).toHaveBeenCalledTimes(1)
-  })
-  it("reports configured but ineffective authority honestly and does not revive a fenced release", async () => {
-    const { operator, pointer, tx } = harness()
-    await operator.activate(input)
-    vi.mocked(readActiveOwnerRelease).mockResolvedValue(null)
-    expect(await operator.reconcile(input)).toMatchObject({
-      status: "unavailable",
-    })
-    pointer.ownerInfluenceFloorGeneration = 3
-    expect(await operator.activate(input)).toMatchObject({ status: "revoked" })
-    expect(tx.recommendationPromotionPointer.updateMany).toHaveBeenCalledTimes(
-      1,
-    )
+      operator.reconcile({ ...input, authenticatedAt: null }),
+    ).resolves.toMatchObject({ status: "not_recorded" })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })

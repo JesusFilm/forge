@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="emulator-5640" tests="1" failures="1" time="45.946" timestamp="2026-10-22T21:11:36">
+    <testcase id="search-open-result" name="search-open-result" classname="search-open-result" file="apps/mobile/release-check/journeys/search-open-result.yaml" time="45.939" timestamp="2026-10-22T21:11:36" status="ERROR">
+      <properties>
+        <property name="tags" value="search"/>
+      </properties>
+      <failure>Assertion is false: id: screen-watch is visible</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

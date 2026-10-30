@@ -97,6 +97,7 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
             selected ? undefined : t("featuredSelectorCardAriaHint")
           }
           {...{ "dd-action-name": "hero-selector-card" }}
+          testID="home-hero-selector-card"
         >
           <View
             style={[styles.thumbFrame, selected && styles.thumbFrameActive]}

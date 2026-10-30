@@ -130,7 +130,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   }
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-video-carousel" style={layout.sectionOuter}>
       {vcSubtitle != null && (
         <Text
           style={[

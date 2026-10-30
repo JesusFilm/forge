@@ -90,6 +90,11 @@ preflight. A valid check prints only target and status.
 
 ## Rotation and revocation
 
+For coordinated database and provider changes through PR-to-main, use
+[credential-cutover.md](credential-cutover.md). It distinguishes internal
+service database logins from registered HTTP consumer credentials and requires
+separate owner-password continuity planning.
+
 Rotate registered credentials through the portal with the owning consumer's
 current credential version. The replacement is revealed once and invalidates the
 prior verifier as soon as the transaction commits; update the caller secret

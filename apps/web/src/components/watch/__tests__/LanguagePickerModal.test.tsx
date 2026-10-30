@@ -77,6 +77,7 @@ vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {
     ...actual,
+    useLocale: () => getLanguagePickerCatalogState().locale,
     useTranslations: (namespace: string) => {
       const { locale, messages } = getLanguagePickerCatalogState()
       return actual.createTranslator({

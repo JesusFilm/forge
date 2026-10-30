@@ -41,6 +41,7 @@ import {
   assertProductionAuthSecrets,
   env,
   getAdminWatchProgressErasureConfig,
+  isWatchLearningErasureRequired,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
   getAuthCustomAudiences,
@@ -64,6 +65,7 @@ const accountDeletionHooks = buildAccountDeletionHooks({
     }),
   getAppleConfig: getAppleNativeClientConfig,
   getAdminErasureConfig: getAdminWatchProgressErasureConfig,
+  isLearningErasureRequired: isWatchLearningErasureRequired,
 })
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
@@ -318,7 +320,8 @@ export const auth = betterAuth({
     },
     // No mailer platform-wide, so intent is verified by a fresh session
     // instead of an email (auth-owner direction, 2026-08-04). Side effects
-    // are beforeDelete: a failure aborts with the account intact.
+    // are beforeDelete: a failure retains the Auth user row, but external
+    // erasure may already have committed; see docs/watch-learning-erasure-recovery.md.
     deleteUser: {
       enabled: true,
       beforeDelete: accountDeletionHooks.beforeDelete,
