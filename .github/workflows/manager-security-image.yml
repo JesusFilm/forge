@@ -37,7 +37,7 @@ jobs:
   production-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build actual Manager image and verified media toolchain
         run: docker build -f apps/manager/Dockerfile -t manager-security-ci .
       - name: Verify independent runtime, OS, JOSE and native media trust

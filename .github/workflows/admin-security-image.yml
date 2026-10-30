@@ -37,7 +37,7 @@ jobs:
   production-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Verify transitive workspace packaging and image triggers
         run: node --test apps/admin/scripts/docker-workspace-packaging.test.mjs
       - name: Build actual image with filtered package trust and PostgreSQL18 clients
