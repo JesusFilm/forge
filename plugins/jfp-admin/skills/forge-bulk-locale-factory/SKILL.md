@@ -17,10 +17,20 @@ DRAFT content only and never publish:
   them afterwards with `experience.locale.update`. A duplicate `(locale, slug)`
   returns the existing resource instead of creating a second draft.
 - `experience.duplicate` (scopes `experience:read` + `experience:create`) —
-  supply `{experienceId}` to copy every locale of any readable Experience.
-  The new Experience belongs to the delegated principal; all copied locales
-  are DRAFT, homepage/publication state is cleared, and available `-copy`
-  slugs are assigned. Embeddings, revisions, and chat threads are not copied.
+  supply `{experienceId, sourceVersion?}` to copy every locale of any readable
+  Experience. `sourceVersion` is `EFFECTIVE` (default: each locale's saved
+  draft, else its canonical row) or `CANONICAL` (the stored canonical row,
+  i.e. the live published content). The new Experience belongs to the
+  delegated principal; all copied locales are DRAFT, publication state and the
+  live homepage assignment are cleared, and available `-copy` slugs are
+  assigned. Each copied locale starts with its own active draft: use its
+  `draft.previewUrl` to review it and pass `draft.revision` as
+  `expectedDraftRevision` on the first update. A homepage copy reports
+  `homepageLayout: true` — it previews and edits as a homepage but is not the
+  live homepage. Treat that flag as read-only lifecycle context:
+  `experience.locale.update` may round-trip the current value from a rollback
+  payload but cannot change it. Embeddings, revision history, and chat threads
+  are not copied.
 - `experience.generate` (scope `experience:generate`) — Admin generates
   server-side from `{topic, locale, personaId?, exemplarExperienceId?, slug?}`:
   real video candidates ground the draft, and the result is validated before

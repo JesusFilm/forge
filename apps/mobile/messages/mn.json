@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-р шүлгээс {last}-р шүлэг хүртэл, нийт {total}, {chapter}",
     "demoVerse": "Дараагийн шүлэг рүү шилжихдээ дээш шударна уу",
     "demoChapter": "Дараагийн бүлэг рүү шилжихдээ зүүн тийш шударна уу",
+    "demoChapterRtl": "Дараагийн бүлэг рүү шилжихдээ баруун тийш шударна уу",
     "demoSkip": "Алгасахын тулд товшино уу",
     "demoSkipAriaLabel": "Шудрах үзүүлбэрийг алгасах",
     "selectVerseAriaHint": "Энэ шүлгийг сонгохын тулд хоёр товшино уу",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Ном сонгох",
+    "chooseChapter": "Бүлэг сонгох",
+    "chooseVerse": "Шүлэг сонгох",
     "oldTestament": "Хуучин Гэрээ",
     "newTestament": "Шинэ Гэрээ",
     "books": "Номууд",
@@ -193,7 +196,7 @@
     "someBooks": "{count} / {total, plural, one {# ном} other {# ном}}",
     "twoNames": "{first} ба {second}",
     "threeNames": "{first}, {second} ба {third}",
-    "onDevice": "Энэ төхөөрөмж дээр",
+    "downloaded": "Татсан",
     "downloading": "Татаж байна {percent}%",
     "downloadStopped": "Таталт зогссон",
     "updateAvailable": "Шинэчлэл бэлэн",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Цувралын постер",
     "videosHeading": "Видеонууд",
     "detailsLoadError": "Дэлгэрэнгүй мэдээллийг ачаалж чадсангүй.",
+    "languagesTitle": "Видеоны хэл",
     "searchLanguagesPlaceholder": "Хэл хайх...",
     "searchLanguagesAriaLabel": "Хэл хайх",
     "noLanguagesFound": "Хэл олдсонгүй",
@@ -502,6 +506,7 @@
     "resumeAt": "Үргэлжлүүлэх: {time}",
     "unknownLanguage": "Тодорхойгүй",
     "downloadedStatus": "Татсан",
+    "languagesTitle": "Видеоны хэл",
     "searchLanguagesPlaceholder": "Хэл хайх...",
     "searchLanguagesAriaLabel": "Хэл хайх",
     "noLanguagesFound": "Хэл олдсонгүй",
@@ -773,5 +778,8 @@
     "send": "Илгээх",
     "sending": "Илгээж байна…",
     "sendAriaLabel": "Санал хүсэлт илгээх"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Апп дамжуулах төхөөрөмжүүдийг олохын тулд таны дотоод сүлжээг ашигладаг бөгөөд ингэснээр та видеонуудаа зурагтаараа тоглуулах боломжтой."
   }
 }

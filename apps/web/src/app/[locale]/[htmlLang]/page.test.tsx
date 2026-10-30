@@ -1,5 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
+}))
+
+const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/watch-audience-content", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
+    "@/lib/watch-audience-content",
+  )),
+  resolveWatchAudience: resolveWatchAudienceMock,
+}))
 
 const {
   resolveWatchHomeMock,
@@ -61,6 +74,9 @@ const heroModel = {
 }
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  resolveWatchAudienceMock.mockReset()
+  resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchHomeMock.mockReset()
   resolveWatchPageMock.mockReset()
   watchHomeExperiencePageMock.mockClear()
@@ -75,6 +91,54 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("passes the explicit audience rollout to the common homepage frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true }),
+      undefined,
+    )
+  })
+
+  it("hands the published audience configuration for the locale to the home frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    const authored = {
+      kind: "authored",
+      sourceLocale: "en",
+      config: { roles: [] },
+      identity: "en:watch-audience:abc",
+    }
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+      undefined,
+    )
+  })
+
+  it("does not load the configuration while the rollout is off", async () => {
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
+    expect(
+      (watchHomeExperiencePageMock.mock.calls as unknown[][])[0]?.[0],
+    ).toEqual(
+      expect.objectContaining({ audienceEnabled: false, audience: undefined }),
+    )
+  })
+
   it("uses the fixed seeker-focused page and social metadata", async () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
@@ -125,6 +189,7 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
       heroModel,
       blocks,
       locale: "en",
@@ -142,6 +207,7 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
       heroModel,
       blocks: [],
       locale: "en",

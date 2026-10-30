@@ -16,7 +16,7 @@ function ExploreRoute() {
   const { focused, hasFocused } = useExploreFocus()
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-tab-explore" style={layout.screenContainer}>
       {hasFocused ? <ExploreFeed focused={focused} /> : null}
     </View>
   )

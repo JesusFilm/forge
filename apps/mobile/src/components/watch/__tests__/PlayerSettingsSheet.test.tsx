@@ -35,11 +35,24 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("../../../lib/cast/castAdapter", () => ({
   setCastPlaybackRateLogged: jest.fn(),
 }))
+// jest-expo reports Liquid Glass as available, so each case pins the branch.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+// A host stand-in that renders its children, so the rows inside stay visible.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 import { act } from "react"
-import { Animated } from "react-native"
+import {
+  Animated,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import { PlayerSettingsSheet } from "../PlayerSettingsSheet"
+import { BG_COLOR } from "../../../lib/color"
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
 import {
   TestRenderer,
@@ -49,6 +62,7 @@ import {
   unmount,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
@@ -97,6 +111,7 @@ async function update(renderer: TestInstance, props: SheetProps) {
 let testKeyCounter = 0
 beforeEach(() => {
   getPlayerSettingsStore().resetFor(`settings-sheet-test-${testKeyCounter++}`)
+  mockGate.glass = true
 })
 
 function selectedCount(renderer: TestInstance, label: string): number {
@@ -421,7 +436,14 @@ describe("dismissal", () => {
   })
 })
 
-describe("presentation (scrim fades, panel slides)", () => {
+describe.each([
+  ["with Liquid Glass", true],
+  ["without Liquid Glass", false],
+])("presentation (scrim fades, panel slides) %s", (_name, glass) => {
+  beforeEach(() => {
+    mockGate.glass = glass
+  })
+
   /** An Animated node exposes __getValue; a plain number does not. */
   function isAnimated(v: unknown): boolean {
     return (
@@ -548,83 +570,95 @@ describe("VideoPlayer hosts the sheet as component state (KTD5)", () => {
  * progress because the ramp runs on the native driver, whose JS value never
  * advances under jest.
  */
-describe("enter animation (reachable only once the panel is measured)", () => {
-  function panelTranslateY(renderer: TestInstance): {
-    node: { props: Record<string, unknown> }
-    value: () => number
-  } {
-    const flat = (style: unknown): Record<string, unknown> => {
-      const out: Record<string, unknown> = {}
-      const walk = (s: unknown) => {
-        if (Array.isArray(s)) return s.forEach(walk)
-        if (s && typeof s === "object") Object.assign(out, s)
+describe.each([
+  ["with Liquid Glass", true],
+  ["without Liquid Glass", false],
+])(
+  "enter animation (reachable only once the panel is measured) %s",
+  (_name, glass) => {
+    beforeEach(() => {
+      mockGate.glass = glass
+    })
+
+    function panelTranslateY(renderer: TestInstance): {
+      node: { props: Record<string, unknown> }
+      value: () => number
+    } {
+      const flat = (style: unknown): Record<string, unknown> => {
+        const out: Record<string, unknown> = {}
+        const walk = (s: unknown) => {
+          if (Array.isArray(s)) return s.forEach(walk)
+          if (s && typeof s === "object") Object.assign(out, s)
+        }
+        walk(style)
+        return out
       }
-      walk(style)
-      return out
-    }
-    const nodes = renderer.root.findAll((n) => {
-      const t = flat(n.props.style).transform as
-        | Array<Record<string, unknown>>
-        | undefined
-      return (
-        Array.isArray(t) &&
-        t.some(
-          (e) =>
-            typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
-            "function",
+      const nodes = renderer.root.findAll((n) => {
+        const t = flat(n.props.style).transform as
+          | Array<Record<string, unknown>>
+          | undefined
+        return (
+          Array.isArray(t) &&
+          t.some(
+            (e) =>
+              typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+              "function",
+          )
         )
-      )
-    })
-    expect(nodes.length).toBeGreaterThan(0)
-    const node = nodes[0]
-    const t = flat(node.props.style).transform as Array<Record<string, unknown>>
-    const entry = t.find(
-      (e) =>
-        typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
-        "function",
-    ) as { translateY: { __getValue: () => number } }
-    return { node, value: () => entry.translateY.__getValue() }
-  }
+      })
+      expect(nodes.length).toBeGreaterThan(0)
+      const node = nodes[0]
+      const t = flat(node.props.style).transform as Array<
+        Record<string, unknown>
+      >
+      const entry = t.find(
+        (e) =>
+          typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+          "function",
+      ) as { translateY: { __getValue: () => number } }
+      return { node, value: () => entry.translateY.__getValue() }
+    }
 
-  it("parks the panel offscreen until it has been measured", async () => {
-    // The unmeasured park is what keeps the first frame off the screen. If this
-    // ever equalled the measured height, the panel would flash in place.
-    const renderer = await render()
+    it("parks the panel offscreen until it has been measured", async () => {
+      // The unmeasured park is what keeps the first frame off the screen. If this
+      // ever equalled the measured height, the panel would flash in place.
+      const renderer = await render()
 
-    expect(panelTranslateY(renderer).value()).toBeGreaterThan(1000)
+      expect(panelTranslateY(renderer).value()).toBeGreaterThan(1000)
 
-    await unmount(renderer)
-  })
-
-  it("starts the enter animation once onLayout lands", async () => {
-    // Asserted on the timing CALL, not on the panel's offset: the offset tracks
-    // panelHeight, which onLayout's setState writes on its own, so an
-    // offset-only assertion stays green even with the effect's gate forced
-    // permanently closed (verified by falsifying it exactly that way).
-    const timing = jest.spyOn(Animated, "timing")
-    const renderer = await render()
-    const before = panelTranslateY(renderer)
-    const enterCalls = () =>
-      timing.mock.calls.filter(
-        (c) => (c[1] as { toValue?: number } | undefined)?.toValue === 1,
-      ).length
-    expect(enterCalls()).toBe(0)
-
-    await act(async () => {
-      ;(
-        before.node.props.onLayout as (e: {
-          nativeEvent: { layout: { height: number } }
-        }) => void
-      )({ nativeEvent: { layout: { height: 320 } } })
+      await unmount(renderer)
     })
 
-    expect(enterCalls()).toBe(1)
-    // ...and the panel is now positioned from the measured height, not the park.
-    expect(panelTranslateY(renderer).value()).toBe(320)
-    timing.mockRestore()
-    await unmount(renderer)
-  })
-})
+    it("starts the enter animation once onLayout lands", async () => {
+      // Asserted on the timing CALL, not on the panel's offset: the offset tracks
+      // panelHeight, which onLayout's setState writes on its own, so an
+      // offset-only assertion stays green even with the effect's gate forced
+      // permanently closed (verified by falsifying it exactly that way).
+      const timing = jest.spyOn(Animated, "timing")
+      const renderer = await render()
+      const before = panelTranslateY(renderer)
+      const enterCalls = () =>
+        timing.mock.calls.filter(
+          (c) => (c[1] as { toValue?: number } | undefined)?.toValue === 1,
+        ).length
+      expect(enterCalls()).toBe(0)
+
+      await act(async () => {
+        ;(
+          before.node.props.onLayout as (e: {
+            nativeEvent: { layout: { height: number } }
+          }) => void
+        )({ nativeEvent: { layout: { height: 320 } } })
+      })
+
+      expect(enterCalls()).toBe(1)
+      // ...and the panel is now positioned from the measured height, not the park.
+      expect(panelTranslateY(renderer).value()).toBe(320)
+      timing.mockRestore()
+      await unmount(renderer)
+    })
+  },
+)
 
 describe("exit timer lifetime", () => {
   beforeEach(() => {
@@ -649,5 +683,121 @@ describe("exit timer lifetime", () => {
     })
 
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+/** U11 (R16): the panel draws Liquid Glass in place of its solid fill. */
+describe("the panel's surface (U11)", () => {
+  function styleOf(node: RenderedNode): ViewStyle {
+    return StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {}
+  }
+
+  function hostNodes(
+    renderer: TestInstance,
+    predicate: (node: RenderedNode) => boolean,
+  ): RenderedNode[] {
+    return renderer.root.findAll(
+      (node) => typeof node.type === "string" && predicate(node),
+    )
+  }
+
+  function ancestorsOf(node: RenderedNode): RenderedNode[] {
+    const out: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      out.push(at)
+    }
+    return out
+  }
+
+  /** True when the host Text that reads `needle` sits inside `node`. */
+  function holdsText(node: RenderedNode, needle: string): boolean {
+    return (node as unknown as TestInstance["root"])
+      .findAll((child) => child.props.children === needle)
+      .some((child) => typeof child.type === "string")
+  }
+
+  function slidesWith(node: RenderedNode): boolean {
+    return [node, ...ancestorsOf(node)].some((at) => {
+      const t = styleOf(at).transform as
+        | Array<Record<string, unknown>>
+        | undefined
+      return (
+        Array.isArray(t) &&
+        t.some(
+          (e) =>
+            typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+            "function",
+        )
+      )
+    })
+  }
+
+  it.each([true, false])(
+    "keeps both orientations and no Modal animation with Liquid Glass %s",
+    async (glass) => {
+      mockGate.glass = glass
+      const renderer = await render()
+      const [modal] = renderer.root.findAll(
+        (n) =>
+          n.props.transparent === true &&
+          typeof n.props.onRequestClose === "function",
+      )
+      expect(modal!.props.supportedOrientations).toEqual([
+        "portrait",
+        "landscape",
+      ])
+      expect(modal!.props.animationType).toBe("none")
+      await unmount(renderer)
+    },
+  )
+
+  it("draws the panel on Liquid Glass with no fill, and no fade above it", async () => {
+    const renderer = await render()
+
+    const glass = hostNodes(renderer, (node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    const panel = glass[0]!
+    expect(holdsText(panel, "Settings")).toBe(true)
+    expect(holdsText(panel, REPORT_LABEL)).toBe(true)
+    expect(styleOf(panel)).toMatchObject({
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+    })
+    // A fill on the glass, or under it, would cover the material.
+    expect(styleOf(panel).backgroundColor).toBeUndefined()
+    expect(panel.props.colorScheme).toBe("dark")
+    expect(
+      hostNodes(renderer, (node) => styleOf(node).backgroundColor === BG_COLOR),
+    ).toHaveLength(0)
+    // GlassView draws nothing under an ancestor whose opacity fades.
+    for (const ancestor of ancestorsOf(panel)) {
+      expect(styleOf(ancestor).opacity).toBeUndefined()
+      expect(styleOf(ancestor).backgroundColor).toBeUndefined()
+    }
+    expect(slidesWith(panel)).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("keeps today's solid panel without Liquid Glass", async () => {
+    mockGate.glass = false
+    const renderer = await render()
+
+    expect(
+      hostNodes(renderer, (node) => node.type === "GlassView"),
+    ).toHaveLength(0)
+    const panels = hostNodes(
+      renderer,
+      (node) => styleOf(node).backgroundColor === BG_COLOR,
+    )
+    expect(panels).toHaveLength(1)
+    expect(styleOf(panels[0]!)).toMatchObject({
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 4,
+      paddingBottom: 12,
+    })
+    expect(holdsText(panels[0]!, "Settings")).toBe(true)
+    expect(slidesWith(panels[0]!)).toBe(true)
+    await unmount(renderer)
   })
 })

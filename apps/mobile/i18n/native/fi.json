@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Sovellus käyttää paikallisverkkoasi suoratoistolaitteiden löytämiseen, jotta voit toistaa videoita televisiossasi."
+  }
+}

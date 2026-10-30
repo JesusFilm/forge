@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} مان آيتون {first} کان {last}، {chapter}",
     "demoVerse": "ايندڙ آيت لاءِ مٿي سوائيپ ڪريو",
     "demoChapter": "ايندڙ باب لاءِ کاٻي پاسي سوائيپ ڪريو",
+    "demoChapterRtl": "ايندڙ باب لاءِ ساڄي پاسي سوائيپ ڪريو",
     "demoSkip": "ڇڏڻ لاءِ ٽيپ ڪريو",
     "demoSkipAriaLabel": "سوائيپ جو مظاهرو ڇڏيو",
     "selectVerseAriaHint": "هيءَ آيت چونڊڻ لاءِ ٻه ڀيرا ٽيپ ڪريو",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ڪتاب چونڊيو",
+    "chooseChapter": "باب چونڊيو",
+    "chooseVerse": "آيت چونڊيو",
     "oldTestament": "پراڻو عهدنامو",
     "newTestament": "نئون عهدنامو",
     "books": "ڪتاب",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# ڪتاب مان {count}} other {# ڪتابن مان {count}}}",
     "twoNames": "{first} ۽ {second}",
     "threeNames": "{first}، {second} ۽ {third}",
-    "onDevice": "هن ڊوائيس تي",
+    "downloaded": "ڊائونلوڊ ٿيل",
     "downloading": "ڊائونلوڊ ٿي رهيو آهي، {percent}%",
     "downloadStopped": "ڊائونلوڊ رڪجي ويو",
     "updateAvailable": "اپڊيٽ موجود آهي",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "سيريز جو پوسٽر",
     "videosHeading": "وڊيوز",
     "detailsLoadError": "مڪمل تفصيل لوڊ نه ٿي سگهيا.",
+    "languagesTitle": "وڊيو جي ٻولي",
     "searchLanguagesPlaceholder": "ٻوليون ڳوليو…",
     "searchLanguagesAriaLabel": "ٻوليون ڳوليو",
     "noLanguagesFound": "ڪا ٻولي نه ملي",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} کان جاري رکو",
     "unknownLanguage": "نامعلوم",
     "downloadedStatus": "ڊائونلوڊ ٿيل",
+    "languagesTitle": "وڊيو جي ٻولي",
     "searchLanguagesPlaceholder": "ٻوليون ڳوليو…",
     "searchLanguagesAriaLabel": "ٻوليون ڳوليو",
     "noLanguagesFound": "ڪا ٻولي نه ملي",
@@ -773,5 +778,8 @@
     "send": "موڪليو",
     "sending": "موڪلي رهيا آهيون…",
     "sendAriaLabel": "راءِ موڪليو"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ايپ ڪاسٽ ڊوائيسز ڳولڻ لاءِ توهان جو مقامي نيٽ ورڪ استعمال ڪري ٿي، ته جيئن توهان پنهنجي ٽي وي تي وڊيوز هلائي سگهو."
   }
 }

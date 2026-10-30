@@ -258,70 +258,42 @@ describe("RecommendationPromotionService", () => {
         manifestId: "multi-interest-profile-pilot-v1",
         maxExposureBps: 500,
       }),
-    ).rejects.toThrow(/required evidence/i)
+    ).rejects.toThrow("behavioral_recommendations_retired")
     expect(prisma.recommendationShadowDecision.findFirst).not.toHaveBeenCalled()
     expect(tx.recommendationPromotionApproval.createMany).not.toHaveBeenCalled()
   })
 
-  it("approves the exact hybrid manifest only after its own shadow decision", async () => {
+  it("refuses the retired hybrid manifest even with its old shadow decision", async () => {
     const { service, prisma, tx } = harness()
     prisma.recommendationStrategyManifest.findUnique.mockResolvedValue(
       HYBRID_PERSONALIZED_MANIFEST as never,
     )
     prisma.recommendationShadowDecision.findFirst.mockResolvedValue({
-      id: "hybrid-promote-decision",
+      id: "historical-pass",
     } as never)
-
     await expect(
       service.approveBoundedStage({
         actor: ADMIN,
         manifestId: HYBRID_PERSONALIZED_MANIFEST.id,
         maxExposureBps: 100,
       }),
-    ).resolves.toMatchObject({
-      manifestId: HYBRID_PERSONALIZED_MANIFEST.id,
-      maxExposureBps: 100,
-    })
-    expect(prisma.recommendationShadowDecision.findFirst).toHaveBeenCalledWith({
-      where: {
-        decision: "PROMOTE_TO_EXPERIMENT",
-        expiresAt: { gt: new Date("2026-08-26T00:00:00.000Z") },
-        evaluation: {
-          manifestId: "semantic-profile-hybrid-v1",
-          generatorVersion: "semantic-profile-hybrid-generators-v1",
-        },
-      },
-      select: { id: true },
-    })
-    expect(tx.recommendationPromotionApproval.createMany).toHaveBeenCalledOnce()
+    ).rejects.toThrow("behavioral_recommendations_retired")
+    expect(prisma.recommendationShadowDecision.findFirst).not.toHaveBeenCalled()
+    expect(tx.recommendationPromotionApproval.createMany).not.toHaveBeenCalled()
   })
 
-  it("replays an exact bounded approval without a duplicate row or event", async () => {
-    const { service, prisma, tx } = harness()
-    const manifest = HYBRID_PERSONALIZED_MANIFEST
-    prisma.recommendationStrategyManifest.findUnique.mockResolvedValue(
-      manifest as never,
-    )
-    prisma.recommendationShadowDecision.findFirst.mockResolvedValue({
-      id: "hybrid-promote-decision",
-    } as never)
-
-    const first = await service.approveBoundedStage({
-      actor: ADMIN,
-      manifestId: manifest.id,
-      maxExposureBps: 500,
-    })
-    const replay = await service.approveBoundedStage({
-      actor: ADMIN,
-      manifestId: manifest.id,
-      maxExposureBps: 500,
-    })
-
-    expect(replay.id).toBe(first.id)
-    expect(tx.recommendationPromotionApproval.createMany).toHaveBeenCalledTimes(
-      2,
-    )
-    expect(tx.recommendationPromotionEvent.create).toHaveBeenCalledOnce()
+  it("does not replay a retired behavioral approval into new authority", async () => {
+    const { service, tx } = harness()
+    for (let attempt = 0; attempt < 2; attempt++)
+      await expect(
+        service.approveBoundedStage({
+          actor: ADMIN,
+          manifestId: HYBRID_PERSONALIZED_MANIFEST.id,
+          maxExposureBps: 500,
+        }),
+      ).rejects.toThrow("behavioral_recommendations_retired")
+    expect(tx.recommendationPromotionApproval.createMany).not.toHaveBeenCalled()
+    expect(tx.recommendationPromotionEvent.create).not.toHaveBeenCalled()
   })
 
   it("refuses the legacy profile challenger when no new approval path exists", async () => {
@@ -336,7 +308,7 @@ describe("RecommendationPromotionService", () => {
         manifestId: "multi-interest-profile-pilot-v1",
         maxExposureBps: 500,
       }),
-    ).rejects.toThrow(/required evidence/i)
+    ).rejects.toThrow("behavioral_recommendations_retired")
     expect(tx.recommendationPromotionApproval.createMany).not.toHaveBeenCalled()
   })
 
@@ -354,7 +326,7 @@ describe("RecommendationPromotionService", () => {
           exposureCeilingBps: 100,
           recentAuthentication: false,
         }),
-      ).rejects.toThrow("governed study")
+      ).rejects.toThrow("behavioral_recommendations_retired")
       Object.assign(run, {
         targetManifestId: HYBRID_PERSONALIZED_MANIFEST.id,
         evaluationId,
@@ -365,7 +337,10 @@ describe("RecommendationPromotionService", () => {
           expectedGeneration: 1,
           claimId: run.claimId,
         }),
-      ).rejects.toThrow("governed study")
+      ).resolves.toMatchObject({
+        status: "fenced",
+        reason: "behavioral_recommendations_retired",
+      })
       expect(pointer.stage).toBe("CONTROL")
       expect(tx.recommendationExperiment.create).not.toHaveBeenCalled()
     },
@@ -500,7 +475,7 @@ describe("RecommendationPromotionService", () => {
           exposureCeilingBps,
           recentAuthentication: true,
         }),
-      ).rejects.toThrow(/exact manifest approval is stale/i)
+      ).rejects.toThrow("behavioral_recommendations_retired")
       expect(tx.recommendationPromotionRun.create).not.toHaveBeenCalled()
     },
   )
@@ -544,7 +519,10 @@ describe("RecommendationPromotionService", () => {
           expectedGeneration: 1,
           claimId: run.claimId,
         }),
-      ).rejects.toThrow(/exact manifest approval is stale/i)
+      ).resolves.toMatchObject({
+        status: "fenced",
+        reason: "behavioral_recommendations_retired",
+      })
       expect(
         tx.recommendationPromotionPointer.updateMany,
       ).not.toHaveBeenCalled()

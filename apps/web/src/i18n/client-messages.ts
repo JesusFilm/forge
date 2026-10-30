@@ -7,8 +7,8 @@ type MessageCatalog = typeof englishMessages
 
 export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "AccountControl",
-  "BetaTesterModal",
   "ExperienceError",
+  "ExperienceSkeleton",
   "Feedback",
   "FloatingSearch",
   "LanguageCombobox",
@@ -52,6 +52,9 @@ export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
   "LanguageCombobox",
   "LanguageInventory",
   "LanguagePickerModal",
+  // WatchPageClient reads SearchOverlay.connectionHint for the language
+  // component-download error. This nested provider replaces the layout's.
+  "SearchOverlay",
   "SearchResultCard",
   "SeriesPage",
   "ShareModal",

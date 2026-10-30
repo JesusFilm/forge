@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículokuna {first}manta {last}kama, llapan {total}, {chapter}",
     "demoVerse": "Qatiq versículopaq hanaqman aysay",
     "demoChapter": "Qatiq capítulopaq lluq’iman aysay",
+    "demoChapterRtl": "Qatiq capítulopaq pañaman aysay",
     "demoSkip": "Kayta pasanaykipaq ñit’iy",
     "demoSkipAriaLabel": "Aysay rikuchiyta pasay",
     "selectVerseAriaHint": "Kay versículota akllanaykipaq iskay kutita ñit’iy",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Huk p’anqata akllay",
+    "chooseChapter": "Huk capítulota akllay",
+    "chooseVerse": "Huk versículota akllay",
     "oldTestament": "Ñawpa Testamento",
     "newTestament": "Musuq Testamento",
     "books": "P’anqakuna",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# p’anqamanta} other {# p’anqamanta}} {count}",
     "twoNames": "{first} hinallataq {second}",
     "threeNames": "{first}, {second} hinallataq {third}",
-    "onDevice": "Kay aparatopi",
+    "downloaded": "Uraykachisqa",
     "downloading": "Uraykachichkan {percent}%",
     "downloadStopped": "Uraykachiy sayarqan",
     "updateAvailable": "Musuqchay kachkan",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serieq hatun rikch’aynin",
     "videosHeading": "Videokuna",
     "detailsLoadError": "Llapan willakuyninta manam kargayta atikurqanchu.",
+    "languagesTitle": "Videoq siminin",
     "searchLanguagesPlaceholder": "Simikunata maskay…",
     "searchLanguagesAriaLabel": "Simikunata maskay",
     "noLanguagesFound": "Manam simikuna tarikurqanchu",
@@ -502,6 +506,7 @@
     "resumeAt": "{time}manta qatipay",
     "unknownLanguage": "Mana riqsisqa",
     "downloadedStatus": "Uraykachisqa",
+    "languagesTitle": "Videoq siminin",
     "searchLanguagesPlaceholder": "Simikunata maskay…",
     "searchLanguagesAriaLabel": "Simikunata maskay",
     "noLanguagesFound": "Manam simikuna tarikurqanchu",
@@ -773,5 +778,8 @@
     "send": "Apachiy",
     "sending": "Apachichkan…",
     "sendAriaLabel": "Yuyayniykita apachiy"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Kay appqa kayllapi kaq llikaykitam llamk’achin televisorman apachinapaq aparatokunata tarinanpaq, chaynapi televisorniykipi videokunata purichinaykipaq."
   }
 }

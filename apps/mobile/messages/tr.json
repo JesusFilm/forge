@@ -138,6 +138,7 @@
     "versesAriaValue": "Ayet {first} ile {last} arası, toplam {total} ayet, {chapter}",
     "demoVerse": "Sonraki ayet için yukarı kaydırın",
     "demoChapter": "Sonraki bölüm için sola kaydırın",
+    "demoChapterRtl": "Sonraki bölüm için sağa kaydırın",
     "demoSkip": "Geçmek için dokunun",
     "demoSkipAriaLabel": "Kaydırma gösterimini geç",
     "selectVerseAriaHint": "Bu ayeti seçmek için iki kez dokunun",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kitap seçin",
+    "chooseChapter": "Bölüm seçin",
+    "chooseVerse": "Ayet seçin",
     "oldTestament": "Eski Antlaşma",
     "newTestament": "Yeni Antlaşma",
     "books": "Kitaplar",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# kitaptan} other {# kitaptan}} {count} tanesi",
     "twoNames": "{first} ve {second}",
     "threeNames": "{first}, {second} ve {third}",
-    "onDevice": "Bu cihazda",
+    "downloaded": "İndirildi",
     "downloading": "İndiriliyor %{percent}",
     "downloadStopped": "İndirme durdu",
     "updateAvailable": "Güncelleme var",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Dizi posteri",
     "videosHeading": "Videolar",
     "detailsLoadError": "Ayrıntıların tamamı yüklenemedi.",
+    "languagesTitle": "Video dili",
     "searchLanguagesPlaceholder": "Dillerde ara…",
     "searchLanguagesAriaLabel": "Dillerde ara",
     "noLanguagesFound": "Dil bulunamadı",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} noktasından devam et",
     "unknownLanguage": "Bilinmeyen dil",
     "downloadedStatus": "İndirildi",
+    "languagesTitle": "Video dili",
     "searchLanguagesPlaceholder": "Dillerde ara…",
     "searchLanguagesAriaLabel": "Dillerde ara",
     "noLanguagesFound": "Dil bulunamadı",
@@ -773,5 +778,8 @@
     "send": "Gönder",
     "sending": "Gönderiliyor…",
     "sendAriaLabel": "Geri bildirimi gönder"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Uygulama, yayın yapılabilecek cihazları bulmak için yerel ağınızı kullanır; böylece televizyonunuzda video oynatabilirsiniz."
   }
 }

@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import { visit } from "graphql"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import {
   adminAdventCountdownFragment,
@@ -8,6 +9,7 @@ import {
   adminCtaFragment,
   adminEasterDatesFragment,
   adminInfoBlocksFragment,
+  adminWatchAudienceFragment,
   adminLanguageGlobeFragment,
   adminMediaCollectionFragment,
   adminNavigationCarouselFragment,
@@ -28,6 +30,10 @@ import {
 import { previewMediaCollectionTitlesFragment } from "@/lib/fragments/preview-media-collection-titles"
 
 import client from "@/lib/admin-client"
+import {
+  omitWatchAudienceSelection,
+  partitionWatchAudienceBlockLag,
+} from "@/lib/watch-audience-content"
 
 const EXPERIENCE_PREVIEW_BASE_SHAPE = adminGraphql(
   `
@@ -131,12 +137,18 @@ const EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
   `
     fragment ExperiencePreviewShape on ExperiencePreview @_unmask {
       ...ExperiencePreviewBaseShape
+      isDefaultTemplate
       blocks {
+        ... on WatchAudienceBlock { ...AdminWatchAudience }
         ... on WatchHomeCategoryRailBlock { ...AdminWatchHomeCategoryRail }
       }
     }
   `,
-  [EXPERIENCE_PREVIEW_BASE_SHAPE, adminWatchHomeCategoryRailFragment],
+  [
+    EXPERIENCE_PREVIEW_BASE_SHAPE,
+    adminWatchHomeCategoryRailFragment,
+    adminWatchAudienceFragment,
+  ],
 )
 
 const PRE_COPY_EXPERIENCE_PREVIEW_SHAPE = adminGraphql(
@@ -454,6 +466,43 @@ type PreviewQueryDocument =
   | typeof PRE_COPY_EXPERIENCE_PREVIEW
   | typeof LEGACY_EXPERIENCE_PREVIEW
 
+// An Admin that has the audience block but predates the selected-template flag.
+// Handled as audience lag: the retry drops the flag AND the audience block, so
+// a generic route-template flag can never admit a staged questionnaire.
+const TEMPLATE_FLAG_LAG = [
+  /^Cannot query field "isDefaultTemplate" on type "ExperiencePreview"\./,
+]
+
+function isPreviewAudienceSchemaLag(candidate: unknown): boolean {
+  if (typeof candidate !== "object" || candidate === null) return false
+  const { audience, rest } = partitionWatchAudienceBlockLag(
+    candidate as Parameters<typeof partitionWatchAudienceBlockLag>[0],
+  )
+  const errors = (rest.errors ?? []) as GraphqlErrorCandidate[]
+  const remainder = {
+    errors: errors.filter(
+      (entry) => !matchesSchemaLagMessage(entry, TEMPLATE_FLAG_LAG),
+    ),
+  }
+  const flagLag = remainder.errors.length < errors.length
+  return (
+    (audience || flagLag) &&
+    (!remainder.errors.length || classifyPreviewSchemaLag(remainder) !== "none")
+  )
+}
+
+// The audience retry selection: `omitWatchAudienceSelection` plus the template
+// flag that only gates that block's preview.
+function omitPreviewAudienceSelection<T extends PreviewQueryDocument>(
+  document: T,
+): T {
+  return visit(omitWatchAudienceSelection(document), {
+    Field(node) {
+      return node.name.value === "isDefaultTemplate" ? null : undefined
+    },
+  }) as T
+}
+
 /**
  * One tier of the fallback ladder. Returns the preview on success, or the
  * schema-lag classification of its failure so the caller can pick the next
@@ -462,6 +511,7 @@ type PreviewQueryDocument =
 async function runPreviewTier(
   document: PreviewQueryDocument,
   token: string,
+  retryAudience = true,
 ): Promise<
   | { ok: true; preview: ExperiencePreview | null }
   | { ok: false; lag: PreviewSchemaLag }
@@ -477,6 +527,13 @@ async function runPreviewTier(
       },
     })
   } catch (error) {
+    if (retryAudience && isPreviewAudienceSchemaLag(error)) {
+      return runPreviewTier(
+        omitPreviewAudienceSelection(document),
+        token,
+        false,
+      )
+    }
     const lag = classifyPreviewSchemaLag(error)
     if (lag === "none") throw new Error("Experience preview query failed")
     return { ok: false, lag }
@@ -485,6 +542,9 @@ async function runPreviewTier(
   const response = result as typeof result & {
     error?: ErrorLike
     errors?: readonly unknown[]
+  }
+  if (retryAudience && isPreviewAudienceSchemaLag(response)) {
+    return runPreviewTier(omitPreviewAudienceSelection(document), token, false)
   }
   const lag = classifyPreviewSchemaLag(response)
   if (lag !== "none") return { ok: false, lag }
@@ -557,4 +617,65 @@ export async function getExperiencePreview(
   const legacy = await runPreviewTier(LEGACY_EXPERIENCE_PREVIEW, token)
   if (!legacy.ok) throw new Error("Experience preview query failed")
   return legacy.preview
+}
+
+// Fetched beside the main preview, never inside its fallback ladder: the
+// homepage rendering context is one boolean, and adding it to the ladder's
+// selections would double every tier for one field.
+const EXPERIENCE_PREVIEW_LAYOUT = adminGraphql(`
+  query ExperiencePreviewLayout($token: String!) {
+    experiencePreview(token: $token) {
+      homepageLayout
+    }
+  }
+`)
+
+const LAYOUT_SCHEMA_LAG_MESSAGES = [
+  /^Cannot query field "homepageLayout" on type "ExperiencePreview"\./,
+]
+
+function isLayoutSchemaLag(value: unknown): boolean {
+  const errors = graphqlErrorsFrom(value)
+  return (
+    errors.length > 0 &&
+    errors.every((entry) =>
+      matchesSchemaLagMessage(entry, LAYOUT_SCHEMA_LAG_MESSAGES),
+    )
+  )
+}
+
+/**
+ * Whether the draft renders with the Watch home layout although it is not the
+ * live homepage (a homepage duplicate). An Admin that predates the field
+ * rejects it with a validation error; that degrades to `false`, which renders
+ * exactly what Web rendered before the field existed. Any other failure keeps
+ * the capability-redacting public error.
+ */
+export async function getExperiencePreviewLayout(
+  token: string,
+): Promise<boolean> {
+  let result
+  try {
+    result = await client.query({
+      query: EXPERIENCE_PREVIEW_LAYOUT,
+      variables: { token },
+      fetchPolicy: "no-cache",
+      context: {
+        fetchOptions: { cache: "no-store" },
+      },
+    })
+  } catch (error) {
+    if (isLayoutSchemaLag(error)) return false
+    throw new Error("Experience preview query failed")
+  }
+
+  const response = result as typeof result & {
+    error?: ErrorLike
+    errors?: readonly unknown[]
+  }
+  if (isLayoutSchemaLag(response)) return false
+  if (response.error || response.errors?.length) {
+    throw new Error("Experience preview query failed")
+  }
+  return result.data?.experiencePreview?.homepageLayout === true
 }

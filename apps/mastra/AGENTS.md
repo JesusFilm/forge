@@ -187,3 +187,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 For Studio hosted instructions, OAuth MCP authority, or execution admission, read
 `docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
 root before changing those boundaries.
+
+## Controlled build
+
+Follow the controlled build trust section in `CLAUDE.md`: filtered package trust,
+production PostgreSQL/DuckDB image acceptance, existing private-network/gateway
+containment and separate dashboard binding. Never replace production storage with
+build-analysis memory settings or expose framework routes publicly.

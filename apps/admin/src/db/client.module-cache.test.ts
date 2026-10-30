@@ -28,8 +28,13 @@ vi.mock("@prisma/client", () => ({
 const cache = globalThis as typeof globalThis & {
   prisma?: unknown
   syncPrisma?: unknown
+  studioRenderPrisma?: unknown
 }
-const original = { prisma: cache.prisma, syncPrisma: cache.syncPrisma }
+const original = {
+  prisma: cache.prisma,
+  syncPrisma: cache.syncPrisma,
+  studioRenderPrisma: cache.studioRenderPrisma,
+}
 
 beforeEach(() => {
   vi.resetModules()
@@ -37,6 +42,7 @@ beforeEach(() => {
   clients.length = 0
   delete cache.prisma
   delete cache.syncPrisma
+  delete cache.studioRenderPrisma
   vi.stubEnv("DATABASE_URL", "postgresql://localhost:1/module_cache_test")
 })
 
@@ -46,6 +52,8 @@ afterEach(() => {
   else cache.prisma = original.prisma
   if (original.syncPrisma === undefined) delete cache.syncPrisma
   else cache.syncPrisma = original.syncPrisma
+  if (original.studioRenderPrisma === undefined) delete cache.studioRenderPrisma
+  else cache.studioRenderPrisma = original.studioRenderPrisma
 })
 
 describe.each(["production", "development"])(
@@ -61,11 +69,15 @@ describe.each(["production", "development"])(
 
       expect(second.prisma).toBe(first.prisma)
       expect(second.syncPrisma).toBe(first.syncPrisma)
+      expect(second.studioRenderPrisma).toBe(first.studioRenderPrisma)
       expect(first.prisma).not.toBe(first.syncPrisma)
-      expect(clients).toHaveLength(2)
+      expect(first.studioRenderPrisma).not.toBe(first.prisma)
+      expect(first.studioRenderPrisma).not.toBe(first.syncPrisma)
+      expect(clients).toHaveLength(3)
       expect(adapters).toEqual([
         expect.objectContaining({ max: 10, connectionTimeoutMillis: 20_000 }),
         expect.objectContaining({ max: 5, connectionTimeoutMillis: 60_000 }),
+        expect.objectContaining({ max: 2, connectionTimeoutMillis: 5_000 }),
       ])
     })
   },

@@ -138,6 +138,7 @@
     "versesAriaValue": "Verses {first} to {last} of {total}, {chapter}",
     "demoVerse": "Swipe up for the next verse",
     "demoChapter": "Swipe left for the next chapter",
+    "demoChapterRtl": "Swipe right for the next chapter",
     "demoSkip": "Tap to skip",
     "demoSkipAriaLabel": "Skip the swipe demonstration",
     "selectVerseAriaHint": "Double-tap to select this verse",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Choose a book",
+    "chooseChapter": "Choose a chapter",
+    "chooseVerse": "Choose a verse",
     "oldTestament": "Old Testament",
     "newTestament": "New Testament",
     "books": "Books",
@@ -193,7 +196,7 @@
     "someBooks": "{count} of {total, plural, one {# book} other {# books}}",
     "twoNames": "{first} and {second}",
     "threeNames": "{first}, {second}, and {third}",
-    "onDevice": "On this device",
+    "downloaded": "Downloaded",
     "downloading": "Downloading {percent}%",
     "downloadStopped": "Download stopped",
     "updateAvailable": "Update available",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Series poster",
     "videosHeading": "Videos",
     "detailsLoadError": "Couldn't load full details.",
+    "languagesTitle": "Video language",
     "searchLanguagesPlaceholder": "Search languages...",
     "searchLanguagesAriaLabel": "Search languages",
     "noLanguagesFound": "No languages found",
@@ -502,6 +506,7 @@
     "resumeAt": "Resume at {time}",
     "unknownLanguage": "Unknown",
     "downloadedStatus": "Downloaded",
+    "languagesTitle": "Video language",
     "searchLanguagesPlaceholder": "Search languages...",
     "searchLanguagesAriaLabel": "Search languages",
     "noLanguagesFound": "No languages found",
@@ -773,5 +778,8 @@
     "send": "Send",
     "sending": "Sending…",
     "sendAriaLabel": "Send feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "The app uses your local network to find Cast devices, so you can play videos on your TV."
   }
 }

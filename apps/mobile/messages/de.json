@@ -138,6 +138,7 @@
     "versesAriaValue": "Verse {first} bis {last} von {total}, {chapter}",
     "demoVerse": "Nach oben wischen für den nächsten Vers",
     "demoChapter": "Nach links wischen für das nächste Kapitel",
+    "demoChapterRtl": "Nach rechts wischen für das nächste Kapitel",
     "demoSkip": "Zum Überspringen tippen",
     "demoSkipAriaLabel": "Wisch-Vorführung überspringen",
     "selectVerseAriaHint": "Doppeltippen, um diesen Vers auszuwählen",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Buch auswählen",
+    "chooseChapter": "Kapitel auswählen",
+    "chooseVerse": "Vers auswählen",
     "oldTestament": "Altes Testament",
     "newTestament": "Neues Testament",
     "books": "Bücher",
@@ -193,7 +196,7 @@
     "someBooks": "{count} von {total, plural, one {# Buch} other {# Büchern}}",
     "twoNames": "{first} und {second}",
     "threeNames": "{first}, {second} und {third}",
-    "onDevice": "Auf diesem Gerät",
+    "downloaded": "Heruntergeladen",
     "downloading": "Download läuft: {percent} %",
     "downloadStopped": "Download abgebrochen",
     "updateAvailable": "Update verfügbar",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serienposter",
     "videosHeading": "Videos dieser Serie",
     "detailsLoadError": "Details konnten nicht vollständig geladen werden.",
+    "languagesTitle": "Videosprache",
     "searchLanguagesPlaceholder": "Sprachen suchen…",
     "searchLanguagesAriaLabel": "Sprachen suchen",
     "noLanguagesFound": "Keine Sprachen gefunden",
@@ -502,6 +506,7 @@
     "resumeAt": "Fortsetzen bei {time}",
     "unknownLanguage": "Unbekannt",
     "downloadedStatus": "Heruntergeladen",
+    "languagesTitle": "Videosprache",
     "searchLanguagesPlaceholder": "Sprachen suchen…",
     "searchLanguagesAriaLabel": "Sprachen suchen",
     "noLanguagesFound": "Keine Sprachen gefunden",
@@ -773,5 +778,8 @@
     "send": "Senden",
     "sending": "Wird gesendet…",
     "sendAriaLabel": "Feedback senden"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Die App nutzt dein lokales Netzwerk, um Geräte für die Übertragung zu finden, damit du Videos auf deinem Fernseher abspielen kannst."
   }
 }

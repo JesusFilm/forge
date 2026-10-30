@@ -91,12 +91,22 @@ export function claimSwipe(
   return null
 }
 
-// R12: up is the next verse and left is the next chapter. RTL text keeps
-// these directions, because the controls stay left-to-right (R32).
+// R14: the layout direction sets the next chapter, never the Bible text's
+// direction. A drag to the left opens it in a left-to-right layout, and a drag
+// to the right in a right-to-left one. `layoutSign` is 1 or -1 (KTD8).
+export function chapterDirection(
+  dx: number,
+  layoutSign: 1 | -1,
+): MoveDirection {
+  return dx * layoutSign < 0 ? "forward" : "back"
+}
+
+/** R12: up is the next verse in both layouts; a chapter follows R14. */
 export function releaseSwipe(
   axis: SwipeAxis,
   total: { dx: number; dy: number },
   velocity: { vx: number; vy: number },
+  layoutSign: 1 | -1,
 ): { axis: SwipeAxis; direction: MoveDirection } | null {
   const distance = axis === "verse" ? total.dy : total.dx
   const speed = axis === "verse" ? velocity.vy : velocity.vx
@@ -107,5 +117,8 @@ export function releaseSwipe(
     Math.abs(speed) >= flickVelocity &&
     Math.sign(speed) === Math.sign(distance)
   if (!far && !flick) return null
+  if (axis === "chapter") {
+    return { axis, direction: chapterDirection(distance, layoutSign) }
+  }
   return { axis, direction: distance < 0 ? "forward" : "back" }
 }

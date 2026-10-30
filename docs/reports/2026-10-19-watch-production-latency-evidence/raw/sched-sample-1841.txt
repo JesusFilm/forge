@@ -1,0 +1,33 @@
+== static
+Threads:	19 Cpus_allowed_list:	0-47 
+nproc=48 online=0-47
+cpu.max=800000 100000
+cpu.weight=100
+cpu.weight.nice=0
+cpuset.cpus.effective=0-47
+cpuset.cpus=
+cpu.max.burst=0
+cgroup.type=domain
+proc1_cgroup=0::/
+nr_switches : 18608993;se.load.weight : 1048576;policy : 0;prio : 120;
+nice=20 sched_policy=0 processor_last=17
+== t0
+utc=2026-10-19T18:41:00.739Z
+schedstat=10160924837577 2101788415044 18609016
+voluntary_ctxt_switches:	463996 nonvoluntary_ctxt_switches:	18145029 
+procs_running 176 procs_blocked 5 
+cpu_line=cpu  30299582212 3041699657 12484449666 157102783971 3653350048 0 2131723155 821047530 56865389 0
+loadavg=87.65 96.17 88.73 117/49083 1997
+cg_cpu_stat=usage_usec 15100743394 user_usec 12921897769 system_usec 2178845625 nr_periods 123705 nr_throttled 0 throttled_usec 0 nr_bursts 0 burst_usec 0 
+cg_cpu_pressure=some avg10=12.90 avg60=15.48 avg300=15.86 total=816759751 full avg10=12.83 avg60=15.12 avg300=15.34 total=775868732 
+host_cpu_pressure=some avg10=87.20 avg60=86.96 avg300=86.94 total=4667061903186 full avg10=0.00 avg60=0.00 avg300=0.00 total=0 
+== t1
+utc=2026-10-19T18:41:10.771Z
+schedstat=10167623398011 2105069047343 18658811
+voluntary_ctxt_switches:	464223 nonvoluntary_ctxt_switches:	18194598 
+procs_running 133 procs_blocked 1 
+cpu_line=cpu  30299602330 3041706465 12484455656 157102794673 3653350750 0 2131723998 821050702 56865389 0
+loadavg=93.91 97.22 89.15 109/48960 2009
+cg_cpu_stat=usage_usec 15110638122 user_usec 12930330779 system_usec 2180307343 nr_periods 123805 nr_throttled 0 throttled_usec 0 nr_bursts 0 burst_usec 0 
+cg_cpu_pressure=some avg10=17.78 avg60=16.24 avg300=16.02 total=818829773 full avg10=17.76 avg60=15.93 avg300=15.51 total=777938619 
+host_cpu_pressure=some avg10=87.07 avg60=86.97 avg300=86.94 total=4667070682843 full avg10=0.00 avg60=0.00 avg300=0.00 total=0 

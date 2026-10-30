@@ -58,6 +58,37 @@ export function verseTypography(typography: TypographyScale): {
   }
 }
 
+// iOS draws Myanmar in Noto Sans Myanmar, 2.18 em tall, and a fixed line height
+// cuts the tops off its letters. Khmer, at 1.99 em, keeps them.
+const TALL_SCRIPT = /[\u1000-\u109f\ua9e0-\ua9ff\uaa60-\uaa7f]/
+export const TALL_SCRIPT_LINE_HEIGHT_RATIO = 2.2
+
+type RowToken = { fontSize: number; lineHeight: number }
+
+export type CardRow = {
+  /** The row's text style: the token, or only its font size. */
+  style: { fontSize: number; lineHeight?: number }
+  /** The line height that the fit budgets, before the text scale. */
+  lineHeight: number
+}
+
+/**
+ * One card row's type. A Myanmar row takes the font's own line height, and the
+ * fit budgets that line from the same test, so the two cannot drift.
+ */
+export function cardRow(
+  token: RowToken,
+  text: string | null | undefined,
+): CardRow {
+  if (text == null || !TALL_SCRIPT.test(text)) {
+    return { style: token, lineHeight: token.lineHeight }
+  }
+  return {
+    style: { fontSize: token.fontSize },
+    lineHeight: token.fontSize * TALL_SCRIPT_LINE_HEIGHT_RATIO,
+  }
+}
+
 // Consumed directly by BibleQuotesCarouselRenderer's StyleSheet, so the fit
 // arithmetic and the rendered layout cannot drift apart. A margin is a fixed
 // layout value and does not scale with the reader's text size.
@@ -86,6 +117,10 @@ export type PassageCardFitInput = {
   hasTranslation: boolean
   hasCopyright: boolean
   hasLink: boolean
+  /** A row's `cardRow` line height; the token's when absent. */
+  referenceLineHeight?: number
+  translationLineHeight?: number
+  linkLineHeight?: number
 }
 
 /**
@@ -139,27 +174,26 @@ function stackHeight(
 ): number {
   const { typography, fontScale } = input
   const line = (lineHeight: number) => lineHeight * fontScale
+  const referenceLine =
+    input.referenceLineHeight ?? typography.bodySmall.lineHeight
+  const translationLine =
+    input.translationLineHeight ?? typography.caption.lineHeight
+  const linkLine = input.linkLineHeight ?? typography.bodySmall.lineHeight
 
-  let height =
-    line(typography.bodySmall.lineHeight) * REFERENCE_MAX_LINES +
-    REFERENCE_MARGIN
+  let height = line(referenceLine) * REFERENCE_MAX_LINES + REFERENCE_MARGIN
 
   if (regions.verseLines > 0) {
     height += line(verseTypography(typography).lineHeight) * regions.verseLines
     height += VERSE_MARGIN
   }
   if (regions.translation) {
-    height +=
-      line(typography.caption.lineHeight) * TRANSLATION_MAX_LINES +
-      TRANSLATION_MARGIN
+    height += line(translationLine) * TRANSLATION_MAX_LINES + TRANSLATION_MARGIN
   }
   if (regions.copyright) {
     height += line(typography.caption.lineHeight) * COPYRIGHT_MAX_LINES
   }
   if (regions.link) {
-    height +=
-      Math.max(LINK_MIN_TAP_HEIGHT, line(typography.bodySmall.lineHeight)) +
-      LINK_MARGIN_TOP
+    height += Math.max(LINK_MIN_TAP_HEIGHT, line(linkLine)) + LINK_MARGIN_TOP
   }
 
   return height

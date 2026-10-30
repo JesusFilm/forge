@@ -1,0 +1,46 @@
+name: Manager production image
+on:
+  pull_request:
+    paths:
+      - "apps/manager/**"
+      - "packages/admin-graphql/**"
+      - "packages/shorts-compositions/**"
+      - "packages/studio-contracts/**"
+      - "packages/studio-server/**"
+      - "packages/video-player/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/manager-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/manager/**"
+      - "packages/admin-graphql/**"
+      - "packages/shorts-compositions/**"
+      - "packages/studio-contracts/**"
+      - "packages/studio-server/**"
+      - "packages/video-player/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/manager-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build actual Manager image and verified media toolchain
+        run: docker build -f apps/manager/Dockerfile -t manager-security-ci .
+      - name: Verify independent runtime, OS, JOSE and native media trust
+        run: docker run --rm --entrypoint sh manager-security-ci apps/manager/verify-image-trust.sh
+      - name: Verify actual production startup and access boundaries without networking
+        run: docker run --rm --network none -e MANAGER_IMAGE_FIXTURE=isolated --entrypoint node manager-security-ci apps/manager/verify-production-image.mjs

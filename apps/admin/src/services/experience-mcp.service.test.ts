@@ -28,19 +28,22 @@ function mockPrisma() {
   const experienceLocaleUpdate = vi.fn()
   const experienceLocaleFindUniqueOrThrow = vi.fn()
   const experienceCreate = vi.fn()
+  const experienceFindFirst = vi.fn()
+  const experienceLocaleFindMany = vi.fn()
+  const contentRevisionFindMany = vi.fn().mockResolvedValue([])
   return {
     experience: {
       create: experienceCreate,
-      findFirst: vi.fn(),
+      findFirst: experienceFindFirst,
     },
     experienceLocale: {
       findFirst: vi.fn(),
       findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
-      findMany: vi.fn(),
+      findMany: experienceLocaleFindMany,
     },
     contentRevision: {
       findFirst: contentRevisionFindFirst,
-      findMany: vi.fn().mockResolvedValue([]),
+      findMany: contentRevisionFindMany,
       create: contentRevisionCreate,
     },
     contentRevisionCreate,
@@ -52,17 +55,22 @@ function mockPrisma() {
           $queryRaw: vi.fn(),
           contentRevision: {
             findFirst: contentRevisionFindFirst,
+            findMany: contentRevisionFindMany,
             create: contentRevisionCreate,
             update: contentRevisionUpdate,
           },
           seoProposalMaterialization: { updateMany: vi.fn() },
           experienceLocale: {
             findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+            findMany: experienceLocaleFindMany,
             update: experienceLocaleUpdate,
           },
           // The atomic generate persist runs ExperienceService.create through
           // the transaction client — same handle as the top-level mock.
-          experience: { create: experienceCreate },
+          experience: {
+            create: experienceCreate,
+            findFirst: experienceFindFirst,
+          },
         }),
     ),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -106,6 +114,16 @@ const VALID_INPUT = {
   slug: "hope",
   title: "Hope",
   blocks: [{ t: "text", heading: "Hope" }],
+}
+
+function echoDraftCreate(prisma: ReturnType<typeof mockPrisma>) {
+  prisma.contentRevisionCreate.mockImplementation(
+    async ({ data }: { data: Record<string, unknown> }) => ({
+      ...data,
+      id: "draft-1",
+      revisedAt: updatedAt,
+    }),
+  )
 }
 
 describe("ExperienceMcpService", () => {
@@ -202,27 +220,78 @@ describe("ExperienceMcpService", () => {
       ],
     })
 
-    await expect(
-      service.duplicateExperience({
-        input: { experienceId: "exp-source" },
-        user: EDITOR_ALICE,
-      }),
-    ).resolves.toMatchObject({
+    echoDraftCreate(prisma)
+
+    const result = await service.duplicateExperience({
+      input: { experienceId: "exp-source" },
+      user: EDITOR_ALICE,
+    })
+
+    expect(result).toMatchObject({
       ok: true,
       sourceExperienceId: "exp-source",
+      sourceVersion: "EFFECTIVE",
       experience: { id: "exp-copy", ownerId: "alice", isTemplate: false },
       locales: [
         {
           id: "loc-copy",
           experienceId: "exp-copy",
           slug: "hope-copy",
+          isHomepage: false,
           status: "DRAFT",
           publishedAt: null,
+          copiedFrom: "CANONICAL",
+          sourceLocaleId: "loc-source",
+          sourceDraftRevision: null,
+          draft: {
+            revision: expect.stringMatching(/^draft-1\./),
+            previewUrl: expect.stringMatching(
+              /\/watch\/preview\/experience\/[A-Za-z0-9_-]{43}$/,
+            ),
+          },
         },
       ],
       editorUrl:
         "http://localhost:3003/dashboard/experiences/exp-copy?locale=en",
     })
+    expect(prisma.contentRevisionCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityType: "ExperienceLocale",
+        entityId: "loc-copy",
+        status: "DRAFT",
+        revisedBy: "alice",
+      }),
+    })
+  })
+
+  it("forwards an explicit CANONICAL source version and rejects unknown ones", async () => {
+    prisma.experience.findFirst.mockResolvedValueOnce({
+      isTemplate: false,
+      archivedAt: null,
+      locales: [{ ...CREATED_LOCALE, id: "loc-source" }],
+    })
+    prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+    prisma.experience.create.mockResolvedValueOnce({
+      ...CREATED_EXPERIENCE,
+      id: "exp-copy",
+      locales: [{ ...CREATED_LOCALE, id: "loc-copy", slug: "hope-copy" }],
+    })
+    echoDraftCreate(prisma)
+
+    await expect(
+      service.duplicateExperience({
+        input: { experienceId: "exp-source", sourceVersion: "CANONICAL" },
+        user: ADMIN,
+      }),
+    ).resolves.toMatchObject({ ok: true, sourceVersion: "CANONICAL" })
+    expect(prisma.contentRevision.findMany).not.toHaveBeenCalled()
+
+    await expect(
+      service.duplicateExperience({
+        input: { experienceId: "exp-source", sourceVersion: "LIVE" },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow()
   })
 
   it("VIEWER cannot create — rejected before the slug probe runs", async () => {

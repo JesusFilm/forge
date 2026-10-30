@@ -65,7 +65,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   size: {
-    fontFamily: "System",
     fontSize: 12,
     lineHeight: 16,
   },

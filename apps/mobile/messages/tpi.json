@@ -138,6 +138,7 @@
     "versesAriaValue": "Ves {first} i go {last} bilong {total}, {chapter}",
     "demoVerse": "Pusim i go antap long ves bihain",
     "demoChapter": "Pusim i go long han kais long sapta bihain",
+    "demoChapterRtl": "Pusim i go long han sut long sapta bihain",
     "demoSkip": "Tapim bilong abrusim",
     "demoSkipAriaLabel": "Abrusim soim bilong pusim skrin",
     "selectVerseAriaHint": "Tapim tupela taim bilong makim dispela ves",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Makim wanpela buk",
+    "chooseChapter": "Makim wanpela sapta",
+    "chooseVerse": "Makim wanpela ves",
     "oldTestament": "Olpela Testamen",
     "newTestament": "Nupela Testamen",
     "books": "Ol buk",
@@ -193,7 +196,7 @@
     "someBooks": "{count} bilong {total, plural, other {# buk}}",
     "twoNames": "{first} na {second}",
     "threeNames": "{first}, {second} na {third}",
-    "onDevice": "I stap long dispela masin",
+    "downloaded": "Daunlod pinis",
     "downloading": "I daunlod {percent}%",
     "downloadStopped": "Daunlod i stop",
     "updateAvailable": "Nupela apdet i stap",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Posta bilong seris",
     "videosHeading": "Ol vidio",
     "detailsLoadError": "I no inap lodim olgeta save.",
+    "languagesTitle": "Tokples bilong vidio",
     "searchLanguagesPlaceholder": "Painim tokples...",
     "searchLanguagesAriaLabel": "Painim tokples",
     "noLanguagesFound": "I no painim tokples",
@@ -502,6 +506,7 @@
     "resumeAt": "Go het long {time}",
     "unknownLanguage": "I no save",
     "downloadedStatus": "Daunlod pinis",
+    "languagesTitle": "Tokples bilong vidio",
     "searchLanguagesPlaceholder": "Painim tokples...",
     "searchLanguagesAriaLabel": "Painim tokples",
     "noLanguagesFound": "I no painim tokples",
@@ -773,5 +778,8 @@
     "send": "Salim",
     "sending": "I salim nau…",
     "sendAriaLabel": "Salim tingting"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Dispela app i yusim lokal netwok bilong yu long painim ol masin bilong salim i go long TV, bai yu ken pleim ol vidio long TV bilong yu."
   }
 }

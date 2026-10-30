@@ -138,6 +138,7 @@
     "versesAriaValue": "ຂໍ້ {first} ຫາ {last} ຈາກ {total}, {chapter}",
     "demoVerse": "ປັດຂຶ້ນເພື່ອໄປຂໍ້ຕໍ່ໄປ",
     "demoChapter": "ປັດຊ້າຍເພື່ອໄປບົດຕໍ່ໄປ",
+    "demoChapterRtl": "ປັດຂວາເພື່ອໄປບົດຕໍ່ໄປ",
     "demoSkip": "ແຕະເພື່ອຂ້າມ",
     "demoSkipAriaLabel": "ຂ້າມການສາທິດການປັດ",
     "selectVerseAriaHint": "ແຕະສອງເທື່ອເພື່ອເລືອກຂໍ້ນີ້",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ເລືອກປຶ້ມ",
+    "chooseChapter": "ເລືອກບົດ",
+    "chooseVerse": "ເລືອກຂໍ້",
     "oldTestament": "ພັນທະສັນຍາເດີມ",
     "newTestament": "ພັນທະສັນຍາໃໝ່",
     "books": "ປຶ້ມ",
@@ -193,7 +196,7 @@
     "someBooks": "{count} ຈາກ {total, plural, other {# ຫົວ}}",
     "twoNames": "{first} ແລະ {second}",
     "threeNames": "{first}, {second} ແລະ {third}",
-    "onDevice": "ຢູ່ໃນອຸປະກອນນີ້",
+    "downloaded": "ດາວໂຫລດແລ້ວ",
     "downloading": "ກຳລັງດາວໂຫລດ {percent}%",
     "downloadStopped": "ການດາວໂຫລດຢຸດລົງ",
     "updateAvailable": "ມີອັບເດດໃໝ່",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ໂປສເຕີຊີຣີ",
     "videosHeading": "ວິດີໂອ",
     "detailsLoadError": "ໂຫລດລາຍລະອຽດທັງໝົດບໍ່ສຳເລັດ.",
+    "languagesTitle": "ພາສາວິດີໂອ",
     "searchLanguagesPlaceholder": "ຄົ້ນຫາພາສາ...",
     "searchLanguagesAriaLabel": "ຄົ້ນຫາພາສາ",
     "noLanguagesFound": "ບໍ່ພົບພາສາ",
@@ -502,6 +506,7 @@
     "resumeAt": "ເບິ່ງຕໍ່ທີ່ {time}",
     "unknownLanguage": "ບໍ່ຮູ້ພາສາ",
     "downloadedStatus": "ດາວໂຫລດແລ້ວ",
+    "languagesTitle": "ພາສາວິດີໂອ",
     "searchLanguagesPlaceholder": "ຄົ້ນຫາພາສາ...",
     "searchLanguagesAriaLabel": "ຄົ້ນຫາພາສາ",
     "noLanguagesFound": "ບໍ່ພົບພາສາ",
@@ -773,5 +778,8 @@
     "send": "ສົ່ງ",
     "sending": "ກຳລັງສົ່ງ…",
     "sendAriaLabel": "ສົ່ງຄຳຕິຊົມ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ແອັບໃຊ້ເຄືອຂ່າຍພາຍໃນຂອງທ່ານຊອກຫາອຸປະກອນທີ່ຮັບການສົ່ງພາບໄດ້ ເພື່ອໃຫ້ທ່ານຫຼິ້ນວິດີໂອໃນທີວີໄດ້."
   }
 }

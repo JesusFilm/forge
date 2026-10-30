@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} ਵਿੱਚੋਂ ਆਇਤਾਂ {first} ਤੋਂ {last}, {chapter}",
     "demoVerse": "ਅਗਲੀ ਆਇਤ ਲਈ ਉੱਪਰ ਸਵਾਈਪ ਕਰੋ",
     "demoChapter": "ਅਗਲੇ ਅਧਿਆਇ ਲਈ ਖੱਬੇ ਸਵਾਈਪ ਕਰੋ",
+    "demoChapterRtl": "ਅਗਲੇ ਅਧਿਆਇ ਲਈ ਸੱਜੇ ਸਵਾਈਪ ਕਰੋ",
     "demoSkip": "ਛੱਡਣ ਲਈ ਟੈਪ ਕਰੋ",
     "demoSkipAriaLabel": "ਸਵਾਈਪ ਦਾ ਪ੍ਰਦਰਸ਼ਨ ਛੱਡੋ",
     "selectVerseAriaHint": "ਇਹ ਆਇਤ ਚੁਣਨ ਲਈ ਦੋ ਵਾਰ ਟੈਪ ਕਰੋ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ਕਿਤਾਬ ਚੁਣੋ",
+    "chooseChapter": "ਅਧਿਆਇ ਚੁਣੋ",
+    "chooseVerse": "ਆਇਤ ਚੁਣੋ",
     "oldTestament": "ਪੁਰਾਣਾ ਨੇਮ",
     "newTestament": "ਨਵਾਂ ਨੇਮ",
     "books": "ਕਿਤਾਬਾਂ",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# ਕਿਤਾਬ ਵਿੱਚੋਂ {count}} other {# ਕਿਤਾਬਾਂ ਵਿੱਚੋਂ {count}}}",
     "twoNames": "{first} ਅਤੇ {second}",
     "threeNames": "{first}, {second} ਅਤੇ {third}",
-    "onDevice": "ਇਸ ਡਿਵਾਈਸ ’ਤੇ",
+    "downloaded": "ਡਾਊਨਲੋਡ ਹੋ ਗਿਆ",
     "downloading": "ਡਾਊਨਲੋਡ ਹੋ ਰਿਹਾ ਹੈ {percent}%",
     "downloadStopped": "ਡਾਊਨਲੋਡ ਰੁਕ ਗਿਆ",
     "updateAvailable": "ਅੱਪਡੇਟ ਉਪਲਬਧ ਹੈ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ਸੀਰੀਜ਼ ਦਾ ਪੋਸਟਰ",
     "videosHeading": "ਵੀਡੀਓ",
     "detailsLoadError": "ਪੂਰਾ ਵੇਰਵਾ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
+    "languagesTitle": "ਵੀਡੀਓ ਦੀ ਭਾਸ਼ਾ",
     "searchLanguagesPlaceholder": "ਭਾਸ਼ਾਵਾਂ ਖੋਜੋ…",
     "searchLanguagesAriaLabel": "ਭਾਸ਼ਾਵਾਂ ਖੋਜੋ",
     "noLanguagesFound": "ਕੋਈ ਭਾਸ਼ਾ ਨਹੀਂ ਮਿਲੀ",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} ਤੋਂ ਮੁੜ ਸ਼ੁਰੂ ਕਰੋ",
     "unknownLanguage": "ਅਣਜਾਣ",
     "downloadedStatus": "ਡਾਊਨਲੋਡ ਹੋ ਗਿਆ",
+    "languagesTitle": "ਵੀਡੀਓ ਦੀ ਭਾਸ਼ਾ",
     "searchLanguagesPlaceholder": "ਭਾਸ਼ਾਵਾਂ ਖੋਜੋ…",
     "searchLanguagesAriaLabel": "ਭਾਸ਼ਾਵਾਂ ਖੋਜੋ",
     "noLanguagesFound": "ਕੋਈ ਭਾਸ਼ਾ ਨਹੀਂ ਮਿਲੀ",
@@ -773,5 +778,8 @@
     "send": "ਭੇਜੋ",
     "sending": "ਭੇਜਿਆ ਜਾ ਰਿਹਾ ਹੈ…",
     "sendAriaLabel": "ਫੀਡਬੈਕ ਭੇਜੋ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ਐਪ ਕਾਸਟ ਡਿਵਾਈਸਾਂ ਲੱਭਣ ਲਈ ਤੁਹਾਡੇ ਸਥਾਨਕ ਨੈੱਟਵਰਕ ਦੀ ਵਰਤੋਂ ਕਰਦੀ ਹੈ, ਤਾਂ ਜੋ ਤੁਸੀਂ ਆਪਣੇ ਟੀਵੀ ’ਤੇ ਵੀਡੀਓ ਚਲਾ ਸਕੋ।"
   }
 }

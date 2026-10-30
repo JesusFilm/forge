@@ -32,7 +32,7 @@ hidden in a successor ticket.
    the existing storage owner and measured receipts, including PRs 2534/2537.
    Preserve independent loaded-retention and capacity verification.
 3. Repair database test fixtures and add CI coverage: content-discovery
-   feat-590 and platform feat-591. Own only the named native test fixtures and
+   feat-612 and platform feat-591. Own only the named native test fixtures and
    necessary CI wiring; preserve expiry and owner-authority semantics.
 4. Finish Watch measurement and navigation authority: content-discovery
    feat-373 and feat-564. Audit runtime and existing deployed evidence first;
@@ -50,7 +50,8 @@ hidden in a successor ticket.
 ## Verification and sequencing
 
 Audit before edits; each implementer records a scoped plan before runtime changes.
-Independent areas use separate GPT-6 Sol chats, with no further delegation.
+Independent areas use separate GPT-6 Sol chats, with no further delegation;
+the October 27 user-requested retention handoff uses GPT-6 Astra.
 Shared production operations and merges belong to the coordinating owner.
 Children own their ticket files and evidence; root owns the consolidated record,
 policy, global index and cross-ticket dependency reconciliation.
@@ -81,14 +82,26 @@ or exhaustive catalogue absence. HTTP 200 does not excuse internal errors.
 
 ## Execution state
 
+The [October 27 ordinary-cycle review](../reports/2026-10-27-recommendation-retention-cycle.md)
+accepts the second loaded failure-free scheduled cycle, alongside October 23.
+The cycle-count gate is met; manual work earns no credit. Feat-554 remains open
+for continued operational margin, and feat-756 remains open for the larger Watch
+expiry wave's drainage/capacity. The measured horizon contains 876,967 rows
+through October 29 10:30 UTC, with 7.478 GB of PGDATA free at the dated check.
+The next existing daily observation must assess actual drainage, oldest/overdue
+backlog and relation/PGDATA/WAL headroom, or prompt evidence-backed capacity
+protection if needed. No new fixed number of clean days or arbitrary memory gate
+is introduced. Current scope remains 11 complete, 25 cancelled and four open.
+The active plan and daily storage observer remain active.
+
 The implementation and scope decisions are integrated through PRs 2538, 2539,
 2540, 2543, 2544, 2545 and 2546. Root PR 2541 reconciles the dated ledger,
 bidirectional dependencies, generated index and guidance. Independent reviews
 and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
-The retention track stays active for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3, 4, 5 and 6 failed and
+At the historical October 6 checkpoint, platform feat-554 still required two
+normal failure-free loaded daily retention cycles. October 2, 3, 4, 5 and 6 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -184,3 +197,361 @@ in-progress; no runtime fix or production retrieval defect is claimed. Parent
 reconciles the generated index and consolidated release record; the existing
 daily storage monitor retains feat-554's two later ordinary clean, loaded cycles.
 The expired temporary outage monitor stays paused.
+
+### October 23 continuation
+
+The current scope is 40 paths: 12 complete, 25 cancelled and three open after adding the directly related platform feat-756. The historical original-scope counts above remain dated. The current [rollout checkpoint](../reports/2026-10-23-watch-exposure-fortnight-rollout.md#strict-stored-expiry-release) supersedes the earlier deployment wait and pending strict-mode repair. Both actual Admin roles ran `85e97f521` at 09:03:53, and the existing daily 10:30 UTC worker scheduler and durable runtime were reverified at 09:12:17 without error. #2877 records its 46 focused tests; no duplicate scheduler was added.
+
+Continue in this order:
+
+1. **Complete:** #2878 enforces stored-expiry scope in both manual entry paths, including previously persisted workflow inputs. It retains guarded expired-proof cleanup and required expired-visit reporting, while excluding unrelated age/status maintenance. Scheduled policy is unchanged. Exact published head `b81fa7356` passed independent review, 80 unit plus 12 native PostgreSQL tests, normal validation/hooks and PR CI before normal merge and actual deployment.
+2. **Release verified; incident preserved:** keep window 37's interrupted RUNNING ledgers and partial committed counts without replay or terminal rewriting. Twelve samples proved actual Next process continuity but did not pass the old literal non-rising memory rule. Independent review conditionally accepted a distinct one-pass recovery with two fresh 30-second-separated readings at or below 4 GB of 8 GB, stable identity, health and refreshed process/DB/expiry/capacity gates. Parent owns the launch decision. Do not infer OOM causation or an unbounded leak from these receipts.
+3. Resume only authorized stored-expired cleanup when safe, then reconcile both ledgers, all retained families and additional expiry categories, counters, watermark, locks, WAL and free bytes. Windows 01–36 deleted 8,509 request roots; the 09:05:27 read still found 8,369 expired rows across 26 types and a separately capped session-link backlog. No zero-backlog claim is justified. The two historical manual profile-erasure counters retain unknown expiry eligibility and a possible scope breach; the new release does not retroactively clear that uncertainty.
+4. Keep feat-554 open for two later ordinary loaded failure-free daily cycles and feat-756 open for the October 27 historical exposure wave/capacity evidence. Manual work and budget yields do not manufacture daily-cycle credit. The existing daily monitor remains read-only and active.
+5. Keep feat-609 open: #2878 main CI's HNSW failure followed by one unchanged failed-job retry establishes no correction. Bounded local experiments and CI environment comparison found no supported fixture/runtime fix. The next discriminator requires a naturally failing original-geometry index retained before teardown. Do not weaken the assertion, repeat blind CI retries or confuse this with the historical hosted-runner outage.
+
+The window 38 admission was held without launch at 09:18:15 after worker memory rose above 4 GB. No new cleanup command or attempt was issued, and no further manual retry is authorized by this plan. Preserve the backlog as unresolved and let the existing daily monitor verify ordinary scheduled progress, errors, memory and capacity. The production daily scheduler remains enabled; do not confuse this manual hold with disabling automation.
+
+Parent merged the earlier evidence PR #2868 and owns this later release record, review/merge and final inventory. The storage owner retains coordinated production operations and daily read-only monitoring. No duplicate automation, direct deployment, manual restart, early Watch expiry or capacity purchase is authorized.
+
+### October 24 continuation
+
+This checkpoint supersedes the October 23 pre-cycle backlog and zero-credit
+state above. The independently reviewed October 23 ordinary cycle completed
+85 successful passes without failures or yields and cleared its fixed expired
+cohort. It earns one feat-554 cycle; no manual cleanup launched. The [current
+closeout checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-24-checkpoint)
+and feat-554 ticket retain the final watermark, descendant/backlog and capacity
+evidence. One further qualifying cycle is needed.
+
+October 24 recorded genuine failures and earns no credit, even though its fixed
+10:30 UTC cohort was clear in the 12:50 snapshot. The nine observed wrapper
+failures include expired transactions, explicit batch deadlines, a generic
+transaction error and a terminated connection. The exact expensive operation
+and connection-failure cause remain unproved. Keep both ledgers independent;
+do not replay or rewrite stale RUNNING entries.
+
+The storage owner continues bounded diagnosis using the captured evidence and
+owned local fixtures. Require a causal explanation and discriminating test
+before claiming a runtime fix, then independent review, green required checks,
+normal PR-to-main release and actual deployment verification. Preserve the
+five-second budget and truthful failure/yield classification. The already
+enabled daily scheduler and separate read-only daily monitor remain active;
+do not start manual cleanup or revive the expired outage monitor. Keep the
+October 27 exposure wave and the unresolved HNSW fixture separate from feat-554.
+
+### October 26 continuation
+
+The [current evidence checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-current-checkpoint)
+records 37 failed scheduled wrappers on October 25 and nine on October 26.
+Independent review accepts no new cycle credit: October 23 remains one proved
+ordinary loaded, failure-free cycle. Keep the separate ledgers independent and
+do not rewrite or replay the stale RUNNING row. The October 26 query is as of
+19:27:51 UTC; its later upper bound does not establish future-window completeness.
+
+The existing storage owner's bounded read-only incident bundle is complete and
+independently reviewed: the fixed daily-start cohorts were clear across 26
+families, but 26,194 newly expired rows remained, with zero over 24 hours overdue.
+PGDATA had 7,503,618,048 free bytes; separate probe times and capped/missing
+surfaces limit inference. Preserve those limits in the linked checkpoint.
+The minimal logging-envelope and consumer correction for the confirmed format
+mismatch merged as reviewed, green PR #2915 (`f27980447`); actual Admin HTTP and
+worker samples on descendant `63a1ccc40` were verified healthy/compact with
+correct runner roles at 20:59:48.987-20:59:53.009 UTC. PR #2900
+deployed diagnostics, not a timeout fix; worker log transport and the original
+timeout cause remain unproved. The transient worker 503 recovered on two health
+samples, with cause and child process/container continuity still unverified.
+No fault injection, timeout widening, direct deployment or manual cleanup is
+authorized. The independently accepted [release bundle](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-diagnostic-format-release)
+found zero new natural attempts at its 21:00:15 ledger snapshot and zero phase
+events in the separate bounded log window, so it does not prove production
+failure-log transport, loaded execution or retention acceptance. Continue the
+existing daily monitor with the new parser and actual release. Preserve the
+separate October 27 Watch expiry-wave verification
+and unresolved HNSW fixture work. The later Co-watch PR #2916 reopened feat-573;
+current scope is 40 paths, **11 complete, 25 cancelled and four open**. Its owner
+remains the existing Co-watch release task; do not duplicate its work or treat
+its separate statement-timeout change as a retention change. Replacement main
+CI, production image and all four CodeQL analyses passed; the cancelled older
+merge jobs remain cancelled. One further qualifying ordinary loaded cycle is
+required, with fresh genuine failures routed to bounded diagnosis.
+
+### October 27 retention repair and Astra handoff
+
+The user explicitly authorized clearing the remaining stored-expired backlog,
+repairing cleanup failures and transferring that work to GPT-6 Astra task
+`01a17a53-3d0b-7b51-806c-78af8d6cfc3c`. The previous storage owner stopped edits
+and manual operations and retains only its existing daily read-only monitor.
+Parent continues independent review assignments, exact-head merges and shared
+production coordination. No duplicate task, scheduler or monitor is required.
+
+The [current correction and handoff](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-exhausted-budget-correction-and-cleanup-handoff)
+records PR #2920's reproduced pre-work exhaustion defect, 94 focused and nine
+native PostgreSQL tests, independent exact-head approval and green normal merge
+`ce23241a9`. Preserve the five-second cleanup budget, committed counters, unknown
+backlog on yield, unchanged success watermark and actual-error semantics.
+Historical P2028 SQL remains unproved. Both actual Admin roles were verified on
+exact `ce23241a9` with matching source hashes, health, compact mode and correct
+runner roles at separate 23:08 worker and 23:15 HTTP observations. Main CI,
+production image and all four CodeQL analyses passed. The finite ledger window
+contained zero attempts; the release establishes no loaded deletion behavior.
+
+The user's later October 27 instruction removes the operator-imposed 4 GB
+admission threshold and no-rising-memory rule. Those rules in earlier dated
+receipts are historical, not current prerequisites. Do not replace them with an
+arbitrary reserve. Datadog access and a completed memory root-cause diagnosis are
+also not prerequisites. Track actual container memory, its enforced limit and
+OOM events directly, alongside service health, correct deployed revision/roles,
+PGDATA above 5 GB and no competing cleanup, lock waiter or long transaction.
+
+The user authorized additional headroom or a dedicated worker. The existing
+production worker was increased from 8 to 16 GB with CPU unchanged at 8, within
+the verified 24 GB plan allowance. API readback and the running container's
+actual limit both confirmed 16,000,000,000 bytes. The same PID 1, process start
+and deployment remained; no restart or redeploy was issued. The first subsequent
+pass committed 50 expired request roots and yielded safely, with matching
+durable counts and a successful manual wrapper. See the
+[capacity and deletion receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-worker-capacity-and-resumed-deletion).
+
+The later explicit backlog request supersedes the older no-further-manual-work
+instructions in the dated checkpoints above. A parent-reviewed admitted window
+may run at most five individually reconciled deployed expired-only passes or
+five minutes. A committed positive-progress budget yield may continue into a
+distinct next pass after both ledgers reconcile; this supersedes the earlier
+stop-on-any-yield operator rule. Stop on an actual error, uncertainty, mismatched
+counts, unhealthy service or OOM/limit events, competing execution, unsafe
+database/capacity conditions or no progress.
+Use the reviewed exclusive-attempt recorder, preserve expected exit-3 payloads
+and never replay an uncertain invocation. No manual pass is authorized merely
+by the read-only verification assignment or the existing daily heartbeat.
+
+The next window stopped on its first pass at 00:21 UTC: both ledgers failed
+after 100 further committed roots, with an expired transaction reporting
+854 ms allowed versus 870 ms elapsed. No second pass or replay followed.
+A later distinct pass committed another 100 roots and yielded safely; total
+post-resize committed roots are 250 across three invocations. Do not reclassify
+the earlier failure as a safe yield or a memory-admission hold.
+
+The [post-configuration repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-post-configuration-admission-repair)
+records separately proven missing admission logic, native exact-base RED/final
+GREEN, independent review and green normal merge `742f25c2` (PR #2923). The
+speculative query/index migration was excluded. Both actual roles now run that
+revision with matching source hashes, health and correct configuration; the
+worker retained 16 GB through the normal rollout. All main CI, image and CodeQL
+checks passed, including actual native retention and production-startup steps.
+The next bounded window committed another 250 roots across three attempts:
+two acknowledged yields (50 and 100), then a genuine failure after 100 further
+committed roots. Post-resize committed roots total 500; neither failed partial
+attempt is reclassified. No fourth pass or replay followed. The fixed cohort
+fell from 38,431 to 37,442, and current expiry from 44,345 to 43,474 across 26
+families; additional bounded inventory found at least 1,001 expired
+profile-session links and one pending profile erasure outside that total.
+
+Current diagnostics localize the failure to admitted projection-decision
+selection: 796 ms at admission, 808 ms in the operation, and 3 ms each for
+acquisition, lock and configuration. The
+[selection repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-decision-selection-repair)
+records PR #2926's existing-index rewrite, guarded unlink and local work
+measurements. Independent exact-head review, 80 focused tests, 37 PostgreSQL
+tests, full Admin typecheck and all applicable PR checks passed before normal
+merge `50cb6a3e`. The initial composition timeout is retained alongside its
+unchanged fresh isolated passing rerun. Empty-parent probes remain linear, and
+local backend CPU does not prove production CPU per committed root.
+
+Parent owns normal deployment verification and production coordination with the
+separate Web event-recording repair. All three main workflows passed, and both
+actual Admin roles were verified on `50cb6a3e` at 03:18–03:19 UTC with healthy
+responses, compact mode and correct runner roles; the worker retains 16 GB.
+At that release snapshot, cleanup had not yet resumed. Independent review
+accepted the exact
+historical unfinished set as nonresumable, preserving its records and requiring
+fresh overlap checks for new work. The coordinated Web rollout and subsequent
+cleanup windows are recorded below.
+No direct deploy/redeploy or local-code publication is authorized.
+Underlying SQL/client cost and historical failure causation remain unproved,
+and a yield-only sequence does not prove completion.
+
+Continue observing both ledgers, all 26 current retention-health families,
+expiry cohorts, success watermark and capacity. Those 26 families do not cover
+every cleanup category, so neither their count nor a yield-only sequence proves
+global clearance. Keep memory diagnosis separate from the active drain.
+
+The user's later efficiency objective requires less CPU and database work per
+committed expired row while making useful drain progress. Added capacity and
+the admission-boundary correction are separate outcomes, not efficiency proof.
+Measure costly selection scans, joins, FK/cascade work, waits and repeated or
+rolled-back work before choosing an optimization. Compare committed rows per
+elapsed time and CPU under comparable workloads, with effects on live request
+latency. Shared-worker CPU and health-probe latency are contextual measurements,
+not isolated deletion cost or live-request latency. Profile eligibility
+reconciliation is a separate maintenance path; do not attribute its failures or
+the reported CPU spike to retention without evidence.
+
+Keep feat-554 in progress until one further qualifying ordinary loaded,
+failure-free cycle supplements October 23. Preserve the Watch exposure wave,
+HNSW fixture and separate Co-watch work without claiming them closed. Update
+release receipts and the same daily monitor with actual deployed evidence;
+keep the expired outage monitor paused and the scope at 11 complete,
+25 cancelled and four open until new acceptance evidence supports a change.
+
+### October 27 root-delete failure after resumed cleanup
+
+The [resumed cleanup receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-resumed-cleanup-and-root-delete-failure)
+preserves 350 newly committed request roots and 5,000 Watch rows across two
+windows on `50cb6a3e`. The second window failed after a partial root deletion;
+the authoritative total includes that committed work. Later windows were
+cancelled without replay. The cumulative manual root total is 850, with zero
+ordinary-cycle credit. The original failed postcheck and separate later
+healthy read-only observation remain distinct.
+
+Astra owns bounded root-delete diagnosis and repair with representative local
+work measurements and preservation of nonexpired rows, privacy and committed
+failure accounting. Parent owns independent review, normal merge/deployment,
+shared rollout coordination and any new manual dispatch. Do not substitute
+higher timeouts, arbitrary admission floors or memory reserves for a measured
+repair. Keep the daily scheduler and observer enabled, and feat-554 in progress.
+
+### October 27 root-chunk cost admission release
+
+The [root-chunk admission repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-root-chunk-cost-admission-repair)
+merged as `e25a0a7d` (PR #2930) after independent exact-head review and all
+relevant PR checks. It avoids admitting another root chunk with less time than
+the preceding acknowledged chunk consumed, while preserving the initial
+750 ms floor and five-second deadline. The native counterfactual proves the
+modeled admission correction, not production CPU or query efficiency.
+
+Astra verified all main checks and both actual Admin roles on the reviewed
+merge, with healthy responses, correct runner roles and compact mode. The
+release-bound operator amendment and fresh historical execution proof passed
+independent review. The first new bounded window completed three normal yields,
+committing 300 roots, 3,000 Watch exposures and, in its third pass, 100 projection
+runs and 100 contributions. Both ledgers and all postchecks matched. This brought
+the manual root total to 1,150 at that window's close, with unresolved backlog
+and no daily credit.
+Parent owns continued bounded dispatches and shared rollout coordination.
+Keep the prior failed partial work and revoked
+windows distinct; do not reuse an old release binding or claim a yield-only
+sequence establishes completion. Preserve October 23's accepted daily cycle,
+the remaining ordinary-cycle requirement and the additional expiry inventories.
+
+### October 27 later unlink failure and next scoped repair
+
+The [later projection unlink failure](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-later-projection-unlink-failure-and-stopped-continuation)
+stopped the next finite continuation after 400 additional committed roots:
+250 from window 02 and 150 from window 03, including 100 retained by its failed
+second attempt. The known manual total was 1,550 at reconciliation, with four
+failed partial attempts retained and historical 301 separate. Windows 04–07
+were revoked without attempts; no cleanup remains authorized by that series.
+
+The new failure is `projection_run_unlink_page` with `P2028`, outside the
+root-only guard. A read-only selection analogue shows a large ID-ordered
+run scan for one eligible row; an expiry/reference-index candidate avoids
+that scan but is not a causal production comparison. Astra owns the targeted
+selector/helper, captured-reference and current-expiry guards, meaningful
+PostgreSQL regressions and comparable local measurements. Parent owns the
+consolidated records, independent review, normal merge/deployment and any fresh
+cleanup dispatch. Do not substitute timeout widening, arbitrary admission or
+memory floors, or a successful health response for the required repair evidence.
+
+### October 27 projection-run selector repair
+
+The [projection-run selector repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
+merged normally as `e2a06589` (PR #2932) after independent exact-head review,
+91 focused tests, 44 PostgreSQL tests, full Admin typecheck and all applicable
+PR checks. Existing expiry/reference indexes replace the broad run scan, with
+captured-reference and current-expiry guards before unlinking. The root admission
+guard, five-second deadline and committed failure accounting remain unchanged.
+
+Sparse and high-fan-out local SELECT fixtures improve, while the 100,000-empty-parent
+fixture regresses from 153.544 to 303.414 ms. Parent probes remain linear; these
+measurements do not establish full-invocation or production CPU improvement, or
+prove that the observed P2028 cannot recur. All main workflows passed and both
+actual roles were verified on the exact merge with all source hashes, compact
+mode, correct runner roles and healthy responses. The release-bound operator
+amendment and fresh historical-execution proof passed independent review. Parent
+authorized one new bounded window with fresh per-pass checks; the revoked earlier
+windows remain revoked. Preserve the 1,550-root dated manual
+baseline, all four failed partial attempts, historical 301 separately and zero
+manual daily-cycle credit. Feat-554 retains its ordinary-cycle requirement.
+
+The [first-window outcome](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-unlink-recurrence-after-projection-run-repair)
+stopped on a decision-unlink P2028 after two attempts committed 200 additional
+roots. The known manual total is 1,750, with five failed partial attempts retained.
+Pass one recorded positive run-link and decision-link progress; the failure in
+pass two does not identify SELECT versus UPDATE. Original postchecks passed,
+memory stayed below the actual limit without OOM or throttling, and the fixed
+cohort fell to 34,340. Backlog remains and no further cleanup is dispatched.
+Astra owns bounded read-only/local investigation of the common late-phase budget
+pattern and actual operation cost before a supported correction. Parent owns
+independent review, normal release and any fresh cleanup dispatch; the daily
+scheduler and read-only monitor remain enabled.
+
+### October 27 decision-operation diagnostics
+
+The [decision-operation diagnostics](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)
+merged normally as `b78fa7a6` (PR #2934) after independent final-head review,
+113 focused tests, 44 native tests, full Admin typechecking and green PR checks.
+The bounded investigation did not reproduce the failed production operation;
+this release records actual SELECT/guarded UPDATE progress and process-wide
+observations without changing cleanup behavior. Manual CLI observations must
+come from that short-lived process, not the worker's long-lived Next process.
+Tentative operation counts are not committed deletions, and an unavailable
+event-loop histogram does not prove absence of a stall.
+
+The new recorder/parser bundle and exact-identity amendment passed independent
+offline review. All main checks and actual both-role release verification passed,
+including matching source/dependency pins, health and the full inventory snapshot.
+A fresh independent source/process historical review accounts for 26 ledger
+records, not 26 distinct invocations. Parent issued one new bounded ordinary
+diagnostic cleanup window after verifying the final bound operator bundle.
+Use its outcome to support a correction; do not call the diagnostics a timeout
+fix. Preserve the stopped 1,750-root baseline, all five failed partial attempts,
+historical 301 separately, the removed memory gates and enabled daily scheduler.
+Feat-554 remains in progress with one further qualifying ordinary cycle required.
+
+The [diagnostic observation window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-diagnostic-window-stopped-before-cleanup)
+stopped in its initial read-only fixed-cohort helper before any cleanup invocation.
+Original postchecks passed; both window ledgers are empty and the baseline is
+unchanged. The discarded helper error prevents causal attribution. Astra owns
+a bounded local failure-reporting amendment; parent owns independent review and
+any new dispatch. This is an operator evidence gap, not a proven cleanup defect.
+
+### October 27 successful passes and collector recovery
+
+The [next diagnostic window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-successful-diagnostic-passes-and-collection-stop)
+ran two successful cleanup invocations after the local helper-reporting amendment
+passed independent review. Both ledgers reconcile 200 additional roots, bringing
+the known manual total to 1,950 with five prior failed partial attempts unchanged.
+Original postchecks and all memory samples passed. Before a third invocation,
+nested Railway collection failed without an actual role frame or verifier result.
+The exact cause remains unknown; no further cleanup or replay followed.
+
+Astra owns a local stage-specific collector receipt and one bounded read-only
+collection recovery within the existing deadline. Never retry cleanup or negative
+health/identity/source results. Parent owns independent review and any new window;
+the remaining ordinary-cycle requirement and extra expiry inventory stay explicit.
+
+That amendment passed independent review and the next bounded window completed
+three successful 100-root passes, raising the known manual total to 2,250 with
+original checks intact and no collection retry needed. Parent issued a finite
+ten-window continuation on the unchanged reviewed operator after independent
+evidence and plan review. Every window retains fresh checks and the five-pass,
+300-second bounds; the first genuine failure, unknown outcome or no progress
+stops the sequence. New readiness stops at 10:05 UTC and dispatch authority
+expires at 10:15 UTC, ahead of ordinary cleanup at 10:30 UTC. No clearance or
+manual daily-cycle credit is implied.
+
+The [finite continuation](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
+completed eight successful passes across its first three windows, adding 800
+request roots for a cumulative manual total of 3,050. All original checks passed.
+The fourth window stopped on a read-only helper failure before any cleanup;
+all remaining window authority is revoked. Its original SQL and health
+postchecks failed; the passing memory observation does not replace them. The
+series evidence is sealed. Astra owns a separate bounded read-only collection
+outage diagnosis; parent owns independent review and the existing daily observer
+handoff. Its one separate account control confirmed Railway API HTTP 429 with
+an 850-second backoff, conservatively until 09:55:27 UTC; the next control was
+skipped. Honor that interval and coordinate future API request volume without
+replacing missing original postchecks or renewing manual authority.
+Ordinary daily cleanup remains enabled. No backlog
+clearance, historical timeout repair or manual-cycle acceptance is claimed.

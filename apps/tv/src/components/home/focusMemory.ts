@@ -24,8 +24,8 @@ export function createFocusMemory(): FocusMemory {
       if (node != null) last = node
     },
     restore() {
-      if (last == null) return false
-      last.requestTVFocus?.()
+      if (typeof last?.requestTVFocus !== "function") return false
+      last.requestTVFocus()
       return true
     },
   }

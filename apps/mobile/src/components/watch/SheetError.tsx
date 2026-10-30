@@ -42,7 +42,6 @@ const styles = StyleSheet.create({
   },
   message: {
     color: "#a8a29e",
-    fontFamily: "System",
     fontSize: 15,
     textAlign: "center",
     lineHeight: 19,
@@ -56,7 +55,6 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: ACCENT,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },

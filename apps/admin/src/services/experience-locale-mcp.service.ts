@@ -99,6 +99,7 @@ export type LocaleRow = {
   locale: string
   slug: string
   isHomepage: boolean
+  homepageLayout: boolean
   pathSegment: string | null
   title: string | null
   metaDescription: string | null
@@ -237,6 +238,7 @@ export class ExperienceLocaleMcpService {
             locale: true,
             slug: true,
             isHomepage: true,
+            homepageLayout: true,
             pathSegment: true,
             title: true,
             metaDescription: true,
@@ -291,6 +293,7 @@ export class ExperienceLocaleMcpService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -955,6 +958,7 @@ export function serializeLocale(locale: LocaleRow) {
     locale: locale.locale,
     slug: locale.slug,
     isHomepage: locale.isHomepage,
+    homepageLayout: locale.homepageLayout,
     pathSegment: locale.pathSegment,
     title: locale.title,
     metaDescription: locale.metaDescription,
@@ -968,7 +972,7 @@ export function serializeLocale(locale: LocaleRow) {
   }
 }
 
-function previewUrlFor(token: string) {
+export function previewUrlFor(token: string) {
   return new URL(
     `/watch/preview/experience/${encodeURIComponent(token)}`,
     env.WATCH_CANONICAL_ORIGIN,

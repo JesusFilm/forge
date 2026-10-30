@@ -138,6 +138,7 @@
     "versesAriaValue": "Véarsaí {first} go {last} as {total}, {chapter}",
     "demoVerse": "Svaidhpeáil suas don chéad véarsa eile",
     "demoChapter": "Svaidhpeáil ar chlé don chéad chaibidil eile",
+    "demoChapterRtl": "Svaidhpeáil ar dheis don chéad chaibidil eile",
     "demoSkip": "Tapáil chun scipeáil",
     "demoSkipAriaLabel": "Scipeáil an taispeántas svaidhpeála",
     "selectVerseAriaHint": "Tapáil faoi dhó chun an véarsa seo a roghnú",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Roghnaigh leabhar",
+    "chooseChapter": "Roghnaigh caibidil",
+    "chooseVerse": "Roghnaigh véarsa",
     "oldTestament": "An Sean-Tiomna",
     "newTestament": "An Tiomna Nua",
     "books": "Leabhair",
@@ -193,7 +196,7 @@
     "someBooks": "{count} as {total, plural, one {# leabhar} two {# leabhar} few {# leabhar} many {# leabhar} other {# leabhar}}",
     "twoNames": "{first} agus {second}",
     "threeNames": "{first}, {second} agus {third}",
-    "onDevice": "Ar an ngléas seo",
+    "downloaded": "Íoslódáilte",
     "downloading": "Á íoslódáil, {percent}%",
     "downloadStopped": "Stopadh an íoslódáil",
     "updateAvailable": "Nuashonrú ar fáil",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Póstaer na sraithe",
     "videosHeading": "Físeáin",
     "detailsLoadError": "Níorbh fhéidir na sonraí iomlána a luchtú.",
+    "languagesTitle": "Teanga an fhíseáin",
     "searchLanguagesPlaceholder": "Cuardaigh teangacha…",
     "searchLanguagesAriaLabel": "Cuardaigh teangacha",
     "noLanguagesFound": "Níor aimsíodh aon teangacha",
@@ -502,6 +506,7 @@
     "resumeAt": "Lean ar aghaidh ag {time}",
     "unknownLanguage": "Anaithnid",
     "downloadedStatus": "Íoslódáilte",
+    "languagesTitle": "Teanga an fhíseáin",
     "searchLanguagesPlaceholder": "Cuardaigh teangacha…",
     "searchLanguagesAriaLabel": "Cuardaigh teangacha",
     "noLanguagesFound": "Níor aimsíodh aon teangacha",
@@ -773,5 +778,8 @@
     "send": "Seol",
     "sending": "Á sheoladh…",
     "sendAriaLabel": "Seol aiseolas"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Úsáideann an aip do líonra áitiúil chun gléasanna teilgin a aimsiú, ionas gur féidir leat físeáin a sheinm ar do theilifís."
   }
 }

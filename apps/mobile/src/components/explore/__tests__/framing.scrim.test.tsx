@@ -99,6 +99,8 @@ function render(
         player={player as unknown as VideoPlayer}
         muted={false}
         paused={false}
+        onResume={() => {}}
+        fast={false}
         onToggleMute={() => {}}
         onSeek={() => {}}
         onKeepWatching={() => {}}

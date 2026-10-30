@@ -259,6 +259,7 @@ describe("bible_reader.chapter_fetch_failed", () => {
         reader_chapter: 3,
         reader_reason: "not-found",
         reader_http_status: 404,
+        reader_fetch_source: "reader",
       },
     ])
   })
@@ -284,8 +285,28 @@ describe("bible_reader.chapter_fetch_failed", () => {
       reader_chapter: 3,
       reader_reason: "malformed-text",
       reader_http_status: 0,
+      reader_fetch_source: "reader",
     })
     expect(JSON.stringify(logs())).not.toContain("beginning")
+  })
+
+  it("tags a quote card's failed fetch, so dashboards can filter it", async () => {
+    const fetch = withFetchFailureReport(async () => ({
+      status: "failed",
+      reason: "offline",
+    }))
+    await fetch(ADDRESS, "quote")
+
+    expect(events("bible_reader.chapter_fetch_failed")).toEqual([
+      {
+        reader_translation_id: "gue_wbt",
+        reader_book: "JHN",
+        reader_chapter: 3,
+        reader_reason: "offline",
+        reader_http_status: 0,
+        reader_fetch_source: "quote",
+      },
+    ])
   })
 
   it("logs nothing for a fetch that succeeds", async () => {

@@ -66,10 +66,6 @@ export function applyOperations(
       doc.components.push(op.component)
       continue
     }
-    if (op.kind === "assign-content-packs") {
-      doc.packRevisionIds = op.packRevisionIds
-      continue
-    }
     const item = doc.items.find((i) => i.id === op.itemId)
     if (!item) throw new StudioCommandError("INVALID")
     switch (op.kind) {

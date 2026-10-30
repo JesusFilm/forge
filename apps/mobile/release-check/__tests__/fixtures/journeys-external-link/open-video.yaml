@@ -1,0 +1,10 @@
+appId: org.jesusfilm.forgewatch
+---
+# A comment that names https://www.jesusfilm.org/ opens nothing.
+- openLink: "forgemobile://watch/jesus"
+- openLink:
+    link: forgemobile://series/the-chosen#season-1
+    autoVerify: true
+- openLink: { link: "forgemobile://experience/easter" }
+- assertVisible:
+    id: "screen-watch"

@@ -676,13 +676,25 @@ afterEach(() => {
 
 describe("translate UI catalogs", () => {
   it("accepts an empty translation only when its English source is empty", () => {
-    const key = "DownloadModal.termsAgreementSuffix"
+    // Synthetic key: no live catalog message has an empty English source, so
+    // the empty message is declared locale-neutral here rather than relying
+    // on the repository policy.
+    const key = "Example.emptySuffix"
+    const policy = {
+      humanReviewedLocales: ["en"],
+      intentionallyLocaleNeutral: new Set([key]),
+    }
 
     expect(() =>
-      validateCatalogIntegrity({ [key]: "" }, { [key]: "" }, 0),
+      validateCatalogIntegrity({ [key]: "" }, { [key]: "" }, 0, policy),
     ).not.toThrow()
     expect(() =>
-      validateCatalogIntegrity({ [key]: "Terms apply" }, { [key]: "" }, 0),
+      validateCatalogIntegrity(
+        { [key]: "Terms apply" },
+        { [key]: "" },
+        0,
+        policy,
+      ),
     ).toThrow(`Empty translation: ${key}`)
   })
 

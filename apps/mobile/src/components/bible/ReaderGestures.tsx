@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { PanResponder, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { directionalIcon, layoutSign } from "../../i18n/layoutRtl"
 import {
+  chapterDirection,
   claimSwipe,
   mayStartReaderSwipe,
   releaseSwipe,
@@ -31,11 +33,6 @@ type Claim = { axis: SwipeAxis; dx: number; dy: number }
 
 type Preview = { direction: MoveDirection; label: string }
 
-/** R12: a drag to the left opens the next chapter. */
-function chapterDirection(dx: number): MoveDirection {
-  return dx < 0 ? "forward" : "back"
-}
-
 // KTD13: one capture-phase responder over the reader owns every swipe, after
 // HomeScreen's hero swipe: claim on dominance, snapshot at the claim, commit
 // on release. It declines a touch that starts where something else owns it.
@@ -49,8 +46,10 @@ export function ReaderGestures(props: ReaderGesturesProps) {
   const [preview, setPreview] = useState<Preview | null>(null)
 
   const [responder] = useState(() => {
+    // R14: the layout sets the chapter direction; touch dx stays physical.
+    const sign = layoutSign()
     const showPreview = (dx: number) => {
-      const direction = chapterDirection(dx)
+      const direction = chapterDirection(dx, sign)
       setPreview((previous) =>
         previous?.direction === direction
           ? previous
@@ -96,6 +95,7 @@ export function ReaderGestures(props: ReaderGesturesProps) {
           current.axis,
           { dx: current.dx + gesture.dx, dy: current.dy + gesture.dy },
           { vx: gesture.vx, vy: gesture.vy },
+          sign,
         )
         if (!move) return
         if (move.axis === "verse") latest.current.onVerseSwipe(move.direction)
@@ -127,7 +127,11 @@ export function ReaderGestures(props: ReaderGesturesProps) {
             style={[styles.preview, { backgroundColor: tokens.buttonSurface }]}
           >
             {!next && (
-              <Ionicons name="chevron-back" size={18} color={tokens.text} />
+              <Ionicons
+                name={directionalIcon("chevron-back")}
+                size={18}
+                color={tokens.text}
+              />
             )}
             <Text
               style={[styles.label, { color: tokens.text }]}
@@ -137,7 +141,11 @@ export function ReaderGestures(props: ReaderGesturesProps) {
               {preview.label}
             </Text>
             {next && (
-              <Ionicons name="chevron-forward" size={18} color={tokens.text} />
+              <Ionicons
+                name={directionalIcon("chevron-forward")}
+                size={18}
+                color={tokens.text}
+              />
             )}
           </View>
         </View>
@@ -173,6 +181,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

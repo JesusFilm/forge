@@ -150,7 +150,10 @@ export function MediaCollectionRenderer({
   }
 
   return (
-    <View style={[layout.sectionOuter, styles.localContainer]}>
+    <View
+      testID="sdui-media-collection"
+      style={[layout.sectionOuter, styles.localContainer]}
+    >
       {categoryLabel != null && (
         <Text style={[text.eyebrow, styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}
@@ -225,7 +228,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: "rgba(255, 255, 255, 0.90)",
-    fontFamily: "System",
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -233,7 +235,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
 })

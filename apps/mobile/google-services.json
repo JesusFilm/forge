@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "865196899720",
+    "project_id": "jesus-film-watch-mobile",
+    "storage_bucket": "jesus-film-watch-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865196899720:android:b23a19767339c7b8c1ce3d",
+        "android_client_info": {
+          "package_name": "org.jesusfilm.forgewatch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZkeulHbKczqfXFJuzqc-2-N5FRUS4yvA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

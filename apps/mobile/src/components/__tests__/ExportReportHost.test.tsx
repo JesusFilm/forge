@@ -40,10 +40,25 @@ let mockSegments: string[] = ["watch", "[slug]"]
 jest.mock("expo-router", () => ({
   useSegments: () => mockSegments,
 }))
+// jest-expo reports Liquid Glass as available, so each case pins the branch.
+const mockGate = { glass: true }
+jest.mock("../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+// A host stand-in that renders its children, so the card text stays visible.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 import { act } from "react"
-import { Platform, Text, View } from "react-native"
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
+import { SURFACE_COLOR } from "../../lib/color"
 import {
   TAB_BAR_CLEARANCE_GAP,
   TAB_BAR_SCREEN_EXTENT_IOS,
@@ -67,6 +82,7 @@ import {
   unmount,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 
@@ -132,6 +148,7 @@ function countButtons(renderer: TestInstance): number {
 beforeEach(() => {
   resetExportReportsForTests()
   resetSeriesExportProgressForTests()
+  mockGate.glass = true
 })
 
 describe("reporting past the originating route", () => {
@@ -656,4 +673,104 @@ describe("placement", () => {
     expect(hostStyle(renderer).bottom).toBe(34 + 16)
     await unmount(renderer)
   })
+})
+
+describe("the card's surface (R11)", () => {
+  function styleOf(node: RenderedNode): ViewStyle {
+    return StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {}
+  }
+
+  function hostNodes(
+    renderer: TestInstance,
+    predicate: (node: RenderedNode) => boolean,
+  ): RenderedNode[] {
+    return renderer.root.findAll(
+      (node) => typeof node.type === "string" && predicate(node),
+    )
+  }
+
+  /** True when `needle`'s Text sits inside `container`. */
+  function holdsText(container: RenderedNode, needle: string): boolean {
+    return (
+      (container as unknown as TestInstance["root"]).findAll(
+        (node) =>
+          typeof node.props.children === "string" &&
+          node.props.children.includes(needle),
+      ).length > 0
+    )
+  }
+
+  /** The host's own absolutely-positioned wrapper. */
+  function hostBottom(renderer: TestInstance): number {
+    const [host] = hostNodes(
+      renderer,
+      (node) => node.props.pointerEvents === "box-none",
+    )
+    return Number(styleOf(host!).bottom)
+  }
+
+  afterEach(() => {
+    mockSegments = ["watch", "[slug]"]
+  })
+
+  it("draws each card on Liquid Glass, with no fill over the glass", async () => {
+    const renderer = await renderHost()
+    await publish(SAVED)
+
+    const glass = hostNodes(renderer, (node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    expect(holdsText(glass[0]!, "Birth of Jesus")).toBe(true)
+    expect(styleOf(glass[0]!).backgroundColor).toBeUndefined()
+    expect(styleOf(glass[0]!).borderRadius).toBe(14)
+    expect(glass[0]!.props.colorScheme).toBe("dark")
+    expect(
+      hostNodes(renderer, (node) => styleOf(node).backgroundColor != null),
+    ).toHaveLength(0)
+    expect(countLabelled(renderer, "Export report")).toBe(1)
+    await unmount(renderer)
+  })
+
+  it("keeps today's solid card without Liquid Glass", async () => {
+    mockGate.glass = false
+    const renderer = await renderHost()
+    await publish(SAVED)
+
+    expect(
+      hostNodes(renderer, (node) => node.type === "GlassView"),
+    ).toHaveLength(0)
+    const cards = hostNodes(
+      renderer,
+      (node) => styleOf(node).backgroundColor === SURFACE_COLOR,
+    )
+    expect(cards).toHaveLength(1)
+    expect(styleOf(cards[0]!)).toMatchObject({
+      borderRadius: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      shadowOpacity: 0.3,
+      elevation: 6,
+    })
+    expect(holdsText(cards[0]!, "Birth of Jesus")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it.each([true, false])(
+    "keeps its clearance with Liquid Glass %s",
+    async (glass) => {
+      mockGate.glass = glass
+      const offTab = await renderHost()
+      await publish(SAVED)
+      expect(hostBottom(offTab)).toBe(34 + 16)
+      await unmount(offTab)
+
+      resetExportReportsForTests()
+      mockSegments = ["(tabs)", "index"]
+      const onTab = await renderHost()
+      await publish(SAVED)
+      expect(hostBottom(onTab)).toBe(
+        TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP + 16,
+      )
+      await unmount(onTab)
+    },
+  )
 })

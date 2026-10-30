@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import { WatchForYouRecommendations } from "@/components/recommendations/WatchForYouRecommendations"
 import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
@@ -14,6 +13,8 @@ export function RecommendationTrafficFixture({
 }) {
   const fixture = useRef<HTMLElement>(null)
   const [destination, setDestination] = useState<string | null>(null)
+  const [seedMediaId, setSeedMediaId] = useState("seed-fixture")
+  const [audioLanguageSlug, setAudioLanguageSlug] = useState("english")
   useEffect(() => {
     if (fixture.current) fixture.current.dataset.hydrated = "true"
   }, [])
@@ -25,12 +26,29 @@ export function RecommendationTrafficFixture({
       style={{ paddingTop: 200 }}
     >
       <h1 data-testid="player-shell">Player shell ready</h1>
-      <RecommendationConsentShell />
+      {surface === "seeded" && (
+        <>
+          <button
+            type="button"
+            data-testid="switch-seed"
+            onClick={() => setSeedMediaId("seed-fixture-next")}
+          >
+            Next source
+          </button>
+          <button
+            type="button"
+            data-testid="switch-audio"
+            onClick={() => setAudioLanguageSlug("spanish")}
+          >
+            Spanish audio
+          </button>
+        </>
+      )}
       {surface === "seeded" ? (
         <WatchSemanticRecommendations
-          seedMediaId="seed-fixture"
+          seedMediaId={seedMediaId}
           locale="en"
-          audioLanguageSlug="english"
+          audioLanguageSlug={audioLanguageSlug}
           navigate={setDestination}
         />
       ) : (

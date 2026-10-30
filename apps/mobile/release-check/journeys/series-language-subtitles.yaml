@@ -1,0 +1,99 @@
+# Change the series language and turn subtitles on. Washi Gospel has an
+# English and a Japanese dub, and both dubs have English and Japanese
+# subtitles (R21). An episode then opens with the picks.
+appId: org.jesusfilm.forgewatch
+name: series-language-subtitles
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://series/washi-gospel
+    label: Open the Washi Gospel series
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-series
+    timeout: 30000
+    label: The series page shows
+- tapOn:
+    text: "Language, .+"
+    label: Open the series language sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-series-language
+    timeout: 20000
+    label: The series language sheet shows
+- tapOn:
+    text: Japanese
+    label: Pick Japanese
+- extendedWaitUntil:
+    visible:
+      text: Language, Japanese
+    timeout: 20000
+    label: The language button shows Japanese
+- tapOn:
+    text: "Subtitles, .+"
+    label: Open the series subtitle sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-series-subtitle
+    timeout: 30000
+    label: The series subtitle sheet shows
+- tapOn:
+    text: English
+    label: Pick English subtitles
+- extendedWaitUntil:
+    visible:
+      text: Subtitles, English
+    timeout: 20000
+    label: The subtitle button shows English
+- scrollUntilVisible:
+    element:
+      id: series-episode-card
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+    label: Scroll to the episodes
+- tapOn:
+    id: series-episode-card
+    index: 0
+    label: Open the first episode
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      text: Language, Japanese
+    timeout: 20000
+    label: The episode plays the Japanese dub
+- assertVisible:
+    text: Subtitles, English
+    label: The episode has English subtitles on
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The episode plays
+- extendedWaitUntil:
+    visible:
+      id: player-subtitle-text
+    timeout: 30000
+    label: A subtitle line shows on the video

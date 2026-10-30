@@ -138,6 +138,7 @@
     "versesAriaValue": "पदानि {first} तः {last} पर्यन्तम्, आहत्य {total}, {chapter}",
     "demoVerse": "अग्रिम-पदाय उपरि सरयतु",
     "demoChapter": "अग्रिम-अध्यायाय वामतः सरयतु",
+    "demoChapterRtl": "अग्रिम-अध्यायाय दक्षिणतः सरयतु",
     "demoSkip": "अतिक्रमितुं स्पृशतु",
     "demoSkipAriaLabel": "सरण-प्रदर्शनम् अतिक्रामतु",
     "selectVerseAriaHint": "इदं पदं चेतुं द्विवारं स्पृशतु",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "पुस्तकं चिनोतु",
+    "chooseChapter": "अध्यायं चिनोतु",
+    "chooseVerse": "पदं चिनोतु",
     "oldTestament": "पुरातन-नियमः",
     "newTestament": "नूतन-नियमः",
     "books": "पुस्तकानि",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# पुस्तके} other {# पुस्तकेषु}} {count}",
     "twoNames": "{first} {second} च",
     "threeNames": "{first}, {second}, {third} च",
-    "onDevice": "अस्मिन् उपकरणे",
+    "downloaded": "अवतारितम्",
     "downloading": "अवतार्यते {percent}%",
     "downloadStopped": "अवतरणं स्थगितम्",
     "updateAvailable": "अद्यतनम् उपलब्धम्",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "शृङ्खला-पोस्टरम्",
     "videosHeading": "वीडियोनि",
     "detailsLoadError": "पूर्ण-विवरणं लोड् कर्तुं न अशक्यत।",
+    "languagesTitle": "वीडियो-भाषा",
     "searchLanguagesPlaceholder": "भाषाः अन्वेषयतु…",
     "searchLanguagesAriaLabel": "भाषाः अन्वेषयतु",
     "noLanguagesFound": "काचिदपि भाषा न प्राप्ता",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} तः अनुवर्तयतु",
     "unknownLanguage": "अज्ञाता",
     "downloadedStatus": "अवतारितम्",
+    "languagesTitle": "वीडियो-भाषा",
     "searchLanguagesPlaceholder": "भाषाः अन्वेषयतु…",
     "searchLanguagesAriaLabel": "भाषाः अन्वेषयतु",
     "noLanguagesFound": "काचिदपि भाषा न प्राप्ता",
@@ -773,5 +778,8 @@
     "send": "प्रेषयतु",
     "sending": "प्रेष्यते…",
     "sendAriaLabel": "प्रतिक्रियां प्रेषयतु"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "अनुप्रयोगः प्रक्षेपणोपकरणानि अन्वेष्टुं भवतः स्थानीयजालम् उपयुङ्क्ते, येन भवान् स्वदूरदर्शने वीडियो चालयितुं शक्नोति।"
   }
 }
