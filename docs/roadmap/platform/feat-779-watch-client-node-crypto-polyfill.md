@@ -30,6 +30,20 @@ not an additional saving from merging this version.
 - Verify with `pnpm --filter @forge/web exec vitest run src/__tests__/no-node-crypto-in-client-graph.test.ts --maxWorkers=2`,
   scoped ESLint, Prettier and `git diff --check`.
 
+## October 30 guard correction
+
+Independent review R1-P2-1 found that the import matcher could consume a
+side-effect import together with a later `from` statement and miss the first
+dependency. Match the quoted side-effect alternative first, then read the
+appropriate capture for either form.
+
+The real server consent-module regressions fail before the fix and pass after
+it for both a following value import and a following re-export. Multiline
+imports/re-exports and erased type declarations remain covered. All six guard
+tests pass. This remains a local TS/TSX source-graph heuristic, not emitted
+bundle certification; no runtime code or retired UI is restored. New-candidate
+independent review, normal commit hooks and current-head CI remain pending.
+
 ## Historical implementation requirement
 
 ## Problem

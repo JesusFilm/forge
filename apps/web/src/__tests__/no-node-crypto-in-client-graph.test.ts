@@ -49,13 +49,17 @@ const isServerActionModule = (source: string) =>
 
 // Value imports and re-exports, including side-effect imports. `import type`
 // and `export type` are erased by the compiler and never reach the bundle.
+// Match a quoted side-effect import first so a later `from` clause cannot
+// consume that statement and hide its dependency.
 const IMPORT_PATTERN =
-  /(?:^|\n)\s*(?:import|export)\s+(?!type\s)(?:[\s\S]*?\sfrom\s+)?["']([^"']+)["']/g
+  /(?:^|\n)\s*(?:import|export)\s+(?!type\s)(?:["']([^"']+)["']|[\s\S]*?\sfrom\s+["']([^"']+)["'])/g
 const DYNAMIC_IMPORT_PATTERN = /\bimport\(\s*["']([^"']+)["']\s*\)/g
 
 function specifiers(source: string): string[] {
   return [
-    ...[...source.matchAll(IMPORT_PATTERN)].map((match) => match[1]),
+    ...[...source.matchAll(IMPORT_PATTERN)].map(
+      (match) => match[1] ?? match[2],
+    ),
     ...[...source.matchAll(DYNAMIC_IMPORT_PATTERN)].map((match) => match[1]),
   ]
 }
@@ -125,5 +129,43 @@ describe("client module graph", () => {
     ).toEqual([
       "components/crypto-regression-fixture.tsx -> lib/recommendation-consent.ts",
     ])
+  })
+
+  it.each([
+    ["a value import", 'import { languagesIndexPath } from "@/lib/routes"'],
+    ["a re-export", 'export { languagesIndexPath } from "@/lib/routes"'],
+  ])("detects a side-effect import before %s", (_label, followingStatement) => {
+    const client = join(SRC, "components/crypto-regression-fixture.tsx")
+    expect(
+      findCryptoPaths(
+        new Map([
+          [
+            client,
+            `"use client";\nimport "@/lib/recommendation-consent"\n${followingStatement}`,
+          ],
+        ]),
+      ),
+    ).toEqual([
+      "components/crypto-regression-fixture.tsx -> lib/recommendation-consent.ts",
+    ])
+  })
+
+  it("retains multiline value imports and re-exports", () => {
+    expect(
+      specifiers(`import {
+        languagesIndexPath,
+      } from "@/lib/routes"
+      export {
+        resolvePosterUrl,
+      } from "@/lib/url"`),
+    ).toEqual(["@/lib/routes", "@/lib/url"])
+  })
+
+  it("ignores erased type imports and exports before a side-effect import", () => {
+    expect(
+      specifiers(`import type { First } from "./types"
+      export type { Second } from "./other-types"
+      import "./live"`),
+    ).toEqual(["./live"])
   })
 })
