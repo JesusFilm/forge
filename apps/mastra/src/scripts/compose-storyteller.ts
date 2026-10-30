@@ -354,6 +354,27 @@ const STORIES: Record<
     ],
     out: "Peter's Confession",
   },
+  "jesus-25": {
+    // No setting: the card opens on Jesus praying apart with the disciples
+    // by the stream, which is 11:1 itself; Martha and Mary before it are a
+    // different chapter.
+    terms: [
+      "Prayer",
+      "Pray",
+      "Father",
+      "Abba",
+      "Hallow",
+      "Kingdom of God",
+      "Bread",
+      "Daily bread",
+      "Forgive",
+      "Debt",
+      "Temptation",
+      "John the Baptist",
+      "THE SERMON ON THE MOUNT - THE KINGDOM OF CHRIST AND RABBINIC TEACHING. [2499]",
+    ],
+    out: "Teach Us to Pray",
+  },
   "jesus-45": {
     // No setting: the card opens on Peter following Jesus into the courtyard,
     // which is 22:54 itself; the arrest before it is not shown.

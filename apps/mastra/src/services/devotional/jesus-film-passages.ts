@@ -278,6 +278,26 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     maxVideoCardSec: 62,
   }, // Peter Declares Jesus to be the Christ. Jesus prays alone → "Who do the crowds say I am?" → "Who do you say I am?" → the pause → "You are God's Messiah" → "tell no one" → suffer, be killed, raised on the third day → they walk on (~71s). (subtitle-verified)
   {
+    index: 25,
+    // The chapter is Luke 11:1-4 only. The friend at midnight (11:5-8) is not
+    // in the film, and "Ask, seek, knock" (11:9-13) opens chapter 26, so the
+    // passage stops at 11:4: Ryle's "Jesus' Teaching on Prayer" section.
+    osisRef: "Luke.11.1-Luke.11.4",
+    reference: "Luke 11:1-4",
+    mood: "peace",
+    themes: ["prayer", "father", "forgiveness", "kingdom", "daily bread"],
+    // Subtitle- and frame-verified (Arclight EN + RU tracks, 2026-10-30).
+    // Fade in until the first cut at 4.4s; from there Jesus stands praying
+    // apart while the disciples sit by the stream (Luke 11:1 "while Jesus
+    // was praying"). "Teach us to pray" 14.0s; the prayer ends on "deliver us
+    // from evil" 43.5s; Jesus walks back to the group and the picture holds
+    // to ~49s, then silence and the end card. The RU dub keeps the same
+    // clock (its track matches to 0.02s).
+    clipStartSec: 4,
+    clipLengthSec: 44,
+    maxVideoCardSec: 45,
+  }, // The Lord's Prayer. Jesus prays apart by the stream → "Teach us to pray, just as John taught his disciples" → "Our Father in heaven" … "deliver us from evil" → he rejoins them (~48s). (subtitle-verified)
+  {
     index: 31,
     // Tightened from 10:25-37: Ryle splits this into two DISTINCT sections —
     // 10:25-28 is the lawyer's lead-in question ("The Rule of Faith"), 10:29-37
