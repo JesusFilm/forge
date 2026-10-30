@@ -18,7 +18,6 @@ import { PrismaClient } from "@prisma/client"
 import { beforeAll, afterAll, describe, it, expect } from "vitest"
 import { env } from "@/config/env"
 import { StudioSourceService } from "./sources"
-import { ContentPackService } from "./packs"
 import { StudioCatalogService } from "./catalog"
 import { StudioAuthoringService } from "./index"
 import { StudioAssetService } from "./assets"
@@ -134,23 +133,6 @@ suite("generated catalog schema and service", () => {
       capture.capture(user, { ...selected, editionId: randomUUID() }),
     ).rejects.toThrow()
     const source = await capture.capture(user, selected)
-    const pack = await new ContentPackService(db).write(user, {
-      packId: randomUUID(),
-      expectedRevision: 0,
-      idempotencyKey: randomUUID(),
-      document: {
-        title: "Evidence",
-        guidance: "Reflect",
-        sources: [
-          {
-            label: "Actual passage",
-            excerpt: "Source words",
-            sourceSnapshotId: source.id,
-            asset: source.source.subtitle!.asset,
-          },
-        ],
-      },
-    })
     // Restriction was added AFTER selection. Current policy must flow to output.
     await db.video.update({
       where: { id: sourceId },
@@ -178,7 +160,6 @@ suite("generated catalog schema and service", () => {
           volume: 1,
         },
       ],
-      packRevisionIds: [pack.id],
     }
     const author = new StudioAuthoringService(db)
     await author.create(user, {
@@ -210,7 +191,7 @@ suite("generated catalog schema and service", () => {
       worker,
       attempt.id,
       1200000,
-      new Date(Date.now() + 1200001),
+      new Date(losing.expiresAt! + 1),
     )
     const media = await assets.register(
       worker,
@@ -479,7 +460,6 @@ suite("generated catalog schema and service", () => {
         durationInFrames: 120,
         sourceSnapshot: { videoId: sourceId, dubId, editionId, trackId },
       })
-      expect(saved.packs[0]?.packRevisionId).toBe(pack.id)
       await expect(
         new StudioCatalogService(db).stage(worker, {
           ...input,

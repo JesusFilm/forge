@@ -1,7 +1,6 @@
 import { studioInstructionCommandSchema } from "./agent"
 import { z } from "zod"
 import { studioIdSchema, studioInstructionReferenceSchema } from "./index"
-import { contentPackDocumentSchema } from "./content-packs"
 
 export const calendarZoneSchema = z
   .string()
@@ -90,13 +89,9 @@ export const calendarSettingsSchema = z
       .max(2)
       .refine((v) => new Set(v).size === v.length),
     automationEnabled: z.boolean(),
-    defaultPackRevisionIds: z
-      .array(studioIdSchema)
-      .max(16)
-      .refine((v) => new Set(v).size === v.length),
     language: z.string().min(1).max(100),
   })
-  .strict()
+  .strip()
 export const calendarCommandSchema = z
   .object({
     calendarId: studioIdSchema,
@@ -111,12 +106,10 @@ export const editCalendarSlotSchema = calendarCommandSchema.extend({
   date: calendarDateSchema,
   title: z.string().max(300),
   theme: z.string().max(2000),
-  packRevisionId: studioIdSchema.nullable(),
   projectId: studioIdSchema.nullable(),
 })
 export const assignCalendarWeekSchema = calendarCommandSchema.extend({
   startDate: calendarDateSchema,
-  packRevisionId: studioIdSchema.nullable(),
   theme: z.string().max(2000),
 })
 export const calendarPlanItemSchema = z
@@ -125,9 +118,6 @@ export const calendarPlanItemSchema = z
     expectedVersion: version,
     title: z.string().min(1).max(300),
     theme: z.string().min(1).max(2000),
-    packRevisionId: studioIdSchema,
-    // Index into the immutable Content Pack, not an invented catalog identity.
-    sourceIndices: z.array(z.number().int().min(0).max(63)).max(16),
   })
   .strict()
 export const calendarPlanResultSchema = z
@@ -138,8 +128,6 @@ export const calendarPlanResultSchema = z
           .object({
             startDate: calendarDateSchema,
             theme: z.string().min(1).max(2000),
-            packRevisionId: studioIdSchema,
-            sourceIndices: z.array(z.number().int().min(0).max(63)).max(16),
           })
           .strict(),
       )
@@ -173,7 +161,6 @@ export const calendarPlannerInputSchema = z
         z
           .object({
             startDate: calendarDateSchema,
-            packRevisionIds: z.array(studioIdSchema).max(43),
           })
           .strict(),
       )
@@ -185,23 +172,11 @@ export const calendarPlannerInputSchema = z
           .object({
             date: calendarDateSchema,
             version,
-            packRevisionIds: z.array(studioIdSchema).max(16),
             weeklyTheme: z.string().max(2000),
           })
           .strict(),
       )
       .max(28),
-    packs: z
-      .array(
-        z
-          .object({
-            revisionId: studioIdSchema,
-            document: contentPackDocumentSchema,
-          })
-          .strict(),
-      )
-      // One slot may use 16 defaults while the other 27 use distinct assignments.
-      .max(43),
   })
   .strict()
   .refine(
@@ -237,29 +212,11 @@ export function parseCalendarSuggestions(
     const admitted = context.weeks?.find(
       (entry) => entry.startDate === week.startDate,
     )
-    const pack = context.packs.find(
-      (entry) => entry.revisionId === week.packRevisionId,
-    )
-    if (
-      !admitted ||
-      !admitted.packRevisionIds.includes(week.packRevisionId) ||
-      !pack ||
-      week.sourceIndices.some((index) => !pack.document.sources[index])
-    )
-      throw new CalendarPlanError("INVALID_PLANNING_BINDING")
+    if (!admitted) throw new CalendarPlanError("INVALID_PLANNING_BINDING")
   }
   for (const item of result.items) {
     const slot = context.slots.find((slot) => slot.date === item.date)
-    const pack = context.packs.find(
-      (pack) => pack.revisionId === item.packRevisionId,
-    )
-    if (
-      !slot ||
-      slot.version !== item.expectedVersion ||
-      !slot.packRevisionIds.includes(item.packRevisionId) ||
-      !pack ||
-      item.sourceIndices.some((index) => !pack.document.sources[index])
-    )
+    if (!slot || slot.version !== item.expectedVersion)
       throw new CalendarPlanError("INVALID_PLANNING_BINDING")
   }
   return result
@@ -300,16 +257,13 @@ export const calendarViewSchema = z.object({
         provenance: z
           .object({
             runId: studioIdSchema,
-            packRevisionId: studioIdSchema.optional(),
             instructions: z.array(studioInstructionReferenceSchema),
             effectiveDigest: z.string(),
-            sourceIndices: z.array(z.number().int()),
             sourceState: z.enum(["SELECTED", "MISSING"]),
           })
           .nullable()
           .optional(),
         startDate: calendarDateSchema,
-        packRevisionId: studioIdSchema.nullable(),
         theme: z.string(),
       }),
     )
@@ -323,7 +277,6 @@ export const calendarViewSchema = z.object({
         title: z.string(),
         theme: z.string(),
         manual: z.boolean(),
-        packRevisionId: studioIdSchema.nullable(),
         projectId: studioIdSchema.nullable(),
         project: z
           .object({

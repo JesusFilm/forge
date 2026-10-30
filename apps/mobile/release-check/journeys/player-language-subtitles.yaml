@@ -1,0 +1,78 @@
+# Change the language, turn subtitles on, and check the subtitle text (R19
+# starter journey). The birth of Jesus has a French dub and Arabic subtitles
+# (R21).
+appId: org.jesusfilm.forgewatch
+name: player-language-subtitles
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- tapOn:
+    text: "Language, .+"
+    label: Open the language sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-language
+    timeout: 20000
+    label: The language sheet shows
+- tapOn:
+    text: French
+    label: Pick French
+- extendedWaitUntil:
+    visible:
+      text: Language, French
+    timeout: 20000
+    label: The language button shows French
+- tapOn:
+    text: "Subtitles, .+"
+    label: Open the subtitle sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-subtitle
+    timeout: 20000
+    label: The subtitle sheet shows
+# The language button reads French, and a tablet draws it beside the sheet,
+# so the journey picks subtitles in another language.
+- tapOn:
+    text: Arabic, Modern Standard
+    label: Pick Arabic subtitles
+- extendedWaitUntil:
+    visible:
+      text: Subtitles, Arabic, Modern Standard
+    timeout: 20000
+    label: The subtitle button shows Arabic
+# The video keeps playing, and its subtitles have a line every few seconds.
+- extendedWaitUntil:
+    visible:
+      id: player-subtitle-text
+    timeout: 30000
+    label: A subtitle line shows on the video

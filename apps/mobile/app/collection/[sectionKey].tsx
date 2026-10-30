@@ -13,8 +13,12 @@ import { Image } from "expo-image"
 import { VideoView } from "expo-video"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import {
+  useExperienceContext,
+  useSectionByKey,
+} from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
 import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
@@ -171,15 +175,22 @@ function CollectionPlayerContent({
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
-  const { player, isPlaying } = useManagedVideoPlayer(
+  // R15: the record title the provider loads, never the item's titleOverride.
+  const { getVideoTitle } = useExperienceContext()
+  const { player, isPlaying, muxMonitor } = useManagedVideoPlayer(
     activeStreamingUrl,
     undefined,
     {
       // KTD5 opt-in: identity re-keys with the active pager item, flushing
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
+      muxData: experienceMuxData(activeVideoId, getVideoTitle),
     },
   )
+
+  useEffect(() => {
+    muxMonitor.setPlayerSize({ width: screenWidth, height: playerHeight })
+  }, [muxMonitor, screenWidth, playerHeight])
 
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not
@@ -384,7 +395,7 @@ function CollectionPlayerContent({
   }
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-collection" style={layout.screenContainer}>
       {/* Sticky 16:9 player */}
       <View style={[styles.playerContainer, { height: playerHeight }]}>
         <VideoView

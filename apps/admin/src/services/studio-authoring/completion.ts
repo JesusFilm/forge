@@ -15,7 +15,6 @@ import {
   saveReceipt,
 } from "./state"
 import { applyOperations } from "./operations"
-import { resolveStudioPackSources } from "./packs"
 import { resolveStudioDocumentSources } from "./sources"
 import { attachStudioNarration, StudioTimingConflict } from "./narration"
 
@@ -129,7 +128,6 @@ export async function completeStudioAttempt(
       }
     }
     if (!timingConflict) {
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       revision += 1
       const origin = studioActorSchema.parse(attempt.actor)

@@ -146,14 +146,11 @@ describe("exact study dependency authority", () => {
       }),
     ).toBe(false)
   })
-  it("accepts current qualified bindings and stops new use at expiry or revocation", async () => {
+  it("rejects retired co-watch bindings even when previously qualified", async () => {
     const { p, tx, authority } = harness()
     expect(
       await readStudyDependencies(tx as never, p, identity, new Date(start)),
-    ).toMatchObject({
-      validUntil: new Date(horizon),
-      cowatch: { graphGenerationId: "a".repeat(64) },
-    })
+    ).toBeNull()
     expect(
       await readStudyDependencies(tx as never, p, identity, new Date(horizon)),
     ).toBeNull()
@@ -164,12 +161,16 @@ describe("exact study dependency authority", () => {
     expect(
       await readStudyDependencies(tx as never, p, identity, new Date(start)),
     ).toBeNull()
-  })
-  it("distinguishes scheduled expiry from interruption during the retained trial", async () => {
-    const { p, tx, authority } = harness()
     expect(
-      await studyDependencyInterruption(tx as never, p, identity),
-    ).toBeNull()
+      tx.recommendationCowatchTrialAuthority.findUnique,
+    ).not.toHaveBeenCalled()
+    expect(tx.recommendationCowatchGeneration.findUnique).not.toHaveBeenCalled()
+  })
+  it("reports the retired co-watch source as interrupted at every trial phase", async () => {
+    const { p, tx, authority } = harness()
+    expect(await studyDependencyInterruption(tx as never, p, identity)).toBe(
+      "cowatch_source_interrupted",
+    )
     tx.recommendationCowatchTrialAuthority.findUnique.mockResolvedValue({
       ...authority,
       revokedAt: new Date(end),
@@ -183,9 +184,9 @@ describe("exact study dependency authority", () => {
       ...authority,
       revokedAt: new Date("2026-10-09T00:00:00Z"),
     })
-    expect(
-      await studyDependencyInterruption(tx as never, p, identity),
-    ).toBeNull()
+    expect(await studyDependencyInterruption(tx as never, p, identity)).toBe(
+      "cowatch_source_interrupted",
+    )
     tx.recommendationCowatchTrialAuthority.findUnique.mockResolvedValue({
       ...authority,
       bindingDigest: "e".repeat(64),
@@ -193,6 +194,9 @@ describe("exact study dependency authority", () => {
     expect(await studyDependencyInterruption(tx as never, p, identity)).toBe(
       "cowatch_source_interrupted",
     )
+    expect(
+      tx.recommendationCowatchTrialAuthority.findUnique,
+    ).not.toHaveBeenCalled()
   })
   it("requires the actual incumbent calibration comparator and complete future coverage", () => {
     const p = protocol()

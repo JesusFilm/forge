@@ -1,0 +1,27 @@
+# Git and tooling
+.git
+.cursor
+.vscode
+.github
+
+# Dependencies and build outputs (reinstalled in image)
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+**/.next
+**/tsconfig.tsbuildinfo
+**/dist
+apps/cms/.tmp
+apps/cms/.strapi-updater.json
+
+# Keep monorepo workspaces in build context so any app service can build.
+
+# Env and logs (never in image)
+.env
+*.log
+
+**/.env
+**/.env.*
+**/src/generated
+**/.mastra

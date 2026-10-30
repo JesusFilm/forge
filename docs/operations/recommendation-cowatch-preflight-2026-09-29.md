@@ -1,5 +1,12 @@
 # Co-watch preflight and exact retry receipts — September 29, 2026
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 Production preflight **refused the existing source bound**. A read-only query
 returned the 50,001-episode sentinel against the 50,000-row maximum, before
 graph eligibility filtering. No generation or shadow evaluation was dispatched.

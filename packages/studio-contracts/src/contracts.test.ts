@@ -16,7 +16,6 @@ export const composition = {
   fps: 30,
   durationInFrames: 1800,
   tracks: [{ id: "main", kind: "visual" }],
-  packRevisionIds: [],
   components: [
     {
       versionId: "component-v1",

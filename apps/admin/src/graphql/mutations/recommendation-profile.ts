@@ -6,7 +6,6 @@ import {
   createRecommendationProfileService,
   type RecommendationProfileReceipt,
 } from "@/services/recommendations/profile.service"
-import { dispatchRecommendationProfileProjection } from "@/services/recommendations/profiles/job"
 
 type PublicProfileReceipt = Omit<
   RecommendationProfileReceipt,
@@ -52,52 +51,6 @@ function publicReceipt(
   }
 }
 
-function scheduleErasure(
-  service: ReturnType<typeof createRecommendationProfileService>,
-  receipt: RecommendationProfileReceipt,
-) {
-  if (!receipt.profileId || receipt.erasureGeneration == null) return
-  queueMicrotask(() => {
-    void service
-      .completeErasure({
-        profileId: receipt.profileId!,
-        privacyGeneration: receipt.erasureGeneration!,
-      })
-      .catch(() => {
-        // The durable PENDING state is the retry signal. Privacy health
-        // surfaces this failure without delaying the viewer.
-      })
-  })
-}
-
-function scheduleProjection(
-  receipt: RecommendationProfileReceipt,
-  sessionDigest: string,
-) {
-  // Reset receipts deliberately carry the retired profile's erasure fence;
-  // the next status call will schedule the fresh generation. Withdraw/delete
-  // likewise must never rebuild a fenced profile.
-  if (
-    receipt.erasureGeneration != null ||
-    receipt.state !== "active" ||
-    receipt.consentChoice !== "personalization" ||
-    receipt.profileId == null ||
-    receipt.privacyGeneration == null
-  ) {
-    return
-  }
-  queueMicrotask(() => {
-    void dispatchRecommendationProfileProjection({
-      sessionDigest,
-      profileId: receipt.profileId,
-      privacyGeneration: receipt.privacyGeneration,
-    }).catch(() => {
-      // The private run ledger and semantic fallback keep this off the viewer
-      // response path; a later status call safely retries the projection.
-    })
-  })
-}
-
 builder.mutationFields((t) => ({
   recommendationProfileStatus: t.field({
     type: ProfileReceiptRef,
@@ -121,8 +74,6 @@ builder.mutationFields((t) => ({
           consentReceiptDigest: args.consentReceiptDigest ?? null,
           profileDigest: args.profileDigest ?? null,
         })
-        scheduleErasure(service, receipt)
-        scheduleProjection(receipt, args.sessionDigest)
         return publicReceipt(receipt)
       }),
   }),
@@ -162,10 +113,6 @@ builder.mutationFields((t) => ({
           existingProfileDigest: args.existingProfileDigest ?? null,
           proposedProfileDigest: args.proposedProfileDigest ?? null,
         })
-        scheduleErasure(service, receipt)
-        if (args.action === "grant") {
-          scheduleProjection(receipt, args.sessionDigest)
-        }
         return publicReceipt(receipt)
       }),
   }),

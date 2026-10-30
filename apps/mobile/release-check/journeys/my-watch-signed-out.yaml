@@ -1,0 +1,52 @@
+# Check My Watch signed out: the disabled sign-in card and an empty Downloads
+# area (the runner clears the app data). The journey never taps sign-in,
+# because a sign-in writes to production auth (not-tested.json).
+appId: org.jesusfilm.forgewatch
+name: my-watch-signed-out
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: My Watch
+    label: Open My Watch
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-profile
+    timeout: 20000
+    label: My Watch shows
+- assertVisible:
+    text: Guest
+    label: My Watch names a guest
+- assertVisible:
+    text: "Sign in, coming soon.*"
+    enabled: false
+    label: The sign-in card is disabled
+- assertVisible:
+    text: More
+    label: The More button shows
+- extendedWaitUntil:
+    visible:
+      text: No Downloads Yet
+    timeout: 10000
+    label: The empty Downloads state shows
+- assertNotVisible:
+    text: See all downloads
+    label: No downloads rail shows
+- tapOn:
+    text: Browse videos
+    label: Browse videos from the empty state
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows after Browse videos
+- assertNotVisible:
+    text: No Downloads Yet
+    label: My Watch is no longer on screen

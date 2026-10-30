@@ -15,7 +15,6 @@ const document = studioDocumentSchema.parse({
   durationInFrames: 90,
   tracks: [{ id: "main", kind: "visual" }],
   components: [],
-  packRevisionIds: [],
   items: [
     {
       id: "card",
