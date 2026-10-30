@@ -7,16 +7,35 @@ import {
 } from "@/auth/firebase-admin"
 import { signInWithFirebasePassword } from "@/auth/firebase-rest"
 import { isLoginProviderId, type LoginProviderId } from "@/auth/login-methods"
+import { resolveMobileCallbackURL } from "@/auth/mobile-callback"
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
-import { getAuthBaseUrl } from "@/config/env"
+import { getAuthBaseUrl, getAuthCustomAudiences } from "@/config/env"
 import { prisma } from "@/db/client"
+import {
+  CHANGELOG_DEFAULT_SCOPES,
+  CHANGELOG_LOCAL_CLIENT_ID,
+  CHANGELOG_PRODUCTION_CLIENT_ID,
+  isFirstPartyOAuthClientId,
+} from "@/domain/apps"
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+  isWatchUserDataAuthorization,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
 import {
   canRedeemAgentLoginHandle,
   isAgentLoginHandle,
 } from "@/services/agent-login.service"
+import {
+  createChangelogOAuthGrantDecision,
+  type ChangelogOAuthGrantDecision,
+} from "@/services/changelog-oauth-grant.service"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/services/oauth-policy.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -26,7 +45,15 @@ const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 10
 const LAST_LOGIN_METHOD_COOKIE = "forge_auth_last_login_method"
 const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
-
+const MAX_DCR_BODY_BYTES = 64 * 1024
+const oauthResourceCatalog = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const publicDcrResources = new Set(getPublicDcrResources(oauthResourceCatalog))
+const publicDcrAllowedScopes = new Set<string>(
+  getPublicDcrAllowedScopes(oauthResourceCatalog),
+)
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
 
@@ -36,6 +63,163 @@ function isFormPostRequest(request: Request): boolean {
       .get("content-type")
       ?.includes("application/x-www-form-urlencoded") ?? false
   )
+}
+
+function isHttpLoopbackRedirect(uri: string): boolean {
+  try {
+    const url = new URL(uri)
+    return (
+      url.protocol === "http:" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.hash === "" &&
+      (url.hostname === "localhost" ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "[::1]")
+    )
+  } catch {
+    return false
+  }
+}
+
+async function normalizeLoopbackDcrRequest(
+  request: Request,
+): Promise<Request | Response> {
+  const bodyBytes = await readBoundedBody(request, MAX_DCR_BODY_BYTES)
+  if (!bodyBytes) {
+    return Response.json(
+      { error: "Request body is too large" },
+      { status: 413 },
+    )
+  }
+  const headers = new Headers(request.headers)
+  headers.delete("content-length")
+  const boundedRequest = new Request(request.url, {
+    body: bodyBytes,
+    headers,
+    method: request.method,
+    signal: request.signal,
+  })
+
+  const authorization = request.headers.get("authorization")
+  if (authorization && /^Bearer\s+\S+/i.test(authorization)) {
+    return boundedRequest
+  }
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (session?.user?.id) return boundedRequest
+
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json")
+  ) {
+    return invalidDcrRequest()
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bodyBytes))
+  } catch {
+    return invalidDcrRequest()
+  }
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return invalidDcrRequest()
+  }
+  const body = parsed as Record<string, unknown>
+  const redirectUris = body.redirect_uris
+  const applicationType = body.application_type ?? "native"
+  const tokenEndpointAuthMethod = body.token_endpoint_auth_method ?? "none"
+  const grantTypes = body.grant_types ?? ["authorization_code", "refresh_token"]
+  const responseTypes = body.response_types ?? ["code"]
+  const resources = body.resources
+  const requestedScopes =
+    typeof body.scope === "string"
+      ? body.scope.split(/\s+/).filter(Boolean)
+      : body.scope === undefined
+        ? []
+        : null
+  if (
+    applicationType !== "native" ||
+    tokenEndpointAuthMethod !== "none" ||
+    !Array.isArray(grantTypes) ||
+    !grantTypes.includes("authorization_code") ||
+    !grantTypes.every(
+      (grantType) =>
+        grantType === "authorization_code" || grantType === "refresh_token",
+    ) ||
+    !Array.isArray(responseTypes) ||
+    responseTypes.length !== 1 ||
+    responseTypes[0] !== "code" ||
+    (body.require_pkce !== undefined && body.require_pkce !== true) ||
+    (resources !== undefined &&
+      (!Array.isArray(resources) ||
+        !resources.every(
+          (resource): resource is string =>
+            typeof resource === "string" && publicDcrResources.has(resource),
+        ))) ||
+    requestedScopes == null ||
+    !requestedScopes.every((scope) => publicDcrAllowedScopes.has(scope)) ||
+    !Array.isArray(redirectUris) ||
+    redirectUris.length === 0 ||
+    !redirectUris.every(
+      (uri): uri is string =>
+        typeof uri === "string" && isHttpLoopbackRedirect(uri),
+    )
+  ) {
+    return invalidDcrRequest()
+  }
+
+  return new Request(request.url, {
+    body: JSON.stringify({
+      ...body,
+      application_type: "native",
+      grant_types: grantTypes,
+      require_pkce: true,
+      response_types: responseTypes,
+      token_endpoint_auth_method: "none",
+    }),
+    headers,
+    method: request.method,
+    signal: request.signal,
+  })
+}
+
+function invalidDcrRequest(): Response {
+  return Response.json(
+    {
+      error: "invalid_client_metadata",
+      error_description: "The client registration metadata is not allowed.",
+    },
+    { status: 400, headers: { "Cache-Control": "no-store" } },
+  )
+}
+
+async function readBoundedBody(
+  request: Request,
+  maxBytes: number,
+): Promise<ArrayBuffer | undefined> {
+  const reader = request.body?.getReader()
+  if (!reader) return new ArrayBuffer(0)
+  const chunks: Uint8Array[] = []
+  let length = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    length += value.byteLength
+    if (length > maxBytes) {
+      await reader.cancel().catch(() => undefined)
+      return
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return bytes.buffer
 }
 
 function sha256(input: string): string {
@@ -343,10 +527,17 @@ async function handleSocialSignIn(request: Request): Promise<Response> {
     callbackURL: webCallbackURL,
     oauthQuery,
   } = await parseSocialSignInRequest(request)
-  const callbackURL = webCallbackURL ?? buildContinuationURL(oauthQuery)
+  // Mobile's jfp self-RP sign-in lands here too (Better Auth 1.7 serves
+  // generic-oauth providers through /sign-in/social); its app-scheme callback
+  // is not a watch URL and must reach Better Auth intact.
+  const mobileCallbackURL = resolveMobileCallbackURL(body.callbackURL)
+  const appCallbackURL = webCallbackURL ?? mobileCallbackURL
+  const callbackURL = appCallbackURL ?? buildContinuationURL(oauthQuery)
+  // A callback error must return to the app scheme: a same-origin /error
+  // page cannot close the system browser sheet.
   const errorCallbackURL = webCallbackURL
     ? undefined
-    : buildOAuthLoginURL(oauthQuery)
+    : (mobileCallbackURL ?? buildOAuthLoginURL(oauthQuery))
   const betterAuthBody = { ...body }
   delete betterAuthBody.callbackURL
   delete betterAuthBody.email
@@ -521,6 +712,214 @@ function withNoStore(response: Response): Response {
   })
 }
 
+const changelogClientIds = new Set([
+  CHANGELOG_LOCAL_CLIENT_ID,
+  CHANGELOG_PRODUCTION_CLIENT_ID,
+])
+type ChangelogOAuthDenialReason = Extract<
+  ChangelogOAuthGrantDecision,
+  { allowed: false }
+>["reason"]
+
+async function classifyAuthorizeRequest(
+  params: URLSearchParams,
+): Promise<"changelog" | "provider" | "invalid-target"> {
+  const resources = params.getAll("resource")
+  if (resources.length > 1) return "invalid-target"
+  if (resources.length === 1) {
+    const target = resolveOAuthResource(oauthResourceCatalog, resources[0])
+    if (
+      target?.resourceClass === "admin-mcp" ||
+      target?.resourceClass === "shorts-mcp"
+    )
+      return "provider"
+    if (target?.resourceClass === "changelog-mcp") return "changelog"
+    if (
+      target &&
+      isWatchUserDataAuthorization(
+        target,
+        params.get("client_id"),
+        params.has("scope")
+          ? (params.get("scope") ?? "").split(/\s+/).filter(Boolean)
+          : null,
+      )
+    )
+      return "provider"
+    return "invalid-target"
+  }
+
+  const clientId = params.get("client_id")
+  if (clientId && changelogClientIds.has(clientId)) return "changelog"
+  if (!clientId || isFirstPartyOAuthClientId(clientId)) return "provider"
+
+  const client = await prisma.oauthClient.findUnique({
+    where: { clientId },
+    select: { clientId: true },
+  })
+  return client ? "invalid-target" : "provider"
+}
+
+async function applyChangelogAuthorizePolicy(
+  request: Request,
+  authorizeUrl: URL,
+  providedSession?: Awaited<ReturnType<typeof auth.api.getSession>>,
+): Promise<{ denied?: Response; url?: URL }> {
+  const classification = await classifyAuthorizeRequest(
+    authorizeUrl.searchParams,
+  )
+  if (classification === "invalid-target") {
+    return {
+      denied: await oauthDenial(
+        authorizeUrl.searchParams,
+        "invalid_target",
+        "The requested resource is invalid.",
+      ),
+    }
+  }
+  if (classification !== "changelog") return {}
+
+  // Let the provider validate and sign a fresh login request before applying
+  // the old account's grants. The sign-in continuation consumes this prompt
+  // and returns here to check the selected account. Consent must never skip it.
+  // Match Better Auth's space-delimited prompt parsing, including trimming.
+  if (
+    request.method === "GET" &&
+    authorizeUrl.searchParams.getAll("prompt").length === 1 &&
+    authorizeUrl.searchParams
+      .get("prompt")
+      ?.split(" ")
+      .some((prompt) => prompt.trim() === "login")
+  ) {
+    return {}
+  }
+
+  const session =
+    providedSession ?? (await auth.api.getSession({ headers: request.headers }))
+  if (!session?.user?.id) return {}
+
+  const requestedScopes =
+    authorizeUrl.searchParams.get("scope")?.split(/\s+/).filter(Boolean) ??
+    (changelogClientIds.has(authorizeUrl.searchParams.get("client_id") ?? "")
+      ? [...CHANGELOG_DEFAULT_SCOPES]
+      : [])
+  const decision = await createChangelogOAuthGrantDecision({
+    lifecycle: "authorization",
+    sessionId: session.session.id,
+    redirectUri: authorizeUrl.searchParams.get("redirect_uri") ?? undefined,
+    userId: session.user.id,
+    membershipStatus: (session.user as { membershipStatus?: unknown })
+      .membershipStatus,
+    clientId: authorizeUrl.searchParams.get("client_id"),
+    requestedScopes,
+    resources: authorizeUrl.searchParams.getAll("resource"),
+  })
+  if (!decision.allowed) {
+    return {
+      denied: await changelogOAuthDenial(
+        authorizeUrl.searchParams,
+        decision.reason,
+      ),
+    }
+  }
+
+  const url = new URL(authorizeUrl)
+  url.searchParams.set("scope", decision.scopes.join(" "))
+  url.searchParams.delete("resource")
+  url.searchParams.append(
+    "resource",
+    decision.target.resource ??
+      CHANGELOG_OAUTH_RESOURCES[decision.target.environmentKind],
+  )
+  return { url }
+}
+
+async function changelogOAuthDenial(
+  params: URLSearchParams,
+  reason: ChangelogOAuthDenialReason = "changelog_access_denied",
+): Promise<Response> {
+  const invalidTarget = reason === "invalid_changelog_target"
+  const error = invalidTarget ? "invalid_target" : "access_denied"
+  const errorDescription = invalidTarget
+    ? "The requested Changelog resource is invalid."
+    : "Changelog access is not available."
+  return oauthDenial(params, error, errorDescription)
+}
+
+async function oauthDenial(
+  params: URLSearchParams,
+  error: "access_denied" | "invalid_target",
+  errorDescription: string,
+): Promise<Response> {
+  const clientId = params.get("client_id")
+  const redirectUri = params.get("redirect_uri")
+  if (clientId && redirectUri) {
+    try {
+      const client = await prisma.oauthClient.findUnique({
+        where: { clientId },
+        select: { disabled: true, redirectUris: true },
+      })
+      if (!client?.disabled && client?.redirectUris.includes(redirectUri)) {
+        const url = new URL(redirectUri)
+        url.searchParams.set("error", error)
+        url.searchParams.set("error_description", errorDescription)
+        const state = params.get("state")
+        if (state) url.searchParams.set("state", state)
+        url.searchParams.set(
+          "iss",
+          new URL("/api/auth", getAuthBaseUrl()).toString(),
+        )
+        return withNoStore(Response.redirect(url, 302))
+      }
+    } catch {
+      // A lookup failure must never turn an unverified redirect into an
+      // attacker-controlled callback. The generic no-store denial below is
+      // the fail-closed fallback.
+    }
+  }
+
+  return withNoStore(
+    Response.json(
+      {
+        error,
+        error_description: errorDescription,
+      },
+      { status: 403 },
+    ),
+  )
+}
+
+async function enforceChangelogConsentPolicy(
+  request: Request,
+): Promise<Response | undefined> {
+  let body: { oauth_query?: unknown }
+  try {
+    body = (await request.clone().json()) as { oauth_query?: unknown }
+  } catch {
+    return undefined
+  }
+  if (typeof body.oauth_query !== "string") return undefined
+
+  const authorizeUrl = new URL("/api/auth/oauth2/authorize", getAuthBaseUrl())
+  authorizeUrl.search = body.oauth_query
+  const result = await applyChangelogAuthorizePolicy(request, authorizeUrl)
+  if (result.denied) return result.denied
+  if (!result.url) return undefined
+  const sameScopes =
+    result.url.searchParams.get("scope") ===
+    authorizeUrl.searchParams.get("scope")
+  const originalResources = authorizeUrl.searchParams.getAll("resource")
+  const decidedResources = result.url.searchParams.getAll("resource")
+  const sameResources =
+    originalResources.length === decidedResources.length &&
+    originalResources.every(
+      (resource, index) => resource === decidedResources[index],
+    )
+  if (!sameScopes || !sameResources) {
+    return changelogOAuthDenial(authorizeUrl.searchParams)
+  }
+  return undefined
+}
+
 function isDeviceGrantPath(path: string): boolean {
   // Object.hasOwn, not `in`: `in` matches inherited keys, so a request to
   // /api/auth/toString would be treated as a device route.
@@ -529,8 +928,8 @@ function isDeviceGrantPath(path: string): boolean {
 
 async function enforceAgentOAuthAuthorizePolicy(
   request: Request,
+  session: Awaited<ReturnType<typeof auth.api.getSession>>,
 ): Promise<Response | undefined> {
-  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.user?.id) return undefined
 
   const user = await prisma.user.findUnique({
@@ -802,6 +1201,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
         id: randomUUID(),
         userId: user.id,
         providerId: "firebase",
+        issuer: "local:firebase",
         accountId: verified.uid,
       },
       update: {
@@ -833,8 +1233,19 @@ export async function GET(
       clientId: url.searchParams.get("client_id"),
       redirectUri: url.searchParams.get("redirect_uri"),
     })
-    const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(request)
+    const session = await auth.api.getSession({ headers: request.headers })
+    const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(
+      request,
+      session,
+    )
     if (agentPolicyResponse) return agentPolicyResponse
+    const changelogPolicy = await applyChangelogAuthorizePolicy(
+      request,
+      url,
+      session,
+    )
+    if (changelogPolicy.denied) return changelogPolicy.denied
+    if (changelogPolicy.url) request = new Request(changelogPolicy.url, request)
   }
 
   const response = await authRouteHandlers.GET(request)
@@ -874,10 +1285,20 @@ export async function POST(
   if (path === "sign-up/email") {
     return handleEmailSignUp(request)
   }
+  if (path === "oauth2/consent") {
+    const policyResponse = await enforceChangelogConsentPolicy(request)
+    if (policyResponse) return policyResponse
+  }
+  if (path === "oauth2/register") {
+    const normalized = await normalizeLoopbackDcrRequest(request)
+    if (normalized instanceof Response) return normalized
+    request = normalized
+  }
   if (isDeviceGrantPath(path)) {
     return withNoStore(await authRouteHandlers.POST(request))
   }
-  return authRouteHandlers.POST(request)
+  const response = await authRouteHandlers.POST(request)
+  return path === "oauth2/token" ? withNoStore(response) : response
 }
 
 export async function OPTIONS(request: Request): Promise<Response> {

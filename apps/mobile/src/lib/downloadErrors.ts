@@ -39,3 +39,17 @@ export function sanitizeNativeErrorMessage(message: string): string {
     .trim()
   return stripped.length > 200 ? `${stripped.slice(0, 200)}…` : stripped
 }
+
+/** Read a caught value's message. A non-Error rejection still carries text. */
+export function errorMessageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * The ONLY way a caught error should reach telemetry. Composing the two steps
+ * here means a call site cannot log the raw message by forgetting to sanitize
+ * it — and a transfer error carries the signed media URL.
+ */
+export function telemetryErrorMessage(error: unknown): string {
+  return sanitizeNativeErrorMessage(errorMessageOf(error))
+}

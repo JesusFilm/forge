@@ -72,3 +72,25 @@ highlighted row therefore feels uneven and visually heavier than intended.
 - Page-loading performance is unaffected: the change removes one decorative
   inline SVG per FAQ row and does not add client work, network requests, or
   dependencies.
+
+## Superseded 2026-08-31
+
+The row presentation this ticket built has been replaced. FAQ rows now render
+from the shared `apps/web/src/components/watch/WatchFaqList.tsx`. Additive note;
+the record above stands as written.
+
+- "Vertically center the question and chevron within each highlighted row" —
+  superseded. Rows are top-aligned (`items-start`), so a wrapped question keeps
+  its chevron on the first line.
+- "Apply equal padding on all four sides of the row" — superseded. The summary
+  uses `py-6` vertical rhythm with no horizontal inset, because the row is now a
+  full-bleed hairline rather than a tinted card.
+- "Render question copy at normal font weight" — superseded. Questions are
+  `font-semibold` at `text-lg`/`sm:text-xl`.
+- "Remove the decorative question-mark icon from every FAQ row" — **preserved.**
+  The shared row has no leading icon.
+- The highlighted-row tint (`hover:bg-white/5`) is gone; hover now affects the
+  question alone.
+
+The "Grep These" patterns `QuestionIcon` and `hover:bg-white/5` no longer match
+`RelatedQuestions.tsx`.

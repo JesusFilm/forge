@@ -39,9 +39,8 @@
     "posterAlt": "Video-p tungaanut assiliaq",
     "noDownloads": "Videomut tassunga aaneqarsinnaasunikanngilaq.",
     "fileSizeLabel": "File annertussusaa toqqaruk",
-    "termsAgreementPrefix": "Ukkua akuersaarpakka: ",
+    "termsAgreement": "<link>Atuineq pillugu piumasaqaatit</link> akuersaarpakka",
     "termsOfUse": "Atuineq pillugu piumasaqaatit",
-    "termsAgreementSuffix": "",
     "close": "Matuuk",
     "download": "Nassiuguk",
     "authRequiredTitle": "Video taanna aakkusuppiuk?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-imi avitseqatigiigit (build-imi atorneqarsinnaanngilaq)",
     "shareOnX": "X-imi avitseqatigiigit",
     "shareOnXUnavailable": "X-imi avitseqatigiigit (build-imi atorneqarsinnaanngilaq)",
+    "opensInNewTab": "{label} (quppernermi nutaami ammassaaq)",
     "shareDisabledHint": "Avitseqatigiinneq atorneqassappat saqqummiunneqarsimasariaqarpoq — video taanna production-imut ikaarsimalerpat aatsaat atorneqassaaq.",
     "shareFormat": "Avitseqatigiinneq qanoq ilusilerneqassaaq",
     "shareLinkTab": "Link avitseqatigiigit",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
     "home": "JesusFilm-imi angerlarsimaffik",
     "closeSearch": "Ujarlerneq matuuk",
-    "submitSearch": "Ujarlerit"
+    "submitSearch": "Ujarlerit",
+    "library": "Atuagaateqarfik"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Inernerit amerlanerusut aaneqarsinnaanngillat.",
     "searching": "Ujarlerneqarpoq...",
     "connectionHint": "Attavivit misissoriarlugu nutaamik misiliguk.",
+    "rateLimitHint": "Qinnuteqaatit amerlavallaarput. Minutsi ataaseq qaangiuppat misileeqqigit.",
     "retrySearch": "Ujaqqiiguk",
     "retry": "Nutaamik misiliigit",
     "noResults": "\"{query}\"-mut tunngatillugu nassaartoqanngilaq",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-imi “{suggestion}” ujaruk",
     "inLanguage": "{language}-imi",
     "browseByRegion": "Sumiiffik naapertorlugu ujarliuk",
+    "allVideosOnSinglePage": "Videot tamakkerlugit quppernermi ataatsimi",
     "clearLanguages": "Piiaruk",
     "queryLanguageDetected": "{language} paasineqarpoq",
     "searchInLanguage": "{language}-imi ujarlerit",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Maanna isigiuk",
     "tapToUnmute": "Nipip ilannguguk toqukkit",
-    "nextEpisode": "Immikkoortoq tulleq"
+    "nextEpisode": "Immikkoortoq tulleq",
+    "audioTranslationCount": "{count, plural, one {# oqaatsi} other {# oqaatsit}}",
+    "subtitleCount": "Ilanngunneqartut: {count, plural, one {# oqaatsi} other {# oqaatsit}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Imarisat aaneqassapput",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Oqaluttuarisaanut immersugassaq ammarneqarsinnaanngilaq.",
     "loadingForm": "Oqaluttuarisaanut immersugassaq aaneqassaaq…",
     "retry": "Nutaamik misiliigit",
-    "openFormShort": "Immersugassaq ammaruk",
     "cancel": "Unitsiinnaruk",
-    "title": "Beta-mi oqaaseqarneq",
-    "description": "Suut pitsaasuunersut aammalu qanoq pitsaanerulersinneqarsinnaanersut pillugit oqaluttuariuk. Immersugassaq taanna Google-imit tunniunneqarpoq.",
-    "openInNewTab": "Immersugassaq tabimi nutaami ammaruk",
     "closeForm": "Oqaluttuarisaanut immersugassaq matuneqassaaq",
-    "loadingGoogleForm": "Google Form aaneqassaaq…",
-    "iframeTitle": "Beta-mi oqaaseqarneq nassiuguk"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-imi kristumiut video-t akeqanngitsut | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersukkat",
     "subtitlesOnly": "Ilanngunneqartut kisimik",
+    "backToTop": "Qulaanut uterit",
     "newlyAdded": "Nutaanik ilanngunneqartut",
     "newVideosTitle": "{language}-imi kristumiut video-t nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Video-t nammineertut",
     "videosFromCollection": "Video-t {collection}-imit.",
     "standaloneDescription": "Oqaatsit taakku iluani video-t nammineertut.",
-    "openCollection": "Katersugaasivik ammaruk"
+    "openCollection": "Katersugaasivik ammaruk",
+    "filters": "Immikkoortitsissutit",
+    "filterLength": "Takissusaa",
+    "filterLength_under5": "5 minutsit sinnerlugit",
+    "filterLength_5to10": "5-10 minutsit",
+    "filterLength_10to30": "10-30 minutsit",
+    "filterLength_over30": "30 minutsit sinnerlugit",
+    "filterType": "Suussusaa",
+    "clearFilters": "Immikkoortitsissutit peerit",
+    "filterResults": "{total}-init {count} takutinneqarput",
+    "noFilterResults": "Immikkoortitsissutinut naapertuuttumik videoqanngilaq. Ataaseq peersinnaavat.",
+    "filterAdded": "Ilanngunneqarpoq",
+    "filterAdded_60d": "Kingulliit 60 ulluit",
+    "filterAdded_6m": "Kingulliit 6 qaammatit",
+    "filterAdded_12m": "Kingulliit 12 qaammatit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-imi isiginnaarit",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video siornaartoq",
     "nextVideoPreview": "Video tulleq takussutissaq",
     "mediaCollection": "Media-katersugaasivik",
-    "scrollToVideo": "{title}-mik video-mut ingerlaarit"
+    "scrollToVideo": "{title}-mik video-mut ingerlaarit",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-imi angerlarsimaffik",
@@ -404,6 +594,29 @@
     "merryChristmas": "Juullimi pilluarit!",
     "daysUntilChristmas": "{count, plural, one {Juullimut # ulloq} other {Juullimut # ullut}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Atuagaateqarfik alakkarit",
+    "title": "Immikkoortunut naapertuuttumik alakkarit",
+    "description": "Atuagaateqarfiup immikkoortuanut pisariaqartikkannut toqqaannartumik ingerlagit — Jesusip inuunera, oqaluffiup ukiuata piffissai, aammalu videot ilaqutariinnut, ilinniartunut eqimattakkaanullu sanaat.",
+    "seeAll": "Videot tamaasa takukkit",
+    "previous": "Immikkoortut siulliit",
+    "next": "Immikkoortut tulliit",
+    "categories": {
+      "jesus": "JESUS-filmi",
+      "gospels": "Evangeliumit",
+      "shortVideos": "Videot naatsut",
+      "family": "Ilaqutariit",
+      "relationships": "Attaveqatigiinneq",
+      "women": "Arnanut",
+      "students": "Ilinniartunut",
+      "sports": "Timersorneq",
+      "goodNews": "Nutaarsiassaq pitsaasoq",
+      "hope": "Neriuut",
+      "training": "Pikkorissarneq",
+      "easter": "Poorskit",
+      "christmas": "Juulli"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Oqaatsit",
     "metadataDescription": "JesusFilm video-t oqaatsit naapertorlugit ujaruk.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Qupperneq nassaarineqanngilaq:",
     "title": "Scenit taannaanngilaq.",
     "description": "Quppiaq nuussimasinnaavoq, kisianni oqaluttuaq ingerlaannartarpoq.",
+    "languageDescription": "Quppernerup ujarlerisap nassaarisinnaanngilarput, kisianni oqaluttuaq ingerlaannartarpoq filmini videonilu nunarsuarmi oqaatsini assigiinngitsuni.",
     "actionsLabel": "Qupperneq nassaarineqanngilaq iliuutsit",
     "backToWatch": "Watch-imut uterit",
     "browseVideos": "Videot alakkarit"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Isiginnaarsiuk filmiliaq mikisooq",
-    "actions": {
-      "joinUs": "Peqataagit",
-      "shareMission": "Suliaq siunertarigutsigu avitseqatigiigit"
-    },
-    "welcomeStart": {
-      "label": "Upperneq & Oqaatsit allassimasut",
-      "title": "Ullumi videot siunnersuutit",
-      "description": "Katersugaasivitsinni uppernermut tunngasut videot eqqarsalersitsisut, ataatsimoortitsisut, aammalu misissueqqissaarnernik aallartisaarisut."
-    },
-    "welcomeMorning": {
-      "label": "Ullaap tungaanut eqqarsaatigalugit",
-      "title": "Ullaakkoq! Ullumi Biibilimi pisoqarfiit utaqqipput.",
-      "description": "Ullup aallartinnerani Biibilimi pisoqarfinnik pitsaasunik eqqarsalersitsisunik aallartigit, qiimmaallannermillu pilersitsisunik."
-    },
-    "welcomeAfternoon": {
-      "label": "Unnuap tungaanut eqqarsaatigalugit",
-      "title": "Ullasoq pitsaasoq! Ullormut Biibilimi pisoqarfiit.",
-      "description": "Biibilimik paasissutissat eqqarsalersitsisut ulloqeqqata kingorna imaluunniit ingerlaqqilluni eqqarsalersitsissutitut naleqquttut."
-    },
-    "welcomeEvening": {
-      "label": "Unnukkut eqqarsaatigalugit",
-      "title": "Unnukkut pitsaasoq! Biibilimi pisoqarfinnik naggasiigit.",
-      "description": "Biibilimi pisoqarfiit eqqissisimanartut ulloq naammassinialerpat eqqarsaatigalugit eqqissiallannissannut iluaqutaassapput."
-    },
-    "joinUs": {
-      "label": "Peqataagit",
-      "title": "Milliarderit ujartuipput",
-      "description": "Periuseq aallartippoq. Nutaaliaq media atorlugu nunarsuaq tamakkerlugu evangeliumi avitseqatigalugit peqataagit."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ilisimatitsineq ataatsimoorullugu",
-      "title": "Jesusip oqaluttuarnera ataatsimoorluta oqaluttuaralugu",
-      "description": "Taamaalillutik nammineq oqaatsiminnik, nammineq sumiiffimminni, Jesusip asanninnera tusaasinnaassavaat takusinnaassallugulu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-imik naleqquppoq",
-    "none": "Video taanna oqaatsini taakkunani innersuussutissaqarfigineqanngilaq."
+    "none": "Video taanna oqaatsini taakkunani innersuussutissaqarfigineqanngilaq.",
+    "heading": "Videot innersuussutigineqartut",
+    "loadingLabel": "Videot innersuussutigineqartut aaneqarput",
+    "openingTitle": "{title} ammarneqarpoq",
+    "openingVideo": "Video ammarneqarpoq",
+    "activityNotRecorded": "Innersuussutinik iliuuseq nalunaarsorneqarsinnaanngilaq. Linkit suli atorsinnaapput.",
+    "showingContextual": "Innersuussutit atugassamut tunngasut takutinneqarput.",
+    "showingSaved": "Innersuussutit toqqorneqarsimasut takutinneqarput.",
+    "explanationCurated": "Videot toqqakkat misissugassat.",
+    "explanationViewingMode": "Video manna isiginnaartarnerillu tunngavigalugit innersuussutigineqarput.",
+    "explanationCowatch": "Video manna soqutigisatillu tunngavigalugit innersuussutigineqarput.",
+    "explanationHybrid": "Video manna soqutigisatillu eqqaamaneqarnissaannik toqqakkatit tunngavigalugit innersuussutigineqarput.",
+    "explanationContextual": "Maanna isiginnaakkat tunngavigalugu innersuussutigineqarput.",
+    "explanationSemanticFallback": "Maanna isiginnaakkat tunngavigalugu innersuussutigineqarput, nammineq naleqqussaaneq maannakkut atorsinnaanngimmat.",
+    "explanationProfileDurable": "Soqutigisatit eqqaamaneqarnissaannik toqqakkatit tunngavigalugit naleqqussarneqarput.",
+    "explanationProfileVisit": "Tikeraarnermut matumunnaq naleqqussarneqarput.",
+    "personalizationLabel": "Innersuussutit nammineq naleqqussaanerat",
+    "personalizationPrompt": "Innersuussutit qanoq naleqqussarneqarnersut allanngortinniarpiuk?",
+    "openCookieSettings": "Cookie-nut ilikkakkat ammakkit"
   },
   "BetaTesterModal": {
     "title": "Beta-mik misiliisunngoruk",
@@ -538,16 +732,39 @@
     "retryFailed": "Ajutoortut misileqqikkit"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Oqaatsit taakku atorlugit saqqummersitaq pissarsiarineqanngilaq",
+    "eyebrow": "Oqaatsit taakku atorlugit saqqummersitaq pissarsiarineqanngilaq",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-mi pissarsiarineqanngilaq",
+    "actionsLabel": "Isiginnaarsinnaasatit",
+    "browseInLanguage": "{language}-imi videonik isiginnaarit",
+    "backToSearch": "Ujarlernermut uterit",
+    "audioVersionsTitle": "Nipilersuutit allat",
+    "audioVersionsDescription": "Video manna isiginnaaginnassagukku oqaatsit nipitallit toqqakkit.",
+    "languageVersionLabel": "Nipip oqaasii",
+    "selectLanguageVersion": "Oqaatsit saqqummersitaat toqqaruk",
+    "watchSelectedVersion": "Saqqummersitaq toqqagaq isiginnaarlugu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-nik toqqagassat",
+    "bannerTitle": "Namminerisamik illersuinermut toqqagassatit",
+    "bannerDescription": "Cookie-t pingaaruteqartut Watch-ip isumannaatsuunissaa sulinissaalu qulakkeertarpaat. Akuersiguit, cookie ataasiinnaq nammineq atorneqartoq soqutigisatit tikeraarnerni eqqaamassinnaavai, innersuussutinik nammineq naleqqussakkanik tunniussisinnaaqqullugu. Innersuussutit aalajangersimasumik tunngavigineqartut qanoq ikkaluartorluunniit suli atorneqarsinnaapput.",
+    "acceptAll": "Tamarmik akuersissutigikkit",
+    "essentialOnly": "Pingaaruteqartut kisimik",
+    "manageChoices": "Toqqagassat aqukkit",
+    "savingChoice": "Cookie pillugu toqqagaq toqqorneqarpoq",
+    "settings": "Cookie-nut ilikkakkat",
+    "settingsDescription": "Toqqaruk Watch-ip innersuussutinut soqutigisatit tikeraarnerit akornanni eqqaamassanerai. Tamanna qaqugukkulluunniit allanngortissinnaavat.",
+    "essentialCookies": "Cookie-t pingaaruteqartut",
+    "essentialDescription": "Isumannaallisaaneq, takusinnaaneq, namminerisamik illersuinermut toqqagassat, kiisalu innersuussutisiornermut qinnuteqaatit atassusiinerat.",
+    "alwaysActive": "Tamanna atorluarpoq",
+    "personalization": "Nammineq naleqqussaaneq",
+    "personalizationDescription": "Soqutigisat killilikkat tikeraarnerni eqqaamakkit. Tamanna qamissagukku, innersuussutit aalajangersimasumik tunngavigineqartut suli atorneqarsinnaapput.",
+    "erasurePending": "Profili piiarneqarnissaa utaqqineqarpoq. Innersuussutit aalajangersimasumik tunngavigineqartut ulloq manna atorneqareerput.",
+    "cancel": "Taarsiuk",
+    "saveChoices": "Toqqagassat toqqoruk",
+    "saving": "Toqqorpoq…",
+    "loadError": "Toqqagassatit aaneqarsinnaanngillat. Taamaattorli ataani toqqaasinnaavutit.",
+    "grantError": "Nammineq naleqqussaaneq atorneqalersinnaanngilaq. Pingaaruteqartut kisimik suli atorneqarsinnaapput.",
+    "saveError": "Toqqagassatit toqqorneqarsinnaanngillat. Qinnuigineqarlutik misileqqiguk."
   }
 }

@@ -39,9 +39,8 @@
     "posterAlt": "Poster ya vhidiyo",
     "noDownloads": "A ku na swilandzri leswi kumekaka eka vhidiyo leyi.",
     "fileSizeLabel": "Hlawula sayizi ya fayili",
-    "termsAgreementPrefix": "Ndzi pfumela eka ",
+    "termsAgreement": "Ndzi pfumela eka <link>Mimbangu yo Tirhisa</link>",
     "termsOfUse": "Mimbangu yo Tirhisa",
-    "termsAgreementSuffix": "",
     "close": "Pfala",
     "download": "Rhumela",
     "authRequiredTitle": "Xana u lava ku dawuniloda vhidiyo leyi?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Avelana hi Facebook (a yi kumeki eka build leyi)",
     "shareOnX": "Avelana hi X",
     "shareOnXUnavailable": "Avelana hi X (a yi kumeki eka build leyi)",
+    "opensInNewTab": "{label} (yi pfuleka eka thebu leyintshwa)",
     "shareDisabledHint": "Ku avelana swi lava tluka leri humelelaka — swi ta tirha loko vhidiyo leyi yi ri eka production.",
     "shareFormat": "Fomati ya ku avelana",
     "shareLinkTab": "Avelana nhlanganiso",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
     "closeSearch": "Pfala ku lava",
-    "submitSearch": "Lava"
+    "submitSearch": "Lava",
+    "library": "Layiburari"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ku hlulekile ku layicha mimbuyelo yo tala.",
     "searching": "Ku lava...",
     "connectionHint": "Hi kombela u kambela vuhlanganisi bya wena u tlhela u ringeta.",
+    "rateLimitHint": "Swikombelo swi tele ngopfu. Tlhela u ringeta endzhaku ka minete.",
     "retrySearch": "Ringeta ku lava nakambe",
     "retry": "Ringeta nakambe",
     "noResults": "A ku na mimbuyelo ya \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Lava “{suggestion}” hi {language}",
     "inLanguage": "hi {language}",
     "browseByRegion": "Languta hi xifundzha",
+    "allVideosOnSinglePage": "Tivhidiyo hinkwato eka tluka rin’we",
     "clearLanguages": "Sula",
     "queryLanguageDetected": "{language} yi kumekile",
     "searchInLanguage": "Lava hi {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",
     "tapToUnmute": "Khumba leswaku u pfula mpfumawulo",
-    "nextEpisode": "Xiphemu lexi landzelaka"
+    "nextEpisode": "Xiphemu lexi landzelaka",
+    "audioTranslationCount": "{count, plural, one {# ririmi} other {# tindzimi}}",
+    "subtitleCount": "Switsalwana: {count, plural, one {# ririmi} other {# tindzimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ku layicha swilo",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Fomo ya mavonelo a yi nga pfuliwanga.",
     "loadingForm": "Ku layicha fomo ya mavonelo…",
     "retry": "Ringeta nakambe",
-    "openFormShort": "Pfula fomo",
     "cancel": "Khansela",
-    "title": "Mavonelo ya Beta",
-    "description": "Avelana leswi tirhaka kahle ni leswi hi nga swi antswisaka. Fomo leyi yi nyikiwe hi Google.",
-    "openInNewTab": "Pfula fomo eka thebhu leyintshwa",
     "closeForm": "Pfala fomo ya mavonelo",
-    "loadingGoogleForm": "Ku layicha Google Form…",
-    "iframeTitle": "Rhumela Mavonelo ya Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Tivhidiyo ta Vukreste ta Mahala hi {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Miqoqo",
     "subtitlesOnly": "Switsalwana ntsena",
+    "backToTop": "Tlhelela ehenhla",
     "newlyAdded": "Swa ha ku engeteriwa",
     "newVideosTitle": "Tivhidiyo ta Vukreste letintshwa hi {language}",
     "newestFirst": "Leswintshwa ku sungula",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Tivhidiyo leti yimaka toxe",
     "videosFromCollection": "Tivhidiyo ku suka eka {collection}.",
     "standaloneDescription": "Tivhidiyo leti yimaka toxe eka ririmi leri.",
-    "openCollection": "Pfula muqoqo"
+    "openCollection": "Pfula muqoqo",
+    "filters": "Swifiltara",
+    "filterLength": "Ku leha",
+    "filterLength_under5": "Ehansi ka timinete ta 5",
+    "filterLength_5to10": "Timinete ta 5-10",
+    "filterLength_10to30": "Timinete ta 10-30",
+    "filterLength_over30": "Ehenhla ka timinete ta 30",
+    "filterType": "Muxaka",
+    "clearFilters": "Sula swifiltara",
+    "filterResults": "{count} ya {total} leyi kombisiwaka",
+    "noFilterResults": "A ku na vhidiyo leyi fambelanaka na swifiltara leswi. Ringeta ku susa xin'we.",
+    "filterAdded": "Ku engeteriwe",
+    "filterAdded_60d": "Masiku ya 60 lama hundzeke",
+    "filterAdded_6m": "Tin'hweti ta 6 leti hundzeke",
+    "filterAdded_12m": "Tin'hweti ta 12 leti hundzeke"
   },
   "WatchHome": {
     "pageTitle": "Ku Languta ka Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Xikombiso xa vhidiyo leyi hundzeke",
     "nextVideoPreview": "Xikombiso xa vhidiyo leyi landzelaka",
     "mediaCollection": "Muqoqo wa swihangalasamahungu",
-    "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}"
+    "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Tluka ra le kaya ra Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Khisimusi lerinene!",
     "daysUntilChristmas": "{count, plural, one {Ku sele siku # leswaku ku va Khisimusi} other {Ku sele masiku # leswaku ku va Khisimusi}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Languta layiburari",
+    "title": "Languta hi mintlawa",
+    "description": "Kongoma eka xiphemu xa layiburari lexi u xi lavaka — vutomi bya Yesu, minkarhi ya lembe ra kereke, ni tivhidiyo leti endleriweke mindyangu, swichudeni ni mintlawa leyitsongo.",
+    "seeAll": "Vona tivhidiyo hinkwato",
+    "previous": "Mintlawa leyi hundzeke",
+    "next": "Mintlawa leyi landzelaka",
+    "categories": {
+      "jesus": "Filimi ya JESUS",
+      "gospels": "Tievhangeli",
+      "shortVideos": "Tivhidiyo to koma",
+      "family": "Ndyangu",
+      "relationships": "Vuxaka",
+      "women": "Swa Vavasati",
+      "students": "Swa Swichudeni",
+      "sports": "Midlalo",
+      "goodNews": "Mahungu Lamanene",
+      "hope": "Ntshembo",
+      "training": "Ndzetelo",
+      "easter": "Paseka",
+      "christmas": "Khisimusi"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Tindzimi",
     "metadataDescription": "Languta tivhidiyo ta JesusFilm hi ririmi.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Tluka a ri kumeki:",
     "title": "Xiteji lexi a xi kona laha.",
     "description": "Tluka ri nga ha va ri rhurhile, kambe mhaka yi ya emahlweni.",
+    "languageDescription": "A hi swi kotanga ku kuma tluka leri u ri lavaka, kambe mhaka yi ya emahlweni eka tifilimi ni tivhidiyo ta tindzimi ta misava hinkwayo.",
     "actionsLabel": "Swendlo swa tluka a ri kumeki",
     "backToWatch": "Tlhelela eka Watch",
     "browseVideos": "Languta tivhidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Languta filimi yo koma",
-    "actions": {
-      "joinUs": "Nghena na hina",
-      "shareMission": "Avelana na hina ntirho wa vurhumiwa"
-    },
-    "welcomeStart": {
-      "label": "Ripfumelo & Matsalwa",
-      "title": "Swihlawulekisi swa vhidiyo swa namuntlha",
-      "description": "Swilo swa vhidiyo leswi kongomisiweke eka ripfumelo leswi humaka eka layiburari ya hina ku hlohlotela, ku nyika mivangelo, ni ku pfuxeta ku anakanyisisa."
-    },
-    "welcomeMorning": {
-      "label": "Ku Hlohlotela ka Nimixo",
-      "title": "Mixo lowunene! Tinhungu ta Bibele ta namuntlha ti mi rindzerile.",
-      "description": "Sungula siku ra wena hi tinhungu ta Bibele leti hlohlotelaka leti endleriweke ku khensisa ni ku tlakusa moya wa wena."
-    },
-    "welcomeAfternoon": {
-      "label": "Ku Hlohlotela ka Nhlikanhi",
-      "title": "Nhlikanhi lowunene! Tinhungu ta Bibele ta siku ra wena.",
-      "description": "Swilo swa Bibele leswi hlohlotelaka leswi faneleke nkarhi wa wena wa nhlikanhi kumbe ku ya emahlweni ni ku hlohlotela."
-    },
-    "welcomeEvening": {
-      "label": "Ku Hlohlotela ka Nimadyambu",
-      "title": "Vusiku lebyinene! Tinyikete eka tinhungu ta Bibele.",
-      "description": "Tinhungu ta Bibele ta ku rhula ku ku pfuna ku anakanyisisa ni ku kuma nchavelelo loko siku ra wena ri ya emakumu."
-    },
-    "joinUs": {
-      "label": "Nghena na hina",
-      "title": "Timiliyoni ta lava swo karhi",
-      "description": "Ku tshovela kona. Nghena na hina loko hi avelana evhangeli ni misava hi ku tirhisa swihangalasamahungu swa xidijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A hi fambeni swin’we",
-      "title": "Ku vulavula hi mhaka ya Yesu, swin’we",
-      "description": "Leswaku va kota ku twa ni ku vona rirhandzu ra Yesu hi ririmi ra vona eka laha va nga kona."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ku fambelana ka {percent}%",
-    "none": "A ku kumekanga switsundzuxo swa vhidiyo leyi hi ririmi leri."
+    "none": "A ku kumekanga switsundzuxo swa vhidiyo leyi hi ririmi leri.",
+    "heading": "Tivhidiyo leti bumabumeriweke",
+    "loadingLabel": "Ku layicha tivhidiyo leti bumabumeriweke",
+    "openingTitle": "Ku pfula {title}",
+    "openingVideo": "Ku pfula vhidiyo",
+    "activityNotRecorded": "Migingiriko ya swibumabumelo a yi tsariwanga. Swihlanganisi swa ha tirha.",
+    "showingContextual": "Ku kombisiwa swibumabumelo swa xiyimo.",
+    "showingSaved": "Ku kombisiwa swibumabumelo leswi hlayisiweke.",
+    "explanationCurated": "Tivhidiyo leti hlawuriweke leswaku u ti lavisisa.",
+    "explanationViewingMode": "Swi bumabumeriwe hi ku ya hi vhidiyo leyi ni ndlela leyi u langutaka ha yona.",
+    "explanationCowatch": "Swi bumabumeriwe hi ku ya hi vhidiyo leyi ni leswi u swi tsakelaka.",
+    "explanationHybrid": "Swi bumabumeriwe hi ku ya hi vhidiyo leyi ni leswi u swi tsakelaka leswi u hlawuleke leswaku swi tsundzukiwa.",
+    "explanationContextual": "Swi bumabumeriwe hi ku ya hi leswi u swi langutaka sweswi.",
+    "explanationSemanticFallback": "Swi bumabumeriwe hi ku ya hi leswi u swi langutaka sweswi, tanihi leswi ku endleriwa wena ku nga kumeki.",
+    "explanationProfileDurable": "Swi endleriwe wena hi ku ya hi leswi u swi tsakelaka leswi u hlawuleke leswaku swi tsundzukiwa.",
+    "explanationProfileVisit": "Swi endleriwe wena eka ku endzela loku.",
+    "personalizationLabel": "Ku endleriwa wena ka swibumabumelo",
+    "personalizationPrompt": "Xana u lava ku cinca ndlela leyi swibumabumelo swi endleriwaka wena ha yona?",
+    "openCookieSettings": "Pfula malulamiselelo ya cookie"
   },
   "BetaTesterModal": {
     "title": "Va mutirhisi wa beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Ringeta leswi hlulekeke nakambe"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Nhlobo ya ririmi a yi kona",
+    "eyebrow": "Nhlobo ya ririmi a yi kona",
+    "title": "<contentTitle>{title}</contentTitle> a yi kona hi <languageName>{language}</languageName>",
+    "actionsLabel": "Tindlela leti nga kona to hlalela",
+    "browseInLanguage": "Languta tivhidiyo hi {language}",
+    "backToSearch": "Tlhelela eku laveni",
+    "audioVersionsTitle": "Tinhlobo tin'wana ta mpfumawulo",
+    "audioVersionsDescription": "Hlawula ririmi ra mpfumawulo leswaku u ya emahlweni u hlalela vhidiyo leyi.",
+    "languageVersionLabel": "Ririmi ra mpfumawulo",
+    "selectLanguageVersion": "Hlawula nhlobo ya ririmi",
+    "watchSelectedVersion": "Hlalela nhlobo leyi hlawuriweke"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Swihlawulekisi swa cookie",
+    "bannerTitle": "Swihlawulekisi swa wena swa vuhlayiseki bya xihundla",
+    "bannerDescription": "Ti-cookie ta nkoka ti hlayisa Watch yi sirhelelekile naswona yi tirha. Loko u pfumela, cookie yin'wana yo hlawula ya le ka sayiti yi nga tsundzuka leswi u swi tsakelaka eka ku endzela ko hambana-hambana leswaku ku endleriwa swibumabumelo swa wena hi ku ya hi wena. Swibumabumelo swa xiyimo swi tshama swi ri kona hi ndlela yihi na yihi.",
+    "acceptAll": "Amukela hinkwaswo",
+    "essentialOnly": "Ta nkoka ntsena",
+    "manageChoices": "Lawula swihlawulekisi",
+    "savingChoice": "Ku hlayisiwa ku hlawula ka cookie",
+    "settings": "Malulamiselelo ya cookie",
+    "settingsDescription": "Hlawula loko Watch yi nga tsundzuka leswi u swi tsakelaka eka swibumabumelo eka ku endzela ko hambana-hambana. U nga swi cinca nkarhi wun'wana ni wun'wana.",
+    "essentialCookies": "Ti-cookie ta nkoka",
+    "essentialDescription": "Vuhlayiseki, ku tlanga, swihlawulekisi swa vuhlayiseki bya xihundla, na ku landzelerisa xikombelo xa swibumabumelo.",
+    "alwaysActive": "Nkarhi hinkwawo swa tirha",
+    "personalization": "Ku endleriwa wena",
+    "personalizationDescription": "Tsundzuka leswi u swi tsakelaka leswi pimiweke eka ku endzela ko hambana-hambana. Loko u tima leswi, swibumabumelo swa xiyimo swi ta tshama swi ri kona.",
+    "erasurePending": "Ku susiwa ka phurofayili ka ha rindzeriwe. Swibumabumelo swa xiyimo se swa tirha.",
+    "cancel": "Tshika",
+    "saveChoices": "Hlayisa swihlawulekisi",
+    "saving": "Ku hlayisiwa…",
+    "loadError": "Ku hlawula ka wena a ku kotekanga ku layicha. Wa ha kota ku hlawula laha hansi.",
+    "grantError": "Ku endleriwa wena a ku kotekanga ku pfumeleriwa. Ta nkoka ntsena ta ha kumeka.",
+    "saveError": "Ku hlawula ka wena a ku kotekanga ku hlayisiwa. Hi kombela u ringeta nakambe."
   }
 }

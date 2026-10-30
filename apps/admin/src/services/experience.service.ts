@@ -5,23 +5,36 @@
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import { after } from "next/server"
-import { randomBytes } from "node:crypto"
+import { createHash, randomBytes } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
   hasPermission,
+  canViewExperience,
   canEditExperienceLocale,
   canPublishExperienceLocale,
   canArchiveExperience,
 } from "@/auth/permissions"
 import { start } from "workflow/api"
-import { ForbiddenError, NotFoundError } from "./errors"
+import {
+  ExperienceDuplicationError,
+  ConcurrentModificationError,
+  ForbiddenError,
+  NotFoundError,
+} from "./errors"
+import {
+  boundedAuthoredVideoDubSelectors,
+  extractAuthoredVideoDubSelectors,
+} from "@/domain/experience-editor-dub-selectors"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
-import { backfillExperienceVideoLanguageIds } from "./experience-video-language-backfill"
+import { validateExperienceEditorDubSelections } from "./experience-editor-video.service"
+import { stripRetiredBlockVisualUrls } from "./experience-persisted-blocks"
+import { assertWatchAudienceWriteAllowed } from "./watch-audience-write-gate"
 import {
   CreateExperienceInput,
+  DuplicateExperienceInput,
   CreateExperienceLocaleInput,
   UpdateExperienceLocaleInput,
   PublishExperienceLocaleInput,
@@ -33,6 +46,46 @@ import {
   type ExperienceLocaleDraftData,
 } from "./experience.schemas"
 
+function availableDuplicateSlug(
+  sourceSlug: string,
+  usedSlugs: Set<string>,
+): string {
+  for (let copyNumber = 1; ; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? "-copy" : `-copy-${copyNumber}`
+    const base =
+      sourceSlug.slice(0, 200 - suffix.length).replace(/-+$/g, "") ||
+      "experience"
+    const candidate = `${base}${suffix}`
+    if (!usedSlugs.has(candidate)) {
+      usedSlugs.add(candidate)
+      return candidate
+    }
+  }
+}
+
+async function assertNoNewUnavailableVideoDubs(
+  prisma: Prisma.TransactionClient,
+  locale: string,
+  previousBlocks: readonly unknown[],
+  nextBlocks: readonly unknown[],
+) {
+  const validation = await validateExperienceEditorDubSelections(prisma, {
+    locale,
+    selectors: boundedAuthoredVideoDubSelectors(nextBlocks),
+    // Existing oversized drafts remain repairable: only new selector work is
+    // capped, while the prior identities are read once for pre-existing status.
+    previousSelectors: extractAuthoredVideoDubSelectors(previousBlocks),
+  })
+  const newlyUnavailable = validation.unavailable.filter(
+    (item) => !item.preExisting,
+  )
+  if (newlyUnavailable.length > 0) {
+    throw new Error(
+      `${newlyUnavailable.length} newly selected audio ${newlyUnavailable.length === 1 ? "language is" : "languages are"} unavailable. Choose an available language before saving.`,
+    )
+  }
+}
+
 export class ExperienceEmbeddingEligibilityError extends Error {
   constructor(message: string) {
     super(message)
@@ -40,10 +93,146 @@ export class ExperienceEmbeddingEligibilityError extends Error {
   }
 }
 
+export class ExperienceDynamicCollectionPlacementError extends Error {
+  constructor() {
+    super(
+      "The infinite collection feed must be the homepage's only dynamic collection block and its final top-level block.",
+    )
+    this.name = "ExperienceDynamicCollectionPlacementError"
+  }
+}
+
+export class ExperienceWatchHomeCategoryRailPlacementError extends Error {
+  constructor() {
+    super("The Watch category rail can only appear once on a homepage.")
+    this.name = "ExperienceWatchHomeCategoryRailPlacementError"
+  }
+}
+
+export class ExperienceHomepageLayoutPublishError extends Error {
+  constructor() {
+    super(
+      "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+    )
+    this.name = "ExperienceHomepageLayoutPublishError"
+  }
+}
+
+export class ExperienceHomepageLayoutMutationError extends Error {
+  constructor() {
+    super("The homepage layout context cannot be changed by a draft update.")
+    this.name = "ExperienceHomepageLayoutMutationError"
+  }
+}
+
+function isDynamicCollectionBlock(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return (
+    record.t === "mediaCollection" &&
+    record.itemsSource === "dynamicCollections"
+  )
+}
+
+function assertDynamicCollectionPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  let count = 0
+  let nested = false
+
+  const visit = (value: unknown, isTopLevel: boolean) => {
+    if (isDynamicCollectionBlock(value)) {
+      count += 1
+      if (!isTopLevel) nested = true
+    }
+    if (!value || typeof value !== "object") return
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      if (!Array.isArray(child)) continue
+      for (const item of child) visit(item, false)
+    }
+  }
+
+  for (const block of blocks) visit(block, true)
+  if (count === 0) return
+  if (
+    !isHomepage ||
+    nested ||
+    count !== 1 ||
+    !isDynamicCollectionBlock(blocks[blocks.length - 1])
+  ) {
+    throw new ExperienceDynamicCollectionPlacementError()
+  }
+}
+
+function assertWatchHomeCategoryRailPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  const hasCategoryRail = blocks.some(
+    (block) =>
+      block != null &&
+      typeof block === "object" &&
+      !Array.isArray(block) &&
+      (block as Record<string, unknown>).t === "watchHomeCategoryRail",
+  )
+  if (hasCategoryRail && !isHomepage) {
+    throw new ExperienceWatchHomeCategoryRailPlacementError()
+  }
+}
+
+function assertHomepageBlockPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  assertDynamicCollectionPlacement(blocks, isHomepage)
+  assertWatchHomeCategoryRailPlacement(blocks, isHomepage)
+}
+
+/**
+ * The homepage RENDERING context: the live homepage assignment, or a page
+ * (such as a homepage duplicate) authored with the Watch home layout. Draft
+ * saves and previews use this; publish uses the assignment alone, so an
+ * unassigned copy cannot go live as an ordinary page with homepage-only blocks.
+ */
+export function rendersAsHomepage(locale: {
+  isHomepage: boolean
+  homepageLayout: boolean
+}): boolean {
+  return locale.isHomepage || locale.homepageLayout
+}
+
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
   return { v: 1, data }
+}
+
+type ActiveLocaleDraft = {
+  id: string
+  snapshot: unknown
+  revisedAt: Date
+  revisedBy: string | null
+  reason: string | null
+}
+
+/**
+ * Opaque compare-and-set token for the mutable active revision row. The row id
+ * alone is insufficient because saves update that row in place.
+ */
+export function localeDraftRevision(draft: ActiveLocaleDraft): string {
+  const digest = createHash("sha256")
+    .update(
+      JSON.stringify({
+        id: draft.id,
+        snapshot: draft.snapshot,
+        revisedAt: draft.revisedAt.toISOString(),
+        revisedBy: draft.revisedBy,
+        reason: draft.reason,
+      }),
+    )
+    .digest("base64url")
+  return `${draft.id}.${digest}`
 }
 
 /**
@@ -79,6 +268,7 @@ type LocaleSnapshotSource = {
   locale: string
   slug: string
   isHomepage: boolean
+  homepageLayout: boolean
   pathSegment: string | null
   title: string | null
   metaDescription: string | null
@@ -92,19 +282,20 @@ type LocaleSnapshotSource = {
   updatedAt?: Date
 }
 
-function draftDataFromLocale(
+export function draftDataFromLocale(
   locale: LocaleSnapshotSource,
 ): ExperienceLocaleDraftData {
   return ExperienceLocaleDraftDataSchema.parse({
     slug: locale.slug,
     isHomepage: locale.isHomepage,
+    homepageLayout: locale.homepageLayout,
     pathSegment: locale.pathSegment,
     title: locale.title,
     metaDescription: locale.metaDescription,
     ogTitle: locale.ogTitle,
     ogDescription: locale.ogDescription,
     ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks,
+    blocks: stripRetiredBlockVisualUrls(locale.blocks),
   })
 }
 
@@ -131,7 +322,13 @@ function effectiveDraftData(
   const data = asSnapshotRecord(envelope?.data)
   // Older and SEO-created revisions may be partial. Adopt them by filling all
   // missing locale-owned fields from canonical before the next write.
-  return ExperienceLocaleDraftDataSchema.parse({ ...base, ...(data ?? {}) })
+  return ExperienceLocaleDraftDataSchema.parse({
+    ...base,
+    ...(data ?? {}),
+    ...(data && "blocks" in data
+      ? { blocks: stripRetiredBlockVisualUrls(data.blocks) }
+      : {}),
+  })
 }
 
 function effectiveLocale<T extends LocaleSnapshotSource>(
@@ -150,12 +347,20 @@ export class ExperienceService {
     user,
     revisedByKind,
     reason,
+    expectedDraftRevision,
+    validateBlocks,
   }: {
     id: string
     patch: Partial<ExperienceLocaleDraftData>
     user: Principal | null
     revisedByKind: "USER" | "AI"
     reason: string
+    expectedDraftRevision?: string | null
+    validateBlocks?: (input: {
+      prisma: Prisma.TransactionClient
+      previousBlocks: readonly unknown[]
+      nextBlocks: readonly unknown[]
+    }) => Promise<void>
   }) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -182,6 +387,13 @@ export class ExperienceService {
           },
           orderBy: { revisedAt: "desc" },
         })
+        if (
+          expectedDraftRevision !== undefined &&
+          expectedDraftRevision !==
+            (activeDraft ? localeDraftRevision(activeDraft) : null)
+        ) {
+          throw new ConcurrentModificationError("ExperienceLocale draft", id)
+        }
         const base = activeDraft
           ? effectiveDraftData(canonical, activeDraft.snapshot)
           : draftDataFromLocale(canonical)
@@ -189,10 +401,35 @@ export class ExperienceService {
           ...base,
           ...patch,
         })
+        assertHomepageBlockPlacement(data.blocks, rendersAsHomepage(data))
+        if (patch.blocks !== undefined) {
+          // Covers editor save, MCP, chat mutations, restore and the import
+          // script. The draft or the published canonical counts as existing.
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [
+              ...base.blocks,
+              ...(Array.isArray(canonical.blocks) ? canonical.blocks : []),
+            ],
+            nextBlocks: data.blocks,
+          })
+          await assertNoNewUnavailableVideoDubs(
+            tx,
+            canonical.locale,
+            base.blocks,
+            data.blocks,
+          )
+        }
+        await validateBlocks?.({
+          prisma: tx,
+          previousBlocks: base.blocks,
+          nextBlocks: data.blocks,
+        })
         const snapshot = snapshotEnvelope(
           data as unknown as Prisma.InputJsonObject,
         )
-        const revisedAt = new Date()
+        const revisedAt = new Date(
+          Math.max(Date.now(), (activeDraft?.revisedAt?.getTime() ?? 0) + 1),
+        )
 
         const draft = activeDraft
           ? await tx.contentRevision.update({
@@ -244,7 +481,11 @@ export class ExperienceService {
       // The locale row lock serializes this shared draft. READ COMMITTED lets
       // a waiting save observe and merge the preceding committed draft,
       // avoiding Serializable P2034 aborts while preserving last-save-wins.
-      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        maxWait: 2_000,
+        timeout: 10_000,
+      },
     )
   }
 
@@ -325,59 +566,306 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const blocks = await backfillExperienceVideoLanguageIds({
-      prisma: this.prisma,
-      blocks: input.blocks,
-      locale: input.locale,
+    assertHomepageBlockPlacement(input.blocks, false)
+    boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
     })
 
-    return this.prisma.$transaction(async (tx) => {
-      const experience = await tx.experience.create({
-        data: {
-          isTemplate: input.isTemplate,
-          ownerId: user?.id ?? null,
-          locales: {
-            create: {
-              locale: input.locale,
-              slug: input.slug,
-              // Required identity lives canonically; authored content starts
-              // in the staged aggregate even before the first publication.
-              blocks: [],
+    return this.prisma.$transaction(
+      async (tx) => {
+        const experience = await tx.experience.create({
+          data: {
+            isTemplate: input.isTemplate,
+            ownerId: user?.id ?? null,
+            locales: {
+              create: {
+                locale: input.locale,
+                slug: input.slug,
+                // Required identity lives canonically; authored content starts
+                // in the staged aggregate even before the first publication.
+                blocks: [],
+              },
             },
           },
-        },
-        include: { locales: true },
-      })
-      const locale = experience.locales[0]
-      if (!locale) throw new Error("Experience locale creation failed.")
-      const data = ExperienceLocaleDraftDataSchema.parse({
-        ...draftDataFromLocale(locale),
-        title: input.title ?? null,
-        metaDescription: input.metaDescription ?? null,
-        blocks: blocks.blocks,
-      })
-      await tx.contentRevision.create({
-        data: {
-          entityType: "ExperienceLocale",
-          entityId: locale.id,
-          snapshot: snapshotEnvelope(data as unknown as Prisma.InputJsonObject),
-          status: "DRAFT",
-          previewToken: randomBytes(32).toString("base64url"),
-          revisedBy: user?.id ?? null,
-          revisedByKind: draftAttribution?.revisedByKind ?? "USER",
-          reason:
-            draftAttribution?.reason ??
-            "Initial Experience locale draft created",
-        },
-      })
-      return {
-        ...experience,
-        locales: [
-          effectiveLocale(locale, data),
-          ...experience.locales.slice(1),
-        ],
-      }
-    })
+          include: { locales: true },
+        })
+        const locale = experience.locales[0]
+        if (!locale) throw new Error("Experience locale creation failed.")
+        const data = ExperienceLocaleDraftDataSchema.parse({
+          ...draftDataFromLocale(locale),
+          title: input.title ?? null,
+          metaDescription: input.metaDescription ?? null,
+          blocks: input.blocks,
+        })
+        await assertNoNewUnavailableVideoDubs(tx, input.locale, [], data.blocks)
+        await tx.contentRevision.create({
+          data: {
+            entityType: "ExperienceLocale",
+            entityId: locale.id,
+            snapshot: snapshotEnvelope(
+              data as unknown as Prisma.InputJsonObject,
+            ),
+            status: "DRAFT",
+            previewToken: randomBytes(32).toString("base64url"),
+            revisedBy: user?.id ?? null,
+            revisedByKind: draftAttribution?.revisedByKind ?? "USER",
+            reason:
+              draftAttribution?.reason ??
+              "Initial Experience locale draft created",
+          },
+        })
+        return {
+          ...experience,
+          locales: [
+            effectiveLocale(locale, data),
+            ...experience.locales.slice(1),
+          ],
+        }
+      },
+      { maxWait: 2_000, timeout: 10_000 },
+    )
+  }
+
+  async duplicate({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceInput.parse(raw)
+
+    // Gate write permission before loading the source. This prevents callers
+    // without create authority from probing draft or archived Experience ids.
+    if (!user?.id || !hasPermission(user, "write:experiences")) {
+      throw new ForbiddenError()
+    }
+    const ownerId = user.id
+
+    // One REPEATABLE READ transaction: every source locale and draft is read
+    // from the same snapshot, so a concurrent source save or publish cannot
+    // yield a copy that mixes two versions. The source is never written.
+    return this.prisma.$transaction(
+      async (tx) => {
+        const source = await tx.experience.findFirst({
+          where: { id: input.id },
+          select: {
+            isTemplate: true,
+            archivedAt: true,
+            locales: {
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                experienceId: true,
+                locale: true,
+                slug: true,
+                isHomepage: true,
+                homepageLayout: true,
+                pathSegment: true,
+                title: true,
+                metaDescription: true,
+                ogTitle: true,
+                ogDescription: true,
+                ogImageUrl: true,
+                blocks: true,
+                status: true,
+                publishedAt: true,
+              },
+            },
+          },
+        })
+        if (!source) {
+          throw new NotFoundError("Experience", input.id)
+        }
+        if (!canViewExperience(user, source)) {
+          throw new ForbiddenError()
+        }
+
+        if (source.locales.length === 0) {
+          throw new ExperienceDuplicationError()
+        }
+
+        const activeDraftByLocaleId = new Map<string, ActiveLocaleDraft>()
+        if (input.sourceVersion === "EFFECTIVE") {
+          const activeDrafts = await tx.contentRevision.findMany({
+            where: {
+              entityType: "ExperienceLocale",
+              entityId: { in: source.locales.map((locale) => locale.id) },
+              status: "DRAFT",
+            },
+            orderBy: [{ revisedAt: "desc" }, { id: "asc" }],
+            select: {
+              id: true,
+              entityId: true,
+              snapshot: true,
+              revisedAt: true,
+              revisedBy: true,
+              reason: true,
+            },
+          })
+          for (const draft of activeDrafts) {
+            if (!activeDraftByLocaleId.has(draft.entityId)) {
+              activeDraftByLocaleId.set(draft.entityId, draft)
+            }
+          }
+        }
+
+        const copies = source.locales.map((canonical) => {
+          const activeDraft = activeDraftByLocaleId.get(canonical.id)
+          let data: ExperienceLocaleDraftData
+          try {
+            data = activeDraft
+              ? effectiveDraftData(canonical, activeDraft.snapshot)
+              : draftDataFromLocale(canonical)
+          } catch {
+            throw new ExperienceDuplicationError()
+          }
+          // The copy never inherits the live homepage assignment. It keeps the
+          // homepage rendering context instead, so homepage-only blocks stay
+          // valid, previewable, and editable on the unassigned copy.
+          const homepageLayout = rendersAsHomepage(data)
+          try {
+            assertHomepageBlockPlacement(data.blocks, homepageLayout)
+          } catch {
+            throw new ExperienceDuplicationError()
+          }
+          // Validate through the persistence schema, but store the saved JSON
+          // itself so schema defaults never rewrite authored content.
+          // Blocks saved before raw image URLs were retired lose those keys.
+          const savedBlocks = stripRetiredBlockVisualUrls(
+            activeDraft
+              ? (asSnapshotRecord(asSnapshotRecord(activeDraft.snapshot)?.data)
+                  ?.blocks ?? canonical.blocks)
+              : canonical.blocks,
+          )
+          return {
+            sourceLocaleId: canonical.id,
+            copiedFrom: activeDraft
+              ? ("ACTIVE_DRAFT" as const)
+              : ("CANONICAL" as const),
+            sourceDraftRevision: activeDraft
+              ? localeDraftRevision(activeDraft)
+              : null,
+            locale: canonical.locale,
+            data: {
+              ...data,
+              blocks: savedBlocks as ExperienceLocaleDraftData["blocks"],
+              isHomepage: false,
+              homepageLayout,
+            },
+          }
+        })
+
+        // A copy carrying a questionnaire is new audience authoring: it keeps
+        // `isTemplate` and can become the default template (oldest unarchived)
+        // once the source is archived. Ordinary duplicates never read the flag.
+        for (const copy of copies) {
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [],
+            nextBlocks: copy.data.blocks,
+          })
+        }
+
+        const localeCodes = Array.from(
+          new Set(copies.map((copy) => copy.locale)),
+        )
+        const existingSlugs = await tx.experienceLocale.findMany({
+          where: {
+            locale: { in: localeCodes },
+          },
+          select: { locale: true, slug: true },
+        })
+        const usedSlugsByLocale = new Map(
+          localeCodes.map((locale) => [locale, new Set<string>()]),
+        )
+        for (const row of existingSlugs) {
+          usedSlugsByLocale.get(row.locale)!.add(row.slug)
+        }
+        for (const copy of copies) {
+          copy.data.slug = availableDuplicateSlug(
+            copy.data.slug,
+            usedSlugsByLocale.get(copy.locale)!,
+          )
+        }
+
+        const experience = await tx.experience.create({
+          data: {
+            // Template classification is authored canonical state, not
+            // publication state. Preserve it so route-only template blocks
+            // remain editable.
+            isTemplate: source.isTemplate,
+            ownerId,
+            locales: {
+              // Canonical rows hold the copied content too, so discarding the
+              // copy's draft returns to the as-duplicated page, not a blank one.
+              create: copies.map((copy) => ({
+                locale: copy.locale,
+                ...copy.data,
+                blocks: copy.data.blocks as Prisma.InputJsonValue,
+                status: "DRAFT" as const,
+                publishedAt: null,
+              })),
+            },
+          },
+          include: { locales: true },
+        })
+
+        // Stage one active draft per copied locale, exactly like a newly
+        // created Experience, so the copy has a working preview capability and
+        // the normal save/publish/discard lifecycle from the first request.
+        const reason = `Duplicated from Experience ${input.id} (${input.sourceVersion.toLowerCase()} source version)`
+        const locales = []
+        for (const copy of copies) {
+          const locale = experience.locales.find(
+            (row) => row.locale === copy.locale,
+          )
+          if (!locale) throw new ExperienceDuplicationError()
+          const draft = await tx.contentRevision.create({
+            data: {
+              entityType: "ExperienceLocale",
+              entityId: locale.id,
+              snapshot: snapshotEnvelope(
+                copy.data as unknown as Prisma.InputJsonObject,
+              ),
+              status: "DRAFT",
+              previewToken: randomBytes(32).toString("base64url"),
+              revisedBy: ownerId,
+              revisedByKind: "USER",
+              reason,
+            },
+          })
+          locales.push({
+            locale,
+            source: {
+              localeId: copy.sourceLocaleId,
+              copiedFrom: copy.copiedFrom,
+              draftRevision: copy.sourceDraftRevision,
+            },
+            draftRevision: localeDraftRevision(draft),
+            // Bearer preview capability for the copy's own draft. Returned to
+            // the caller that just created and owns the copy; it retires when
+            // that draft is published or discarded.
+            previewToken: draft.previewToken,
+          })
+        }
+
+        return {
+          ...experience,
+          duplication: {
+            sourceExperienceId: input.id,
+            sourceVersion: input.sourceVersion,
+            locales,
+          },
+        }
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: 2_000,
+        timeout: 10_000,
+      },
+    )
   }
 
   async createLocale({
@@ -403,42 +891,53 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
+    boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
+    })
+
     const { experienceId, ...data } = input
-    const blocks = await backfillExperienceVideoLanguageIds({
-      prisma: this.prisma,
-      blocks: input.blocks,
-      locale: input.locale,
-    })
-    return this.prisma.$transaction(async (tx) => {
-      const locale = await tx.experienceLocale.create({
-        data: {
-          experienceId,
-          locale: data.locale,
-          slug: data.slug,
-          blocks: [],
-        },
-      })
-      const draftData = ExperienceLocaleDraftDataSchema.parse({
-        ...draftDataFromLocale(locale),
-        ...data,
-        blocks: blocks.blocks,
-      })
-      await tx.contentRevision.create({
-        data: {
-          entityType: "ExperienceLocale",
-          entityId: locale.id,
-          snapshot: snapshotEnvelope(
-            draftData as unknown as Prisma.InputJsonObject,
-          ),
-          status: "DRAFT",
-          previewToken: randomBytes(32).toString("base64url"),
-          revisedBy: user?.id ?? null,
-          revisedByKind: "USER",
-          reason: "Initial Experience locale draft created",
-        },
-      })
-      return effectiveLocale(locale, draftData)
-    })
+    return this.prisma.$transaction(
+      async (tx) => {
+        const locale = await tx.experienceLocale.create({
+          data: {
+            experienceId,
+            locale: data.locale,
+            slug: data.slug,
+            blocks: [],
+          },
+        })
+        const draftData = ExperienceLocaleDraftDataSchema.parse({
+          ...draftDataFromLocale(locale),
+          ...data,
+          blocks: input.blocks,
+        })
+        await assertNoNewUnavailableVideoDubs(
+          tx,
+          input.locale,
+          [],
+          draftData.blocks,
+        )
+        await tx.contentRevision.create({
+          data: {
+            entityType: "ExperienceLocale",
+            entityId: locale.id,
+            snapshot: snapshotEnvelope(
+              draftData as unknown as Prisma.InputJsonObject,
+            ),
+            status: "DRAFT",
+            previewToken: randomBytes(32).toString("base64url"),
+            revisedBy: user?.id ?? null,
+            revisedByKind: "USER",
+            reason: "Initial Experience locale draft created",
+          },
+        })
+        return effectiveLocale(locale, draftData)
+      },
+      { maxWait: 2_000, timeout: 10_000 },
+    )
   }
 
   async list({
@@ -523,11 +1022,46 @@ export class ExperienceService {
   async updateLocale({
     input: raw,
     user,
+    expectedDraftRevision,
+    validateBlocks,
   }: {
     input: unknown
     user: Principal | null
+    expectedDraftRevision?: string | null
+    validateBlocks?: (input: {
+      prisma: Prisma.TransactionClient
+      previousBlocks: readonly unknown[]
+      nextBlocks: readonly unknown[]
+    }) => Promise<void>
+  }) {
+    const staged = await this.updateLocaleDraft({
+      input: raw,
+      user,
+      expectedDraftRevision,
+      validateBlocks,
+    })
+    return staged.effective
+  }
+
+  async updateLocaleDraft({
+    input: raw,
+    user,
+    expectedDraftRevision,
+    validateBlocks,
+  }: {
+    input: unknown
+    user: Principal | null
+    expectedDraftRevision?: string | null
+    validateBlocks?: (input: {
+      prisma: Prisma.TransactionClient
+      previousBlocks: readonly unknown[]
+      nextBlocks: readonly unknown[]
+    }) => Promise<void>
   }) {
     const input = UpdateExperienceLocaleInput.parse(raw)
+    if (input.blocks !== undefined) {
+      boundedAuthoredVideoDubSelectors(input.blocks)
+    }
 
     const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
       where: { id: input.id },
@@ -537,6 +1071,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -558,15 +1093,14 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const { id, ...data } = input
-    if (input.blocks !== undefined) {
-      const blocks = await backfillExperienceVideoLanguageIds({
-        prisma: this.prisma,
-        blocks: input.blocks,
-        locale: existing.locale,
-      })
-      data.blocks = blocks.blocks as typeof data.blocks
+    if (
+      input.homepageLayout !== undefined &&
+      input.homepageLayout !== existing.homepageLayout
+    ) {
+      throw new ExperienceHomepageLayoutMutationError()
     }
+
+    const { id, ...data } = input
 
     const staged = await this.stageLocaleDraft({
       id,
@@ -574,8 +1108,10 @@ export class ExperienceService {
       user,
       revisedByKind: "USER",
       reason: "Locale draft saved from admin editor",
+      expectedDraftRevision,
+      validateBlocks,
     })
-    return staged.effective
+    return staged
   }
 
   async publishLocale({
@@ -595,6 +1131,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -622,7 +1159,9 @@ export class ExperienceService {
         const canonical = await tx.experienceLocale.findUniqueOrThrow({
           where: { id: input.id },
           include: {
-            experience: { select: { ownerId: true, archivedAt: true } },
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
           },
         })
         if (!canPublishExperienceLocale(user, canonical))
@@ -654,7 +1193,27 @@ export class ExperienceService {
         if (!draft) {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
-        const draftData = effectiveDraftData(canonical, draft.snapshot)
+        const draftData = ExperienceLocaleDraftDataSchema.parse(
+          effectiveDraftData(canonical, draft.snapshot),
+        )
+        // Publish checks the ASSIGNMENT, not the rendering context: a homepage
+        // layout copy must be assigned as the homepage before it can go live,
+        // even after its homepage-only blocks were removed.
+        if (draftData.homepageLayout && !draftData.isHomepage) {
+          throw new ExperienceHomepageLayoutPublishError()
+        }
+        assertHomepageBlockPlacement(draftData.blocks, draftData.isHomepage)
+        // A draft staged while the flag was on cannot change the published
+        // questionnaire while it is off; an unchanged block republishes. The
+        // baseline is what is actually PUBLISHED: a never-published canonical
+        // row (e.g. a duplicate's copied DRAFT content) counts as empty.
+        await assertWatchAudienceWriteAllowed({
+          previousBlocks:
+            canonical.status === "PUBLISHED" && Array.isArray(canonical.blocks)
+              ? canonical.blocks
+              : [],
+          nextBlocks: draftData.blocks,
+        })
         const appliedAt = new Date()
 
         await tx.contentRevision.create({
@@ -702,7 +1261,11 @@ export class ExperienceService {
         locale: previous.locale,
       })
     }
-    if (published.isHomepage || previous.isHomepage) {
+    if (
+      published.isHomepage ||
+      previous.isHomepage ||
+      previous.experience.isTemplate
+    ) {
       void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,
@@ -769,6 +1332,67 @@ export class ExperienceService {
     )
   }
 
+  async rollbackLocaleDraft({
+    input,
+    user,
+  }: {
+    input: {
+      id: string
+      expectedDraftRevision: string
+    }
+    user: Principal | null
+  }) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${input.id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
+          },
+        })
+        if (!canEditExperienceLocale(user, canonical)) {
+          throw new ForbiddenError()
+        }
+        const draft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: input.id,
+            status: "DRAFT",
+          },
+          orderBy: { revisedAt: "desc" },
+        })
+        if (
+          !draft ||
+          localeDraftRevision(draft) !== input.expectedDraftRevision
+        ) {
+          throw new ConcurrentModificationError(
+            "ExperienceLocale draft",
+            input.id,
+          )
+        }
+
+        await tx.seoProposalMaterialization.updateMany({
+          where: {
+            contentRevisionId: draft.id,
+            status: { not: "STALE" },
+          },
+          data: { status: "STALE" },
+        })
+        await tx.contentRevision.update({
+          where: { id: draft.id },
+          data: { status: "DISCARDED" },
+        })
+        return { canonical, effective: canonical, activeDraft: null }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    )
+  }
+
   async restoreLocaleRevision({
     input: raw,
     user,
@@ -801,6 +1425,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -821,17 +1446,13 @@ export class ExperienceService {
     }
 
     const restoredData = effectiveDraftData(existing, revision.snapshot)
-    const restoredBlocks = await backfillExperienceVideoLanguageIds({
-      prisma: this.prisma,
-      blocks: restoredData.blocks,
-      locale: existing.locale,
-    })
+    boundedAuthoredVideoDubSelectors(restoredData.blocks)
     const staged = await this.stageLocaleDraft({
       id: existing.id,
       patch: {
         ...restoredData,
         blocks: ExperienceLocaleDraftDataSchema.shape.blocks.parse(
-          restoredBlocks.blocks,
+          restoredData.blocks,
         ),
       },
       user,
@@ -950,6 +1571,9 @@ export class ExperienceService {
     reason: string
   }) {
     const parsed = ChatMutationInput.parse(input)
+    if (parsed.blocks !== undefined) {
+      boundedAuthoredVideoDubSelectors(parsed.blocks)
+    }
 
     const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
       where: { id: parsed.id },
@@ -959,6 +1583,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -981,14 +1606,6 @@ export class ExperienceService {
     }
 
     const { id, ...data } = parsed
-    if (parsed.blocks !== undefined) {
-      const blocks = await backfillExperienceVideoLanguageIds({
-        prisma: this.prisma,
-        blocks: parsed.blocks,
-        locale: existing.locale,
-      })
-      data.blocks = blocks.blocks as typeof data.blocks
-    }
     const staged = await this.stageLocaleDraft({
       id,
       patch: data,

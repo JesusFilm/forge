@@ -35,3 +35,30 @@ This app orchestrates AI video enrichment pipelines. Agents working here should 
 4. Add env vars to `src/config/env.ts` and Railway service settings
 5. Update `CLAUDE.md` env var table
 6. If a service shells out to `ffmpeg`, make the runtime requirement explicit in docs, provision it in `nixpacks.toml` for manager deploys, and fail with a concrete error when the binary is missing
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.
+
+Legacy Shorts authoring APIs and workflows are retired; `/dashboard/shorts` remains
+the Studio entry point. See CLAUDE.md “Retired Shorts authoring” before removing
+historical job types or shared worker/composition consumers.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

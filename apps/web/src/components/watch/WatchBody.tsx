@@ -4,6 +4,27 @@ import { DownloadButton } from "@/components/watch/DownloadButton"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
+// Some editorial content (e.g. Darkroom Faith) bakes "1. " / "2) " into the
+// question text, which renders next to the row's own question icon as a
+// doubled marker. A leading number can also be real content ("2. Mose 3:14" is
+// Exodus in German), so only strip when the list is visibly hand-numbered: the
+// ordinals found, in order, run exactly 1, 2, 3... with at least two of them.
+// Anything else is left untouched (fail safe: a stray marker beats lost text).
+// Known residual: a list whose only leading numbers are "1. Mose" then "2. Mose"
+// reads as numbered; accepted as vanishingly unlikely next to the real case.
+const LEADING_ORDINAL = /^\s*(\d{1,2})[.)]\s+/
+
+export function stripBakedQuestionNumbering(values: string[]): string[] {
+  const ordinals = values
+    .map((v) => LEADING_ORDINAL.exec(v)?.[1])
+    .filter((n): n is string => n !== undefined)
+    .map(Number)
+  const isNumberedList =
+    ordinals.length >= 2 && ordinals.every((n, i) => n === i + 1)
+  if (!isNumberedList) return values
+  return values.map((v) => v.replace(LEADING_ORDINAL, "").trim())
+}
+
 export function WatchBody({
   block,
   downloadButtonLabel,
@@ -26,9 +47,11 @@ export function WatchBody({
   const { video, variant } = block
   const visualTitle = optimisticTitle ?? video.title ?? ""
   const hasDownloads = (variant.downloads ?? []).length > 0
-  const prompts = (studyQuestions?.studyQuestions ?? [])
-    .map((q) => q.value)
-    .filter((v): v is string => v != null && v.length > 0)
+  const prompts = stripBakedQuestionNumbering(
+    (studyQuestions?.studyQuestions ?? [])
+      .map((q) => q.value)
+      .filter((v): v is string => v != null),
+  ).filter((v) => v.length > 0)
 
   // The right column (Related Questions + Ask Yours CTA) always renders.
   // When there are no editorial prompts, WatchStudyQuestions falls back to
@@ -75,7 +98,7 @@ export function WatchBody({
               />
               {downloadError ? (
                 <p
-                  className="max-w-64 text-sm leading-snug font-semibold text-red-200"
+                  className="max-w-64 text-base sm:text-sm leading-snug font-semibold text-red-200"
                   data-testid="watch-download-error"
                   role="alert"
                 >

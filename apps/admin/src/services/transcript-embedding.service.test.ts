@@ -2,7 +2,7 @@
 //
 // DB interactions are tested against a stub Prisma client that mirrors
 // the call surface we use after Stage 3 (feat-117): $transaction +
-// videoTranscript.upsert + videoTranscriptChunk.deleteMany +
+// videoTranscript.upsert + videoTranscriptChunk.findMany/deleteMany +
 // tx.$executeRaw (one bulk chunk INSERT). True end-to-end verification
 // against a live Postgres with pgvector is out of scope for the unit
 // tests; the prod smoke run for Stage 3 covers it.
@@ -25,9 +25,52 @@ type UpsertCall = { where: unknown; create: unknown; update: unknown }
 type StubPrismaTx = {
   videoTranscript: { upsert: ReturnType<typeof vi.fn> }
   videoTranscriptChunk: {
+    findMany: ReturnType<typeof vi.fn>
     deleteMany: ReturnType<typeof vi.fn>
   }
   $executeRaw: ReturnType<typeof vi.fn>
+}
+
+function parsePgTextArray(literal: unknown): Array<string | null> {
+  if (typeof literal !== "string") {
+    throw new Error("expected PG text array literal")
+  }
+  if (literal === "{}") return []
+  if (!literal.startsWith("{") || !literal.endsWith("}")) {
+    throw new Error(`invalid PG text array literal: ${literal}`)
+  }
+
+  const values: Array<string | null> = []
+  let index = 1
+  while (index < literal.length - 1) {
+    if (literal.startsWith("NULL", index)) {
+      values.push(null)
+      index += 4
+    } else {
+      if (literal[index] !== '"') {
+        throw new Error("expected quoted PG array item")
+      }
+      index += 1
+      let value = ""
+      while (index < literal.length - 1) {
+        const char = literal[index]!
+        if (char === "\\") {
+          value += literal[index + 1] ?? ""
+          index += 2
+          continue
+        }
+        if (char === '"') {
+          index += 1
+          break
+        }
+        value += char
+        index += 1
+      }
+      values.push(value)
+    }
+    if (literal[index] === ",") index += 1
+  }
+  return values
 }
 
 function buildStubPrisma(opts?: {
@@ -42,14 +85,57 @@ function buildStubPrisma(opts?: {
   const videoTranscriptUpsert = vi.fn(async (_args: UpsertCall) => ({
     id: "transcript-stub-id",
   }))
+  let chunkRows: Array<{
+    id: string
+    transcriptId: string
+    chunkIndex: number
+  }> = []
+  const videoTranscriptChunkFindMany = vi.fn(
+    async (args: {
+      where: {
+        transcriptId: string
+        chunkIndex?: { notIn?: number[] }
+      }
+      select: { id: true }
+    }) => {
+      const notIn = args.where.chunkIndex?.notIn
+      const rows = chunkRows
+        .filter(
+          (row) =>
+            row.transcriptId === args.where.transcriptId &&
+            (notIn == null || !notIn.includes(row.chunkIndex)),
+        )
+        .sort((left, right) => left.chunkIndex - right.chunkIndex)
+      return rows.map((row) => ({ id: row.id }))
+    },
+  )
   const videoTranscriptChunkDeleteMany = vi.fn(async () => ({
     count: opts?.prunedCount ?? 0,
   }))
-  const executeRaw = vi.fn(async () => opts?.executeRawAffected ?? 1)
+  const executeRaw = vi.fn(
+    async (
+      _strings: TemplateStringsArray,
+      idsLiteral: string,
+      transcriptIdsLiteral: string,
+      _languagesLiteral: string,
+      chunkIndexesLiteral: string,
+    ) => {
+      const ids = parsePgTextArray(idsLiteral)
+      const transcriptIds = parsePgTextArray(transcriptIdsLiteral)
+      const chunkIndexes = parsePgTextArray(chunkIndexesLiteral)
+      chunkRows = ids.map((id, index) => ({
+        id: id ?? `chunk-doc-${index}`,
+        transcriptId: transcriptIds[index] ?? "transcript-stub-id",
+        chunkIndex: Number(chunkIndexes[index] ?? index),
+      }))
+      return opts?.executeRawAffected ?? (ids.length || 1)
+    },
+  )
 
   const tx: StubPrismaTx = {
     videoTranscript: { upsert: videoTranscriptUpsert },
     videoTranscriptChunk: {
+      findMany: videoTranscriptChunkFindMany,
       deleteMany: videoTranscriptChunkDeleteMany,
     },
     $executeRaw: executeRaw,

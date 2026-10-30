@@ -83,6 +83,23 @@ describe("auth env", () => {
         "https://admin-preview.jesusfilm.org/mcp",
         "https://admin-stage.jesusfilm.org/mcp",
         "https://admin.jesusfilm.org/mcp",
+        "http://localhost:3000/mcp",
+        "https://changelog.jesusfilm.org/mcp",
+      ]),
+    )
+    const changelogAudiences = [
+      "http://localhost:3000/mcp",
+      "https://changelog.jesusfilm.org/mcp",
+    ]
+    expect(
+      getAuthValidAudiences().filter((audience) =>
+        changelogAudiences.includes(audience),
+      ),
+    ).toEqual(changelogAudiences)
+    expect(getAuthValidAudiences()).not.toEqual(
+      expect.arrayContaining([
+        "https://changelog-preview.jesusfilm.org/mcp",
+        "https://changelog-stage.jesusfilm.org/mcp",
       ]),
     )
   })
@@ -109,6 +126,32 @@ describe("auth env", () => {
         (audience) => audience === "https://admin.jesusfilm.org/mcp",
       ),
     ).toHaveLength(1)
+  })
+
+  it("keeps production Changelog activation disabled by default", async () => {
+    vi.stubEnv("AUTH_CHANGELOG_PRODUCTION_ENABLED", "")
+
+    const { isChangelogProductionEnabled } = await loadEnv()
+
+    expect(isChangelogProductionEnabled()).toBe(false)
+  })
+
+  it.each([
+    ["true", true],
+    ["false", false],
+  ])("parses AUTH_CHANGELOG_PRODUCTION_ENABLED=%s", async (value, expected) => {
+    vi.stubEnv("AUTH_CHANGELOG_PRODUCTION_ENABLED", value)
+
+    const { isChangelogProductionEnabled } = await loadEnv()
+
+    expect(isChangelogProductionEnabled()).toBe(expected)
+  })
+
+  it("rejects invalid Changelog production activation values", async () => {
+    vi.stubEnv("CI", "")
+    vi.stubEnv("AUTH_CHANGELOG_PRODUCTION_ENABLED", "yes")
+
+    await expect(loadEnv()).rejects.toThrow("Invalid environment variables")
   })
 
   it("fails closed when the production runtime secret is missing", async () => {
@@ -190,4 +233,23 @@ describe("mobile auth env", () => {
       apiKey: "erasure-key",
     })
   })
+
+  it.each([
+    ["unset", "", false],
+    ["false", "false", false],
+    ["true", "true", true],
+  ])(
+    "reads the learning-erasure rollout setting when %s",
+    async (_label, value, required) => {
+      // Read independently of the erasure endpoint config, so a missing
+      // endpoint cannot hide the requirement.
+      vi.stubEnv("ADMIN_WATCH_PROGRESS_BASE_URL", "")
+      vi.stubEnv("ADMIN_WATCH_PROGRESS_API_KEY", "")
+      vi.stubEnv("AUTH_WATCH_LEARNING_ERASURE_REQUIRED", value)
+
+      const { isWatchLearningErasureRequired } = await loadEnv()
+
+      expect(isWatchLearningErasureRequired()).toBe(required)
+    },
+  )
 })

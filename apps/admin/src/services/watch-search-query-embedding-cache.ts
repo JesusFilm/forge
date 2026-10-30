@@ -1,4 +1,5 @@
 export type WatchSearchQueryEmbeddingCacheIdentity = {
+  contractId: string
   provider: string
   model: string
   dimensions: number
@@ -20,6 +21,7 @@ function serializedIdentity(
   identity: WatchSearchQueryEmbeddingCacheIdentity,
 ): string {
   return JSON.stringify([
+    identity.contractId,
     identity.provider,
     identity.model,
     identity.dimensions,

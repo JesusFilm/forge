@@ -39,9 +39,8 @@
     "posterAlt": "Video poster foto",
     "noDownloads": "Video yi de, download biara nni hɔ.",
     "fileSizeLabel": "Paw fael kɛse",
-    "termsAgreementPrefix": "Mepene ",
+    "termsAgreement": "Mepene <link>Dwumadie Mmara</link> no so",
     "termsOfUse": "Dwumadie Mmara",
-    "termsAgreementSuffix": "",
     "close": "To mu",
     "download": "Twe",
     "authRequiredTitle": "Wopɛ sɛ wotwe video yi?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Kyɛ wɔ Facebook so (wɔ build yi mu nni hɔ)",
     "shareOnX": "Kyɛ wɔ X so",
     "shareOnXUnavailable": "Kyɛ wɔ X so (wɔ build yi mu nni hɔ)",
+    "opensInNewTab": "{label} (ebue wɔ tab foforo mu)",
     "shareDisabledHint": "Share no hia page a wɔde asi hɔ — ɛyɛ adwuma bere a video yi akɔ production mu.",
     "shareFormat": "Kyɛ format",
     "shareLinkTab": "Kyɛ Link",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sesa audio kasa no",
     "home": "JesusFilm fie",
     "closeSearch": "To search no mu",
-    "submitSearch": "Kpɛ"
+    "submitSearch": "Kpɛ",
+    "library": "Wolo he"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na browse videos",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Yentumi mfa nsɛm a aka no mmra.",
     "searching": "Yɛrehwehwɛ...",
     "connectionHint": "Yɛsrɛ sɛ hwɛ wo connection no mu na san bɔ hwɛ bio.",
+    "rateLimitHint": "Bibioi niŋ waa. Kɛ miniti kome, bo ni ojogbaŋ.",
     "retrySearch": "San search bio",
     "retry": "San bɔ hwɛ bio",
     "noResults": "Nsɛm biara nni hɔ ma \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Kpɛ “{suggestion}” yɛ {language} gbɛ mli",
     "inLanguage": "wɔ {language} mu",
     "browseByRegion": "Browse denam mantam so",
+    "allVideosOnSinglePage": "Video nyinaa yɛ baa kome nɔ",
     "clearLanguages": "Pepa",
     "queryLanguageDetected": "Wɔahu {language}",
     "searchInLanguage": "Kpɛ yɛ {language} gbɛ mli",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",
     "tapToUnmute": "Bɔ so na yi dinn no fi hɔ",
-    "nextEpisode": "Episode a edi hɔ"
+    "nextEpisode": "Episode a edi hɔ",
+    "audioTranslationCount": "{count, plural, one {# kasa} other {# kasa horow}}",
+    "subtitleCount": "Shishi-gbɛi: {count, plural, one {# kasa} other {# kasa horow}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yɛreload content no",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Yentumi mfa feedback form no mmra.",
     "loadingForm": "Yɛreload feedback form no…",
     "retry": "San bɔ hwɛ bio",
-    "openFormShort": "Bue form no",
     "cancel": "Siw so",
-    "title": "Beta Hemɔkɛyeli",
-    "description": "Ka nea reyɛ adwuma na nea yebetumi ama ayɛ yiye kyerɛ yɛn. Google na ɛde form yi ma.",
-    "openInNewTab": "Bue form no wɔ tab foforo mu",
     "closeForm": "To feedback form no mu",
-    "loadingGoogleForm": "Yɛreloadd Google Form no…",
-    "iframeTitle": "Fa Beta Feedback mena"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos kwa wɔ {language} mu | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Agumadi",
     "collections": "Nhyiam",
     "subtitlesOnly": "Subtitles nko ara",
+    "backToTop": "Ku sɛɛ kɛya hiɛ",
     "newlyAdded": "Wɔde aka ho foforo ara",
     "newVideosTitle": "Christian videos foforo wɔ {language} mu",
     "newestFirst": "Nea aba foforo no kan",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Videos a ɛgyina hɔ ankasa",
     "videosFromCollection": "Videos fi {collection} mu.",
     "standaloneDescription": "Videos a ɛgyina hɔ ankasa wɔ kasa yi mu.",
-    "openCollection": "Bue collection no"
+    "openCollection": "Bue collection no",
+    "filters": "Kpaŋaanii",
+    "filterLength": "Kɛkɛ",
+    "filterLength_under5": "Ni be shi minitsi 5",
+    "filterLength_5to10": "Minitsi 5-10",
+    "filterLength_10to30": "Minitsi 10-30",
+    "filterLength_over30": "Ni fe minitsi 30",
+    "filterType": "Sui",
+    "clearFilters": "Jie kpaŋaanii",
+    "filterResults": "{count} yɛ {total} amli ni atsɔɔ",
+    "noFilterResults": "Video ko bɛ ni kɛ kpaŋaanii nɛɛ kpaa gbee. Bɔ mɔdɛŋ ni ojie ekome.",
+    "filterAdded": "Akɛfata he",
+    "filterAdded_60d": "Gbii 60 ni eho",
+    "filterAdded_6m": "Nyɔji 6 ni eho",
+    "filterAdded_12m": "Nyɔji 12 ni eho"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Hwɛ",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video a edi kan preview",
     "nextVideoPreview": "Video a edi hɔ preview",
     "mediaCollection": "Media nhyiam",
-    "scrollToVideo": "Kɔ ha na hwɛ {title} video no"
+    "scrollToVideo": "Kɔ ha na hwɛ {title} video no",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project fie",
@@ -404,6 +594,29 @@
     "merryChristmas": "Krismasi pa!",
     "daysUntilChristmas": "{count, plural, one {Gbi # ni aka ma Krismasi} other {Gbii # ni aka ma Krismasi}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Kpɛlɛ library lɛ",
+    "title": "Kpɛlɛ kɛ category",
+    "description": "Yaa library lɛ fã ni ohiaa lɛ mli tɛŋŋ — Yesu shihilɛ, sɔlemɔ afi lɛ bei, kɛ videoi ni afee kɛha weku, skulbii, kɛ kui bibii.",
+    "seeAll": "Kwɛmɔ video fɛɛ",
+    "previous": "Categories ni tsɔ hiɛ",
+    "next": "Categories ni nyiɛ sɛɛ",
+    "categories": {
+      "jesus": "JESUS Fim",
+      "gospels": "Sanekpakpai",
+      "shortVideos": "Video kpitioi",
+      "family": "Weku",
+      "relationships": "Naanyobɔɔ",
+      "women": "Kɛha Yei",
+      "students": "Kɛha Skulbii",
+      "sports": "Agumadi",
+      "goodNews": "Sanekpakpa",
+      "hope": "Hiɛnɔkamɔ",
+      "training": "Tsɔsemɔ",
+      "easter": "Yesu Shitee Gbi",
+      "christmas": "Christimas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Kasa horow",
     "metadataDescription": "Browe JesusFilm videos denam kasa so.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Page no nni hɔ:",
     "title": "Scene yi nni ha.",
     "description": "Page no betumi atu, nanso asɛm no kɔ so.",
+    "languageDescription": "Wɔnyɛɛɛ wɔna baafa ni otaoɔ lɛ, shi sane lɛ yaa nɔ yɛ fim kɛ videoi ni jɛ jeŋ kasa srɔtoi amli.",
     "actionsLabel": "Page no nni hɔ actions",
     "backToWatch": "San kɔ Watch no so",
     "browseVideos": "Kpɛlɛ videoi"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hwɛ fim ketewa no",
-    "actions": {
-      "joinUs": "Bra bɛka yɛn ho",
-      "shareMission": "Ka yɛn asɔre adwuma no kyɛ"
-    },
-    "welcomeStart": {
-      "label": "Gyidi & Kyerɛwsɛm",
-      "title": "Video a yɛayi no ma ɛnnɛ",
-      "description": "Video a egyina gyidi so fi yɛn library mu a ɛbɛkanyan wo, ama wo asusuw ho, na woadwene asɔre so."
-    },
-    "welcomeMorning": {
-      "label": "Anɔpa nkuranhyɛ",
-      "title": "Mema wo maraba! Bible mu nsɛm a ɛbɛka wo no retwɛn wo.",
-      "description": "Fi wo da no ase denam Bible mu nsɛm a ɛhyɛ nkuran, a wɔayɛ no sɛ ɛnkanyan wo na ɛma w’ahonim so no so."
-    },
-    "welcomeAfternoon": {
-      "label": "Awia nkuranhyɛ",
-      "title": "Mema wo awia! Bible mu nsɛm ma wo da no.",
-      "description": "Bible mu nsɛm a ɛhyɛ nkuran a ɛfata wo awia home anaa sɛ wowɔ nkuranhyɛ a ɛkɔ so."
-    },
-    "welcomeEvening": {
-      "label": "Anadwo nkuranhyɛ",
-      "title": "Mema wo anwummere pa! Dwo wo ho ne Bible mu nsɛm.",
-      "description": "Bible mu nsɛm a ɛyɛ komm a ɛbɛboa wo ma woasusuw ho na woanya awerɛkyekye bere a wo da no rebɛsa awiei no."
-    },
-    "joinUs": {
-      "label": "Bra bɛka yɛn ho",
-      "title": "Miliɔn pii rehwɛ asɛm no",
-      "description": "Otwa bere no ni. Bra bɛka yɛn ho ma yɛne wiase nka asɛmpa no denam dijital media so."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Momma yɛnkɔ bom",
-      "title": "Yɛreka Yesu asɛm no, bom",
-      "description": "Na wɔate na wɔahu Yesu dɔ no wɔ wɔn ankasa kasa mu wɔ baabi a wɔwɔ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ni sa",
-    "none": "Yená video krokomɛ ni sa kɛ video nɛɛ yɛ kasa nɛɛ mli."
+    "none": "Yená video krokomɛ ni sa kɛ video nɛɛ yɛ kasa nɛɛ mli.",
+    "heading": "Video a wɔkamfo kyerɛ",
+    "loadingLabel": "Yɛreload video a wɔkamfo kyerɛ",
+    "openingTitle": "Agbeleɔ {title}",
+    "openingVideo": "Agbeleɔ video",
+    "activityNotRecorded": "Wɔnyɛɛ wɔŋmala recommendation nifeemɔ lɛ. Links lɛ tsuɔ nii kɛkɛ.",
+    "showingContextual": "Ajieɔ contextual recommendation kpo.",
+    "showingSaved": "Ajieɔ recommendation ni akɛ to lɛ kpo.",
+    "explanationCurated": "Video ni ahala koni okwɛ.",
+    "explanationViewingMode": "Recommendation ni jɛ video nɛɛ kɛ bɔ ni okwɛɔ nii lɛ mli.",
+    "explanationCowatch": "Recommendation ni jɛ video nɛɛ kɛ nii ni osumɔɔ lɛ mli.",
+    "explanationHybrid": "Recommendation ni jɛ video nɛɛ kɛ nii ni osumɔɔ ni ohala akɛ aka-kai lɛ mli.",
+    "explanationContextual": "Recommendation ni jɛ nɔ ni okwɛɔ amrɔ nɛɛ lɛ mli.",
+    "explanationSemanticFallback": "Recommendation ni jɛ nɔ ni okwɛɔ amrɔ nɛɛ lɛ mli, beni Aha mli tsui bɛ amrɔ nɛɛ.",
+    "explanationProfileDurable": "Ato he kɛha bo kɛjɛ nii ni osumɔɔ ni ohala akɛ aka-kai lɛ mli.",
+    "explanationProfileVisit": "Ato he kɛha bo yɛ sara nɛɛ mli.",
+    "personalizationLabel": "Recommendation Aha mli tsui",
+    "personalizationPrompt": "Ani osumɔɔ ni otsake bɔ ni atoɔ recommendation ahe kɛhaa bo lɛ?",
+    "openCookieSettings": "Gbele Cookie setting ni"
   },
   "BetaTesterModal": {
     "title": "Bɛ beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "San sɔhwɛ no antumi anyɛ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Gbemɔ lɛ bɛɛ hɔ",
+    "eyebrow": "Gbemɔ lɛ bɛɛ hɔ",
+    "title": "<contentTitle>{title}</contentTitle> bɛɛ hɔ le <languageName>{language}</languageName> mli",
+    "actionsLabel": "Nɔ ko nɔ ko ni obaanyɛ okɛ ele",
+    "browseInLanguage": "Kɛ videoi le {language} mli",
+    "backToSearch": "Sane ni shwɛɛ lɛ nɔ",
+    "audioVersionsTitle": "Audio gbemɔi krokomɛi",
+    "audioVersionsDescription": "Kɛ audio gbe kome hewalɛ ni okɛ video nɛɛ ele ni oyɛ nɔ.",
+    "languageVersionLabel": "Audio gbe",
+    "selectLanguageVersion": "Kɛ gbemɔ kome hewalɛ",
+    "watchSelectedVersion": "Kɛ gbemɔ ni okɛ hewalɛ lɛ ele"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie hewɔmɔi",
+    "bannerTitle": "Wɔ shishi lɛ mli hewɔmɔi",
+    "bannerDescription": "Cookie si nii anɔpa lɛ ewo Watch ni eha ni ejɛɛ. Shi mli ni, ni okɛ eha, first-party cookie koŋɔ ekɛ ni eyaa hewɔmɔi lɛ feei afii ni ekɛ recommendation ni eba amɛ ha. Contextual recommendation ni hewalɛ mli kɛji ni baafee.",
+    "acceptAll": "Gba amɛnaa fɛɛ",
+    "essentialOnly": "Nii anɔpa tsɛɛ",
+    "manageChoices": "Dɔ hewɔmɔi lɛ nɔ",
+    "savingChoice": "Ehee cookie hewɔmɔi lɛ",
+    "settings": "Cookie setting ni",
+    "settingsDescription": "Lɛ Watch ekɛ ni eyaa recommendation hewɔmɔi lɛ feei afii ni, waa hewalɛ mli shishi. Oyaa ni oho eko ni mli kɛji.",
+    "essentialCookies": "Cookie ni anɔpa",
+    "essentialDescription": "Kɛjiashikɛŋ, video nɔŋmɔ, shishi hewɔmɔi, kɛ recommendation bii ni yɛlɛ lɛ.",
+    "alwaysActive": "Etsɔɔ wɔ mli nyɛɛ",
+    "personalization": "Aha mli tsui",
+    "personalizationDescription": "Yaa hewɔmɔi ni efee kɛshikɛ lɛ feei afii ni. Ni oshi lɛ eko, contextual recommendation ni baakɛ hewalɛ mli.",
+    "erasurePending": "Profile lɛ tutu lɛ mli hewalɛ yɛ. Contextual recommendation ni etsɔɔ wɔ mli dedɛ.",
+    "cancel": "Tɔŋ",
+    "saveChoices": "Hee hewɔmɔi lɛ",
+    "saving": "Ehee…",
+    "loadError": "O hewɔmɔi lɛ ekɔ able shia. Otsɔɔ akɛ oyaa lɛshi amɛnaa ni shikpon.",
+    "grantError": "Personalization lɛ ekɔ able shia. Essential only etsɔɔ wɔ mli.",
+    "saveError": "O hewɔmɔi lɛ ekɔ able hee. Bɔŋ yɛ shia ake."
   }
 }

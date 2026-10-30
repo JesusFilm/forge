@@ -1,0 +1,910 @@
+{
+  "capturedAt": "2026-09-23T04:49:27.231Z",
+  "limitations": [
+    "Synthetic player and test shell, not the complete Watch page or Mux playback.",
+    "Real Next production builds, using only synthetic local settings and owned dependencies.",
+    "Local consumer-bearer authentication, not Admin user OAuth."
+  ],
+  "results": [
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "healthy",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 66
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 38
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 200,
+          "elapsedMs": 143
+        },
+        {
+          "action": "facts",
+          "atMs": 4970,
+          "status": 200,
+          "elapsedMs": 39
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 74.3999999910593
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 45.599999994039536
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 150.79999999701977,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 45.30000001192093,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          }
+        ],
+        "degraded": [],
+        "playerAdvancedSeconds": 16
+      },
+      "episodes": 1,
+      "facts": 3,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 2,
+      "initialAttempts": 1,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "lost_ack",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 29
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 28
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 200,
+          "elapsedMs": 140
+        },
+        {
+          "action": "facts",
+          "atMs": 141,
+          "status": 200,
+          "elapsedMs": 131
+        },
+        {
+          "action": "facts",
+          "atMs": 5030,
+          "status": 200,
+          "elapsedMs": 45
+        },
+        {
+          "action": "facts",
+          "atMs": 15030,
+          "status": 200,
+          "elapsedMs": 55
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 35.20000000298023
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 33.900000005960464
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 278.09999999403954,
+            "receipts": [
+              {
+                "status": "replay",
+                "sequence": 1
+              },
+              {
+                "status": "replay",
+                "sequence": 2
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 51.79999999701977,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 62.099999994039536,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 4
+              }
+            ]
+          }
+        ],
+        "degraded": [],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 4,
+      "replays": 2,
+      "initialFacts": 2,
+      "initialAccepted": 2,
+      "initialAttempts": 2,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": true,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "disconnect",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 25
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 29
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 503,
+          "elapsedMs": 282
+        },
+        {
+          "action": "facts",
+          "atMs": 1331,
+          "status": 503,
+          "elapsedMs": 15
+        },
+        {
+          "action": "facts",
+          "atMs": 9751,
+          "status": 200,
+          "elapsedMs": 63
+        },
+        {
+          "action": "facts",
+          "atMs": 15033,
+          "status": 200,
+          "elapsedMs": 43
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 31.200000002980232
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 34.79999999701977
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 290.8999999910593,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 21.400000005960464,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 72.5,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              },
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 49.6000000089407,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 4
+              }
+            ]
+          }
+        ],
+        "degraded": [
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          },
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          }
+        ],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 4,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 2,
+      "initialAttempts": 3,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "silent_stall",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 27
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 27
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 503,
+          "elapsedMs": 567
+        },
+        {
+          "action": "facts",
+          "atMs": 1592,
+          "status": 503,
+          "elapsedMs": 522
+        },
+        {
+          "action": "facts",
+          "atMs": 12061,
+          "status": 200,
+          "elapsedMs": 45
+        },
+        {
+          "action": "facts",
+          "atMs": 15033,
+          "status": 200,
+          "elapsedMs": 36
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 33
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 32.8999999910593
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 573,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 529,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 52.70000000298023,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              },
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 42.5,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 4
+              }
+            ]
+          }
+        ],
+        "degraded": [
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          },
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          }
+        ],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 4,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 2,
+      "initialAttempts": 3,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "terminal_binding",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 40
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 30
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 409,
+          "elapsedMs": 80
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 45.599999994039536
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 35.3999999910593
+          },
+          {
+            "action": "facts",
+            "status": 409,
+            "elapsedMs": 86.40000000596046,
+            "error": "playback_binding_invalid"
+          }
+        ],
+        "degraded": [
+          {
+            "reason": "binding_invalid",
+            "disposition": "dropped"
+          }
+        ],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 0,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 0,
+      "initialAttempts": 1,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "exhaustion",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 32
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 34
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 503,
+          "elapsedMs": 249
+        },
+        {
+          "action": "facts",
+          "atMs": 1489,
+          "status": 503,
+          "elapsedMs": 16
+        },
+        {
+          "action": "facts",
+          "atMs": 10437,
+          "status": 503,
+          "elapsedMs": 22
+        },
+        {
+          "action": "facts",
+          "atMs": 11646,
+          "status": 503,
+          "elapsedMs": 16
+        },
+        {
+          "action": "facts",
+          "atMs": 21659,
+          "status": 503,
+          "elapsedMs": 20
+        },
+        {
+          "action": "facts",
+          "atMs": 22707,
+          "status": 503,
+          "elapsedMs": 20
+        },
+        {
+          "action": "facts",
+          "atMs": 30848,
+          "status": 200,
+          "elapsedMs": 43
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 38
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 39.6000000089407
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 256,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 22.80000001192093,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 29.899999991059303,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 22.299999997019768,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 27.899999991059303,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 503,
+            "elapsedMs": 25.700000002980232,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 50.900000005960464,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              }
+            ]
+          }
+        ],
+        "degraded": [
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          },
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          },
+          {
+            "reason": "transport_exhausted",
+            "disposition": "dropped"
+          },
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          },
+          {
+            "reason": "transport_exhausted",
+            "disposition": "dropped"
+          },
+          {
+            "reason": "transport_retry",
+            "disposition": "retrying"
+          }
+        ],
+        "playerAdvancedSeconds": 35
+      },
+      "episodes": 1,
+      "facts": 2,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 0,
+      "initialAttempts": 3,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "claim_disconnect",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 26
+        },
+        {
+          "action": "claim",
+          "status": 503,
+          "elapsedMs": 253
+        },
+        {
+          "action": "claim",
+          "status": 503,
+          "elapsedMs": 15
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 47
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 200,
+          "elapsedMs": 129
+        },
+        {
+          "action": "facts",
+          "atMs": 4878,
+          "status": 200,
+          "elapsedMs": 40
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 31.700000002980232
+          },
+          {
+            "action": "claim",
+            "status": 503,
+            "elapsedMs": 259.40000000596046,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "claim",
+            "status": 503,
+            "elapsedMs": 20.700000002980232,
+            "error": "recommendations_unavailable"
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 55
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 135.6000000089407,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              },
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 47.099999994039536,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 4
+              }
+            ]
+          }
+        ],
+        "degraded": [],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 4,
+      "replays": 0,
+      "initialFacts": 3,
+      "initialAccepted": 3,
+      "initialAttempts": 1,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": false,
+      "acknowledgedSequencesMatch": true
+    },
+    {
+      "unobservedFacts": 0,
+      "payloadDifferences": [],
+      "originalDigestsMatch": true,
+      "identicalClaims": true,
+      "scenario": "claim_lost_ack",
+      "requests": [
+        {
+          "action": "context",
+          "status": 200,
+          "elapsedMs": 40
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 29
+        },
+        {
+          "action": "claim",
+          "status": 200,
+          "elapsedMs": 88
+        },
+        {
+          "action": "facts",
+          "atMs": 0,
+          "status": 200,
+          "elapsedMs": 155
+        },
+        {
+          "action": "facts",
+          "atMs": 4927,
+          "status": 200,
+          "elapsedMs": 44
+        },
+        {
+          "action": "facts",
+          "atMs": 14928,
+          "status": 200,
+          "elapsedMs": 52
+        }
+      ],
+      "browser": {
+        "observations": [
+          {
+            "action": "context",
+            "status": 200,
+            "elapsedMs": 47.79999999701977
+          },
+          {
+            "action": "claim",
+            "status": 200,
+            "elapsedMs": 124.90000000596046
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 163.69999998807907,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 1
+              },
+              {
+                "status": "accepted",
+                "sequence": 2
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 52.79999999701977,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 3
+              }
+            ]
+          },
+          {
+            "action": "facts",
+            "status": 200,
+            "elapsedMs": 60.599999994039536,
+            "receipts": [
+              {
+                "status": "accepted",
+                "sequence": 4
+              }
+            ]
+          }
+        ],
+        "degraded": [],
+        "playerAdvancedSeconds": 22
+      },
+      "episodes": 1,
+      "facts": 4,
+      "replays": 0,
+      "initialFacts": 2,
+      "initialAccepted": 2,
+      "initialAttempts": 1,
+      "identicalRetries": true,
+      "exactPayloadsMatch": true,
+      "oneFactPerId": true,
+      "ordered": true,
+      "replayMatches": true,
+      "passed": true,
+      "acknowledgementDropped": true,
+      "acknowledgedSequencesMatch": true
+    }
+  ]
+}

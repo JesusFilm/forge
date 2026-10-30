@@ -54,6 +54,49 @@ describe("workflow run log service", () => {
         details: { incremental: true },
       }),
     })
+    expect(
+      client.workflowRun.create.mock.calls[0]?.[0].data,
+    ).not.toHaveProperty("id")
+  })
+
+  it("uses an explicit ID only for an idempotent operation", async () => {
+    const client = createMockClient()
+    await createWorkflowRunLog(
+      { id: "manual-operation-1", workflowKey: "retention", trigger: "manual" },
+      client as never,
+    )
+    expect(client.workflowRun.create.mock.calls[0]?.[0].data).toHaveProperty(
+      "id",
+      "manual-operation-1",
+    )
+  })
+
+  it("maps an editor-triggered push campaign run to the manual trigger", async () => {
+    const client = createMockClient()
+
+    await createWorkflowRunLog(
+      {
+        workflowKey: "push-campaign",
+        workflowName: "Push Campaign",
+        trigger: "manual",
+        actorId: "admin-user-1",
+        subjectType: "push-campaign",
+        subjectId: "campaign-1",
+        details: { kind: "LIVE", mode: "WAVE" },
+      },
+      client as never,
+    )
+
+    expect(client.workflowRun.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        workflowKey: "push-campaign",
+        trigger: WorkflowRunTrigger.MANUAL,
+        actorId: "admin-user-1",
+        subjectType: "push-campaign",
+        subjectId: "campaign-1",
+        status: WorkflowRunStatus.QUEUED,
+      }),
+    })
   })
 
   it("attaches the runtime run id after workflow dispatch", async () => {

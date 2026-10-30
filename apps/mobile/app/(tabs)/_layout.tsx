@@ -1,30 +1,31 @@
 import { Tabs } from "expo-router"
-import { Platform, type ViewStyle } from "react-native"
+import { Platform } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+
+import { isExploreAvailable } from "../../src/lib/explore/availability"
+import { useTabBarStyle, useTabLabels } from "../../src/lib/tabBar"
 
 const ACCENT = "#CB333B"
 const MUTED = "#a8a29e"
-const BG_COLOR = "#1c1917"
 
-// Shared so the Library screen can RESTORE this exact style after hiding the
-// tab bar during selection — restoring to `undefined` falls back to RN's
-// default (light) bar, not the navigator's dark one (that was the bug).
-export const TAB_BAR_STYLE: ViewStyle = {
-  backgroundColor: BG_COLOR,
-  borderTopColor: "transparent",
-}
-
+/**
+ * Android's tab bar. iOS is shadowed by `_layout.ios.tsx` and its UIKit bar
+ * (feat-500) — but this file MUST stay: expo-router resolves the platform
+ * sibling by specificity and throws without an extension-less fallback.
+ */
 export default function TabLayout() {
+  const tabBarStyle = useTabBarStyle()
+  const labels = useTabLabels()
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ACCENT,
         tabBarInactiveTintColor: MUTED,
-        tabBarStyle: TAB_BAR_STYLE,
+        tabBarStyle,
         tabBarLabelStyle: {
           fontSize: Platform.select({ ios: 10, android: 12 }),
-          fontFamily: "System",
         },
       }}
     >
@@ -33,43 +34,46 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: labels.index,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color as string} />
           ),
         }}
       />
       <Tabs.Screen
-        name="watch"
+        name="explore"
         options={{
-          title: "Discover",
-          headerShown: true,
-          headerTitle: "Discover",
-          headerStyle: { backgroundColor: BG_COLOR },
-          headerTintColor: "#f5f5f4",
-          headerShadowVisible: false,
+          title: labels.explore,
+          // KTD16: `null` hides the button. The route stays reachable by URL,
+          // so explore.tsx checks the gate as well.
+          href: isExploreAvailable() ? undefined : null,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color as string} />
+            <Ionicons name="play-circle" size={size} color={color as string} />
           ),
         }}
       />
       <Tabs.Screen
-        name="library"
+        name="watch"
         options={{
-          title: "Library",
+          title: labels.watch,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="albums-outline"
-              size={size}
-              color={color as string}
-            />
+            <Ionicons name="search" size={size} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bible"
+        options={{
+          title: labels.bible,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" size={size} color={color as string} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: labels.profile,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color as string} />
           ),

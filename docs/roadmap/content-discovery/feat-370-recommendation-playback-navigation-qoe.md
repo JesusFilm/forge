@@ -3,13 +3,13 @@ id: "feat-370"
 title: "Recommendation playback navigation and QoE signals"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
-start_date: ""
+status: "complete"
+start_date: "2026-09-15"
 duration: 4
 depends_on:
   - "feat-369"
 blocks:
-  - "feat-391"
+  - "feat-504"
 tags:
   - "admin"
   - "web"
@@ -65,3 +65,63 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Run focused Web and Admin tests plus affected-app lint and type checking.
 - Run affected application checks: `pnpm --filter @forge/web test`, `pnpm --filter @forge/web lint`, and `pnpm --filter @forge/web typecheck`; `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 15 implementation
+
+The bounded Web collector and recomputable Admin observation projection now cover
+pause/resume, seek direction, visibility/bfcache, startup timing, buffering and
+unknown-severity errors. Each family has separate completeness and inconclusive
+readiness. The Admin playback detail and explicitly bounded latest-20-episode
+sample reconcile observations against attempts, starts and finalized episodes.
+
+See `docs/validation/feat-504-playback-observations/README.md` for protocol,
+mixed-version fallback, retention/access ownership, tests and browser/load proof.
+Immediate departures remain unknown preference observations under feat-504.
+
+At that point, manual-skip/replay intent, user/system pause causes,
+recoverability/fatal severity, startup timeout, device/network breakdowns,
+independent persisted readiness decisions and whole-window funnels were not
+implemented. Raw navigation and QoE did not influence live ranking.
+
+## September 24 reader-first rollout candidate
+
+The v2 Admin and Web BFF contracts accept optional navigation and QoE facts
+while the browser collector continues to emit v1. Admin projects the families
+independently, reconciles dated full-window snapshots against attempts,
+starts, finalized episodes and outcomes, and persists separate daily readiness
+decisions. The expanded readers and Admin worker/bootstrap must deploy and be verified in production
+before the v2 browser emitter is merged. See
+`docs/validation/feat-370-playback-signals/reader-rollout.md` for the reader
+contract, scale check, failure behavior and rollout order.
+
+The v2 emitter, authorized Admin evidence gate and normal production
+verification remain pending. The ticket remains in progress.
+
+## September 24 emitter candidate
+
+The browser collector emits v2 summaries with coarse device/network context,
+explicit Watch-next/chapter manual skip, user/scroll/modal pause causes only
+where observed, automatic-start transition, startup timeout, and fatal
+media-error codes. Ambiguous native causes and recoverability stay unknown.
+Replay intent remains unsupported because this player exposes no replay
+control; a seek to zero is not sufficient evidence. All optional facts remain
+bounded and excluded from live ranking. See
+`docs/validation/feat-370-playback-signals/README.md` for the exact behavior.
+
+The emitter must wait for production verification of both v2 readers and the
+Admin worker/bootstrap from the reader-first PR. After normal PR-to-main
+deployment, verify the authorized Admin overview and episode evidence before
+marking this ticket complete.
+
+## September 24 production closeout
+
+The reader and emitter reached production through the normal PR-to-main
+rollout, and the authorized Admin Recommendations overview reconciled
+navigation and QoE independently. A real v2 episode joined to a normal
+Watch journey retained an explicit user pause, chapter manual skip, and
+separate observed navigation and QoE projections. The startup-timing guard
+also reached active production `SUCCESS` on its exact merge commit. See
+`docs/validation/feat-370-playback-signals/production-verification.md` for
+the exact deployment, episode, dated snapshot and performance evidence,
+including the pre-emitter snapshot and inconclusive mature-window limits.
+No signal was enabled for live ranking.

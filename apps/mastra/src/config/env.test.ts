@@ -880,7 +880,7 @@ describe("Mastra env", () => {
     })
   })
 
-  // --- feat-199: JESUSFILM_RAG_* optional config + production host guard ---
+  // --- feat-199: SEEKER_RAG_* optional config + production host guard ---
 
   // Stub the full required production set so RAG-guard tests isolate the RAG
   // var behavior (a missing unrelated required var would otherwise mask it).
@@ -1010,9 +1010,9 @@ describe("Mastra env", () => {
     const { env, getJesusfilmRagConfig } = await import("./env")
 
     // The Railway-brick regression gate: a fresh deploy with no RAG vars boots.
-    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
-    expect(env.JESUSFILM_RAG_API_KEY).toBeUndefined()
-    expect(env.JESUSFILM_RAG_ALLOWED_HOSTS).toBeUndefined()
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
+    expect(env.SEEKER_RAG_API_KEY).toBeUndefined()
+    expect(env.SEEKER_RAG_ALLOWED_HOSTS).toBeUndefined()
     expect(getJesusfilmRagConfig()).toEqual({
       baseUrl: undefined,
       apiKey: undefined,
@@ -1024,15 +1024,35 @@ describe("Mastra env", () => {
     })
   })
 
+  it("does not fall back to retired JESUSFILM_RAG variables", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://retired.example")
+    vi.stubEnv("JESUSFILM_RAG_API_KEY", "retired-key")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "retired.example")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "1234")
+    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1024")
+    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "retired-client")
+
+    const { getJesusfilmRagConfig } = await import("./env")
+
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: undefined,
+      apiKey: undefined,
+      timeoutMs: 5_000,
+      userAgent: "forge-mastra-jesusfilm-rag/1.0",
+      maxResponseBytes: 2_097_152,
+    })
+  })
+
   it("treats an empty-string RAG base URL as unset (no url() boot failure)", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "")
-    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "")
 
     const { env, getJesusfilmRagConfig } = await import("./env")
 
-    expect(env.JESUSFILM_RAG_BASE_URL).toBeUndefined()
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
     // Defaults apply when unset.
     expect(getJesusfilmRagConfig().timeoutMs).toBe(5_000)
     expect(getJesusfilmRagConfig().userAgent).toBe(
@@ -1042,14 +1062,14 @@ describe("Mastra env", () => {
 
   it("projects all RAG fields through getJesusfilmRagConfig when set", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_API_KEY", "rag-key")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "2500")
-    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "forge-test-rag/9.9")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_API_KEY", "rag-key")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "2500")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "forge-test-rag/9.9")
     // feat-202: prove the optional byte-cap override projects through (coerced
     // from string), not just the accessor default.
-    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1048576")
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "1048576")
 
     const { getJesusfilmRagConfig } = await import("./env")
 
@@ -1064,7 +1084,7 @@ describe("Mastra env", () => {
 
   it("skips the RAG host guard in production when the base URL is unset", async () => {
     stubProductionBaseline()
-    // No JESUSFILM_RAG_* vars set at all.
+    // No SEEKER_RAG_* vars set at all.
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1073,44 +1093,100 @@ describe("Mastra env", () => {
 
   it("rejects an http RAG base URL in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an allowlisted Railway-private http RAG base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "forge-rag.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects a Railway-private http RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Railway-private http RAG base URL with no allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it.each([
+    "http://railway.internal:8080",
+    "http://evilrailway.internal:8080",
+    "http://forge-rag.railway.internal.evil.test:8080",
+    "http://.railway.internal:8080",
+    "http://forge-rag..railway.internal:8080",
+    "http://forge-rag.railway.internal.:8080",
+  ])("rejects Railway-private http lookalike %s", async (baseUrl) => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", baseUrl)
+    vi.stubEnv(
+      "SEEKER_RAG_ALLOWED_HOSTS",
+      new URL(baseUrl).hostname.toLowerCase(),
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("rejects a RAG host absent from the allowlist in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://other.test")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://other.test")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("rejects a set RAG base URL with no allowlist in production (fail-closed)", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    // JESUSFILM_RAG_ALLOWED_HOSTS deliberately unset.
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
     expect(() => assertMastraRuntimeEnv()).toThrow(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   })
 
   it("accepts an https RAG base URL whose host is allowlisted in production", async () => {
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1119,7 +1195,7 @@ describe("Mastra env", () => {
 
   it("does not throw on an unsafe RAG base URL outside production", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
 
     const { assertMastraRuntimeEnv } = await import("./env")
 
@@ -1131,9 +1207,9 @@ describe("Mastra env", () => {
     // independent: a valid allowlisted base URL with no key boots fine; the
     // client returns config_missing at runtime (covered in U2).
     stubProductionBaseline()
-    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://rag.internal")
-    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "rag.internal")
-    // JESUSFILM_RAG_API_KEY deliberately unset.
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    // SEEKER_RAG_API_KEY deliberately unset.
 
     const { assertMastraRuntimeEnv, getJesusfilmRagConfig } =
       await import("./env")
@@ -1144,7 +1220,7 @@ describe("Mastra env", () => {
 
   it("rejects a RAG timeout above the schema cap at parse", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "30001")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "30001")
 
     await expect(import("./env")).rejects.toThrow()
   })
@@ -1153,9 +1229,156 @@ describe("Mastra env", () => {
     // Fail LOUD on an over-range operator typo rather than silently widening the
     // OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
     vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "16777217")
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "16777217")
 
     await expect(import("./env")).rejects.toThrow()
+  })
+
+  // --- feat-440: AI_GATEWAY_CHAT_ALLOWED_HOSTS production boot guard ---
+  // Mirrors the RAG guard's suite above, with the armed-only twist: the
+  // assert fires only when AI_GATEWAY_CHAT_API_KEY is set. One assert on the
+  // EFFECTIVE URL covers every chat-gateway consumer by construction
+  // (seeker-model-list, providers.ts, default-chat-agent, specialized-agents,
+  // memory.ts all read `env.AI_GATEWAY_CHAT_BASE_URL ?? DEFAULT`).
+
+  it("boots production unarmed even with a disallowed chat-gateway base URL", async () => {
+    // Discriminating fixture for the armed-only posture: the URL alone would
+    // fail the rule, so a pass here proves the missing key is what skips the
+    // guard — not a permissive rule.
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://evil.example/v1")
+    // AI_GATEWAY_CHAT_API_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("boots production armed on all chat-gateway defaults (zero new env vars)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    // Base URL and allowlist both unset: the runtime defaults must cover the
+    // current production value with zero Railway edits (ticket constraint).
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http chat-gateway base URL in production when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://ai-gateway.jesusfilm.org/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects an unlisted https chat-gateway host in production when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "https://other.example/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts a custom https chat-gateway host listed in the allowlist when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "https://gw.internal/v1")
+    vi.stubEnv("AI_GATEWAY_CHAT_ALLOWED_HOSTS", "gw.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an allowlist override that excludes the default host when armed on the default URL", async () => {
+    // The allowlist governs the EFFECTIVE URL: overriding it to a host list
+    // that no longer covers the default base URL's host must throw — a
+    // "default is always allowed" shortcut would make the var inert.
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_ALLOWED_HOSTS", "gw.internal")
+    // AI_GATEWAY_CHAT_BASE_URL unset → effective default host.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("does not throw on a disallowed chat-gateway base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://localhost:8080/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("pins the shared isAllowedAiGatewayChatBaseUrl rule (pure surface)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isAllowedAiGatewayChatBaseUrl } = await import("./env")
+
+    // All-defaults configuration passes (zero-Railway-edits constraint).
+    expect(isAllowedAiGatewayChatBaseUrl(undefined, undefined)).toBe(true)
+    // https + listed custom host passes; CSV entries trim.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://gw.internal/v1",
+        " gw.internal , other.internal ",
+      ),
+    ).toBe(true)
+    // http never passes, even on the default host.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "http://ai-gateway.jesusfilm.org/v1",
+        undefined,
+      ),
+    ).toBe(false)
+    // Unlisted host fails against the default allowlist.
+    expect(
+      isAllowedAiGatewayChatBaseUrl("https://other.example/v1", undefined),
+    ).toBe(false)
+    // An allowlist override that drops the default host fails the default URL.
+    expect(isAllowedAiGatewayChatBaseUrl(undefined, "gw.internal")).toBe(false)
+    // URL hostnames case-fold; csvSet lowercases entries — mixed case matches.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://AI-GATEWAY.jesusfilm.org/v1",
+        "AI-Gateway.JesusFilm.org",
+      ),
+    ).toBe(true)
+    // Unparseable input fails closed instead of throwing.
+    expect(isAllowedAiGatewayChatBaseUrl("not a url", undefined)).toBe(false)
+    // Host-confusion shapes an env-write attacker would try (feat-440
+    // review). Userinfo trick: the URL's hostname is evil.example — the
+    // allowlisted name before the @ is credentials, not the host.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://ai-gateway.jesusfilm.org@evil.example/v1",
+        undefined,
+      ),
+    ).toBe(false)
+    // Suffix trick: the allowlisted host as a subdomain label of an attacker
+    // domain — exact hostname match must reject it.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://ai-gateway.jesusfilm.org.evil.example/v1",
+        undefined,
+      ),
+    ).toBe(false)
   })
 
   // --- feat-204: SEEKER_ROUTE_ENABLED default-off string-boolean gate (KTD7) ---
@@ -1366,6 +1589,53 @@ describe("Mastra env", () => {
     expect(isSeekerFollowUpsEnabled()).toBe(false)
   })
 
+  // --- feat-405: AI_CHAT_TITLE_REPAIR_ENABLED default-off string-boolean gate (KTD4) ---
+
+  it("disables title repair when AI_CHAT_TITLE_REPAIR_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isTitleRepairEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isTitleRepairEnabled()).toBe(false)
+  })
+
+  it.each(["false", "TRUE", "1", "yes"])(
+    "treats AI_CHAT_TITLE_REPAIR_ENABLED=%j as disabled — string-boolean, not truthiness",
+    async (value) => {
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", value)
+
+      const { isTitleRepairEnabled } = await import("./env")
+
+      expect(isTitleRepairEnabled()).toBe(false)
+    },
+  )
+
+  it('arms title repair only when AI_CHAT_TITLE_REPAIR_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "true")
+
+    const { isTitleRepairEnabled } = await import("./env")
+
+    expect(isTitleRepairEnabled()).toBe(true)
+  })
+
+  it("keeps AI_CHAT_TITLE_REPAIR_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // AI_CHAT_TITLE_REPAIR_ENABLED deliberately unset — a default-off deploy
+    // has zero new env prerequisites (opt-in-scaffolding law).
+
+    const { assertMastraRuntimeEnv, isTitleRepairEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isTitleRepairEnabled()).toBe(false)
+  })
+
   // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
 
   it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {
@@ -1529,60 +1799,43 @@ describe("Mastra env", () => {
     expect(isLangfuseTracingEnabled()).toBe(false)
   })
 
-  // --- feat-208: AI_CHAT_MEMORY_BACKEND kill-switch precedence ---
+  // --- ai-chat storage follows the shared Mastra backend ---
 
-  it("resolves the ai-chat backend to MASTRA_STORAGE_BACKEND (postgres default) when the override is unset", async () => {
-    vi.stubEnv("NODE_ENV", "development")
-    // AI_CHAT_MEMORY_BACKEND unset; MASTRA_STORAGE_BACKEND defaults to postgres.
-
-    const { resolveAiChatMemoryBackend } = await import("./env")
-
-    expect(resolveAiChatMemoryBackend()).toBe("postgres")
-  })
-
-  it("follows MASTRA_STORAGE_BACKEND=memory when the override is unset", async () => {
-    vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
-
-    const { resolveAiChatMemoryBackend } = await import("./env")
-
-    expect(resolveAiChatMemoryBackend()).toBe("memory")
-  })
-
-  it("lets AI_CHAT_MEMORY_BACKEND=memory override postgres runtime storage (the kill-switch)", async () => {
-    // The documented no-code-deploy revert: ai-chat runs in-memory even while
-    // the runtime store stays postgres. `??` precedence must pick the override.
+  it("ignores a stale dedicated memory value beside the shared postgres backend", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
     vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "memory")
 
-    const { resolveAiChatMemoryBackend } = await import("./env")
+    const { canAiChatDataPersist, env } = await import("./env")
 
-    expect(resolveAiChatMemoryBackend()).toBe("memory")
+    expect(env.MASTRA_STORAGE_BACKEND).toBe("postgres")
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(true)
   })
 
-  it("honors AI_CHAT_MEMORY_BACKEND=postgres explicitly over a memory runtime store", async () => {
-    vi.stubEnv("NODE_ENV", "development")
+  it("rejects the shared memory backend in production", async () => {
+    stubProductionBaseline()
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
-    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "postgres")
 
-    const { resolveAiChatMemoryBackend } = await import("./env")
+    const { assertMastraRuntimeEnv } = await import("./env")
 
-    expect(resolveAiChatMemoryBackend()).toBe("postgres")
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "MASTRA_STORAGE_BACKEND=memory is not allowed in production",
+    )
   })
 
-  // --- feat-208: retention purge gating — canAiChatDataPersist ---
+  // --- retention purge gating — canAiChatDataPersist ---
 
   it("reports persisted ai-chat data possible under the postgres default", async () => {
     vi.stubEnv("NODE_ENV", "development")
-    // Both backends unset; MASTRA_STORAGE_BACKEND defaults to postgres.
+    // MASTRA_STORAGE_BACKEND defaults to postgres.
 
     const { canAiChatDataPersist } = await import("./env")
 
     expect(canAiChatDataPersist()).toBe(true)
   })
 
-  it("reports no persistence for a pure memory-backend local run", async () => {
+  it("reports no persistence for a memory-backend local run", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
 
@@ -1591,27 +1844,15 @@ describe("Mastra env", () => {
     expect(canAiChatDataPersist()).toBe(false)
   })
 
-  it("keeps retention eligible under the kill-switch (ai-chat memory over postgres runtime)", async () => {
-    // THE load-bearing case: engaging the kill-switch stops WRITES, but rows
-    // already persisted in ai_chat must keep aging out — the purge gate must
-    // stay open whenever postgres is configured at all.
-    vi.stubEnv("NODE_ENV", "development")
-    vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
-    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "memory")
-
-    const { canAiChatDataPersist } = await import("./env")
-
-    expect(canAiChatDataPersist()).toBe(true)
-  })
-
-  it("reports persistence for the explicit ai-chat postgres override over a memory runtime", async () => {
+  it("ignores a stale dedicated postgres value beside the shared memory backend", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
     vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "postgres")
 
-    const { canAiChatDataPersist } = await import("./env")
+    const { canAiChatDataPersist, env } = await import("./env")
 
-    expect(canAiChatDataPersist()).toBe(true)
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(false)
   })
 
   // --- Langfuse prompt helper (U1): LANGFUSE_* optional config + production host guard ---

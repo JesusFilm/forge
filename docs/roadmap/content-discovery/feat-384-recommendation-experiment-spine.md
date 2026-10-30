@@ -3,17 +3,15 @@ id: "feat-384"
 title: "Recommendation experiment spine"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: ""
 duration: 7
 depends_on:
   - "feat-376"
-  - "feat-381"
   - "feat-383"
 blocks:
   - "feat-385"
-  - "feat-394"
-  - "feat-395"
+  - "feat-447"
 tags:
   - "admin"
   - "web"

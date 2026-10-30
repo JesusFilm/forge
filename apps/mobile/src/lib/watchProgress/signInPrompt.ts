@@ -17,14 +17,6 @@ export const PROMPT_DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 export const SIGN_IN_PROMPT_DISMISSED_AT_STORAGE_KEY =
   "watch-progress-signin-prompt-dismissed-at"
 
-/**
- * Forward-looking by design (KTD13): the position just watched is genuinely
- * not kept (AE4) — promising otherwise breaks the promise at the exact
- * moment it converts someone.
- */
-export const SIGN_IN_PROMPT_COPY =
-  "Sign in to keep your place across your devices from here on."
-
 // Session-local trigger state (in-memory only — resets on relaunch).
 let armed = false
 let shownThisSession = false

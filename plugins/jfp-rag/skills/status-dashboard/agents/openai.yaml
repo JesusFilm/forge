@@ -1,0 +1,6 @@
+interface:
+  display_name: "RAG Status Dashboard"
+  short_description: "Prepare the committed RAG status dashboard"
+  default_prompt: "Use $status-dashboard to refresh and verify the Forge RAG status dashboard artifacts."
+policy:
+  allow_implicit_invocation: false

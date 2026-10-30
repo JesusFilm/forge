@@ -39,9 +39,8 @@
     "posterAlt": "Poster vídeo",
     "noDownloads": "Laiha download disponível ba vídeo ida-ne'e.",
     "fileSizeLabel": "Hili tamañu faila",
-    "termsAgreementPrefix": "Ha'u konkorda ho ",
+    "termsAgreement": "Ha'u konkorda ho <link>Termus Uzu</link>",
     "termsOfUse": "Termus Uzu",
-    "termsAgreementSuffix": "",
     "close": "Taka",
     "download": "Deskarga",
     "authRequiredTitle": "Ita hakarak download vídeo ida-ne'e?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Partilla iha Facebook (la disponível iha build ida-ne'e)",
     "shareOnX": "Partilla iha X",
     "shareOnXUnavailable": "Partilla iha X (la disponível iha build ida-ne'e)",
+    "opensInNewTab": "{label} (loke iha tab foun)",
     "shareDisabledHint": "Partilla presiza página ne'ebé publish ona — funciona bainhira vídeo ida-ne'e iha produção.",
     "shareFormat": "Forma partilla",
     "shareLinkTab": "Partilla Link",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Troka lingua audiu",
     "home": "JesusFilm uma",
     "closeSearch": "Taka peskiza",
-    "submitSearch": "Buka"
+    "submitSearch": "Buka",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buka no haree vídeo sira",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Labele karrega rezultadu tan.",
     "searching": "Buka ona...",
     "connectionHint": "Favor verifica ita nia koneksaun no tenta fali.",
+    "rateLimitHint": "Pedidu barak liu. Favór koko fali hafoin minutu ida.",
     "retrySearch": "Tenta buka fali",
     "retry": "Tenta fali",
     "noResults": "La hetan rezultadu ba \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Buka “{suggestion}” iha {language}",
     "inLanguage": "iha {language}",
     "browseByRegion": "Haree tuir rejiaun",
+    "allVideosOnSinglePage": "Vídeo hotu-hotu iha pájina ida",
     "clearLanguages": "Hamoos",
     "queryLanguageDetected": "Deteta ona {language}",
     "searchInLanguage": "Buka iha {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Haree agora",
     "tapToUnmute": "Toque atu loke mute",
-    "nextEpisode": "Episódiu tuir mai"
+    "nextEpisode": "Episódiu tuir mai",
+    "audioTranslationCount": "{count, plural, one {# língua} other {# língua sira}}",
+    "subtitleCount": "Subtítulus: {count, plural, one {# língua} other {# língua sira}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Karrega kontentu",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Labele karrega formulário feedback.",
     "loadingForm": "Karrega formulário feedback…",
     "retry": "Tenta fali",
-    "openFormShort": "Buka formulário",
     "cancel": "Kansela",
-    "title": "Feedback Beta",
-    "description": "Partilla saida mak lao di'ak no saida mak ita bele hadi'a. Formulariu ne'e fornese husi Google.",
-    "openInNewTab": "Buka formulário iha tab foun",
     "closeForm": "Taka formulário feedback",
-    "loadingGoogleForm": "Karrega Google Form…",
-    "iframeTitle": "Submete Feedback Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeo kristaun lais iha {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Desportu",
     "collections": "Koleksaun sira",
     "subtitlesOnly": "Subtítulu deit",
+    "backToTop": "Fila ba leten",
     "newlyAdded": "Tama foun",
     "newVideosTitle": "Vídeo kristaun foun iha {language}",
     "newestFirst": "Foun liu uluk",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Vídeo sira independente",
     "videosFromCollection": "Vídeo sira husi {collection}.",
     "standaloneDescription": "Vídeo sira independente iha língua ida-ne'e.",
-    "openCollection": "Buka koleksaun"
+    "openCollection": "Buka koleksaun",
+    "filters": "Filtru",
+    "filterLength": "Naruk",
+    "filterLength_under5": "Menus husi minutu 5",
+    "filterLength_5to10": "Minutu 5-10",
+    "filterLength_10to30": "Minutu 10-30",
+    "filterLength_over30": "Liu minutu 30",
+    "filterType": "Tipu",
+    "clearFilters": "Hamoos filtru",
+    "filterResults": "Hatudu {count} husi {total}",
+    "noFilterResults": "Laiha vidiu ne'ebé hanesan ho filtru sira ne'e. Koko hasai ida.",
+    "filterAdded": "Aumenta ona",
+    "filterAdded_60d": "Loron 60 ikus",
+    "filterAdded_6m": "Fulan 6 ikus",
+    "filterAdded_12m": "Fulan 12 ikus"
   },
   "WatchHome": {
     "pageTitle": "Haree iha Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Preview vídeo liuba",
     "nextVideoPreview": "Preview vídeo tuir mai",
     "mediaCollection": "Koleksaun média",
-    "scrollToVideo": "Hamutuk ba vídeo {title}"
+    "scrollToVideo": "Hamutuk ba vídeo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project uma",
@@ -404,6 +594,29 @@
     "merryChristmas": "Feliz Natal!",
     "daysUntilChristmas": "{count, plural, one {Falta loron # ba Natal} other {Falta loron # ba Natal}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Haree biblioteka",
+    "title": "Haree tuir kategoria",
+    "description": "Bá direta ba parte biblioteka nian ne'ebé ita presiza — Jesus nia moris, tempu sira husi tinan igreja nian, no vídeo sira ba família, estudante no grupu ki'ik sira.",
+    "seeAll": "Haree vídeo hotu",
+    "previous": "Kategoria liuba",
+    "next": "Kategoria tuir mai",
+    "categories": {
+      "jesus": "Filme JESUS",
+      "gospels": "Evanjéliu sira",
+      "shortVideos": "Vídeo badak sira",
+      "family": "Família",
+      "relationships": "Relasaun sira",
+      "women": "Ba feto sira",
+      "students": "Ba estudante sira",
+      "sports": "Desportu",
+      "goodNews": "Notísia Di’ak",
+      "hope": "Esperansa",
+      "training": "Formasaun",
+      "easter": "Páskoa",
+      "christmas": "Natal"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Língua sira",
     "metadataDescription": "Haree vídeo JesusFilm tuir língua.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Página la hetan:",
     "title": "Cena ida-ne'e laiha iha ne'e.",
     "description": "Página bele muda ona, maibé istória la taka.",
+    "languageDescription": "Ami la hetan pájina ne'ebé ita buka, maibé istória la taka iha filme no vídeo husi língua sira iha mundu tomak.",
     "actionsLabel": "Aksaun página la hetan",
     "backToWatch": "Fila ba Watch",
     "browseVideos": "Haree vídeo sira"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Haree Filme Curtu",
-    "actions": {
-      "joinUs": "Tama hamutuk ho ami",
-      "shareMission": "Partilla iha ami nia misan"
-    },
-    "welcomeStart": {
-      "label": "Fiar & Escritura",
-      "title": "Hili vídeo ohin nia",
-      "description": "Kontentu vídeo sentra ba fiar hosi ita nia biblioteka atu inspira, desafia, no hasa'e hanoin."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasaun iha manhã",
-      "title": "Bom dia! Moméntu Biblika ohin hein ita.",
-      "description": "Hahu ita nia loron ho moméntu Biblika ne'ebé fó coragem, diseñadu atu inspira no hasa'e ita nia espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasaun iha tarde",
-      "title": "Boa tarde! Moméntu Biblika ba ita nia loron.",
-      "description": "Kontentu Biblika ne'ebé fó coragem, di'ak ba ita nia tempu liu iha tarde ka atu kontinua inspira."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasaun iha kalan",
-      "title": "Boa noite! Relasaun malu ho moméntu Biblika.",
-      "description": "Moméntu Biblika ne'ebé hakmatek atu ajuda ita reflete no hetan konsolo bainhira ita nia loron taka ona."
-    },
-    "joinUs": {
-      "label": "Tama hamutuk ho ami",
-      "title": "Miliaun sira hela buka",
-      "description": "Moris iha ne'e. Tama hamutuk ho ami atu partilla evangelu ho mundu liu husi média digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bá hamutuk",
-      "title": "Kontadu Istória Jesus, Hamutuk",
-      "description": "Hodi sira bele rona no haree Jesus nia koleinu iha sira nia língua rasik iha ne'ebé sira hela."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kompatibilidade {percent}%",
-    "none": "La hetan rekomendasaun ba vídeo ida-ne'e iha língua ida-ne'e."
+    "none": "La hetan rekomendasaun ba vídeo ida-ne'e iha língua ida-ne'e.",
+    "heading": "Vídeo rekomendadu sira",
+    "loadingLabel": "Karrega hela vídeo rekomendadu sira",
+    "openingTitle": "Loke hela {title}",
+    "openingVideo": "Loke hela vídeo",
+    "activityNotRecorded": "La konsege rejista atividade rekomendasaun nian. Ligasaun sira sei funsiona.",
+    "showingContextual": "Hatudu hela rekomendasaun kontekstuál sira.",
+    "showingSaved": "Hatudu hela rekomendasaun sira ne'ebé rai ona.",
+    "explanationCurated": "Vídeo sira ne’ebé hili ona atu ita boot esplora.",
+    "explanationViewingMode": "Rekomenda tuir vídeo ida-ne’e no oinsá ita boot haree.",
+    "explanationCowatch": "Rekomenda tuir vídeo ida-ne’e no ita boot nia interese sira.",
+    "explanationHybrid": "Rekomenda tuir vídeo ida-ne’e no interese sira ne’ebé ita boot hili atu hanoin.",
+    "explanationContextual": "Rekomenda tuir buat ne’ebé ita boot haree hela agora.",
+    "explanationSemanticFallback": "Rekomenda tuir buat ne’ebé ita boot haree hela agora, tanba personalizasaun la disponível.",
+    "explanationProfileDurable": "Personaliza tuir interese sira ne’ebé ita boot hili atu hanoin.",
+    "explanationProfileVisit": "Personaliza ba vizita ida-ne’e.",
+    "personalizationLabel": "Personalizasaun rekomendasaun",
+    "personalizationPrompt": "Ita boot hakarak muda oinsá rekomendasaun sira personaliza?",
+    "openCookieSettings": "Loke konfigurasaun cookie"
   },
   "BetaTesterModal": {
     "title": "Sai beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Tenta deskarga fali sira ne'ebé falla"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versaun lian la disponivel",
+    "eyebrow": "Versaun lian la disponivel",
+    "title": "<contentTitle>{title}</contentTitle> la disponivel iha <languageName>{language}</languageName>",
+    "actionsLabel": "Opsaun atu haree ne'ebé disponivel",
+    "browseInLanguage": "Buka vídeu sira iha {language}",
+    "backToSearch": "Fila ba buka",
+    "audioVersionsTitle": "Versaun áudiu seluk",
+    "audioVersionsDescription": "Hili lian áudiu ida atu kontinua haree vídeu ne'e.",
+    "languageVersionLabel": "Lian áudiu",
+    "selectLanguageVersion": "Hili versaun lian ida",
+    "watchSelectedVersion": "Haree versaun ne'ebé hili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opsaun cookie sira",
+    "bannerTitle": "Ita boot nia opsaun privasidade",
+    "bannerDescription": "Cookie esensiál sira halo Watch seguro no funsiona diak. Ho ita boot nia autorizasaun, cookie opsionál ida hosi parte dahuluk bele rai kaer interese sira entre vizita atu personaliza rekomendasaun sira. Rekomendasaun kontektuál sei nafatin disponível maski oinsá deit.",
+    "acceptAll": "Simu hotu",
+    "essentialOnly": "Esensiál deit",
+    "manageChoices": "Jere opsaun sira",
+    "savingChoice": "Hein atu guarda opsaun cookie",
+    "settings": "Konfigurasaun cookie",
+    "settingsDescription": "Hili karik Watch bele ka lae rai kaer interese rekomendasaun entre vizita sira. Ita boot bele muda ida-ne'e bainhira deit.",
+    "essentialCookies": "Cookie esensiál sira",
+    "essentialDescription": "Seguransa, reproduksaun, opsaun privasidade no atribuisaun ba pedidu rekomendasaun.",
+    "alwaysActive": "Sempre ativu",
+    "personalization": "Personalizasaun",
+    "personalizationDescription": "Rai kaer interese limitadu sira entre vizita sira. Karik desliga ida-ne'e, rekomendasaun kontektuál sei nafatin disponível.",
+    "erasurePending": "Apagamentu perfíl sei hela prosesu. Rekomendasaun kontektuál sira ona ativu.",
+    "cancel": "Kansela",
+    "saveChoices": "Guarda opsaun sira",
+    "saving": "Hein atu guarda…",
+    "loadError": "Labele karrega ita boot nia opsaun. Ita boot sei bele hili iha kraik.",
+    "grantError": "Labele ativa personalizasaun. Esensiál deit sei disponível.",
+    "saveError": "Labele guarda ita boot nia opsaun. Favór koko fali."
   }
 }

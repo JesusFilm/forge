@@ -13,6 +13,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import englishMessages from "../../../messages/en.json"
 
 import {
   FloatingSearchController,
@@ -54,6 +55,7 @@ import {
   __resetWatchInteractionLoaderForTests,
   __setWatchInteractionLoadersForTests,
 } from "@/lib/watch-interaction-loader"
+import { MAX_WATCH_SEARCH_QUERY_CODE_POINTS } from "@/lib/watch-search-query"
 import type {
   SearchActionResult,
   SearchActionResultSource,
@@ -100,6 +102,14 @@ vi.mock("@/lib/search-actions", () => ({
 vi.mock("@/lib/watch-search-client", () => ({
   fetchWatchSearchSuggestions: vi.fn(),
   searchWatchDirect: vi.fn(),
+  watchSearchErrorKind: vi.fn((error: unknown) =>
+    typeof error === "object" &&
+    error !== null &&
+    "kind" in error &&
+    typeof error.kind === "string"
+      ? error.kind
+      : "unknown",
+  ),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
@@ -480,7 +490,9 @@ function PlaybackStatePublisher({
 function SearchModeHarness() {
   const {
     displayResults,
+    displayResultPages,
     error,
+    errorKind,
     loadMore,
     loading,
     search,
@@ -491,7 +503,19 @@ function SearchModeHarness() {
   return (
     <div>
       <span data-testid="search-result-count">{displayResults.length}</span>
-      <span data-testid="search-error">{error ?? ""}</span>
+      <span data-testid="search-result-pages">
+        {JSON.stringify(
+          displayResultPages.map((page) => ({
+            key: page.key,
+            startIndex: page.startIndex,
+            ids: page.results.map((result) => result.id),
+            sourceVersion: page.surfaceManifest?.manifest.sourceVersion ?? null,
+          })),
+        )}
+      </span>
+      <span data-testid="search-error">
+        {error == null ? "" : `${errorKind ?? "unknown"}:${error}`}
+      </span>
       <span data-testid="search-loading">{String(loading)}</span>
       <span data-testid="search-skeleton">{String(showSkeleton)}</span>
       <button
@@ -624,12 +648,8 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(FLOATING_HEADER_PINNED_TOP_CLASS).toContain(
       `${compactLandscape}:top-[calc(env(safe-area-inset-top,0px)+0.5rem)]`,
     )
-    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:left-[max(1.25rem,env(safe-area-inset-left,0px))]`,
-    )
-    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).toContain(
-      `${compactLandscape}:right-[max(1.25rem,env(safe-area-inset-right,0px))]`,
-    )
+    expect(WATCH_PAGE_LEFT_EDGE_CLASSES).not.toContain(compactLandscape)
+    expect(WATCH_PAGE_RIGHT_EDGE_CLASSES).not.toContain(compactLandscape)
     expect(header?.className).toContain(FLOATING_HEADER_TOP_CLASS)
     expect(backdrop?.className).toContain(
       `${compactLandscape}:h-[calc(4.25rem+env(safe-area-inset-top,0px))]`,
@@ -686,6 +706,84 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it("retains immutable per-page sources across append and clears them with result reset", async () => {
+    vi.useFakeTimers()
+    const source = (
+      slug: string,
+      version: string,
+    ): NonNullable<SearchResponse["surfaceManifest"]> => ({
+      manifest: {
+        surface: "watch-search",
+        block: "results",
+        presentation: "result-list",
+        placement: "search-results",
+        policyVersion: "watch-exposure-v2",
+        sourceVersion: version.repeat(64),
+        expiresAt: "2026-10-01T00:00:00.000Z",
+        items: [{ position: 0, itemPath: `/watch/${slug}.html` }],
+      },
+      signature: "a".repeat(43),
+    })
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("first")],
+          hasMore: true,
+          surfaceManifest: source("first", "a"),
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("second")],
+          hasMore: false,
+          surfaceManifest: source("second", "b"),
+        }),
+      )
+    act(() =>
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      ),
+    )
+    await flushSearchControllerMount()
+    const click = async (testId: string) => {
+      await act(async () => {
+        const button = document.querySelector(
+          `[data-testid="${testId}"]`,
+        ) as HTMLButtonElement
+        button.click()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await flushResolvedSearch()
+    }
+    const pages = () =>
+      JSON.parse(
+        document.querySelector('[data-testid="search-result-pages"]')
+          ?.textContent ?? "[]",
+      )
+    await click("search-mode-harness-button")
+    const first = pages()[0]
+    expect(first).toMatchObject({
+      ids: ["first"],
+      startIndex: 0,
+      sourceVersion: "a".repeat(64),
+    })
+    await click("search-mode-harness-load-more-button")
+    expect(pages()[0]).toEqual(first)
+    expect(pages()[1]).toMatchObject({
+      ids: ["second"],
+      startIndex: 1,
+      sourceVersion: "b".repeat(64),
+    })
+    await click("search-mode-harness-clear-button")
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+    expect(pages()).toEqual([])
+  })
+
   it("does not search an instant-shell draft when the controller mounts", async () => {
     act(() => {
       root.render(
@@ -769,6 +867,9 @@ describe("FloatingSearchProvider — search mode", () => {
           routeLanguageSlug: null,
         }),
       }),
+    )
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ uiLocale: "es" }),
     )
   })
 
@@ -1132,13 +1233,34 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(skeleton?.textContent).toBe("true")
 
     await act(async () => {
-      resolveFirstSearch(searchResult("watch-search"))
+      resolveFirstSearch(
+        searchResult("watch-search", {
+          results: [videoResult("stale-source")],
+          surfaceManifest: {
+            manifest: {
+              surface: "watch-search",
+              block: "results",
+              presentation: "result-list",
+              placement: "search-results",
+              policyVersion: "watch-exposure-v2",
+              sourceVersion: "c".repeat(64),
+              expiresAt: "2026-10-01T00:00:00.000Z",
+              items: [{ position: 0, itemPath: "/watch/stale-source.html" }],
+            },
+            signature: "a".repeat(43),
+          },
+        }),
+      )
       await firstSearch
       await Promise.resolve()
     })
 
     expect(loading?.textContent).toBe("true")
     expect(skeleton?.textContent).toBe("true")
+    expect(
+      document.querySelector('[data-testid="search-result-pages"]')
+        ?.textContent,
+    ).toBe("[]")
   })
 
   it("leaves the browser URL unchanged when the submitted search query changes", async () => {
@@ -1246,10 +1368,7 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(header?.className).toContain("h-[52px]")
     expect(header?.className).toContain(FLOATING_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain(
-      "grid-cols-[minmax(80px,1fr)_minmax(0,800px)_minmax(80px,1fr)]",
-    )
-    expect(header?.className).toContain(
-      "md:grid-cols-[minmax(139px,1fr)_minmax(0,800px)_minmax(139px,1fr)]",
+      "grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)]",
     )
     expect(header?.className).toContain("items-center")
     expect(header?.className).toContain("gap-3")
@@ -1427,6 +1546,391 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 
+  it("reveals hidden header chrome on keyboard focus and keeps the focused header accessible", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => dispatchChromeVisibility(false))
+
+    const header = document.querySelector(
+      '[data-testid="floating-header"]',
+    ) as HTMLElement
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLElement
+
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    act(() => logo.focus())
+
+    expect(document.activeElement).toBe(logo)
+    expect(revealListener).toHaveBeenCalledOnce()
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+  })
+
+  describe("keyboard focus inside the header", () => {
+    const HEADER_HIDDEN_CLASS = "-translate-y-[calc(100%+2rem)]"
+
+    function renderProvider() {
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+    }
+
+    function headerElement() {
+      return document.querySelector(
+        '[data-testid="floating-header"]',
+      ) as HTMLElement
+    }
+
+    function expectHeaderRevealed(header: HTMLElement) {
+      expect(header.className).toContain("translate-y-0")
+      expect(header.className).toContain("opacity-100")
+      expect(header.className).not.toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).not.toContain("opacity-0")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.getAttribute("aria-hidden")).toBeNull()
+    }
+
+    it("stays revealed through the player chrome fading again while focus remains in the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+      act(() => logo.focus())
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      // The player re-announces its chrome after the reveal request and then
+      // idles back out: dimmed first, then fully hidden.
+      act(() => dispatchChromeVisibility(true, 1))
+      act(() => dispatchChromeVisibility(true, 0.3))
+      expectHeaderRevealed(header)
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+      expect(searchButton?.className).toContain("opacity-100")
+    })
+
+    it("stays revealed while focus moves between header controls and the chrome fades", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => languageButton.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(languageButton)
+      expectHeaderRevealed(header)
+    })
+
+    it("lets the fade resume once focus leaves the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(document.activeElement).toBe(outside)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+      expect(searchButton?.className).toContain("opacity-0")
+    })
+
+    it("keeps a focused header on screen when the page scrolls away from the hero, then lets it slide off after blur", async () => {
+      setScrollY(0)
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <section data-testid="hero-player-wrapper">Hero</section>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+      const hero = document.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLElement
+      Object.defineProperty(hero, "offsetTop", { configurable: true, value: 0 })
+      Object.defineProperty(hero, "offsetHeight", {
+        configurable: true,
+        value: 600,
+      })
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      await dispatchScrollAndFlush()
+
+      act(() => logo.focus())
+      setScrollY(700)
+      await dispatchScrollAndFlush()
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+    })
+
+    it("does not pin the header open for pointer-driven focus", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a mouse click on a header control by reporting it as not
+      // focus-visible, as browsers do. The real-browser contract is covered by
+      // the headless Chromium run recorded on the PR.
+      const originalMatches = Element.prototype.matches
+      vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ":focus-visible"
+          ? false
+          : originalMatches.call(this, selector)
+      })
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      // Focus is not dropped (no inert), but the header is not forced open.
+      expect(document.activeElement).toBe(logo)
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+    })
+
+    describe("input modality changing while the same control stays focused", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a click-focused control by reporting it as not focus-visible, as
+      // browsers do at focus time. The keydown/pointerdown re-classification
+      // under test does not depend on this stand-in. The real-browser
+      // transition (Chromium flips :focus-visible on the next key press) is
+      // recorded separately on the PR.
+      function mockClickFocusedControl() {
+        const originalMatches = Element.prototype.matches
+        vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+          this: Element,
+          selector: string,
+        ) {
+          return selector === ":focus-visible"
+            ? false
+            : originalMatches.call(this, selector)
+        })
+      }
+
+      function pressKey(target: HTMLElement, key: string) {
+        act(() => {
+          target.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true }),
+          )
+        })
+      }
+
+      function focusLogoByClick() {
+        mockClickFocusedControl()
+        renderProvider()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        // Chrome still fades a click-focused header.
+        act(() => dispatchChromeVisibility(false, 0))
+        expect(headerElement().className).toContain(HEADER_HIDDEN_CLASS)
+        act(() => dispatchChromeVisibility(true, 1))
+        return logo
+      }
+
+      it.each(["ArrowRight", " ", "Enter"])(
+        "pins the header once %j is pressed on a control that was focused by a click",
+        (key) => {
+          const logo = focusLogoByClick()
+          const header = headerElement()
+
+          pressKey(logo, key)
+          act(() => dispatchChromeVisibility(false, 0))
+
+          expect(document.activeElement).toBe(logo)
+          expectHeaderRevealed(header)
+        },
+      )
+
+      it("does not treat a bare modifier key as keyboard use", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+
+        pressKey(logo, "Shift")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("lets the fade resume when a click lands on a keyboard-focused control, and re-pins on the next key", () => {
+        renderProvider()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expectHeaderRevealed(header)
+      })
+
+      it("lets the fade resume after blur once keyboard use had pinned a click-focused control", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+        const outside = document.querySelector(
+          '[data-testid="outside-control"]',
+        ) as HTMLElement
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => outside.focus())
+
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("leaves modal containment unchanged by modality key and pointer presses", async () => {
+        const revealListener = vi.fn()
+        await openSearchOverlay()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        const pageWrapper = document.querySelector("[inert]") as HTMLElement
+        window.addEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+
+        act(() => logo.focus())
+        pressKey(logo, "ArrowRight")
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+        expect(header.className).toContain("pointer-events-none")
+        expect(header.className).toContain("translate-y-0 opacity-100")
+        expect(header.hasAttribute("inert")).toBe(false)
+        expect(document.querySelector("[inert]")).toBe(pageWrapper)
+        expect(revealListener).not.toHaveBeenCalled()
+        window.removeEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+      })
+    })
+
+    it("leaves modal containment unchanged when focus is in the header", async () => {
+      const revealListener = vi.fn()
+      await openSearchOverlay()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const pageWrapper = document.querySelector("[inert]") as HTMLElement
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(pageWrapper.getAttribute("aria-hidden")).toBe("true")
+
+      window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(header.className).toContain("translate-y-0 opacity-100")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(document.querySelector("[inert]")).toBe(pageWrapper)
+      expect(revealListener).not.toHaveBeenCalled()
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_REVEAL_EVENT,
+        revealListener,
+      )
+    })
+  })
+
   it("slides the header away after scrolling past the hero and restores it when scrolling up", async () => {
     setScrollY(0)
     act(() => {
@@ -1473,7 +1977,22 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 describe("FloatingSearchProvider — language switcher chrome", () => {
   it.each([
     ["root home", "/", "english", "EN"],
-    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES"],
+    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES-ES"],
+    ["Portuguese, Portugal", "/portuguese-portugal.html", "english", "PT-PT"],
+    [
+      "Portuguese, Mozambique",
+      "/portuguese-mozambique.html",
+      "english",
+      "PT-MZ",
+    ],
+    ["Korean, North", "/korean-north.html", "english", "KO-NOR"],
+    ["long badge on root home", "/", "huasteco-san-luis-potosi", "HUS-MX-SLP"],
+    [
+      "long badge on video",
+      "/jesus.html/huasteco-san-luis-potosi.html",
+      "english",
+      "HUS-MX-SLP",
+    ],
     ["legacy videos index", "/videos", "english", "EN"],
     ["authored experience", "/easter.html", "english", "EN"],
     ["languages index", "/languages", "english", "EN"],
@@ -1509,6 +2028,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
           '[data-testid="floating-header-language-code"]',
         )?.textContent,
       ).toBe(expectedCode)
+      expect(languageButtons[0]?.getAttribute("aria-label")).toContain(
+        expectedCode,
+      )
     },
   )
 
@@ -1554,6 +2076,172 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     },
   )
 
+  it("cancels only the current page owner's pending language intent when Search opens", async () => {
+    const staleCancel = vi.fn()
+    const currentCancel = vi.fn()
+    const staleOwner = Symbol("old language owner")
+    const currentOwner = Symbol("current language owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: staleCancel,
+        ownerToken: staleOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: currentCancel,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: staleOwner,
+      })
+    })
+    expect(currentCancel).not.toHaveBeenCalled()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(currentCancel).toHaveBeenCalledTimes(1)
+    expect(staleCancel).not.toHaveBeenCalled()
+  })
+
+  it("cancels an invisible subtitle-picker owner without taking over the global globe", async () => {
+    const cancelPendingOpen = vi.fn()
+    const oldOwner = Symbol("stale subtitle owner")
+    const currentOwner = Symbol("subtitle owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Single-audio video with subtitles</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        cancelPendingOpen,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: oldOwner,
+      })
+    })
+    expect(cancelPendingOpen).not.toHaveBeenCalled()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(cancelPendingOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["matching cleanup", "navigation", "visible replacement"])(
+    "drops invisible cancellation on %s",
+    async (change) => {
+      const cancelPendingOpen = vi.fn()
+      const owner = Symbol("subtitle owner")
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>Video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+      act(() => {
+        dispatchLanguageSwitcher({
+          visible: false,
+          onClick: null,
+          cancelPendingOpen,
+          ownerToken: owner,
+        })
+      })
+      act(() => {
+        if (change === "matching cleanup") {
+          dispatchLanguageSwitcher({
+            visible: false,
+            onClick: null,
+            ownerToken: owner,
+          })
+        } else if (change === "visible replacement") {
+          dispatchLanguageSwitcher({
+            visible: true,
+            onClick: vi.fn(),
+            ownerToken: Symbol("replacement"),
+          })
+        } else {
+          navigationMocks.pathname = "/another-video.html/english.html"
+          root.render(
+            <FloatingSearchProvider>
+              <main>Next video</main>
+            </FloatingSearchProvider>,
+          )
+        }
+      })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="floating-search-desktop-button"]',
+          )!
+          .click()
+      })
+      expect(cancelPendingOpen).not.toHaveBeenCalled()
+    },
+  )
+
+  it("uses the registered language name that matches its page-specific badge", () => {
+    const onLanguageClick = vi.fn()
+    navigationMocks.pathname = "/jesus.html/russian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="russian">
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        languageCode: "PT-MZ",
+        languageName: "Portuguese, Mozambique",
+      })
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
+    )
+  })
+
   it("marks the global trigger busy during lazy loading and blocks duplicate activation", async () => {
     const moduleLoad = deferred<unknown>()
     const globalLanguageLoader = vi.fn(() => moduleLoad.promise)
@@ -1573,7 +2261,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language",
+      "Select language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -1600,6 +2288,169 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(
       document.querySelector('[data-testid="global-language-picker-modal"]'),
     ).not.toBeNull()
+  })
+
+  it("names the active language variant in the header control", () => {
+    navigationMocks.pathname = "/portuguese-mozambique.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Select language: Portuguese Mozambique (PT-MZ)",
+    )
+  })
+
+  it("announces the global language trigger as a dialog opener with its open state", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    expect(languageButton.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("true")
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      )
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("keeps the audio-language name and omits aria-expanded for the page-specific switcher", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        languageCode: "PT",
+      })
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(languageButton?.getAttribute("aria-label")).toContain(
+      "Change audio language",
+    )
+    expect(languageButton?.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton?.hasAttribute("aria-expanded")).toBe(false)
+  })
+
+  it("preselects the route language, not the chrome default, in the global picker", async () => {
+    navigationMocks.pathname = "/aari.html/languages"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document
+        .querySelector('[data-testid="global-language-picker-modal"]')
+        ?.getAttribute("data-current-language-slug"),
+    ).toBe("aari")
+  })
+
+  it("names the logo for what activating it does: Home link, or close-search button while search is open", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo?.hasAttribute("role")).toBe(false)
+    await openSearchOverlay()
+    const openLogo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    )
+    // Same element across the toggle, so keyboard focus survives the close.
+    expect(openLogo).toBe(logo)
+    expect(openLogo?.getAttribute("role")).toBe("button")
+    expect(openLogo?.getAttribute("aria-label")).toBe("Close search")
+  })
+
+  it("closes search when Space is pressed on the logo while search is open", async () => {
+    vi.useFakeTimers()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await openSearchOverlay()
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement
+    const space = new KeyboardEvent("keydown", {
+      key: " ",
+      bubbles: true,
+      cancelable: true,
+    })
+    await act(async () => {
+      logo.dispatchEvent(space)
+    })
+    expect(space.defaultPrevented).toBe(true)
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+    await act(async () => {
+      vi.runAllTimers()
+    })
+    expect(logo.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo.hasAttribute("role")).toBe(false)
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {
@@ -2178,6 +3029,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       await Promise.resolve()
     })
     expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
     for (const loader of Object.values(unrelatedInteractionLoaders)) {
       expect(loader).not.toHaveBeenCalled()
     }
@@ -2430,6 +3284,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(languageButton?.className).toContain("w-11")
     expect(languageButton?.className).toContain("md:h-[52px]")
     expect(languageButton?.className).toContain("md:w-12")
+    expect(languageButton?.className).toContain("-mr-[18.25px]")
     expect(header?.className).toContain("z-50")
     expect(languageButton?.className).toContain("cursor-pointer")
     expect(languageButton?.querySelector("svg")?.className.baseVal).toContain(
@@ -2538,6 +3393,271 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(header?.className).not.toContain("pointer-events-none")
     expect(languageButton).not.toBeNull()
     expect(logo).not.toBeNull()
+  })
+})
+
+describe("FloatingSearchProvider — language videos link", () => {
+  const ISOLATE_START = "\u2068"
+  const ISOLATE_END = "\u2069"
+
+  function languageVideosLink(): HTMLAnchorElement | null {
+    return document.querySelector(
+      '[data-testid="floating-header-language-videos-link"]',
+    )
+  }
+
+  it.each([
+    ["root home", "/", "english", "/english.html/videos", "English"],
+    [
+      "localized home",
+      "/spanish-castilian.html",
+      "english",
+      "/spanish-castilian.html/videos",
+      "Spanish Castilian",
+    ],
+    // The route language wins over the provider default — a Russian video
+    // page must link to the Russian inventory, not the visitor's home one.
+    [
+      "video route",
+      "/jesus.html/russian.html",
+      "english",
+      "/russian.html/videos",
+      "Russian",
+    ],
+    [
+      "localized languages",
+      "/aari.html/languages",
+      "english",
+      "/aari.html/videos",
+      "Aari",
+    ],
+    [
+      "localized history",
+      "/aari.html/history",
+      "english",
+      "/aari.html/videos",
+      "Aari",
+    ],
+  ])(
+    "links to the header language inventory on %s",
+    (_label, pathname, defaultLanguageSlug, expectedHref, expectedLanguage) => {
+      navigationMocks.pathname = pathname
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+            <main>Page</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      const link = languageVideosLink()
+      expect(link).not.toBeNull()
+      expect(link?.getAttribute("href")).toBe(expectedHref)
+      // The control now carries a visible "Library" label, so that text — not
+      // an `aria-label` — is its accessible name. An `aria-label` of "See all
+      // videos in X" would not contain the visible label, breaking WCAG 2.5.3
+      // Label in Name.
+      expect(link?.textContent?.trim()).toBe("Library")
+      expect(link?.hasAttribute("aria-label")).toBe(false)
+      // The language-specific phrasing survives as the hover tooltip. Bidi
+      // isolation keeps an RTL language name from reordering the surrounding
+      // words of the translated sentence.
+      expect(link?.getAttribute("title")).toBe(
+        `See all videos in ${ISOLATE_START}${expectedLanguage}${ISOLATE_END}`,
+      )
+      // Glyph still present alongside the label, and it is the shared video-
+      // library glyph — the watch-home "See all videos" CTA renders
+      // the same one via `WatchLibraryIcon`.
+      expect(link?.querySelector("svg")?.getAttribute("class")).toContain(
+        "lucide-list-video",
+      )
+      const labelClassName = link?.querySelector("span")?.getAttribute("class")
+      expect(labelClassName).toContain("text-xs")
+      expect(labelClassName).toContain("sm:text-[10px]")
+      expect(labelClassName).toContain("tracking-[0.14em]")
+    },
+  )
+
+  it("renders no link on the language inventory page itself", () => {
+    navigationMocks.pathname = "/aari.html/videos"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(languageVideosLink()).toBeNull()
+    // The language globe still resolves the route language, so the absent
+    // link is the inventory-route rule and not a slug-resolution failure.
+    expect(
+      document
+        .querySelector('[data-testid="floating-header-language-button"]')
+        ?.querySelector('[data-testid="floating-header-language-code"]')
+        ?.textContent,
+    ).toBe("AIW")
+  })
+
+  it("renders no link when the header language segment is not a public watch language", () => {
+    // `/{anything}.html/history` parses as a localized-utility route with an
+    // unvalidated language segment, so an authored-collection slug reaches
+    // the header. The inventory route 404s for it — link must be absent.
+    navigationMocks.pathname = "/easter.html/history"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(languageVideosLink()).toBeNull()
+  })
+
+  it("renders the link immediately before the language button", () => {
+    navigationMocks.pathname = "/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const trailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
+    const slots = Array.from(trailingControls?.children ?? []).map((child) =>
+      child.getAttribute("data-testid"),
+    )
+    expect(slots.slice(0, 2)).toEqual([
+      "floating-header-language-videos-link",
+      "floating-header-language-button",
+    ])
+  })
+
+  it("reveals the link from the md breakpoint up", () => {
+    // jsdom cannot evaluate media queries, so the class tokens are the pin.
+    // Measured at 375px against `next start`: a third 44px trailing control
+    // overflows the mobile `minmax(80px,1fr)` column and clips the language
+    // globe, so the link stays hidden until the md header layout.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const className = languageVideosLink()?.className ?? ""
+    expect(className).toContain("hidden")
+    expect(className).toContain("md:inline-flex")
+    expect(className).not.toMatch(/(^|\s)inline-flex(\s|$)/)
+  })
+
+  it("drops the link from the search-open header at every width", async () => {
+    // The overlay renders its own full-width row above the category tiles
+    // while the modal is open, so the header control stands down entirely
+    // rather than competing with it.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const trailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
+    const slots = Array.from(trailingControls?.children ?? []).map((child) =>
+      child.getAttribute("data-testid"),
+    )
+    expect(slots).toEqual([
+      "floating-header-language-button",
+      "floating-header-search-close",
+    ])
+    expect(
+      trailingControls?.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      )?.className,
+    ).not.toContain("-mr-[18.25px]")
+    expect(languageVideosLink()).toBeNull()
+  })
+})
+
+describe("FloatingSearchProvider — search overlay language videos row", () => {
+  function overlayRow(): HTMLAnchorElement | null {
+    return document.querySelector(
+      '[data-testid="search-overlay-language-videos-link"]',
+    )
+  }
+
+  it("renders the row above the category tiles for the header language", async () => {
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const row = overlayRow()
+    expect(row).not.toBeNull()
+    expect(row?.getAttribute("href")).toBe("/spanish-castilian.html/videos")
+    expect(row?.textContent).toContain(
+      englishMessages.SearchOverlay.allVideosOnSinglePage,
+    )
+
+    const tile = document.querySelector(
+      '[data-testid="search-overlay-category-bible-stories"]',
+    )
+    expect(tile).not.toBeNull()
+    expect(row).not.toBeNull()
+    const tilesFollowRow =
+      (row as HTMLAnchorElement).compareDocumentPosition(tile as Node) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    expect(tilesFollowRow).toBeTruthy()
+  })
+
+  it("shows the row at every width, with no header control competing", async () => {
+    // jsdom cannot evaluate media queries, so the absent breakpoint token is
+    // the pin: this row carries no `md:` visibility variant, and the header
+    // control is not rendered at all while the modal is open.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const rowClass = overlayRow()?.className ?? ""
+    expect(rowClass).not.toContain("md:hidden")
+    expect(rowClass).not.toMatch(/(^|\s)hidden(\s|$)/)
+    expect(
+      document.querySelector(
+        '[data-testid="floating-header-language-videos-link"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("drops the row once results replace the category tiles", async () => {
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+    navigationMocks.pathname = "/spanish-castilian.html"
+    const input = await openSearchOverlay()
+    expect(overlayRow()).not.toBeNull()
+
+    await submitSearch(input, "jesus")
+    await flushResolvedSearch()
+
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
+    ).toBeNull()
+    expect(overlayRow()).toBeNull()
+  })
+
+  it("renders no row when the header language has no public inventory route", async () => {
+    // `/{anything}.html/history` parses as a localized-utility route with an
+    // unvalidated language segment; the inventory route 404s for it.
+    navigationMocks.pathname = "/easter.html/history"
+    await openSearchOverlay()
+
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
+    ).not.toBeNull()
+    expect(overlayRow()).toBeNull()
   })
 })
 
@@ -3282,6 +4402,263 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(document.body.textContent).toContain("Jesus")
   })
 
+  it("repopulates suggestions after backspacing word-by-word to a shorter query", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions
+      .mockResolvedValueOnce([watchSuggestion("Kids story suggestion")])
+      .mockResolvedValueOnce([watchSuggestion("Nazareth ministry")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus for kids"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Kids story suggestion")
+
+    // Word-by-word Backspace passes through the "Jesus " -> "Jesus" state,
+    // where the raw input changes but the normalized query does not.
+    await act(async () => {
+      setInputValue(input, "Jesus for")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ query: "Jesus", languageSlug: "english" }),
+    )
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("keeps suggestions visible across normalization-neutral trailing-space keystrokes", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Nazareth ministry"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+  })
+
+  it("commits an in-flight response after a normalization-neutral keystroke", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const pending = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions.mockReturnValueOnce(pending.promise)
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus "))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus" }),
+    )
+
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      pending.resolve([watchSuggestion("Nazareth ministry")])
+      await pending.promise
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("never displays a resolved response for a query edited away mid-flight", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const stale = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce([watchSuggestion("Fresh Jesu match")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus for"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setInputValue(input, "Jesu")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      stale.resolve([watchSuggestion("Stale for-query match")])
+      await stale.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).not.toContain("Stale for-query match")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain("Fresh Jesu match")
+    expect(document.body.textContent).not.toContain("Stale for-query match")
+  })
+
+  it("issues one debounced fetch for character-by-character typing", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Nazareth ministry"),
+    ])
+
+    const input = await openSearchOverlay()
+    for (const value of ["J", "Je", "Jes", "Jesu", "Jesus"]) {
+      await act(async () => {
+        setInputValue(input, value)
+        await Promise.resolve()
+      })
+    }
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus" }),
+    )
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("keeps suggestions visible when a keystroke lands beyond the normalization cap", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Capped-query suggestion"),
+    ])
+    const cappedQuery = "a".repeat(MAX_WATCH_SEARCH_QUERY_CODE_POINTS)
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, cappedQuery))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Capped-query suggestion")
+
+    // Appending past the cap changes the raw input but not the normalized
+    // query — pins the guard to normalizeWatchSearchQuery identity rather
+    // than a trailing-whitespace heuristic.
+    await act(async () => {
+      setInputValue(input, `${cappedQuery}a`)
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Capped-query suggestion")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+  })
+
+  it("discards an in-flight response when a real edit follows a neutral keystroke", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const stale = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce([watchSuggestion("Fresh x match")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus x")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      stale.resolve([watchSuggestion("Stale bare-query match")])
+      await stale.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).not.toContain("Stale bare-query match")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ query: "Jesus x" }),
+    )
+    expect(document.body.textContent).toContain("Fresh x match")
+    expect(document.body.textContent).not.toContain("Stale bare-query match")
+  })
+
   it("does not reopen suggestions after submitting a draft longer than the request cap", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
@@ -3533,6 +4910,65 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
   })
 
+  it("shows wait-and-retry guidance for a rate-limited search", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
+  })
+
+  it("localizes rate-limit guidance for Simplified Chinese", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay("zh-Hans")
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "请求过于频繁，请一分钟后重试。",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
+  })
+
+  it("reserves connection guidance for a network search failure", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "network_error" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "Please check your connection and try again.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+  })
+
+  it.each(["server_error", "unknown"] as const)(
+    "keeps %s search guidance neutral",
+    async (kind) => {
+      mockedRunSearch.mockRejectedValueOnce({ kind })
+
+      const input = await openSearchOverlay()
+      await submitSearch(input, "jesus")
+
+      expect(document.body.textContent).not.toContain(
+        "Please check your connection and try again.",
+      )
+      expect(document.body.textContent).not.toContain(
+        "Too many requests. Please try again in a minute.",
+      )
+    },
+  )
+
   it("closes search without navigating when the header logo is clicked", async () => {
     vi.useFakeTimers()
     await openSearchOverlay()
@@ -3658,6 +5094,59 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).toBe("Результаты на русском")
   })
 
+  // jsdom has no layout, so these pin the wiring (which logical margin
+  // utilities the chip wrapper carries); the rendered flush spacing itself was
+  // checked in a real browser. Each locale pins a different attachment shape:
+  // ar start only, zh-Hans both sides (the only fixture reaching the
+  // attached-end branch), en neither.
+  it.each([
+    ["ar", { start: true, end: false }],
+    ["zh-Hans", { start: true, end: true }],
+    ["en", { start: false, end: false }],
+  ] as const)(
+    "drops chip margin only on the sides glued to copy (%s)",
+    async (locale, glued) => {
+      const language =
+        locale === "en"
+          ? englishSearchLanguage
+          : {
+              englishName: locale === "ar" ? "Arabic" : "Chinese",
+              nativeName: locale === "ar" ? "العربية" : "中文",
+              bcp47: locale === "ar" ? "ar" : "zh-Hans",
+              publicSlug: locale === "ar" ? "arabic" : "chinese",
+              regionNames: ["Asia"],
+            }
+      mockedGetSearchLanguageOptions.mockResolvedValue({
+        ok: true,
+        options: [language],
+        countrySuggestion: null,
+        recommendedLanguage: language,
+        countryCode: null,
+        countryName: null,
+      })
+      const input = await openSearchOverlay(locale)
+
+      const chipWrapper = () =>
+        document
+          .querySelector('[data-testid="searching-in-language-label"]')
+          ?.closest(".pointer-events-auto.inline-flex") as HTMLElement | null
+      const expectMargins = () => {
+        const className = chipWrapper()?.className ?? ""
+        expect(className.split(" ").includes("ms-1")).toBe(!glued.start)
+        expect(className.split(" ").includes("me-1")).toBe(!glued.end)
+      }
+
+      // Idle template (searchInLanguage).
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+
+      // Query-intent template (searchSuggestionWithLanguage).
+      act(() => setInputValue(input, "jesus"))
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+    },
+  )
+
   it("does not mount the full search overlay on initial render without query intent", () => {
     act(() => {
       root.render(
@@ -3696,6 +5185,43 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       'input[aria-label="Search videos by keyword"]',
     )
     expect(document.activeElement).toBe(input)
+  })
+
+  it("closes the instant shell from its backdrop but not its search field", () => {
+    const setOpen = vi.fn()
+
+    act(() => {
+      root.render(
+        <SearchOverlayInstantShell
+          open
+          closing={false}
+          query=""
+          setOpen={setOpen}
+          setQuery={vi.fn()}
+          onSubmit={vi.fn()}
+          headerTopClass={FLOATING_HEADER_TOP_CLASS}
+          logoSlotClass="w-12"
+          headerLanguageControlVisible={false}
+        />,
+      )
+    })
+
+    const shell = document.querySelector(
+      '[data-testid="search-overlay-instant-shell"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-instant-field-shell"]',
+    ) as HTMLElement
+    const content = document.querySelector(
+      '[data-testid="search-overlay-instant-content"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    act(() => content.click())
+    expect(setOpen).not.toHaveBeenCalled()
+
+    act(() => shell.click())
+    expect(setOpen).toHaveBeenCalledWith(false)
   })
 
   it("renders the search input shell immediately while the full controller loads", async () => {
@@ -3881,6 +5407,34 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       'input[aria-label="Search videos by keyword"]',
     ) as HTMLInputElement | null
     expect(reopenedInput?.value).toBe("")
+  })
+
+  it("closes the loaded search overlay from its backdrop", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay()
+
+    const overlay = document.querySelector(
+      '[aria-label="Search and browse videos"]',
+    ) as HTMLElement
+    const fieldShell = document.querySelector(
+      '[data-testid="search-overlay-field-shell"]',
+    ) as HTMLElement
+
+    act(() => fieldShell.click())
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).not.toBeNull()
+
+    act(() => overlay.click())
+    await act(async () => {
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('input[type="search"]')).toBeNull()
+    expect(
+      document.querySelector('[data-testid="floating-header-search-close"]'),
+    ).toBeNull()
   })
 
   it("ignores an in-flight search response after the modal closes", async () => {
@@ -4284,7 +5838,7 @@ describe("FloatingSearchProvider — search language selection", () => {
     expect(document.body.textContent).toContain("Japanese Result")
   })
 
-  it("keeps an unavailable result bound to the completed target language", async () => {
+  it("keeps an unavailable recovery card in the completed mixed result window", async () => {
     vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValue({
       ok: true,
@@ -4302,9 +5856,20 @@ describe("FloatingSearchProvider — search language selection", () => {
       ...makeSearchResponse(
         [
           {
+            ...makeSearchResult("playable-before", "Playable Before"),
+            availabilityKind: "target_audio",
+            languageSlug: "spanish-castilian",
+          },
+          {
             ...makeSearchResult("unavailable-result", "Unavailable Result"),
             availabilityKind: "unavailable",
             languageSlug: null,
+          },
+          {
+            ...makeSearchResult("playable-after", "Playable After"),
+            availabilityKind: "target_subtitle",
+            languageSlug: "english",
+            subtitleLanguageSlug: "spanish-castilian",
           },
         ],
         false,
@@ -4315,11 +5880,48 @@ describe("FloatingSearchProvider — search language selection", () => {
     const input = await openSearchOverlay()
     await submitSearch(input, "jesus")
 
-    const resultLink = Array.from(document.querySelectorAll("a")).find(
-      (anchor) => anchor.textContent?.includes("Unavailable Result") ?? false,
-    ) as HTMLAnchorElement
+    const resultLinks = Array.from(document.querySelectorAll("a")).filter(
+      (anchor) =>
+        ["Playable Before", "Unavailable Result", "Playable After"].some(
+          (title) => anchor.textContent?.includes(title) ?? false,
+        ),
+    ) as HTMLAnchorElement[]
+    const visibleResultIds = [
+      "playable-before",
+      "unavailable-result",
+      "playable-after",
+    ]
+    expect(resultLinks.map((anchor) => anchor.textContent)).toEqual([
+      expect.stringContaining("Playable Before"),
+      expect.stringContaining("Unavailable Result"),
+      expect.stringContaining("Playable After"),
+    ])
+
+    const resultLink = resultLinks[1]
+    expect(resultLink).toBeDefined()
     expect(resultLink.getAttribute("href")).toBe(
       "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+    expect(
+      resultLink.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(
+      `${englishMessages.LanguagePickerModal.notAvailable} · European Spanish`,
+    )
+    expect(
+      resultLinks[0]?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+    expect(
+      resultLinks[2]?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+    expect(recordWatchSearchResultsViewed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleResultIds,
+      }),
     )
 
     const languageTrigger = document.querySelector(
@@ -4340,16 +5942,24 @@ describe("FloatingSearchProvider — search language selection", () => {
     expect(resultLink.getAttribute("href")).toBe(
       "/unavailable-result-slug.html/spanish-castilian.html",
     )
-    act(() => {
+    await act(async () => {
       resultLink.dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       )
+      await Promise.resolve()
     })
     const stored = JSON.parse(
       window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY) ??
         "null",
     ) as { target?: { requestedLanguageSlug?: string } } | null
     expect(stored?.target?.requestedLanguageSlug).toBe("spanish-castilian")
+    expect(recordWatchSearchResultClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultId: "unavailable-result",
+        position: 2,
+        visibleResultIds,
+      }),
+    )
   })
 
   it("keeps language changes draft-only until explicit submit", async () => {
@@ -4439,7 +6049,9 @@ describe("FloatingSearchProvider — search pagination", () => {
     await submitSearch(input, "the bible project")
 
     const link = Array.from(document.querySelectorAll("a")).find(
-      (anchor) => anchor.getAttribute("href") === "/first-result-slug.html",
+      (anchor) =>
+        anchor.getAttribute("href") ===
+        "/first-result-slug.html?playback_source=search",
     )
     const searchRequestId =
       mockedRunSearch.mock.calls[0]?.[0].languageContext?.clientRequestId
@@ -4609,6 +6221,35 @@ describe("FloatingSearchProvider — search pagination", () => {
       "Initial Bible Project Result 1",
     )
     expect(document.body.textContent).toContain("Next Bible Project Result 1")
+  })
+
+  it("shows rate-limit guidance when loading more results is throttled", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        makeSearchResponse(
+          [makeSearchResult("initial-1", "Initial Result")],
+          true,
+        ),
+      )
+      .mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    const loadMore = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Load more",
+    )
+    act(() => loadMore?.click())
+    await flushResolvedSearch()
+
+    expect(document.body.textContent).toContain("Initial Result")
+    expect(document.body.textContent).toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
   })
 
   it("continues pagination after delayed language metadata refreshes the default selection", async () => {

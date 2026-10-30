@@ -1,0 +1,115 @@
+{
+  "valid": true,
+  "deploymentId": "43a75813-bcca-4381-8454-d43099079b51",
+  "start": "2026-09-16T00:58:00Z",
+  "end": "2026-09-16T01:13:00Z",
+  "calls": 9,
+  "totalRequests": 2161,
+  "requestIdDigest": "c431ba8ec36cbd1108cbf79ee86f69d171c279cc4a3cff7ace6f2bf9e760f6f6",
+  "counts": [
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 200,
+      "requests": 114
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 403,
+      "requests": 199
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 200,
+      "requests": 203
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 403,
+      "requests": 117
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 200,
+      "requests": 597
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 403,
+      "requests": 201
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 409,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 200,
+      "requests": 199
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 403,
+      "requests": 530
+    }
+  ],
+  "windows": [
+    {
+      "start": "2026-09-16T00:58:00Z",
+      "end": "2026-09-16T01:00:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T00:56:31.060185Z",
+      "complete": true,
+      "included": 306
+    },
+    {
+      "start": "2026-09-16T01:00:30Z",
+      "end": "2026-09-16T01:03:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T00:58:59.684663Z",
+      "complete": true,
+      "included": 326
+    },
+    {
+      "start": "2026-09-16T01:03:00Z",
+      "end": "2026-09-16T01:05:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T01:02:43.282377Z",
+      "complete": true,
+      "included": 449
+    },
+    {
+      "start": "2026-09-16T01:05:30Z",
+      "end": "2026-09-16T01:08:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T01:05:10.012656Z",
+      "complete": true,
+      "included": 392
+    },
+    {
+      "start": "2026-09-16T01:08:00Z",
+      "end": "2026-09-16T01:10:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T01:06:31.518259Z",
+      "complete": true,
+      "included": 289
+    },
+    {
+      "start": "2026-09-16T01:10:30Z",
+      "end": "2026-09-16T01:13:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T01:09:37.821267Z",
+      "complete": true,
+      "included": 399
+    }
+  ]
+}

@@ -16,8 +16,10 @@
 // DB-DEPENDENT assertions (nested-relation SQL count, ABAC parity test) live
 // in later units once services are in place.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import type { GraphQLObjectType } from "graphql"
 import { schema } from "@/graphql/schema"
+import { duplicateExperienceFromContext } from "@/graphql/mutations/experience"
 
 type FieldsHolder = { getFields(): Record<string, unknown> }
 
@@ -48,7 +50,10 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchCollectionFeed",
         "watchLanguageInventory",
+        "watchFilmFinder",
+        "myWatchLearningProgress",
         "watchSearch",
         "watchSearchSuggestions",
         "videosByCoreIds",
@@ -69,6 +74,52 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "managerJob",
       ]),
     )
+  })
+
+  it("exposes the bounded Watch collection feed contract", () => {
+    const query = schema.getQueryType()!.getFields().watchCollectionFeed
+    expect(String(query.type)).toBe("WatchCollectionFeed!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "after",
+      "cardsPerParent",
+      "excludedIds",
+      "excludedSlugs",
+      "first",
+      "languageSlug",
+      "locale",
+    ])
+    const argsByName = new Map(query.args.map((arg) => [arg.name, arg]))
+    expect(String(argsByName.get("first")?.type)).toBe("Int")
+    expect(String(argsByName.get("cardsPerParent")?.type)).toBe("Int!")
+    expect(String(argsByName.get("languageSlug")?.type)).toBe("String!")
+    expect(String(argsByName.get("locale")?.type)).toBe("String!")
+    expect(Object.keys(fieldsOf("WatchCollectionFeed"))).toEqual([
+      "nodes",
+      "pageInfo",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedNode"))).toEqual([
+      "description",
+      "id",
+      "items",
+      "slug",
+      "title",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedItem"))).toEqual([
+      "blurDataUrl",
+      "coreId",
+      "dominantColor",
+      "id",
+      "imageUrl",
+      "label",
+      "languageSlug",
+      "muxPlaybackId",
+      "title",
+      "videoSlug",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedPageInfo"))).toEqual([
+      "endCursor",
+      "hasNextPage",
+    ])
   })
 
   it("extends the stable Watch locale contract with search/social fields", () => {
@@ -204,6 +255,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "description",
         "imageUrl",
         "imageAlt",
+        "muxPlaybackId",
         "label",
         "availability",
         "watchLanguageSlug",
@@ -356,12 +408,91 @@ describe("GraphQL schema — Unit 4 content types", () => {
     ).not.toContain("isTemplate")
   })
 
+  it("Mutation root exposes Experience duplication through the API", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const duplicate = mutation!.getFields().duplicateExperience
+    expect(duplicate).toBeDefined()
+    expect(String(duplicate!.type)).toBe("Experience!")
+    expect(duplicate!.args.map((arg) => arg.name)).toEqual([
+      "id",
+      "sourceVersion",
+    ])
+    const sourceVersion = duplicate!.args.find(
+      (arg) => arg.name === "sourceVersion",
+    )!
+    expect(String(sourceVersion.type)).toBe(
+      "ExperienceDuplicationSourceVersion",
+    )
+    expect(sourceVersion.defaultValue).toBe("EFFECTIVE")
+  })
+
+  it("keeps homepage rendering context separate from homepage assignment", () => {
+    const preview = schema.getType("ExperiencePreview") as GraphQLObjectType
+    expect(String(preview.getFields().isHomepage!.type)).toBe("Boolean!")
+    expect(String(preview.getFields().homepageLayout!.type)).toBe("Boolean!")
+    // Lets Web restrict the audience questionnaire preview to the template.
+    expect(String(preview.getFields().isTemplate!.type)).toBe("Boolean!")
+    const effective = schema.getType(
+      "ExperienceLocaleEffective",
+    ) as GraphQLObjectType
+    expect(effective.getFields().homepageLayout).toBeDefined()
+  })
+
+  it("delegates Experience duplication to the shared service with the caller", async () => {
+    const duplicate = vi.fn().mockResolvedValue({
+      id: "exp-copy",
+      isTemplate: false,
+      ownerId: "editor-1",
+      locales: [],
+    })
+    const user = { id: "editor-1", role: "EDITOR" as const }
+    await expect(
+      duplicateExperienceFromContext(
+        {
+          user,
+          services: { experience: { duplicate } } as never,
+        },
+        "exp-source",
+      ),
+    ).resolves.toMatchObject({ id: "exp-copy" })
+    expect(duplicate).toHaveBeenCalledWith({
+      input: { id: "exp-source", sourceVersion: "EFFECTIVE" },
+      user,
+    })
+
+    await duplicateExperienceFromContext(
+      { user, services: { experience: { duplicate } } as never },
+      "exp-source",
+      "CANONICAL",
+    )
+    expect(duplicate).toHaveBeenLastCalledWith({
+      input: { id: "exp-source", sourceVersion: "CANONICAL" },
+      user,
+    })
+  })
+
   it("Mutation root exposes Manager job write contracts", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
     expect(fields.createManagerJob).toBeDefined()
     expect(fields.updateManagerJob).toBeDefined()
+  })
+
+  it("registers own learning queries and mutations in the assembled schema", () => {
+    const query = schema.getQueryType()!.getFields().myWatchLearningProgress
+    expect(String(query.type)).toBe("[WatchLearningLessonProgress!]!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "contentVersion",
+      "courseId",
+    ])
+    const mutations = schema.getMutationType()!.getFields()
+    for (const name of [
+      "saveMyWatchLearningProgress",
+      "resetMyWatchLearningProgress",
+    ])
+      expect(String(mutations[name].type)).toBe("WatchLearningSaveResult!")
   })
 
   it("Mutation root exposes the private watch-event write contract", () => {

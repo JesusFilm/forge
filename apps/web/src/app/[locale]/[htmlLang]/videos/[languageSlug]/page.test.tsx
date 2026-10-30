@@ -6,6 +6,16 @@ import { useTranslations } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const { getWatchRouteManifestMock } = vi.hoisted(() => ({
+  getWatchRouteManifestMock: vi.fn(),
+}))
+
+vi.mock("@/lib/watch-route-manifest", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/watch-route-manifest")>()
+  return { ...actual, getWatchRouteManifest: getWatchRouteManifestMock }
+})
+
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
@@ -19,6 +29,7 @@ import LanguageVideosPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/videos/[languageSlug]/page"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
+import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 
 vi.mock("@/lib/watch-language-inventory", async (importOriginal) => {
   const actual =
@@ -45,6 +56,8 @@ function RussianPluralProbe() {
 
 describe("/{language}.html/videos route", () => {
   beforeEach(() => {
+    getWatchRouteManifestMock.mockReset()
+    getWatchRouteManifestMock.mockResolvedValue(null)
     resolveWatchLanguageInventoryMock.mockReset()
     resolveWatchLanguageInventoryMock.mockResolvedValue({
       languageSlug: "spanish-latin-american",
@@ -73,6 +86,7 @@ describe("/{language}.html/videos route", () => {
           description: null,
           imageUrl: "https://imagedelivery.net/test/promoted-hero/public",
           imageAlt: "Promoted video still",
+          muxPlaybackId: null,
           label: "short film",
           availability: "AUDIO",
           href: "/promoted-video.html/spanish-latin-american.html" as never,
@@ -95,6 +109,7 @@ describe("/{language}.html/videos route", () => {
           description: "A collection for outreach teams.",
           imageUrl: "https://imagedelivery.net/test/collection-story/public",
           imageAlt: "The Story of Jesus",
+          muxPlaybackId: null,
           label: "series",
           availability: "AUDIO",
           href: "/the-story-of-jesus.html/spanish-latin-american.html" as never,
@@ -117,6 +132,7 @@ describe("/{language}.html/videos route", () => {
           description: "The first episode.",
           imageUrl: "https://imagedelivery.net/test/episode-one/public",
           imageAlt: "Episode one still",
+          muxPlaybackId: null,
           label: "episode",
           availability: "AUDIO",
           href: "/the-story-of-jesus.html/episode-one/spanish-latin-american.html" as never,
@@ -138,6 +154,7 @@ describe("/{language}.html/videos route", () => {
           description: "The second episode.",
           imageUrl: "https://imagedelivery.net/test/episode-two/public",
           imageAlt: "Episode two still",
+          muxPlaybackId: null,
           label: "episode",
           availability: "AUDIO",
           href: "/the-story-of-jesus.html/episode-two/spanish-latin-american.html" as never,
@@ -159,6 +176,7 @@ describe("/{language}.html/videos route", () => {
           description: "The third episode.",
           imageUrl: "https://imagedelivery.net/test/episode-three/public",
           imageAlt: "Episode three still",
+          muxPlaybackId: null,
           label: "episode",
           availability: "AUDIO",
           href: "/the-story-of-jesus.html/episode-three/spanish-latin-american.html" as never,
@@ -174,10 +192,11 @@ describe("/{language}.html/videos route", () => {
         },
       ],
       subtitleOnlyVideos: [],
+      collectionLanguageCounts: {},
     })
   })
 
-  it("declares language-specific SEO metadata", async () => {
+  it("declares Spanish SEO metadata through the requested catalog", async () => {
     const pageMetadata = await generateMetadata({
       params: Promise.resolve({
         locale: "es",
@@ -187,10 +206,10 @@ describe("/{language}.html/videos route", () => {
     })
 
     expect(pageMetadata.title).toBe(
-      "Free Christian videos in Espanol latinoamericano | Jesus Film Project",
+      "Videos cristianos gratuitos en Espanol latinoamericano | Jesus Film Project",
     )
     expect(pageMetadata.description).toContain(
-      "with dubbed audio or subtitles in Espanol latinoamericano",
+      "con audio doblado o subtítulos en Espanol latinoamericano",
     )
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",
@@ -217,6 +236,33 @@ describe("/{language}.html/videos route", () => {
     )
   })
 
+  it("lower-cases the UI language's own name mid-sentence in metadata (N48a)", async () => {
+    // Admin stores the endonym capitalised; the ru catalog places it after
+    // "Язык:", where the lower-case CLDR form is correct.
+    const base = await resolveWatchLanguageInventoryMock("ru", "russian")
+    resolveWatchLanguageInventoryMock.mockResolvedValueOnce({
+      ...base,
+      languageSlug: "russian",
+      languageName: "Russian",
+      languageNativeName: "Русский",
+      switcherLanguages: [],
+    })
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "ru",
+        htmlLang: "ru",
+        languageSlug: "russian",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Бесплатные христианские видео. Язык: русский | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "Язык озвучки или субтитров: русский",
+    )
+  })
+
   it("uses Russian ICU plural categories in route-render tests", () => {
     setRequestLocale("ru")
     const html = renderToString(<RussianPluralProbe />)
@@ -236,8 +282,8 @@ describe("/{language}.html/videos route", () => {
     const html = renderToString(page)
     document.body.innerHTML = html
 
-    const navigation = document.querySelector(
-      '[data-testid="language-inventory-section-carousel"]',
+    const hero = document.querySelector(
+      '[data-testid="language-inventory-page"] > section',
     )
     const dubbedCatalog = document.querySelector(
       '[data-testid="language-inventory-audio-collections"]',
@@ -247,21 +293,44 @@ describe("/{language}.html/videos route", () => {
     )
 
     expect(html).toContain("Spanish, Latin American")
-    expect(html).toContain("promoted-hero")
+    // The hero now takes the FIRST collection rendered on the page rather than
+    // preferring the `promoted` bucket, so the promoted artwork is no longer
+    // the hero source.
+    expect(html).not.toContain("promoted-hero")
     expect(html).toContain('data-testid="language-inventory-audio-collections"')
     expect(html).not.toContain('data-testid="language-inventory-home-sections"')
     expect(html).not.toContain('data-testid="language-inventory-promoted"')
     expect(html).not.toContain('data-testid="language-inventory-bible-gospels"')
     expect(html).not.toContain('data-testid="language-inventory-bible-project"')
     expect(html).not.toContain('data-testid="language-inventory-sports"')
+    // The section-metric carousel ("Collections" / "Subtitles only" tiles)
+    // was removed — the hero now hands straight off to the dubbed catalog,
+    // so no in-page anchors to the section ids remain.
+    expect(html).not.toContain(
+      'data-testid="language-inventory-section-carousel"',
+    )
     expect(html).not.toContain('href="#new"')
     expect(html).not.toContain('href="#bible-gospels"')
     expect(html).not.toContain('href="#bible-project"')
     expect(html).not.toContain('href="#sports"')
-    expect(html).toContain('href="#audio-collections"')
-    expect(html).toContain('href="#subtitles-only"')
-    expect(navigation?.nextElementSibling).toBe(dubbedCatalog)
-    expect(dubbedCatalog?.nextElementSibling).toBe(subtitleCatalog)
+    expect(html).not.toContain('href="#audio-collections"')
+    expect(html).not.toContain('href="#subtitles-only"')
+    // The filter bar's shell now sits between the hero and the catalog, and the
+    // catalog lives inside it.
+    const filterShell = document.querySelector(
+      '[data-testid="language-inventory-filters-root"]',
+    )
+    expect(hero?.nextElementSibling).toBe(filterShell)
+    expect(filterShell?.contains(dubbedCatalog ?? null)).toBe(true)
+    // This fixture has no subtitle-only videos, so that section removes itself.
+    // Asserting `dubbedCatalog.nextElementSibling === subtitleCatalog` here was
+    // passing only because BOTH sides were null.
+    expect(subtitleCatalog).toBeNull()
+    expect(
+      dubbedCatalog?.nextElementSibling?.querySelector(
+        '[data-testid="language-inventory-back-to-top"]',
+      ),
+    ).not.toBeNull()
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
       "es",
       "spanish-latin-american",
@@ -290,7 +359,14 @@ describe("/{language}.html/videos route", () => {
 
     expect(group?.classList).toContain("overflow-clip")
     expect(group?.classList).not.toContain("overflow-hidden")
-    expect(sidebar?.classList).toContain("bg-white/[0.035]")
+    // The sidebar now paints the shared immersive background colour inline
+    // instead of a translucent white wash, because a blurred artwork layer
+    // sits on top of it.
+    expect(sidebar?.classList).not.toContain("bg-white/[0.035]")
+    // Same sticky trap as the group: `overflow-hidden` here would make this
+    // element the sticky scroll container and kill the stick on the panel.
+    expect(sidebar?.classList).toContain("overflow-clip")
+    expect(sidebar?.classList).not.toContain("overflow-hidden")
     expect(sidebar?.classList).toContain("lg:border-r")
     expect(sidebar?.classList).not.toContain("lg:sticky")
     expect(sidebar?.classList).not.toContain("lg:self-start")
@@ -301,6 +377,33 @@ describe("/{language}.html/videos route", () => {
     expect(overview?.classList).not.toContain("sticky")
     expect(group?.textContent).toContain("A collection for outreach teams.")
     expect(group?.textContent).toContain("Episode 3")
+  })
+
+  it("renders the shared watch footer, exactly once, after the page content", async () => {
+    const page = await LanguageVideosPage({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es-419",
+        languageSlug: "spanish-latin-american",
+      }),
+    })
+    const html = renderToString(page)
+    document.body.innerHTML = html
+
+    const footers = document.querySelectorAll("footer")
+    expect(footers).toHaveLength(1)
+    // Same footer component the watch home and single-video pages render, so
+    // assert on its content rather than just the tag.
+    expect(html).toContain("https://www.jesusfilm.org/give/")
+    expect(html).toContain("https://www.jesusfilm.org/privacy/")
+    // Its `WatchFooter` namespace resolves server-side — raw keys would mean the
+    // namespace was missing.
+    expect(html).not.toContain("WatchFooter.")
+    // Sits after the inventory, not inside it.
+    const main = document.querySelector(
+      '[data-testid="language-inventory-page"]',
+    )
+    expect(main?.contains(footers[0] ?? null)).toBe(false)
   })
 
   it("renders contextual Russian UI copy without English inventory chrome", async () => {
@@ -314,11 +417,153 @@ describe("/{language}.html/videos route", () => {
     const html = renderToString(page)
 
     expect(html).toContain("Бесплатные христианские видео")
-    expect(html).toContain("Доступны субтитры")
+    // The dubbed catalog's eyebrow — the subtitles-only eyebrow is no longer a
+    // valid localization sample here because this fixture has no subtitle-only
+    // videos, and an empty section now renders nothing at all.
+    expect(html).toContain("Полная озвучка")
     expect(html).not.toContain("Free Christian videos")
+    // The empty subtitles-only section is dropped, heading and all — not
+    // rendered with a "none yet" placeholder.
+    expect(html).not.toContain("Доступны субтитры")
+    expect(html).not.toContain(
+      "Для этого языка пока нет видео только с субтитрами.",
+    )
+    expect(html).not.toContain('data-testid="language-inventory-subtitle-only"')
+    // The dubbed catalog is present, so the page-level empty state stays away.
+    expect(html).not.toContain('data-testid="language-inventory-empty"')
     expect(resolveWatchLanguageInventoryMock).toHaveBeenCalledWith(
       "ru",
       "russian",
     )
+  })
+})
+
+describe("language admission on /{language}.html/videos", () => {
+  // A slug the live manifest publishes that the compiled corpus has never
+  // seen. Hard-coding a REAL recently-published language here would rot the
+  // moment the scheduled corpus refresh absorbs it, and the test would then
+  // pass for the wrong reason — so the probe slug is deliberately synthetic.
+  const NEWLY_PUBLISHED = "regression-probe-language"
+
+  const manifestPublishing = (slug: string) => ({
+    version: "test",
+    generatedAt: "2026-09-16T00:00:00.000Z",
+    contentSlugs: [],
+    oneSegmentSlugs: [],
+    episodePairsByParent: {},
+    audioLanguageSlugs: [slug],
+  })
+
+  beforeEach(() => {
+    getWatchRouteManifestMock.mockReset()
+    resolveWatchLanguageInventoryMock.mockReset()
+    resolveWatchLanguageInventoryMock.mockResolvedValue({
+      languageSlug: NEWLY_PUBLISHED,
+      languageName: "Probe",
+      languageNativeName: "Probe",
+      switcherLanguages: [],
+      counts: {
+        total: 0,
+        audioCollections: 0,
+        audioVideos: 0,
+        subtitleOnlyVideos: 0,
+      },
+      promoted: [],
+      audioCollections: [],
+      audioVideos: [],
+      subtitleOnlyVideos: [],
+      collectionLanguageCounts: {},
+    } as never)
+  })
+
+  it("keeps the probe slug outside the compiled corpus", () => {
+    // Anti-vacuous guard: if the corpus ever absorbed this slug, every
+    // admission assertion below would pass without consulting the manifest.
+    expect(isPublicWatchHomeLanguageSlug(NEWLY_PUBLISHED)).toBe(false)
+  })
+
+  it("renders a language the manifest publishes but the corpus has not absorbed", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: NEWLY_PUBLISHED,
+        }),
+      }),
+    ).resolves.toBeDefined()
+  })
+
+  it("declares metadata for a language the manifest publishes", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "en",
+        htmlLang: "en",
+        languageSlug: NEWLY_PUBLISHED,
+      }),
+    })
+
+    expect(pageMetadata.alternates?.canonical).toBe(
+      `https://www.jesusfilm.org/watch/${NEWLY_PUBLISHED}.html/videos`,
+    )
+  })
+
+  it("still fails closed for a slug neither the corpus nor the manifest knows", async () => {
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: "not-a-language-at-all",
+        }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+
+  it("fails closed, rather than throwing, when the manifest is unreachable", async () => {
+    // A manifest outage must degrade to the compiled corpus. Letting the
+    // rejection escape would turn every unknown-slug 404 into a 500.
+    getWatchRouteManifestMock.mockRejectedValue(new Error("manifest down"))
+
+    await expect(
+      LanguageVideosPage({
+        params: Promise.resolve({
+          locale: "en",
+          htmlLang: "en",
+          languageSlug: NEWLY_PUBLISHED,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+  })
+
+  it("does not await the manifest for a language the corpus already knows", async () => {
+    // apps/web/CLAUDE.md requires the manifest await stay lazy so content
+    // resolution never serializes behind the manifest request. An eager
+    // `await getWatchRouteManifest()` in the guard would trip this.
+    getWatchRouteManifestMock.mockResolvedValue(
+      manifestPublishing(NEWLY_PUBLISHED),
+    )
+
+    await LanguageVideosPage({
+      params: Promise.resolve({
+        locale: "es",
+        htmlLang: "es-419",
+        languageSlug: "spanish-latin-american",
+      }),
+    })
+
+    expect(getWatchRouteManifestMock).not.toHaveBeenCalled()
   })
 })

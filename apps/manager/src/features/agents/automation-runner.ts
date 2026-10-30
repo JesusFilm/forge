@@ -89,13 +89,19 @@ async function fetchAutomationSelection(
   const mockState = await readMockCmsState(getCmsGateway())
   if (mockState) {
     const candidates: AutomationCandidateVideo[] =
-      mockState.readModels.videoCoverage.map((video) => ({
-        documentId: video.documentId,
-        coreId: video.coreId ?? video.documentId,
-        muxAssetId: "",
-        muxPlaybackId: "",
-        outputOwner: deriveMockOutputOwner(automation, video),
-      }))
+      mockState.readModels.videoCoverage.flatMap((video) =>
+        video.coreId == null
+          ? []
+          : [
+              {
+                documentId: video.documentId,
+                coreId: video.coreId,
+                muxAssetId: "",
+                muxPlaybackId: "",
+                outputOwner: deriveMockOutputOwner(automation, video),
+              },
+            ],
+      )
 
     return selectEligibleAutomationVideos(candidates, {
       template: automation.template,

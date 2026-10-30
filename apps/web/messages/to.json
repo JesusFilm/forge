@@ -39,9 +39,8 @@
     "posterAlt": "Pōsita ʻo e vitio",
     "noDownloads": "ʻOku ʻikai ha ngaahi download ʻoku lava ki he vitio ni.",
     "fileSizeLabel": "Filifili ha lahi ʻo e faili",
-    "termsAgreementPrefix": "ʻOku ou loto ki he ",
+    "termsAgreement": "ʻOku ou loto ki he <link>Ngaahi Tuʻutuʻuni Ngāue</link>",
     "termsOfUse": "Ngaahi Tuʻutuʻuni Ngāue",
-    "termsAgreementSuffix": "",
     "close": "Katia",
     "download": "Hiki mai",
     "authRequiredTitle": "ʻOku ke loto ke download ʻa e vitio ni?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Vahevahe ʻi he Facebook (ʻikai lava ʻi he build ni)",
     "shareOnX": "Vahevahe ʻi he X",
     "shareOnXUnavailable": "Vahevahe ʻi he X (ʻikai lava ʻi he build ni)",
+    "opensInNewTab": "{label} (ʻe ava ʻi ha tab foʻou)",
     "shareDisabledHint": "ʻOku fiemaʻu ha peesi kuo deployed ke vahevahe — ʻe ngāue pē ʻi he taimi ʻe tuʻu ai ʻa e vitio ni ʻi he production.",
     "shareFormat": "Fōtunga ʻo e vahevahe",
     "shareLinkTab": "Vahevahe ʻa e Fehokotakiʻanga",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
     "home": "Peesi kamata ʻo e JesusFilm",
     "closeSearch": "Katia ʻa e fekumí",
-    "submitSearch": "Fekumi"
+    "submitSearch": "Fekumi",
+    "library": "Falekoloa tohi"
   },
   "SearchOverlay": {
     "dialogLabel": "Fekumi mo vakaiʻi ngaahi vitio",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Naʻe fehālaaki hono laodí ʻa e ngaahi ola lahi ange.",
     "searching": "Fekumi...",
     "connectionHint": "Kataki ʻo vakaiʻi hoʻo fehokotakiʻanga pea toe feinga.",
+    "rateLimitHint": "Fuʻu lahi e ngaahi kole. Kātaki ʻo toe feinga hili ha miniti ʻe taha.",
     "retrySearch": "Toe feinga fekumi",
     "retry": "Toe feinga",
     "noResults": "ʻIkai ha ola ki he \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Fekumi ki he “{suggestion}” ʻi he {language}",
     "inLanguage": "ʻi he {language}",
     "browseByRegion": "Vakaiʻi ʻi he vahefonua",
+    "allVideosOnSinglePage": "Kiate videó kotoa ʻi he peesi pē taha",
     "clearLanguages": "Tamateʻi",
     "queryLanguageDetected": "Kuo ʻiloʻi ʻa e {language}",
     "searchInLanguage": "Fekumi ʻi he {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
     "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo",
-    "nextEpisode": "ʻEpisooti Hoko"
+    "nextEpisode": "ʻEpisooti Hoko",
+    "audioTranslationCount": "{count, plural, one {# lea} other {# ngaahi lea}}",
+    "subtitleCount": "Ngaahi ʻUhinga: {count, plural, one {# lea} other {# ngaahi lea}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lolotonga laodí ʻa e fakamatala",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Naʻe ʻikai lava ʻo laodí ʻa e foomu fakamatala.",
     "loadingForm": "Lolotonga laodí ʻa e foomu fakamatala…",
     "retry": "Toe feinga",
-    "openFormShort": "Fakaava ʻa e foomu",
     "cancel": "Luluʻi",
-    "title": "Fakamatala Beta",
-    "description": "Vahevahe ʻa e meʻa ʻoku ngāue lelei mo e meʻa te tau lava ʻo fakaleleiʻi. ʻOku ʻoange ʻa e foomu ni ʻe he Google.",
-    "openInNewTab": "Fakaava ʻa e foomu ʻi ha taba foʻou",
     "closeForm": "Tamateʻi ʻa e foomu fakamatala",
-    "loadingGoogleForm": "Lolotonga laodí ʻa e Google Form…",
-    "iframeTitle": "Fakaʻaliʻali ʻa e Fakamatala Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Ngaahi vitio fakakalisitiane taʻetotongi ʻi he {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sipoti",
     "collections": "Ngaahi kolekisoni",
     "subtitlesOnly": "Ngaahi subtitle pē",
+    "backToTop": "Foki ki ʻolunga",
     "newlyAdded": "Kuo toki tānaki mai",
     "newVideosTitle": "Ngaahi vitio fakakalisitiane foʻou ʻi he {language}",
     "newestFirst": "Foʻou taha ʻuluaki",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Ngaahi vitio taʻekau",
     "videosFromCollection": "Ngaahi vitio mei he {collection}.",
     "standaloneDescription": "Ngaahi vitio taʻekau ʻi he lea ni.",
-    "openCollection": "Fakaava ʻa e kolekisoni"
+    "openCollection": "Fakaava ʻa e kolekisoni",
+    "filters": "Filifili",
+    "filterLength": "Lōloa",
+    "filterLength_under5": "Siʻi hifo ʻi he 5 miniti",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "Lahi hake ʻi he 30 miniti",
+    "filterType": "Faʻahinga",
+    "clearFilters": "Tamateʻi ʻa e filifili",
+    "filterResults": "ʻOku fakahā ʻa e {count} mei he {total}",
+    "noFilterResults": "ʻOku ʻikai ha vitiō ʻoku tatau mo e ngaahi filifili ni. Feinga ke toʻo ha taha.",
+    "filterAdded": "Tānaki",
+    "filterAdded_60d": "ʻAho 60 kuo ʻosi",
+    "filterAdded_6m": "Māhina 6 kuo ʻosi",
+    "filterAdded_12m": "Māhina 12 kuo ʻosi"
   },
   "WatchHome": {
     "pageTitle": "Sio ʻi he Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Preview ʻo e vitio ki muʻa",
     "nextVideoPreview": "Preview ʻo e vitio hoko",
     "mediaCollection": "Kolekisoni ʻo e media",
-    "scrollToVideo": "Loloa ki he vitio {title}"
+    "scrollToVideo": "Loloa ki he vitio {title}",
+    "forYou": "Maʻau"
   },
   "WatchFooter": {
     "home": "Peesi kamata ʻo e Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Kilisimasi Fiefia!",
     "daysUntilChristmas": "{count, plural, one {# ʻaho kae ʻoua ke hoko ʻa e Kilisimasí} other {# ngaahi ʻaho kae ʻoua ke hoko ʻa e Kilisimasí}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Vakaiʻi ʻa e laipelí",
+    "title": "Vakaiʻi ʻo fakatatau ki he kalasi",
+    "description": "ʻAlu hangatonu ki he konga ʻo e laipeli ʻoku ke fiemaʻú — ko e moʻui ʻa Sīsū, ko e ngaahi taimi ʻo e taʻu fakasiasí, mo e ngaahi vitio kuo ngaohi ki he ngaahi famili, kau ako, mo e ngaahi kulupu īkí.",
+    "seeAll": "Vakai ki he ngaahi vitio kotoa",
+    "previous": "Ngaahi kalasi ki muʻa",
+    "next": "Ngaahi kalasi hoko",
+    "categories": {
+      "jesus": "Ko e Filimi JESUS",
+      "gospels": "Ngaahi Kosipeli",
+      "shortVideos": "Ngaahi vitio nounou",
+      "family": "Famili",
+      "relationships": "Ngaahi Vahaʻangatae",
+      "women": "Ki he Kau Fefiné",
+      "students": "Ki he Kau Akó",
+      "sports": "Sipoti",
+      "goodNews": "Ongoongo Lelei",
+      "hope": "ʻAmanaki",
+      "training": "Akoʻi",
+      "easter": "Toetuʻu",
+      "christmas": "Kilisimasi"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngaahi Lea",
     "metadataDescription": "Vakaiʻi ʻa e ngaahi vitio JesusFilm ʻi he lea.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "ʻIkai maʻu ʻa e peesi:",
     "title": "ʻOku ʻikai ʻi heni ʻa e scene ni.",
     "description": "Mahalo kuo hiki ʻa e peesí, ka ʻoku kei hoko atu pe ʻa e talanoá.",
+    "languageDescription": "Naʻe ʻikai te mau lava ʻo maʻu ʻa e peesi ʻoku ke kumí, ka ʻoku kei hoko atu pē ʻa e talanoá ʻi he ngaahi filimi mo e vitio ʻi he ngaahi lea mei he funga ʻo e māmaní.",
     "actionsLabel": "Ngaahi ngāue ʻo e peesi ʻikai maʻu",
     "backToWatch": "Hoko ki he Watch",
     "browseVideos": "Vakaiʻi ʻa e ngaahi vitio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sio ki he Filimi Nounou",
-    "actions": {
-      "joinUs": "Kau Mai",
-      "shareMission": "Kau ʻi Homau Misioná"
-    },
-    "welcomeStart": {
-      "label": "Tui & Folofola",
-      "title": "Ngaahi fili vitio ʻo e ʻaho ni",
-      "description": "Ko e ngaahi vitio mei heʻemau falaní ʻoku fakatefito ʻi he tui ke ueʻi, fakamalohia, mo fakakaukauʻi."
-    },
-    "welcomeMorning": {
-      "label": "Ueʻi Fakamālōlō",
-      "title": "Mālō e pongipongi! ʻOku tali atu ʻa e ngaahi momeniti Tohi Tapu ʻo e ʻaho ni.",
-      "description": "Kamata hoʻo ʻaho ʻaki ha ngaahi momeniti Tohi Tapu fakalotolahi ke ueʻi mo hiki hake hoʻo laumālie."
-    },
-    "welcomeAfternoon": {
-      "label": "Ueʻi ʻi he Afiafi",
-      "title": "Mālō e efiafi! Ngaahi momeniti Tohi Tapu maʻá ho ʻaho.",
-      "description": "Ko e ngaahi fakamatala Tohi Tapu fakalotolahi ʻoku feʻunga pe ki hoʻo mālōlō ʻi he efiafi pe ki ha fakalotolahi hokohoko atu."
-    },
-    "welcomeEvening": {
-      "label": "Ueʻi ʻi he Pō",
-      "title": "Mālō e pō! Malolo mo e ngaahi momeniti Tohi Tapu.",
-      "description": "Ko e ngaahi momeniti Tohi Tapu mālie ke tokoni atu ke ke fakalaulauloto mo maʻu ʻa e fiemālie ʻi he ngataʻanga hoʻo ʻaho."
-    },
-    "joinUs": {
-      "label": "Kau Mai",
-      "title": "ʻOku kumi ʻe he lau piliona",
-      "description": "Kuo aʻu mai ʻa e fua. Kau mai ke tau vahevahe ʻa e ongoongolelei ki mamani ʻaki ʻa e ngaahi media fakavahaʻa taimi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tau fononga fakataha",
-      "title": "Tala ʻo Sīsū, fakataha",
-      "description": "Koeʻuhí ke nau fanongo mo mamata ki he ʻofa ʻa Sīsū ʻi honau lea pē ʻi honau feituʻu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ʻoku fenāpasi",
-    "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni."
+    "none": "ʻIkai maʻu ha ngaahi vitio fokotuʻu ki he vitio ni ʻi he lea ni.",
+    "heading": "Ngaahi vitio fokotuʻu",
+    "loadingLabel": "Lolotonga laodi ʻa e ngaahi vitio fokotuʻu",
+    "openingTitle": "Lolotonga fakaava ʻa e {title}",
+    "openingVideo": "Lolotonga fakaava ʻa e vitio",
+    "activityNotRecorded": "Naʻe ʻikai lava ke lekooti ʻa e ngāue ki he ngaahi fokotuʻú. ʻOku kei ngāue pē ʻa e ngaahi link.",
+    "showingContextual": "ʻOku fakahaaʻi ʻa e ngaahi fokotuʻu fakatatau ki he tuʻungá.",
+    "showingSaved": "ʻOku fakahaaʻi ʻa e ngaahi fokotuʻu kuo tauhí.",
+    "explanationCurated": "Ngaahi vitio kuo fili ke ke vakaiʻi.",
+    "explanationViewingMode": "Fokotuʻu fakatatau ki he vitio ko ʻení mo hoʻo founga mamatá.",
+    "explanationCowatch": "Fokotuʻu fakatatau ki he vitio ko ʻení mo e ngaahi meʻa ʻokú ke mahuʻingaʻia aí.",
+    "explanationHybrid": "Fokotuʻu fakatatau ki he vitio ko ʻení mo e ngaahi meʻa ʻokú ke mahuʻingaʻia ai naʻá ke fili ke manatuʻí.",
+    "explanationContextual": "Fokotuʻu fakatatau ki he meʻa ʻokú ke mamata ai he taimí ni.",
+    "explanationSemanticFallback": "Fokotuʻu fakatatau ki he meʻa ʻokú ke mamata ai he taimí ni, koeʻuhí ʻoku ʻikai ʻatā ʻa e fakataautahaʻí.",
+    "explanationProfileDurable": "Fakataautahaʻi fakatatau ki he ngaahi meʻa ʻokú ke mahuʻingaʻia ai naʻá ke fili ke manatuʻí.",
+    "explanationProfileVisit": "Fakataautahaʻi maʻá e ʻaʻahi ko ʻení.",
+    "personalizationLabel": "Fakataautahaʻi ʻo e ngaahi fokotuʻú",
+    "personalizationPrompt": "ʻOkú ke fie liliu ʻa e founga ʻoku fakataautahaʻi ai ʻa e ngaahi fokotuʻú?",
+    "openCookieSettings": "Fakaava ʻa e ngaahi fokotuʻutuʻu kukisí"
   },
   "BetaTesterModal": {
     "title": "Hoko ko ha beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Toe feinga ki he ngaahi meʻa naʻe ʻikai lava"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ʻOku ʻikai maʻu ʻa e tatau lea",
+    "eyebrow": "ʻOku ʻikai maʻu ʻa e tatau lea",
+    "title": "ʻOku ʻikai maʻu ʻa e <contentTitle>{title}</contentTitle> ʻi he lea <languageName>{language}</languageName>",
+    "actionsLabel": "Ngaahi fili ke mamata ai",
+    "browseInLanguage": "Kumi vitiō ʻi he lea {language}",
+    "backToSearch": "Foki ki he fekumi",
+    "audioVersionsTitle": "Ngaahi tatau ongo kehe",
+    "audioVersionsDescription": "Fili ha lea ʻo e ongo ke hoko atu hoʻo mamata ʻi he vitiō ni.",
+    "languageVersionLabel": "Lea ʻo e ongo",
+    "selectLanguageVersion": "Fili ha tatau lea",
+    "watchSelectedVersion": "Mamata ʻi he tatau kuo fili"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ngaahi fili kukisi",
+    "bannerTitle": "Hoʻo ngaahi fili ki he totonu fakapulipuli",
+    "bannerDescription": "ʻOku tokoni ʻa e ngaahi kukisi mahuʻinga ke malu mo ngaue ʻa e Watch. Kapau te ke fakangofua, ʻe lava ke manatuʻi ʻe ha kukisi fili ʻa e saiti ni hoʻo ngaahi fiekaunga ʻi he ngaahi ʻaʻahi kehekehe ke fakataautahaʻi ʻa e ngaahi fokotuʻu. ʻOku kei ʻatā pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga ʻi ha founga pē.",
+    "acceptAll": "Tali kotoa",
+    "essentialOnly": "Ngaahi mahuʻinga pē",
+    "manageChoices": "Tokangaʻi ʻa e ngaahi fili",
+    "savingChoice": "Tuku tauhi ʻa e fili kukisi",
+    "settings": "Ngaahi fokotuʻutuʻu kukisi",
+    "settingsDescription": "Fili pe ʻe lava ke manatuʻi ʻe he Watch ʻa e ngaahi fiekaunga ki he fokotuʻu ʻi he ngaahi ʻaʻahi kehekehe. ʻE lava ke ke liliu eni ʻi ha taimi pē.",
+    "essentialCookies": "Ngaahi kukisi mahuʻinga",
+    "essentialDescription": "Maluʻi, tā ʻo e vitiō, ngaahi fili ki he totonu fakapulipuli, mo e ʻuhinga ʻo e kole fokotuʻu.",
+    "alwaysActive": "Ngāue maʻu pē",
+    "personalization": "Fakataautahaʻi",
+    "personalizationDescription": "Manatuʻi ʻa e ngaahi fiekaunga fakangatangata ʻi he ngaahi ʻaʻahi kehekehe. Kapau ʻe tamateʻi eni, ʻe kei lava pē ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "erasurePending": "ʻOku kei tatali ʻa hono toʻo ʻo e palofaili. ʻOku ʻosi ngāue ʻa e ngaahi fokotuʻu fakatatau ki he tuʻunga.",
+    "cancel": "Kaniseli",
+    "saveChoices": "Tuku tauhi ʻa e ngaahi fili",
+    "saving": "ʻOku tuku tauhi…",
+    "loadError": "ʻIkai lava ke ʻomi hoʻo fili. ʻE kei lava pē ke ke fili ʻi lalo.",
+    "grantError": "ʻIkai lava ke fakaʻatā ʻa e fakataautahaʻi. ʻOku kei ʻatā pē ʻa e ngaahi mahuʻinga.",
+    "saveError": "ʻIkai lava ke tuku tauhi hoʻo fili. Kātaki ʻo toe feinga."
   }
 }

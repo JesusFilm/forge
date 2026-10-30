@@ -39,9 +39,8 @@
     "posterAlt": "Video uñacht’äwi",
     "noDownloads": "Aka videoatakix janiw apaqañanakax utjkiti.",
     "fileSizeLabel": "Mä ch’amani k’uchu ajlliña",
-    "termsAgreementPrefix": "Nayax akat amtatätwa: ",
+    "termsAgreement": "Nayax <link>Apnaqañan kamachinakarux</link> iyaw sasta",
     "termsOfUse": "Apnaqañan kamachinaka",
-    "termsAgreementSuffix": "",
     "close": "Jallt’aña",
     "download": "Aru apaqaña",
     "authRequiredTitle": "¿Aka video apaqañ munasmati?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook ukan uñt’ayaña (aka versión ukan janiw utjkiti)",
     "shareOnX": "X ukan uñt’ayaña",
     "shareOnXUnavailable": "X ukan uñt’ayaña (aka versión ukan janiw utjkiti)",
+    "opensInNewTab": "{label} (machaq pestañan jist'arasi)",
     "shareDisabledHint": "Uñt’ayañatakix sayt’at panka wakisiwa — aka video producción ukan utjxi ukhakiw irnaqani.",
     "shareFormat": "Uñt’ayañan forma",
     "shareLinkTab": "Link uñt’ayaña",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
     "closeSearch": "Thaqhaña llawuña",
-    "submitSearch": "Thaqhaña"
+    "submitSearch": "Thaqhaña",
+    "library": "Panka uta"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Juk’amp jikxatäwinaka apthapiñax janiw atikaskiti.",
     "searching": "Thaqhañaskiwa...",
     "connectionHint": "Mä conexión uk uñakipasa ukat mayamp yant’añama.",
+    "rateLimitHint": "Jilpacha mayiwinakawa. Mä minuto qhipat mayamp yantʼañama.",
     "retrySearch": "Thaqhañamp yant’aña",
     "retry": "Mä kutikiw yant’aña",
     "noResults": "Janiw kunasa jikxataskiti \"{query}\" ukatakix",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” uk {language} arun thaqhaña",
     "inLanguage": "{language} arun",
     "browseByRegion": "Región tuqit uñakipaña",
+    "allVideosOnSinglePage": "Taqi video-naka mä laphina",
     "clearLanguages": "Q’umachaña",
     "queryLanguageDetected": "{language} ukax jikxatäxiwa",
     "searchInLanguage": "{language} arun thaqhaña",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
     "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña",
-    "nextEpisode": "Jutiri episodio"
+    "nextEpisode": "Jutiri episodio",
+    "audioTranslationCount": "{count, plural, one {# aru} other {# arunaka}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# aru} other {# arunaka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yatiyawi apthapiñaskiwa",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Yatiyawi formulariox janiw cargaräkaniti.",
     "loadingForm": "Yatiyawi formulario apthapiñaskiwa…",
     "retry": "Mä kutikiw yant’añani",
-    "openFormShort": "Formulario jist’arña",
     "cancel": "Janiwa",
-    "title": "Beta yatiyawi",
-    "description": "Kunsa waliki irnaqaskis ukhamaraki kunsa askichsna uk yatiyama. Aka formulariox Google ukanwa churatäxi.",
-    "openInNewTab": "Formulario machaq tab ukan jist’arña",
     "closeForm": "Yatiyawi formulario llawuña",
-    "loadingGoogleForm": "Google Formulario apthapiñaskiwa…",
-    "iframeTitle": "Beta yatiyawi apayaniña"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} arun aski cristiano video-naka | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Deporte-naka",
     "collections": "Tantachäwinaka",
     "subtitlesOnly": "Subtítulos ukiki",
+    "backToTop": "Alayaru kutt'aña",
     "newlyAdded": "Machaq uñt’atatäxi",
     "newVideosTitle": "{language} arun machaq cristiano video-naka",
     "newestFirst": "Machaqanak nayraqata",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Sapak videos",
     "videosFromCollection": "{collection} ukan video-naka.",
     "standaloneDescription": "Aka arun sapak video-naka.",
-    "openCollection": "Tantachäwi jist’arña"
+    "openCollection": "Tantachäwi jist’arña",
+    "filters": "Chhijllawinaka",
+    "filterLength": "Jayapa",
+    "filterLength_under5": "5 minututa jukʼa",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minututa juk'ampi",
+    "filterType": "Kasta",
+    "clearFilters": "Chhijllawinaka qʼumachaña",
+    "filterResults": "{total} ukat {count} uñachtʼayata",
+    "noFilterResults": "Kuna videos ukanakas jani aka chhijllawinakampi chikachasiti. Mayni apsuñäni.",
+    "filterAdded": "Yapt'ata",
+    "filterAdded_60d": "Qhipa 60 uru",
+    "filterAdded_6m": "Qhipa 6 phaxsi",
+    "filterAdded_12m": "Qhipa 12 phaxsi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Uñch’ukiña",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Nayrïri video preview",
     "nextVideoPreview": "Jutiri video preview",
     "mediaCollection": "Media tantachäwi",
-    "scrollToVideo": "{title} video ukar ch’amañchaña"
+    "scrollToVideo": "{title} video ukar ch’amañchaña",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project uta",
@@ -404,6 +594,29 @@
     "merryChristmas": "¡Kusiskañ Navidadäpan!",
     "daysUntilChristmas": "{count, plural, one {Navidadatak # uruki} other {Navidadatak # urunaka}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Panka uta uñakipaña",
+    "title": "Categoría ukat uñakipaña",
+    "description": "Kawkïr chiqa munkta ukar chiqak saram — Jesusan jakäwipa, iglesia marapan pachanakapa, ukhamaraki familianakataki, yatiqirinakataki, jisk’a tamanakataki lurat video-naka.",
+    "seeAll": "Taqi video-naka uñjaña",
+    "previous": "Nayrïri categorías",
+    "next": "Jutiri categorías",
+    "categories": {
+      "jesus": "JESUS película",
+      "gospels": "Evangelionaka",
+      "shortVideos": "Jisk’a video-naka",
+      "family": "Familia",
+      "relationships": "Mayacht’asiwinaka",
+      "women": "Warminakataki",
+      "students": "Yatiqirinakataki",
+      "sports": "Deporte-naka",
+      "goodNews": "Suma Yatiyäwi",
+      "hope": "Suyt’äwi",
+      "training": "Yatichäwi",
+      "easter": "Pascua",
+      "christmas": "Navidad"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Arunaka",
     "metadataDescription": "JesusFilm video-naka arut uñakipaña.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Panka janiw jikxataskiti:",
     "title": "Aka escena janiw akankkiti.",
     "description": "Pankax yaqha chiqar sarañjamawa, ukampis saräwix saraski.",
+    "languageDescription": "Thaqkta uka panka janiw jikxatkti, ukampis saräwix saraskiwa, taqi uraqpachan arunakat película ukhamaraki video-nakampi.",
     "actionsLabel": "Panka janiw jikxataskiti luräwinaka",
     "backToWatch": "Uñch’ukiñaru kutt’aña",
     "browseVideos": "Video-naka uñakipaña"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Corto metraje uñch’ukiña",
-    "actions": {
-      "joinUs": "Jiwasamp mayacht’asiña",
-      "shareMission": "Misión apost’ar mayacht’asiña"
-    },
-    "welcomeStart": {
-      "label": "Iyawsäwi ukhamaraki Qillqatanaka",
-      "title": "Jichha uru video ajllitanaka",
-      "description": "Bibliasataki video yatiyawinaka, chuymacht’aña, amtasiña ukhamaraki amuyt’aña sartayañataki."
-    },
-    "welcomeMorning": {
-      "label": "Qhantati chuymacht’äwi",
-      "title": "Aski alwatäxiwa. Jichha uru Biblia yäwinakax suyt’asiwa.",
-      "description": "Uru qalltañamatakix Biblia yäwinakamp ch’amañcht’ata, chuymar aynacht’ayañataki wakichata."
-    },
-    "welcomeAfternoon": {
-      "label": "Inti jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Uruympi Biblia yäwinaka.",
-      "description": "Biblia yatiyawinaka chuymacht’añatakiwa, jayp’u samart’añamataki jan ukax juk’amp chuymacht’äwinakataki wali aski."
-    },
-    "welcomeEvening": {
-      "label": "Jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Biblia yäwinakampi samart’aña.",
-      "description": "Samarañ Biblia yäwinaka, urum tukuyki ukhaw amuyt’añataki ukhamaraki chuymachasiñataki yanapt’i."
-    },
-    "joinUs": {
-      "label": "Jiwasamp mayacht’asiña",
-      "title": "Waranqanakax thaqhapxiwa",
-      "description": "Aka yapux utjiwa. Digital media apnaqasa uraqpachar evangelio yatiyañataki jiwasamp mayacht’asiña."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Juk’amp chiqankañäni",
-      "title": "Jesus tuqit saräwi, mayacht’asisana",
-      "description": "Ukhamat kawkhankki uka chiqanxa Jesus ukan munasiwipx arupansa uñt’asa ist’asipxani."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% chikachasiwi",
-    "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti."
+    "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti.",
+    "heading": "Iwxata video-naka",
+    "loadingLabel": "Iwxata video-naka apthapiñaskiwa",
+    "openingTitle": "{title} jist’arañaskiwa",
+    "openingVideo": "Video jist’arañaskiwa",
+    "activityNotRecorded": "Iwxäwi lurawix janiw qillqantañjamakänti. Enlaces ukanakax irnaqaskakiwa.",
+    "showingContextual": "Contextual iwxäwinaka uñacht’ayaskiwa.",
+    "showingSaved": "Imata iwxäwinaka uñacht’ayaskiwa.",
+    "explanationCurated": "Uñakipañataki ajllit video-naka.",
+    "explanationViewingMode": "Aka video ukat kunjams uñjta ukarjam iwxata.",
+    "explanationCowatch": "Aka video ukat munañanakamarjam iwxata.",
+    "explanationHybrid": "Aka video ukat amtañatak ajllit munañanakamarjam iwxata.",
+    "explanationContextual": "Jichhax kuns uñjkta ukarjam iwxata.",
+    "explanationSemanticFallback": "Jichhax kuns uñjkta ukarjam iwxata, sapa maynirjama wakichañax janiw jichhax utjkiti.",
+    "explanationProfileDurable": "Amtañatak ajllit munañanakamarjam wakichata.",
+    "explanationProfileVisit": "Aka mantañatakikiw wakichata.",
+    "personalizationLabel": "Iwxäwinak sapa maynirjama wakichaña",
+    "personalizationPrompt": "¿Kunjams iwxäwinakax sapa maynirjama wakichasi uk mayjt’ayañ munta?",
+    "openCookieSettings": "Cookie wakicht’äwinak jist’araña"
   },
   "BetaTesterModal": {
     "title": "Beta tester t’ijuksiña",
@@ -538,16 +732,39 @@
     "retryFailed": "Mayamp yant’añax janiw atikaskiti"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Aka aru versiónax janiw utjkiti",
+    "eyebrow": "Aka aru versiónax janiw utjkiti",
+    "title": "<contentTitle>{title}</contentTitle> ukax <languageName>{language}</languageName> arun janiw utjkiti",
+    "actionsLabel": "Uñjañatak utjki uka ajllitanaka",
+    "browseInLanguage": "{language} arun videonaka uñakipaña",
+    "backToSearch": "Thaqhañaru kuttʼaña",
+    "audioVersionsTitle": "Yaqha audio versionanaka",
+    "audioVersionsDescription": "Aka video uñchʼukiñatakix mä audio aru ajlliñama.",
+    "languageVersionLabel": "Audio aru",
+    "selectLanguageVersion": "Mä aru versión ajlliña",
+    "watchSelectedVersion": "Ajllita versión uñchʼukiña"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie ajllinaka",
+    "bannerTitle": "Juman privacidad ajllinakamapa",
+    "bannerDescription": "Wakiskir cookies ukanakax Watch ukarux seguro ukhamarak irnaqirakiwa. Permisomampi, mä opcional cookie de primera parte ukax walja kuti mantatanakan munañanakam amtaspa, ukhamat recomendaciones ukanakax sapa maynirjamäñapataki. Recomendaciones contextuales ukanakax ukhamarak utjaskakiwa.",
+    "acceptAll": "Taqpach katuqaña",
+    "essentialOnly": "Wakiskirinakaki",
+    "manageChoices": "Ajllinaka apnaqaña",
+    "savingChoice": "Cookie ajlliwi imaski",
+    "settings": "Cookie wakicht'äwinaka",
+    "settingsDescription": "Ajllim Watch ukax walja kuti mantatanakan recomendación munañanakam amtaspa janicha. Akaxa kuna pachas mayjt'ayasmawa.",
+    "essentialCookies": "Wakiskir cookies",
+    "essentialDescription": "Seguridad, reproducción, privacidad ajllinaka, ukhamarak recomendación mayiwin uñt'ayaña.",
+    "alwaysActive": "Wiñay activo",
+    "personalization": "Sapa maynirjama wakichaña",
+    "personalizationDescription": "Walja kuti mantatanakanx juk'a munañanakam amtaña. Aka jiwt'ayasinxa, recomendaciones contextuales ukanakax utjaskakiwa.",
+    "erasurePending": "Perfil chhaqtayañax lurasiñapatak suyt'aski. Recomendaciones contextuales ukanakax niyaw activöxi.",
+    "cancel": "Janiwa",
+    "saveChoices": "Ajllinaka imaña",
+    "saving": "Imaski…",
+    "loadError": "Ajlliwimax janiw qhantkaspati. Ukampis aynachanx ajlliskakismawa.",
+    "grantError": "Personalización ukax janiw qhantayaskaspati. Wakiskirinakakïskiwa.",
+    "saveError": "Ajlliwimax janiw imatäkaspati. Mira, wasitamp yant'am."
   }
 }

@@ -127,10 +127,12 @@ function toEditableLocaleState(row: {
 
 function toLocaleSummary(
   locale: string,
+  isHomepage: boolean,
   state: EditableLocaleState,
 ): EditableLocaleSummary {
   return {
     locale,
+    isHomepage,
     title: state.title,
     metaDescription: state.metaDescription,
     ogImageUrl: state.ogImageUrl,
@@ -705,7 +707,7 @@ export async function* streamChatTurn(
   }))
 
   const promptText = buildChatPrompt({
-    state: toLocaleSummary(localeRow.locale, beforeState),
+    state: toLocaleSummary(localeRow.locale, localeRow.isHomepage, beforeState),
     history: historyTurns,
     candidates,
     userPrompt: input.prompt,

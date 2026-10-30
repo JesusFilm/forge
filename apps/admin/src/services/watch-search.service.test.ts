@@ -30,11 +30,14 @@ vi.mock("./embeddings.service", () => ({
   },
   EXPERIENCE_EMBEDDING_DIMENSIONS: 3,
   OPENROUTER_EMBEDDING_MODEL: "qwen/qwen3-embedding-8b",
-  currentEmbeddingProviderIdentity: () => ({
+  currentContentQueryEmbeddingIdentity: vi.fn(async () => ({
+    contractId: "semantic-transcript-pgvector-v1",
     provider: "openrouter",
     model: "qwen/qwen3-embedding-8b",
+    nativeDimensions: 3,
     dimensions: 3,
-  }),
+    transformVersion: null,
+  })),
   generateExperienceEmbedding: generateExperienceEmbeddingMock,
 }))
 
@@ -57,8 +60,11 @@ vi.mock("./search-watchability", () => ({
 import { EmbeddingsBatchError } from "./embeddings.service"
 
 import {
+  availabilityScore,
   defaultWatchSearchEmbedder,
+  fallbackKindForWatchability,
   prewarmWatchSearchQueryEmbeddings,
+  watchabilityRank,
   WATCH_SEARCH_STARTER_QUERIES,
   WatchSearchService,
   WatchSearchValidationError,
@@ -1068,6 +1074,63 @@ describe("WatchSearchService", () => {
     expect(firstPage.hasMore).toBe(true)
   })
 
+  it("guarantees an exact-query editorial target on the default first page without duplicating page two", async () => {
+    const organicRows = Array.from({ length: 25 }, (_, index) =>
+      exactTitleResult(
+        `organic-${String(index).padStart(2, "0")}`,
+        `Organic result ${index}`,
+      ),
+    )
+    const curatedRow = {
+      ...exactTitleResult(
+        "zz-rescue-intro",
+        "Rescue Project Introduction in Visual Vernacular",
+      ),
+      titleMatched: false,
+      curated: true,
+      curationPosition: 1,
+    }
+    mockLexicalResults(
+      lexicalResults({ exactTitle: [...organicRows, curatedRow] }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const firstPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 0,
+    })
+    const secondPage = await service.search({
+      query: "Rescue Project",
+      targetLanguageSlug: "english",
+      displayLanguageSlug: "english",
+      limit: 20,
+      offset: 20,
+    })
+
+    const firstPageIds = firstPage.results.map((row) => row.id)
+    const secondPageIds = secondPage.results.map((row) => row.id)
+    expect(firstPageIds).toHaveLength(20)
+    expect(firstPageIds[19]).toBe("zz-rescue-intro")
+    expect(secondPageIds).not.toContain("zz-rescue-intro")
+    expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(
+      firstPageIds.length + secondPageIds.length,
+    )
+    expect(firstPage.results[19]).toMatchObject({
+      evidence: { kind: "metadata", label: "Editorial match" },
+    })
+  })
+
   it("fills exact-title results with bounded transcript-semantic results without duplicating videos", async () => {
     prisma.language.findMany.mockResolvedValue([
       { slug: "russian", bcp47: "ru" },
@@ -1587,6 +1650,313 @@ describe("WatchSearchService", () => {
     )
   })
 
+  it("degrades a stalled semantic retrieval before the hard deadline and keeps lexical results", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [exactTitleResult("video-exact", "JESUS")],
+      }),
+    )
+    searchVideoSemanticMock.mockImplementationOnce(() => new Promise(() => {}))
+    hydrateMock.mockResolvedValue(
+      new Map([["video-exact", targetAudioWatchability("video-exact")]]),
+    )
+    prisma.video.findMany.mockImplementationOnce(async () => {
+      await delay(40)
+      return []
+    })
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "JESUS" },
+      { hardTimeoutMs: 500 },
+    )
+
+    expect(result.degraded).toBe(true)
+    expect(result.results.map((row) => row.slug)).toContain("video-exact")
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "semantic_retrieval",
+        status: "degraded",
+        reason: "request_budget_exceeded",
+      }),
+    )
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "semantic_embedding",
+        status: "fulfilled",
+        resultCount: 1,
+      }),
+    )
+  })
+
+  it("degrades stalled semantic watchability while preserving actionable exact results", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [exactTitleResult("video-exact", "JESUS")],
+      }),
+    )
+    searchVideoSemanticMock.mockResolvedValueOnce([
+      semanticResult("video-semantic", "Jesus Story", 0.9),
+    ])
+    hydrateMock.mockImplementation(
+      async ({
+        candidates,
+      }: {
+        candidates: readonly { videoId: string }[]
+      }) => {
+        if (candidates.some(({ videoId }) => videoId === "video-semantic")) {
+          return new Promise(() => {})
+        }
+        return new Map([
+          ["video-exact", targetAudioWatchability("video-exact")],
+        ])
+      },
+    )
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "JESUS" },
+      { hardTimeoutMs: 150 },
+    )
+
+    expect(result.degraded).toBe(true)
+    expect(result.results.map((row) => row.slug)).toContain("video-exact")
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "semantic_watchability",
+        status: "degraded",
+        reason: "request_budget_exceeded",
+      }),
+    )
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "semantic_retrieval",
+        status: "fulfilled",
+        resultCount: 1,
+      }),
+    )
+    expect(result.results.map((row) => row.slug)).not.toContain(
+      "video-semantic",
+    )
+  })
+
+  it("returns metadata candidates independently when exact retrieval exceeds the shared lane budget", async () => {
+    const lateExactTitle = deferred<ReturnType<typeof exactTitleResult>[]>()
+    searchByExactTitleMock.mockReturnValueOnce(lateExactTitle.promise)
+    searchByKeywordWeightedMock.mockResolvedValueOnce([
+      metadataResult("video-metadata", "Jesus Story"),
+    ])
+    searchByTrigramMock.mockResolvedValueOnce([])
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "Jesus", targetLanguageSlug: "english" },
+      { hardTimeoutMs: 500 },
+    )
+
+    expect(result.degraded).toBe(true)
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "metadata_retrieval",
+        status: "fulfilled",
+        resultCount: 1,
+      }),
+    )
+    expect(result.results.map((row) => row.slug)).toContain("video-metadata")
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "metadata_watchability",
+        status: "fulfilled",
+      }),
+    )
+  })
+
+  it("reports completed empty metadata retrieval as fulfilled when exact title exceeds the lane budget", async () => {
+    const lateExactTitle = deferred<ReturnType<typeof exactTitleResult>[]>()
+    searchByExactTitleMock.mockReturnValueOnce(lateExactTitle.promise)
+    searchByKeywordWeightedMock.mockResolvedValueOnce([])
+    searchByTrigramMock.mockResolvedValueOnce([])
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "Jesus", targetLanguageSlug: "english" },
+      { hardTimeoutMs: 500 },
+    )
+
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "metadata_retrieval",
+        status: "fulfilled",
+        resultCount: 0,
+      }),
+    )
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "metadata_watchability",
+        status: "skipped",
+        reason: "no_metadata_candidates",
+      }),
+    )
+  })
+
+  it("keeps an exact hit actionable through metadata when exact watchability exceeds budget", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [exactTitleResult("video-exact", "JESUS")],
+        keywordWeighted: [metadataResult("video-exact", "JESUS")],
+      }),
+    )
+    hydrateMock
+      .mockImplementationOnce(() => new Promise(() => {}))
+      .mockResolvedValueOnce(
+        new Map([["video-exact", targetAudioWatchability("video-exact")]]),
+      )
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "JESUS" },
+      { hardTimeoutMs: 150 },
+    )
+
+    expect(result.degraded).toBe(true)
+    expect(result.results.map((row) => row.slug)).toContain("video-exact")
+    expect(
+      result.results.filter((row) => row.slug === "video-exact"),
+    ).toHaveLength(1)
+    expect(result.results[0]).toMatchObject({
+      action: { kind: "watch" },
+      availability: { kind: "target_audio", audio: true },
+    })
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "exact_watchability",
+        status: "degraded",
+        reason: "request_budget_exceeded",
+      }),
+    )
+
+    searchByExactTitleMock.mockResolvedValue([
+      exactTitleResult("video-exact", "JESUS"),
+    ])
+    searchByKeywordWeightedMock.mockResolvedValue([
+      metadataResult("video-exact", "JESUS"),
+    ])
+    searchByTrigramMock.mockResolvedValue([])
+    hydrateMock.mockResolvedValue(
+      new Map([["video-exact", targetAudioWatchability("video-exact")]]),
+    )
+    const fullyCompletedResult = await service.search({ query: "JESUS" })
+    expect(
+      fullyCompletedResult.results.filter((row) => row.slug === "video-exact"),
+    ).toHaveLength(1)
+  })
+
+  it("returns an explicit deadline error when language resolution stalls", async () => {
+    prisma.language.findMany.mockImplementationOnce(() => new Promise(() => {}))
+    const warn = vi.fn()
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn },
+    })
+
+    const startedAt = performance.now()
+    await expect(
+      service.search(
+        {
+          query: "private regression query",
+          targetLanguageSlug: "russian",
+        },
+        { hardTimeoutMs: 50 },
+      ),
+    ).rejects.toMatchObject({
+      name: "WatchSearchTimeoutError",
+      message: "Watch search timed out",
+    })
+    expect(performance.now() - startedAt).toBeLessThan(200)
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("event=watch_search_deadline_exceeded"),
+    )
+    expect(warn.mock.calls[0]?.[0]).not.toContain("private regression query")
+    expect(searchByExactTitleMock).not.toHaveBeenCalled()
+  })
+
+  it("does not start follow-up hydration when exact retrieval resolves after its budget", async () => {
+    const lateExactTitle = deferred<ReturnType<typeof exactTitleResult>[]>()
+    searchByExactTitleMock.mockReturnValueOnce(lateExactTitle.promise)
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const searchPromise = service.search(
+      { query: "Jesus" },
+      { hardTimeoutMs: 500 },
+    )
+    setTimeout(
+      () => lateExactTitle.resolve([exactTitleResult("video-exact", "JESUS")]),
+      400,
+    )
+    const result = await searchPromise
+    expect(result.degraded).toBe(true)
+    expect(result.results).toEqual([])
+    expect(hydrateMock).not.toHaveBeenCalled()
+    await delay(100)
+
+    expect(hydrateMock).not.toHaveBeenCalled()
+  })
+
+  it("returns retained results without catalog or image fields when final hydration exceeds its reserve", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [exactTitleResult("video-exact", "JESUS")],
+      }),
+    )
+    hydrateMock.mockResolvedValue(
+      new Map(["video-exact"].map((id) => [id, targetAudioWatchability(id)])),
+    )
+    prisma.video.findMany.mockImplementationOnce(() => new Promise(() => {}))
+    service = new WatchSearchService(prisma, {
+      embedder: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      logger: { warn: vi.fn() },
+    })
+
+    const result = await service.search(
+      { query: "JESUS" },
+      { hardTimeoutMs: 500 },
+    )
+
+    expect(result.degraded).toBe(true)
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]).toMatchObject({
+      slug: "video-exact",
+      action: { kind: "watch" },
+      availability: { kind: "target_audio", audio: true },
+    })
+    expect(result.results[0]?.playbackId).toEqual(expect.any(String))
+    expect(result.laneStatuses).toContainEqual(
+      expect.objectContaining({
+        lane: "final_hydration",
+        status: "degraded",
+        reason: "request_budget_exceeded",
+      }),
+    )
+  })
+
   it("does not include semantic wait time in exact-title availability timing", async () => {
     mockLexicalResultsOnce(
       lexicalResults({
@@ -1838,5 +2208,52 @@ describe("WatchSearchService", () => {
         message: "Target-language subtitles are available.",
       },
     })
+  })
+})
+
+describe("container availability kind", () => {
+  const watchability = (kind: string) =>
+    ({ kind }) as unknown as Parameters<typeof watchabilityRank>[0]
+
+  it("ranks container between target subtitle and related language", () => {
+    expect(watchabilityRank(watchability("target_audio"))).toBe(0)
+    expect(watchabilityRank(watchability("target_subtitle"))).toBe(1)
+    expect(watchabilityRank(watchability("container"))).toBe(2)
+    expect(watchabilityRank(watchability("related_language"))).toBe(3)
+    expect(watchabilityRank(watchability("unavailable"))).toBe(4)
+    expect(watchabilityRank(undefined)).toBe(4)
+  })
+
+  it("preserves the relative order of every pre-existing kind", () => {
+    const order = [
+      "target_audio",
+      "target_subtitle",
+      "related_language",
+      "unavailable",
+    ] as const
+    const ranks = order.map((kind) => watchabilityRank(watchability(kind)))
+    expect(ranks).toEqual([...ranks].sort((left, right) => left - right))
+    expect(new Set(ranks).size).toBe(order.length)
+  })
+
+  it("scores a container so it clears the recall floor its zero score failed", () => {
+    expect(availabilityScore(watchability("container"))).toBe(0.18)
+    expect(availabilityScore(watchability("container"))).toBeGreaterThan(
+      availabilityScore(watchability("related_language")),
+    )
+    expect(availabilityScore(watchability("container"))).toBeLessThanOrEqual(
+      availabilityScore(watchability("target_audio")),
+    )
+    expect(availabilityScore(watchability("unavailable"))).toBe(0)
+  })
+
+  it("reports no playback fallback for a container", () => {
+    expect(fallbackKindForWatchability(watchability("container"))).toBe("none")
+    expect(fallbackKindForWatchability(watchability("unavailable"))).toBe(
+      "unavailable",
+    )
+    expect(fallbackKindForWatchability(watchability("related_language"))).toBe(
+      "related_language",
+    )
   })
 })

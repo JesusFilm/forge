@@ -37,6 +37,7 @@ type ProvisionalManifest = {
     translation: {
       method: string
       model: string
+      fallbackModels?: Record<string, string[]>
       localeProvenance: Record<
         string,
         {
@@ -185,6 +186,22 @@ describe("watch UI provisional official-language catalogs", () => {
         (left, right) => left.localeCompare(right),
       ),
     ).toEqual(manifest.machineTranslatedLocales)
+
+    const expectedFallbackModels: Record<string, string[]> = {}
+    for (const [locale, provenance] of Object.entries(
+      manifest.metadata.translation.localeProvenance,
+    )) {
+      if (provenance.model === manifest.metadata.translation.model) continue
+      expectedFallbackModels[provenance.model] ??= []
+      expectedFallbackModels[provenance.model].push(locale)
+    }
+    for (const locales of Object.values(expectedFallbackModels)) {
+      locales.sort((left, right) => left.localeCompare(right))
+    }
+    expect(manifest.metadata.translation.fallbackModels ?? {}).toEqual(
+      expectedFallbackModels,
+    )
+
     for (const locale of manifest.machineTranslatedLocales) {
       const provenance = manifest.metadata.translation.localeProvenance[locale]
       expect(provenance.sourceDigest, locale).toBe(sourceDigest)

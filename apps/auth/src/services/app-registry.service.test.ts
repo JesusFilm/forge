@@ -115,11 +115,13 @@ describe("app registry policy", () => {
     const seeds = getFirstPartyAppSeeds()
 
     expect(seeds.map((seed) => seed.key)).toEqual([
+      "shorts-mcp",
       "admin",
       "manager",
       "web",
       "mastra-studio",
       "chat",
+      "changelog",
       "admin-mcp",
       "mobile",
       "tv",

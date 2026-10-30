@@ -39,9 +39,8 @@
     "posterAlt": "ვიდეოს პოსტერი",
     "noDownloads": "ამ ვიდეოსთვის ჩამოტვირთვები არ არის ხელმისაწვდომი.",
     "fileSizeLabel": "აირჩიეთ ფაილის ზომა",
-    "termsAgreementPrefix": "ვეთანხმები ",
-    "termsOfUse": "გამოყენების პირობებს",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "ვეთანხმები <link>გამოყენების პირობებს</link>",
+    "termsOfUse": "გამოყენების პირობები",
     "close": "დახურვა",
     "download": "ჩამოტვირთვა",
     "authRequiredTitle": "გსურთ ამ ვიდეოს ჩამოტვირთვა?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-ზე გაზიარება (ამ ვერსიაში მიუწვდომელია)",
     "shareOnX": "X-ზე გაზიარება",
     "shareOnXUnavailable": "X-ზე გაზიარება (ამ ვერსიაში მიუწვდომელია)",
+    "opensInNewTab": "{label} (იხსნება ახალ ჩანართში)",
     "shareDisabledHint": "გაზიარებისთვის საჭიროა გამოქვეყნებული გვერდი — იმუშავებს, როცა ეს ვიდეო production-ში იქნება.",
     "shareFormat": "გაზიარების ფორმატი",
     "shareLinkTab": "ბმულის გაზიარება",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "აუდიოენის შეცვლა",
     "home": "JesusFilm-ის მთავარი გვერდი",
     "closeSearch": "ძიების დახურვა",
-    "submitSearch": "ძიება"
+    "submitSearch": "ძიება",
+    "library": "ბიბლიოთეკა"
   },
   "SearchOverlay": {
     "dialogLabel": "ვიდეოების ძიება და დათვალიერება",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "მეტი შედეგის ჩატვირთვა ვერ მოხერხდა.",
     "searching": "ძებნა მიმდინარეობს...",
     "connectionHint": "გთხოვთ, შეამოწმოთ კავშირი და სცადოთ ისევ.",
+    "rateLimitHint": "მოთხოვნა მეტისმეტად ბევრია. გთხოვთ, ერთ წუთში სცადოთ ხელახლა.",
     "retrySearch": "ძიების ხელახლა ცდა",
     "retry": "ხელახლა სცადეთ",
     "noResults": "შედეგი ვერ მოიძებნა „{query}“-სთვის",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "მოძებნეთ „{suggestion}“ ამ ენაზე: {language}",
     "inLanguage": "ენაზე: {language}",
     "browseByRegion": "რეგიონის მიხედვით დათვალიერება",
+    "allVideosOnSinglePage": "ყველა ვიდეო ერთ გვერდზე",
     "clearLanguages": "გასუფთავება",
     "queryLanguageDetected": "ნაპოვნია ენა: {language}",
     "searchInLanguage": "ძიება ენაზე: {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",
     "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ",
-    "nextEpisode": "შემდეგი ეპიზოდი"
+    "nextEpisode": "შემდეგი ეპიზოდი",
+    "audioTranslationCount": "{count, plural, one {# ენა} other {# ენა}}",
+    "subtitleCount": "სუბტიტრები: {count, plural, one {# ენა} other {# ენა}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "შიგთავსი იტვირთება",
@@ -268,14 +273,183 @@
     "couldNotLoad": "უკუკავშირის ფორმის ჩატვირთვა ვერ მოხერხდა.",
     "loadingForm": "უკუკავშირის ფორმა იტვირთება…",
     "retry": "ხელახლა სცადეთ",
-    "openFormShort": "ფორმის გახსნა",
     "cancel": "გაუქმება",
-    "title": "ბეტა უკუკავშირი",
-    "description": "გააზიარეთ, რა მუშაობს და რა შეგვიძლია გავაუმჯობესოთ. ეს ფორმა მოწოდებულია Google-ის მიერ.",
-    "openInNewTab": "ფორმის გახსნა ახალ ჩანართში",
     "closeForm": "უკუკავშირის ფორმის დახურვა",
-    "loadingGoogleForm": "Google ფორმის ჩატვირთვა…",
-    "iframeTitle": "ბეტა უკუკავშირის გაგზავნა"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "უფასო ქრისტიანული ვიდეოები {language}-ზე | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "სპორტი",
     "collections": "კოლექციები",
     "subtitlesOnly": "მხოლოდ სუბტიტრები",
+    "backToTop": "ზემოთ დაბრუნება",
     "newlyAdded": "ახლახან დამატებული",
     "newVideosTitle": "ახალი ქრისტიანული ვიდეოები {language}-ზე",
     "newestFirst": "ჯერ უახლესი",
@@ -324,7 +499,21 @@
     "standaloneVideos": "დამოუკიდებელი ვიდეოები",
     "videosFromCollection": "ვიდეოები {collection}-დან.",
     "standaloneDescription": "ამ ენაზე დამოუკიდებელი ვიდეოები.",
-    "openCollection": "კოლექციის გახსნა"
+    "openCollection": "კოლექციის გახსნა",
+    "filters": "ფილტრები",
+    "filterLength": "ხანგრძლივობა",
+    "filterLength_under5": "5 წუთზე ნაკლები",
+    "filterLength_5to10": "5-10 წუთი",
+    "filterLength_10to30": "10-30 წუთი",
+    "filterLength_over30": "30 წუთზე მეტი",
+    "filterType": "ტიპი",
+    "clearFilters": "ფილტრების გასუფთავება",
+    "filterResults": "ნაჩვენებია {count} / {total}",
+    "noFilterResults": "ამ ფილტრებს არცერთი ვიდეო არ ემთხვევა. სცადეთ ერთის მოშორება.",
+    "filterAdded": "დამატებულია",
+    "filterAdded_60d": "ბოლო 60 დღე",
+    "filterAdded_6m": "ბოლო 6 თვე",
+    "filterAdded_12m": "ბოლო 12 თვე"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-ის ყურება",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "წინა ვიდეოს წინასწარი ჩვენება",
     "nextVideoPreview": "შემდეგი ვიდეოს წინასწარი ჩვენება",
     "mediaCollection": "მედია კოლექცია",
-    "scrollToVideo": "გადადი {title} ვიდეოზე"
+    "scrollToVideo": "გადადი {title} ვიდეოზე",
+    "forYou": "თქვენთვის"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-ის მთავარი გვერდი",
@@ -404,6 +594,29 @@
     "merryChristmas": "გილოცავთ შობას!",
     "daysUntilChristmas": "{count, plural, one {შობამდე # დღეა} other {შობამდე # დღეა}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "ბიბლიოთეკის დათვალიერება",
+    "title": "დათვალიერება კატეგორიების მიხედვით",
+    "description": "პირდაპირ გადადით ბიბლიოთეკის თქვენთვის საჭირო ნაწილზე — იესოს ცხოვრება, საეკლესიო წლის პერიოდები და ოჯახებისთვის, სტუდენტებისთვის და მცირე ჯგუფებისთვის შექმნილი ვიდეოები.",
+    "seeAll": "ყველა ვიდეოს ნახვა",
+    "previous": "წინა კატეგორიები",
+    "next": "შემდეგი კატეგორიები",
+    "categories": {
+      "jesus": "ფილმი „JESUS“",
+      "gospels": "სახარებები",
+      "shortVideos": "მოკლე ვიდეოები",
+      "family": "ოჯახი",
+      "relationships": "ურთიერთობები",
+      "women": "ქალებისთვის",
+      "students": "სტუდენტებისთვის",
+      "sports": "სპორტი",
+      "goodNews": "სასიხარულო ამბავი",
+      "hope": "იმედი",
+      "training": "სწავლება",
+      "easter": "აღდგომა",
+      "christmas": "შობა"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ენები",
     "metadataDescription": "დათვალიერეთ JesusFilm-ის ვიდეოები ენის მიხედვით.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "გვერდი ვერ მოიძებნა:",
     "title": "ეს სცენა აქ არ არის.",
     "description": "შეიძლება გვერდი შეიცვალა, მაგრამ ამბავი გრძელდება.",
+    "languageDescription": "თქვენ მიერ მოძებნილი გვერდი ვერ ვიპოვეთ, მაგრამ ამბავი გრძელდება მსოფლიოს სხვადასხვა ენაზე არსებულ ფილმებსა და ვიდეოებში.",
     "actionsLabel": "გვერდი ვერ მოიძებნა — ქმედებები",
     "backToWatch": "უკან Watch-ზე",
     "browseVideos": "ვიდეოების დათვალიერება"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "მოკლემეტრაჟიანი ფილმის ყურება",
-    "actions": {
-      "joinUs": "შემოგვიერთდით",
-      "shareMission": "მონაწილეობა ჩვენს მისიაში"
-    },
-    "welcomeStart": {
-      "label": "რწმენა და წმინდა წერილი",
-      "title": "დღის ვიდეოები",
-      "description": "ჩვენი ბიბლიოთეკის რწმენაზე დაფუძნებული ვიდეოები, რომლებიც შთაგაგონებთ, გამოგიწვევთ და დაფიქრებისკენ გიბიძგებთ."
-    },
-    "welcomeMorning": {
-      "label": "დილით შთაგონება",
-      "title": "დილა მშვიდობისა! დღევანდელი ბიბლიური მომენტები გელით.",
-      "description": "დაიწყეთ დღე ბიბლიის გამამხნევებელი მომენტებით, რომლებიც თქვენი სულის შთაგონებასა და გამხნევებას ემსახურება."
-    },
-    "welcomeAfternoon": {
-      "label": "ნაშუადღევის შთაგონება",
-      "title": "საღამო მშვიდობისა! ბიბლიური მომენტები თქვენი დღისთვის.",
-      "description": "გამამხნევებელი ბიბლიური შიგთავსი, რომელიც იდეალურია ნაშუადღევის შესვენებისთვის ან შთაგონების გასაგრძელებლად."
-    },
-    "welcomeEvening": {
-      "label": "საღამოს შთაგონება",
-      "title": "საღამო მშვიდობისა! დამშვიდდით ბიბლიური მომენტებით.",
-      "description": "მშვიდი ბიბლიური მომენტები, რომლებიც დაგეხმარებათ დაფიქრდეთ და ნუგეში იპოვოთ, როცა დღე სრულდება."
-    },
-    "joinUs": {
-      "label": "შემოგვიერთდით",
-      "title": "მილიარდები ეძებენ პასუხებს",
-      "description": "მოსავლის დრო დადგა. შემოგვიერთდით, როცა ციფრული მედიის დახმარებით სახარებას ვუზიარებთ მსოფლიოს."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "წავიდეთ ერთად",
-      "title": "იესოს ამბის მოყოლა ერთად",
-      "description": "რათა მათ შეძლონ იესოს სიყვარული მოისმინონ და დაინახონ საკუთარ ენაზე, იქ, სადაც არიან."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% დამთხვევა",
-    "none": "ამ ენაზე ამ ვიდეოსთვის რეკომენდაციები ვერ მოიძებნა."
+    "none": "ამ ენაზე ამ ვიდეოსთვის რეკომენდაციები ვერ მოიძებნა.",
+    "heading": "რეკომენდებული ვიდეოები",
+    "loadingLabel": "რეკომენდებული ვიდეოები იტვირთება",
+    "openingTitle": "იხსნება {title}",
+    "openingVideo": "ვიდეო იხსნება",
+    "activityNotRecorded": "რეკომენდაციების აქტივობის ჩაწერა ვერ მოხერხდა. ბმულები კვლავ მუშაობს.",
+    "showingContextual": "ნაჩვენებია კონტექსტური რეკომენდაციები.",
+    "showingSaved": "ნაჩვენებია შენახული რეკომენდაციები.",
+    "explanationCurated": "შერჩეული ვიდეოები აღმოსაჩენად.",
+    "explanationViewingMode": "რეკომენდებულია ამ ვიდეოსა და თქვენი ყურების ჩვევების მიხედვით.",
+    "explanationCowatch": "რეკომენდებულია ამ ვიდეოსა და თქვენი ინტერესების მიხედვით.",
+    "explanationHybrid": "რეკომენდებულია ამ ვიდეოსა და იმ ინტერესების მიხედვით, რომელთა დამახსოვრებაც აირჩიეთ.",
+    "explanationContextual": "რეკომენდებულია იმის მიხედვით, რასაც ახლა უყურებთ.",
+    "explanationSemanticFallback": "რეკომენდებულია იმის მიხედვით, რასაც ახლა უყურებთ, რადგან პერსონალიზაცია ამჟამად მიუწვდომელია.",
+    "explanationProfileDurable": "პერსონალიზებულია იმ ინტერესების მიხედვით, რომელთა დამახსოვრებაც აირჩიეთ.",
+    "explanationProfileVisit": "პერსონალიზებულია ამ ვიზიტისთვის.",
+    "personalizationLabel": "რეკომენდაციების პერსონალიზაცია",
+    "personalizationPrompt": "გსურთ შეცვალოთ, როგორ პერსონალიზდება რეკომენდაციები?",
+    "openCookieSettings": "ქუქი-ფაილების პარამეტრების გახსნა"
   },
   "BetaTesterModal": {
     "title": "გახდით ბეტა ტესტერი",
@@ -538,16 +732,39 @@
     "retryFailed": "წარუმატებელი ჩამოტვირთვების ხელახლა ცდა"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ამ ენაზე ვერსია მიუწვდომელია",
+    "eyebrow": "ამ ენაზე ვერსია მიუწვდომელია",
+    "title": "<contentTitle>{title}</contentTitle> არ არის ხელმისაწვდომი <languageName>{language}</languageName> ენაზე",
+    "actionsLabel": "ხელმისაწვდომი ნახვის ვარიანტები",
+    "browseInLanguage": "ვიდეოების ნახვა {language} ენაზე",
+    "backToSearch": "ძიებაზე დაბრუნება",
+    "audioVersionsTitle": "სხვა აუდიოვერსიები",
+    "audioVersionsDescription": "ვიდეოს ყურების გასაგრძელებლად აირჩიეთ აუდიოს ენა.",
+    "languageVersionLabel": "აუდიოს ენა",
+    "selectLanguageVersion": "აირჩიეთ ენობრივი ვერსია",
+    "watchSelectedVersion": "არჩეული ვერსიის ნახვა"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ქუქი-ფაილების არჩევანი",
+    "bannerTitle": "თქვენი კონფიდენციალურობის არჩევანი",
+    "bannerDescription": "აუცილებელი ქუქი-ფაილები Watch-ს უსაფრთხოდ და გამართულად მუშაობაში ეხმარება. თქვენი ნებართვით, დამატებით პირველი მხარის ქუქი-ფაილს შეუძლია ვიზიტებს შორის თქვენი ინტერესები დაიმახსოვროს, რათა რეკომენდაციები მოარგოს თქვენზე. კონტექსტური რეკომენდაციები ნებისმიერ შემთხვევაში ხელმისაწვდომი დარჩება.",
+    "acceptAll": "ყველას მიღება",
+    "essentialOnly": "მხოლოდ აუცილებელი",
+    "manageChoices": "არჩევანის მართვა",
+    "savingChoice": "ქუქი-ფაილების არჩევანი ინახება",
+    "settings": "ქუქი-ფაილების პარამეტრები",
+    "settingsDescription": "აირჩიეთ, შეიძლება თუ არა Watch-მა ვიზიტებს შორის რეკომენდაციებთან დაკავშირებული ინტერესები დაიმახსოვროს. ამის შეცვლა ნებისმიერ დროს შეგიძლიათ.",
+    "essentialCookies": "აუცილებელი ქუქი-ფაილები",
+    "essentialDescription": "უსაფრთხოება, დაკვრა, კონფიდენციალურობის არჩევანი და რეკომენდაციის მოთხოვნის ატრიბუცია.",
+    "alwaysActive": "ყოველთვის აქტიურია",
+    "personalization": "პერსონალიზაცია",
+    "personalizationDescription": "ვიზიტებს შორის შეზღუდული ინტერესების დამახსოვრება. თუ ამას გამორთავთ, კონტექსტური რეკომენდაციები მაინც ხელმისაწვდომი დარჩება.",
+    "erasurePending": "პროფილის წაშლა დამუშავების პროცესშია. კონტექსტური რეკომენდაციები უკვე აქტიურია.",
+    "cancel": "გაუქმება",
+    "saveChoices": "არჩევანის შენახვა",
+    "saving": "ინახება…",
+    "loadError": "თქვენი არჩევანის ჩატვირთვა ვერ მოხერხდა. არჩევანის გაკეთება ქვემოთ მაინც შეგიძლიათ.",
+    "grantError": "პერსონალიზაციის ჩართვა ვერ მოხერხდა. მხოლოდ აუცილებელი პარამეტრი დარჩება ხელმისაწვდომი.",
+    "saveError": "თქვენი არჩევანის შენახვა ვერ მოხერხდა. გთხოვთ, სცადოთ თავიდან."
   }
 }

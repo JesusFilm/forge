@@ -39,9 +39,8 @@
     "posterAlt": "Video poster i",
     "noDownloads": "Video nin download te.",
     "fileSizeLabel": "File size dɔɔ",
-    "termsAgreementPrefix": "Ne bɛ ka yɔrɔ ",
-    "termsOfUse": "Yɔrɔ kɛ terms",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "N konkorda ku <link>Termus di Usu</link>",
+    "termsOfUse": "Termus di Usu",
     "close": "Mɛ",
     "download": "Download kɛ",
     "authRequiredTitle": "A bɛ nɛŋ video nin download?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook te share (build nin te)",
     "shareOnX": "X te share",
     "shareOnXUnavailable": "X te share (build nin te)",
+    "opensInNewTab": "{label} (ta abri na un aba nobu)",
     "shareDisabledHint": "Share te deployed page a bɛ kɛ — video nin production te sɔrɔ a bɛ.",
     "shareFormat": "Share format dɔɔ",
     "shareLinkTab": "Link share kɛ",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language kɛ",
     "home": "JesusFilm sa",
     "closeSearch": "Search mɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Kaz liv"
   },
   "SearchOverlay": {
     "dialogLabel": "Video search o browse kɛ",
@@ -193,6 +194,7 @@
     "connectionHint": "Connection i check kɛ fa kaŋa bɛ.",
     "retrySearch": "Search fa kaŋa bɛ",
     "retry": "Fa kaŋa bɛ",
+    "rateLimitHint": "Request kɛŋ ka ca. Fa kaŋa bɛ minute kelen kɔnɔ.",
     "noResults": "\"{query}\" te result",
     "tryDifferentKeywords": "Keyword dɔɔ kɛ o category dɔɔ browse kɛ",
     "loading": "A ka load...",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} te «{suggestion}» search kɛ",
     "inLanguage": "{language} te",
     "browseByRegion": "Region te browse kɛ",
+    "allVideosOnSinglePage": "Videos kɛŋ",
     "clearLanguages": "Mɛ",
     "queryLanguageDetected": "{language} a sɔrɔ",
     "searchInLanguage": "{language} te search kɛ",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Wa yɔrɔ watch",
     "tapToUnmute": "Tap kɛ unmute te",
-    "nextEpisode": "Episode kɛrɛ"
+    "nextEpisode": "Episode kɛrɛ",
+    "audioTranslationCount": "{count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}",
+    "subtitleCount": "Subtitles kɛŋ: {count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content loading",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Feedback form taŋ ka load.",
     "loadingForm": "A taŋ ka load feedback form…",
     "retry": "Fa kaŋa bɛ",
-    "openFormShort": "Fɛmbu form",
     "cancel": "Bɔ",
-    "title": "Beta naŋkaŋ fɔ",
-    "description": "Kɛŋ naŋ a kɛ, naŋ aŋ ka bɛ tɛkɔ. Form nin Google ye a kɛ.",
-    "openInNewTab": "Fɛmbu form a new tab te",
     "closeForm": "Mɛ feedback form",
-    "loadingGoogleForm": "A taŋ ka load Google Form…",
-    "iframeTitle": "Sɔrɔ Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos free in {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sports kɛŋ",
     "collections": "Collections kɛŋ",
     "subtitlesOnly": "Subtitles taŋ",
+    "backToTop": "Tounen anlè",
     "newlyAdded": "A add new",
     "newVideosTitle": "Christian videos dɔɔ in {language}",
     "newestFirst": "New first",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Standalone videos kɛŋ",
     "videosFromCollection": "Videos {collection} te.",
     "standaloneDescription": "Language nin te standalone videos.",
-    "openCollection": "Collection fɛmbu"
+    "openCollection": "Collection fɛmbu",
+    "filters": "Filt",
+    "filterLength": "Longè",
+    "filterLength_under5": "Mwens ki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plis ki 30 min",
+    "filterType": "Kalité",
+    "clearFilters": "Efasé filt",
+    "filterResults": "{count} asou {total} montré",
+    "noFilterResults": "Pa ni videyo ki kòresponn ba filt sala. Éséyé rétiré yonn.",
+    "filterAdded": "Ajouté",
+    "filterAdded_60d": "60 dènyé jou",
+    "filterAdded_6m": "6 dènyé mwa",
+    "filterAdded_12m": "12 dènyé mwa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch sa",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video preview nyɛŋ",
     "nextVideoPreview": "Video preview kɛrɛ",
     "mediaCollection": "ಮೀಡಿಯಾ ಸಂಗ್ರಹ",
-    "scrollToVideo": "{title} ವಿಡಿಯೋಗೆ ಸ್ಕ್ರೋಲ್ ಮಾಡಿ"
+    "scrollToVideo": "{title} ವಿಡಿಯೋಗೆ ಸ್ಕ್ರೋಲ್ ಮಾಡಿ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project sa",
@@ -404,6 +594,29 @@
     "merryChristmas": "Christmas di!",
     "daysUntilChristmas": "{count, plural, one {# day Christmas te} other {# days Christmas te}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Library dɔɔ browse kɛ",
+    "title": "Categoria te browse kɛ",
+    "description": "Bɛ dɔɔ library te — Jesus vida, igreja anu tempu, ya video kɛŋ família, studanti o grupu pikinin te.",
+    "seeAll": "Videos kɛŋ dɔɔ",
+    "previous": "Categoria nyɛŋ",
+    "next": "Categoria kɛrɛ",
+    "categories": {
+      "jesus": "Film JESUS te",
+      "gospels": "Gospel kɛŋ",
+      "shortVideos": "Video short kɛŋ",
+      "family": "Family te kɛŋ",
+      "relationships": "Relason kɛŋ",
+      "women": "Mindjer kɛŋ",
+      "students": "Studanti kɛŋ",
+      "sports": "Sports kɛŋ",
+      "goodNews": "Notísia bon",
+      "hope": "Speransa",
+      "training": "Formason",
+      "easter": "Páskua te kɛŋ",
+      "christmas": "Christmas te kɛŋ"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Languages kɛŋ",
     "metadataDescription": "JesusFilm videos language naŋ browse kɛ.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Page a te te:",
     "title": "Scene nin a te te.",
     "description": "Page a bɛ move, ya story a bɛ continue.",
+    "languageDescription": "Page nin a te te, ya story a bɛ continue film o video te language kɛŋ mundu te.",
     "actionsLabel": "Page a te te actions kɛŋ",
     "backToWatch": "Watch te kɛrɛ",
     "browseVideos": "Video dɔɔ browse kɛ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ಕಿರುಚಿತ್ರ ನೋಡಿ",
-    "actions": {
-      "joinUs": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "shareMission": "ನಮ್ಮ ಧ್ಯೇಯದಲ್ಲಿ ಪಾಲುಗೊಳ್ಳಿ"
-    },
-    "welcomeStart": {
-      "label": "ನಂಬಿಕೆ ಮತ್ತು ಶಾಸ್ತ್ರ",
-      "title": "ಇಂದಿನ ವಿಡಿಯೋ ಆಯ್ಕೆಗಳು",
-      "description": "ಪ್ರೇರಣೆ, ಸವಾಲು ಮತ್ತು ಚಿಂತನೆಗೆ ದಾರಿ ಮಾಡುವ ನಮ್ಮ ಸಂಗ್ರಹದ ನಂಬಿಕೆ-ಕೇಂದ್ರಿತ ವಿಡಿಯೋ ವಿಷಯ."
-    },
-    "welcomeMorning": {
-      "label": "ಬೆಳಗಿನ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭೋದಯ! ಇಂದಿನ ಬೈಬಲ್ ಕ್ಷಣಗಳು ನಿಮ್ಮನ್ನು ಕಾಯುತ್ತಿವೆ.",
-      "description": "ನಿಮ್ಮ ದಿನವನ್ನು ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ಕ್ಷಣಗಳಿಂದ ಆರಂಭಿಸಿ; ಅವು ನಿಮ್ಮ ಆತ್ಮವನ್ನು ಉನ್ನತಗೊಳಿಸಲು ರೂಪಿಸಲಾಗಿದೆ."
-    },
-    "welcomeAfternoon": {
-      "label": "ಮಧ್ಯಾಹ್ನದ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಮಧ್ಯಾಹ್ನ! ನಿಮ್ಮ ದಿನಕ್ಕೆ ಬೈಬಲ್ ಕ್ಷಣಗಳು.",
-      "description": "ಮಧ್ಯಾಹ್ನದ ವಿರಾಮಕ್ಕೆ ಅಥವಾ ಮುಂದುವರಿದ ಪ್ರೇರಣೆಗೆ ಸೂಕ್ತವಾದ ಪ್ರೋತ್ಸಾಹಕಾರಿ ಬೈಬಲ್ ವಿಷಯ."
-    },
-    "welcomeEvening": {
-      "label": "ಸಂಜೆಯ ಪ್ರೇರಣೆ",
-      "title": "ಶುಭ ಸಂಜೆ! ಬೈಬಲ್ ಕ್ಷಣಗಳೊಂದಿಗೆ ವಿಶ್ರಾಂತಿ ಪಡೆಯಿರಿ.",
-      "description": "ನಿಮ್ಮ ದಿನ ಮುಕ್ತಾಯವಾಗುವಾಗ ಚಿಂತಿಸಲು ಮತ್ತು ಸಮಾಧಾನ ಪಡೆಯಲು ಸಹಾಯಕವಾದ ಶಾಂತ ಬೈಬಲ್ ಕ್ಷಣಗಳು."
-    },
-    "joinUs": {
-      "label": "ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ",
-      "title": "ಕೋಟ್ಯಂತರ ಜನರು ಹುಡುಕುತ್ತಿದ್ದಾರೆ",
-      "description": "ಬೆಳೆ ಈಗಿದೆ. ಡಿಜಿಟಲ್ ಮೀಡಿಯಾ ಬಳಸಿ ವಿಶ್ವಕ್ಕೆ ಸುವಾರ್ತೆಯನ್ನು ಹಂಚುವಲ್ಲಿ ನಮ್ಮೊಂದಿಗೆ ಸೇರಿ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ಒಟ್ಟಾಗಿ ಸಾಗೋಣ",
-      "title": "ಯೇಸುವಿನ ಕಥೆಯನ್ನು ಒಟ್ಟಾಗಿ ಹೇಳುವುದು",
-      "description": "ಅವರು ಇರುವಲ್ಲೇ, ಅವರದೇ ಭಾಷೆಯಲ್ಲಿ ಯೇಸುವಿನ ಪ್ರೀತಿ ಕೇಳಿ ಮತ್ತು ನೋಡಿ ಅರಿಯುವಂತೆ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% a match",
-    "none": "Video nin te recommendation te sɔrɔ language nin te."
+    "none": "Video nin te recommendation te sɔrɔ language nin te.",
+    "heading": "Video recommendation kɛŋ",
+    "loadingLabel": "A ka load video recommendation kɛŋ",
+    "openingTitle": "A ka yaabi {title}",
+    "openingVideo": "A ka yaabi video",
+    "activityNotRecorded": "Recommendation te a te record. Links a bɛ work kɛ.",
+    "showingContextual": "Recommendation contextual kɛŋ te.",
+    "showingSaved": "Recommendation salvadu kɛŋ te.",
+    "explanationCurated": "Video selesionadu ngir ka nɛɛr.",
+    "explanationViewingMode": "Recommendation kɛŋ ku video yi ni ndi i ka nɛɛr.",
+    "explanationCowatch": "Recommendation kɛŋ ku video yi ni baŋiriyu fu.",
+    "explanationHybrid": "Recommendation kɛŋ ku video yi ni baŋiriyu yi i suŋo ka toŋe.",
+    "explanationContextual": "Recommendation kɛŋ ku yi i ka nɛɛr waati yi.",
+    "explanationSemanticFallback": "Recommendation kɛŋ ku yi i ka nɛɛr waati yi; ka toŋe fu i domaa a nataa tɛ waati yi.",
+    "explanationProfileDurable": "Ka toŋe fu i domaa ku baŋiriyu yi i suŋo ka toŋe.",
+    "explanationProfileVisit": "Ka toŋe fu i domaa ngir yiremaŋ yi doŋ.",
+    "personalizationLabel": "Ka toŋe recommendation fu i domaa",
+    "personalizationPrompt": "I nataa ka bɛti ndi recommendation a toŋe fu i domaa?",
+    "openCookieSettings": "Yɛbi nadɔŋ yi cookie"
   },
   "BetaTesterModal": {
     "title": "Beta tester kɛ",
@@ -538,16 +732,39 @@
     "retryFailed": "Downloads taŋ kɛŋ fa kaŋa bɛ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Language version a taŋ te",
+    "eyebrow": "Language version a taŋ te",
+    "title": "<contentTitle>{title}</contentTitle> a taŋ te <languageName>{language}</languageName> te",
+    "actionsLabel": "Watch options kɛŋ a bɛ",
+    "browseInLanguage": "Videos browse kɛ {language} te",
+    "backToSearch": "Search te kɛrɛ",
+    "audioVersionsTitle": "Audio versions kɛŋ dɔɔ",
+    "audioVersionsDescription": "Audio language dɔɔ dɔɔ ka video nin watch kɛ ka taa nyɛ.",
+    "languageVersionLabel": "Audio language i",
+    "selectLanguageVersion": "Language version dɔɔ",
+    "watchSelectedVersion": "Version dɔɔ watch kɛ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilixis yi cookie",
+    "bannerTitle": "Pilixis yi sutura maa",
+    "bannerDescription": "Cookie yi fanang Watch ka to a salama ni ka ligi. Si i yabi, cookie buy maŋa ka faa i baŋiriyu foti fu i toŋe yiremaŋ sene-sene. Nibandiyu yi xaalis maŋa na to tɛ fo.",
+    "acceptAll": "Yabi bee",
+    "essentialOnly": "Fanang yi to ligi domaa",
+    "manageChoices": "Tiya pilixis",
+    "savingChoice": "Ka sigi pilixis yi cookie",
+    "settings": "Nadɔŋ yi cookie",
+    "settingsDescription": "Suŋo ndi Watch nataa ka toŋe i baŋiriyu fu yiremaŋ sene-sene. I nataa ka bɛti yo waati bee.",
+    "essentialCookies": "Cookie yi to ligi",
+    "essentialDescription": "Salama, ka tala video, pilixis yi sutura, ni ka dɔŋ ndixandaaru yi yiremaŋ.",
+    "alwaysActive": "A to ligi waati bee",
+    "personalization": "Ka toŋe fu i domaa",
+    "personalizationDescription": "Toŋe baŋiriyu yi dafa fu i yiremaŋ sene-sene. Si i dafi yo, yiremaŋ yi xaalis na to tɛ.",
+    "erasurePending": "Faraŋ i profile ka kɛs maŋ. Yiremaŋ yi xaalis a ligi tia.",
+    "cancel": "Tina",
+    "saveChoices": "Sigi pilixis",
+    "saving": "Ka sigi…",
+    "loadError": "A manaa ka loodi i pilixis. I nataa ka suŋo yi ganna le.",
+    "grantError": "A manaa ka da personalization. Fanang yi to ligi domaa na to tɛ.",
+    "saveError": "A manaa ka sigi i pilixis. I yandi ka fuŋta fan."
   }
 }

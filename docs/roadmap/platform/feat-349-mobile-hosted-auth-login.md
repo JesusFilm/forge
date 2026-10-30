@@ -3,7 +3,7 @@ id: "feat-349"
 title: "Mobile login via hosted auth page"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-12"
 duration: 5
 depends_on: []
@@ -56,3 +56,7 @@ The full Product Contract (requirements R1-R9, flows, acceptance examples, settl
 - `pnpm --filter @forge/mobile typecheck && pnpm --filter @forge/mobile test` — jest guards (JWT operation gate, `useVideoPlayer` allowlist) stay green.
 - Simulator, iOS and Android: sign in via Google and via email through the sheet; cancel returns in place with no error; sign out then sign in shows the login form (account switch possible); stale-session deletion re-auths through the sheet and completes; watch progress records after hosted sign-in.
 - Confirm `expo-apple-authentication` and `@react-native-google-signin/google-signin` are absent from `apps/mobile/package.json` and `app.json`.
+
+## Completion
+
+Shipped in PR #1917 (after PR #1876) and verified on device. Apple sign-in and a full Android pass are follow-up work, not part of this ticket.

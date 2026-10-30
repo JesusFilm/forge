@@ -1,0 +1,233 @@
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { PrismaClient } from "@prisma/client"
+import { VideoNotFoundError } from "@/services/scene-recommendations.service"
+import {
+  curatedFallbackNominations,
+  retrieveCuratedFallback,
+} from "./curated-fallback"
+import { CuratedPoolsService } from "./curated-pools.service"
+import * as deliveryRuntime from "./delivery-runtime"
+import type { CuratedRecommendationCandidate } from "./curated-pools.types"
+import { input, makeHarness, candidate } from "./delivery.service.test-helpers"
+
+function curated(
+  overrides: Partial<CuratedRecommendationCandidate> = {},
+): CuratedRecommendationCandidate {
+  return {
+    ...candidate,
+    videoCoreId: "curated-core",
+    embeddingText: null,
+    generator: "curated",
+    sceneIndex: null,
+    similarity: null,
+    locale: "en",
+    audioLanguageSlug: "english",
+    watchPlayable: true,
+    localePublished: true,
+    poolKey: "start",
+    poolVersion: "approved-v1",
+    editorialRank: 1,
+    ...overrides,
+  }
+}
+
+describe("curated fallback context diagnostics", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    { version: null, contextAvailable: false, state: "missing_generation" },
+    {
+      version: "approved-v1",
+      contextAvailable: false,
+      state: "missing_context",
+    },
+    { version: "approved-v1", contextAvailable: true, state: "available" },
+  ])(
+    "reports $state when no eligible items survive",
+    async ({ version, contextAvailable, state }) => {
+      const prisma = new PrismaClient()
+      vi.spyOn(
+        CuratedPoolsService.prototype,
+        "getCandidates",
+      ).mockResolvedValue({
+        version,
+        contextAvailable,
+        poolKeys: [],
+        items: [],
+      })
+      vi.spyOn(
+        deliveryRuntime,
+        "runRecommendationRetrievalQuery",
+      ).mockResolvedValue([{ videoId: "seed-video" }])
+      const onDiagnostics = vi.fn()
+
+      await expect(
+        retrieveCuratedFallback(prisma, {
+          seedMediaId: "seed-video",
+          locale: "en",
+          audioLanguageSlug: "english",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+          onDiagnostics,
+        }),
+      ).resolves.toEqual([])
+      expect(onDiagnostics).toHaveBeenCalledExactlyOnceWith({
+        state,
+        nominatedCount: 0,
+      })
+    },
+  )
+})
+
+describe("approved empty-row fallback", () => {
+  it("retains current/recent and canonical-alias rejections with honest provenance", () => {
+    const items = [
+      curated({ videoId: "current" }),
+      curated({ videoId: "recent" }),
+      curated({ videoId: "alias", videoCoreId: "watched-core-ad" }),
+      curated({ videoId: "same-title", videoTitle: "Watched title" }),
+      curated({ videoId: "fresh" }),
+    ]
+    const result = curatedFallbackNominations(
+      items,
+      ["current", "recent"],
+      [
+        {
+          videoId: "watched",
+          videoCoreId: "watched-core",
+          videoTitle: "Watched title",
+        },
+      ],
+    )
+    expect(result.map((item) => item.source.rejectionReason)).toEqual([
+      "current_or_recent_video",
+      "current_or_recent_video",
+      "current_or_recent_video",
+      "current_or_recent_video",
+      null,
+    ])
+    expect(result[4]?.source).toMatchObject({
+      generator: "curated",
+      rank: 5,
+      evidence: {
+        poolVersion: "approved-v1",
+        poolKey: "start",
+        similarity: null,
+      },
+    })
+  })
+
+  it.each(["missing_embedding", "empty"])(
+    "fills %s and persists the original shortfall and curated source",
+    async (kind) => {
+      const h = makeHarness({ curatedFallback: true })
+      if (kind === "missing_embedding")
+        h.retrieve.mockRejectedValue(new VideoNotFoundError("no embedding"))
+      else h.retrieve.mockResolvedValue([])
+      h.retrieveCuratedFallback.mockResolvedValue(
+        curatedFallbackNominations([curated()], [], []),
+      )
+      const response = await h.service.deliver(input(`curated-${kind}`))
+      expect(response).toMatchObject({
+        result: "fallback",
+        personalization: {
+          lane: "semantic_fallback",
+          executionMode: "curated_fallback",
+        },
+        reason:
+          kind === "empty" ? "no_candidates" : "seed_embedding_unavailable",
+        items: [
+          {
+            candidateGenerator: "curated",
+            contributors: [{ generator: "curated" }],
+          },
+        ],
+      })
+      const request = h.tx.recommendationRequest.create.mock.calls[0]?.[0].data
+      expect(request).toMatchObject({
+        result: "FALLBACK",
+        fallbackReason: response.reason,
+        items: {
+          create: [
+            {
+              candidateGenerator: "curated",
+              candidateProvenance: {
+                sources: [
+                  {
+                    generator: "curated",
+                    evidence: { poolVersion: "approved-v1", similarity: null },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      })
+    },
+  )
+
+  it("keeps a healthy contextual row and avoids the extra retrieval", async () => {
+    const h = makeHarness({ curatedFallback: true })
+    const response = await h.service.deliver(input("curated-healthy"))
+    expect(response.items[0]?.candidateGenerator).toBe("semantic")
+    expect(h.retrieveCuratedFallback).not.toHaveBeenCalled()
+  })
+
+  it("uses metadata candidates without depending on recent history", async () => {
+    const h = makeHarness({ curatedFallback: true })
+    h.retrieve.mockResolvedValue([])
+    h.resolveRecentContext.mockRejectedValue(
+      new Error("retired history must not be read"),
+    )
+    h.retrieveCuratedFallback.mockResolvedValue(
+      curatedFallbackNominations([curated()], [], []),
+    )
+    const response = await h.service.deliver(input("content-only-metadata"))
+    expect(response.result).toBe("fallback")
+    expect(response.items).toHaveLength(1)
+    expect(h.resolveRecentContext).not.toHaveBeenCalled()
+  })
+
+  it.each(["wrong-audio", "unpublished", "unplayable", "no-art"])(
+    "rejects %s through the shared eligibility pipeline",
+    async (kind) => {
+      const h = makeHarness({ curatedFallback: true })
+      h.retrieve.mockResolvedValue([])
+      const nominations = curatedFallbackNominations([curated()], [], []).map(
+        (nomination) => ({
+          ...nomination,
+          presentation: {
+            ...nomination.presentation,
+            ...(kind === "wrong-audio" ? { audioLanguageSlug: "french" } : {}),
+            ...(kind === "unpublished" ? { localePublished: false } : {}),
+            ...(kind === "unplayable" ? { playbackId: "" } : {}),
+            ...(kind === "no-art" ? { imageUrl: null } : {}),
+          },
+        }),
+      )
+      h.retrieveCuratedFallback.mockResolvedValue(nominations)
+      expect(
+        await h.service.deliver(input(`curated-ineligible-${kind}`)),
+      ).toMatchObject({ result: "empty", items: [] })
+    },
+  )
+
+  it("preserves the empty result when the approved pool fails", async () => {
+    const h = makeHarness({ curatedFallback: true })
+    h.retrieve.mockResolvedValue([])
+    h.retrieveCuratedFallback.mockRejectedValue(new Error("pool unavailable"))
+    expect(await h.service.deliver(input("curated-unavailable"))).toMatchObject(
+      { result: "empty", reason: "no_candidates", items: [] },
+    )
+  })
+
+  it("does not start fallback after the original delivery budget is spent", async () => {
+    const h = makeHarness({ curatedFallback: true })
+    h.retrieve.mockImplementation(async () => {
+      h.advanceClock(1600)
+      return []
+    })
+    await h.service.deliver(input("curated-deadline"))
+    expect(h.retrieveCuratedFallback).not.toHaveBeenCalled()
+  })
+})

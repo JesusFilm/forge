@@ -145,7 +145,7 @@ describe("default key sourcing (discriminating key-source test)", () => {
     // vitest's 5s default under full-suite parallelism (timing, not logic).
   }, 15_000)
 
-  it("all three handlers refuse 404 through the DEFAULT flag when it is unset", async () => {
+  it("all four handlers refuse 404 through the DEFAULT flag when it is unset", async () => {
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-only-key")
     vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "lane-only-key")
     vi.stubEnv("SEEKER_ROUTE_ENABLED", "")
@@ -153,6 +153,8 @@ describe("default key sourcing (discriminating key-source test)", () => {
     const { handleSeekerRouteRequest } = await import("./agents/seeker-route")
     const { handleAiChatHistoryListRequest, handleAiChatHistoryReplayRequest } =
       await import("./ai-chat-history-route")
+    const { handleAiChatHistoryRenameRequest } =
+      await import("./ai-chat-history-write-route")
 
     // No seams injected — a handler that re-grew a local `getEnabled` default
     // (bypassing the kill switch) would answer 400/401 here instead of 404.
@@ -169,6 +171,7 @@ describe("default key sourcing (discriminating key-source test)", () => {
     for (const handler of [
       handleAiChatHistoryListRequest,
       handleAiChatHistoryReplayRequest,
+      handleAiChatHistoryRenameRequest,
     ]) {
       const outcome = await handler({
         authHeader: "Bearer lane-only-key",
@@ -179,14 +182,17 @@ describe("default key sourcing (discriminating key-source test)", () => {
     }
   })
 
-  it("both history handlers discriminate pool vs lane through their default seams", async () => {
+  it("all three history handlers discriminate pool vs lane through their default seams", async () => {
     await importWithStubbedCsvs()
     const { handleAiChatHistoryListRequest, handleAiChatHistoryReplayRequest } =
       await import("./ai-chat-history-route")
+    const { handleAiChatHistoryRenameRequest } =
+      await import("./ai-chat-history-write-route")
 
     for (const handler of [
       handleAiChatHistoryListRequest,
       handleAiChatHistoryReplayRequest,
+      handleAiChatHistoryRenameRequest,
     ]) {
       const pool = await handler({
         authHeader: "Bearer pool-only-key",

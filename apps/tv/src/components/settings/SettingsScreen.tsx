@@ -1,18 +1,40 @@
 // Settings screen (D-pad list, WATCH_THEME). v1 content is Showcase Mode only:
 // a start action + the launch-only auto-start toggle, both persisted on device.
 
-import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useMemo, useRef } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import { useFocusEffect, usePathname, useRouter } from "expo-router"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  Animated,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TVEventControl,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
+import { ANIMATION_SETTINGS_ENABLED } from "../../lib/logoAnimations"
 import { useShowcasePrefs } from "../../lib/showcaseMode/useShowcasePrefs"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { useWatchHome } from "../../hooks/useWatchHome"
+import { useTopShelfSync } from "../../lib/topShelf/useTopShelfSync"
+import {
+  TOP_SHELF_PREVIEW_OPTIONS,
+  topShelfPreviewEnabled,
+} from "../../lib/topShelf/preview"
+import {
+  loadContinueWatching,
+  type ContinueWatchingEntry,
+} from "../../lib/watchEvents/continueWatching"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -20,7 +42,34 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
+  const pathname = usePathname()
+  const leaveSettings = useCallback(() => router.dismissTo("/"), [router])
+  useFocusEffect(
+    useCallback(() => {
+      const back = BackHandler.addEventListener("hardwareBackPress", () => {
+        leaveSettings()
+        return true
+      })
+      if (Platform.OS === "ios" && Platform.isTV)
+        TVEventControl.enableTVMenuKey()
+      return () => {
+        back.remove()
+        if (Platform.OS === "ios" && Platform.isTV)
+          TVEventControl.disableTVMenuKey()
+      }
+    }, [leaveSettings]),
+  )
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
+  const {
+    androidPlayerVariant,
+    setAndroidPlayerVariant,
+    nativePlayerVariant,
+    setNativePlayerVariant,
+    topShelfPreviewStyle,
+    setTopShelfPreviewStyle,
+    topShelfPreviewMessage,
+    hydrated: watchPreferencesHydrated,
+  } = useWatchPreferences()
 
   // tvos#852: a stack pop drops focus to the top-left default. Remember the
   // focused row and re-focus it on re-entry (mirrors Home's focusMemory wiring).
@@ -60,8 +109,73 @@ export function SettingsScreen() {
   }, [prefs.autoStart, setAutoStart])
 
   return (
-    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
+
+      {Platform.OS === "android" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Google TV Home</Text>
+          <SettingsRow
+            testID="settings-google-tv-home-row"
+            icon="tv-outline"
+            label="Content on Google TV Home"
+            onPress={() => router.push("/google-tv-home")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
+
+      <SettingsRow
+        testID="settings-back-home"
+        icon="chevron-back"
+        label="Back to Home"
+        onPress={leaveSettings}
+        onFocusNode={captureFocusedNode}
+      />
+      {ANIMATION_SETTINGS_ENABLED && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Watch animations</Text>
+          <SettingsRow
+            testID="settings-animations"
+            icon="sparkles-outline"
+            label="Animations"
+            onPress={() => router.push("/settings/animations")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
+
+      {topShelfPreviewEnabled(
+        process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED,
+        Platform.OS,
+        Platform.isTV,
+      ) && (
+        <View style={styles.section}>
+          {pathname === "/settings" && topShelfPreviewStyle ? (
+            <BetaTopShelfPreviewSync />
+          ) : null}
+          <Text style={styles.sectionHeading}>Top Shelf — Beta</Text>
+          <Text style={styles.sectionNote}>
+            Choose a style, then return to Apple TV Home and highlight Watch.
+            Styles without matching content use Automatic.
+          </Text>
+          {topShelfPreviewMessage ? (
+            <Text style={styles.sectionNote}>{topShelfPreviewMessage}</Text>
+          ) : null}
+          {TOP_SHELF_PREVIEW_OPTIONS.map((option) => (
+            <SettingsRow
+              key={option.value}
+              testID={`settings-top-shelf-${option.value}`}
+              icon="tv-outline"
+              label={option.label}
+              selected={(topShelfPreviewStyle ?? "automatic") === option.value}
+              disabled={!watchPreferencesHydrated}
+              onPress={() => setTopShelfPreviewStyle(option.value)}
+              onFocusNode={captureFocusedNode}
+            />
+          ))}
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>Showcase Mode</Text>
@@ -91,8 +205,109 @@ export function SettingsScreen() {
           onFocusNode={captureFocusedNode}
         />
       </View>
-    </View>
+
+      {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Help</Text>
+          <SettingsRow
+            testID="settings-send-feedback-row"
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            onPress={() => router.push("/feedback")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
+
+      {Platform.OS === "android" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Video player</Text>
+          <Text style={styles.sectionNote}>
+            The Android native player is the default. Turn on this option to use
+            the React Native player instead.
+          </Text>
+          <SettingsRow
+            testID="settings-native-android-player-row"
+            icon="tv-outline"
+            label="Use React Native player"
+            checked={androidPlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() =>
+              setAndroidPlayerVariant(
+                androidPlayerVariant === "native" ? "existing" : "native",
+              )
+            }
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
+      {Platform.OS === "ios" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Video player</Text>
+          <Text style={styles.sectionNote}>
+            Native A is the default and keeps Apple’s AVKit controls. Native B
+            uses our UIKit controls and Mux thumbnails while keeping AVPlayer
+            underneath.
+          </Text>
+          <SettingsRow
+            testID="settings-existing-player-row"
+            icon="tv-outline"
+            label="Existing Player"
+            selected={nativePlayerVariant === "existing"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("existing")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-a-player-row"
+            icon="logo-apple"
+            label="Native A — AVKit Controls"
+            selected={nativePlayerVariant === "native-a"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-a")}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-native-b-player-row"
+            icon="film-outline"
+            label="Native B — UIKit + Mux Preview"
+            selected={nativePlayerVariant === "native-b"}
+            disabled={!watchPreferencesHydrated}
+            onPress={() => setNativePlayerVariant("native-b")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      ) : null}
+    </ScrollView>
   )
+}
+
+function BetaTopShelfPreviewSync() {
+  const { topShelfPreviewRevision, setTopShelfPreviewMessage } =
+    useWatchPreferences()
+  const { model, refreshing, error } = useWatchHome({
+    refreshOnForeground: true,
+    refreshKey: topShelfPreviewRevision,
+  })
+  const [entries, setEntries] = useState<ContinueWatchingEntry[]>([])
+  useEffect(() => {
+    if (refreshing) setTopShelfPreviewMessage("Preparing Top Shelf content…")
+    else if (error)
+      setTopShelfPreviewMessage(
+        "Could not update Top Shelf (home content). Try again.",
+      )
+  }, [refreshing, error, setTopShelfPreviewMessage])
+  useEffect(() => {
+    let cancelled = false
+    void loadContinueWatching().then((value) => {
+      if (!cancelled) setEntries(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  useTopShelfSync(model, entries, !refreshing && !error, true)
+  return null
 }
 
 type SettingsRowProps = {
@@ -102,6 +317,8 @@ type SettingsRowProps = {
   label: string
   /** Toggle row when set (switch role + trailing On/Off); action row otherwise. */
   checked?: boolean
+  /** Radio-style experiment choice with one selected row. */
+  selected?: boolean
   /** Inert while prefs hydrate — focusable stays true so the D-pad path is stable. */
   disabled?: boolean
   onPress: () => void
@@ -110,11 +327,12 @@ type SettingsRowProps = {
   hasTVPreferredFocus?: boolean
 }
 
-function SettingsRow({
+export function SettingsRow({
   testID,
   icon,
   label,
   checked,
+  selected,
   disabled = false,
   onPress,
   onFocusNode,
@@ -151,11 +369,13 @@ function SettingsRow({
       progress.interpolate({
         inputRange: [0, 1],
         outputRange: [
-          checked === true ? WATCH_THEME.accent : WATCH_THEME.text50,
+          checked === true || selected === true
+            ? WATCH_THEME.accent
+            : WATCH_THEME.text50,
           WATCH_THEME.focusInk,
         ],
       }),
-    [progress, checked],
+    [progress, checked, selected],
   )
   const animatedRow = useMemo(
     () => ({ backgroundColor: bg, transform }),
@@ -174,9 +394,11 @@ function SettingsRow({
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       testID={testID}
-      accessibilityRole={checked == null ? "button" : "switch"}
+      accessibilityRole={
+        selected != null ? "radio" : checked == null ? "button" : "switch"
+      }
       accessibilityLabel={label}
-      accessibilityState={{ checked, disabled }}
+      accessibilityState={{ checked, selected, disabled }}
     >
       <Animated.View
         style={[styles.row, disabled && styles.rowDisabled, animatedRow]}
@@ -185,9 +407,15 @@ function SettingsRow({
         <Animated.Text style={[styles.rowLabel, { color: ink }]}>
           {label}
         </Animated.Text>
-        {checked != null ? (
+        {checked != null || selected != null ? (
           <Animated.Text style={[styles.rowValue, { color: valueInk }]}>
-            {checked ? "On" : "Off"}
+            {selected != null
+              ? selected
+                ? "Selected"
+                : ""
+              : checked
+                ? "On"
+                : "Off"}
           </Animated.Text>
         ) : null}
       </Animated.View>
@@ -197,10 +425,11 @@ function SettingsRow({
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: WATCH_THEME.below,
     paddingHorizontal: scale(80),
     paddingTop: scale(78),
+    paddingBottom: scale(80),
   },
   title: {
     fontFamily: "System",

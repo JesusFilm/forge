@@ -9,6 +9,8 @@ import {
 import { useWatchProgressEntry } from "../../hooks/useWatchProgressEntry"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT, type UiMessageKey } from "../../i18n/useT"
 import type { WatchEpisode } from "../../lib/normalizeVideo"
 import {
   BLACK,
@@ -17,29 +19,57 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { EXPORT_BADGE_COLOR } from "../../lib/downloadGlyph"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
+
+/** Amber for a HELD transfer, offline or export — one value, so they match. */
+const BADGE_PAUSED_COLOR = "#f5c451"
 
 // Grid corner badge per download state (U9). Also spoken via accessibilityLabel.
 const BADGE: Record<
   Exclude<EpisodeBadgeState, "none">,
-  { icon: ComponentProps<typeof Ionicons>["name"]; color: string; a11y: string }
+  {
+    icon: ComponentProps<typeof Ionicons>["name"]
+    color: string
+    a11y: UiMessageKey<"Series">
+  }
 > = {
   saved: {
     icon: "checkmark-circle",
     color: STATUS_DONE_COLOR,
-    a11y: "saved offline",
+    a11y: "savedOfflineAriaLabel",
   },
   downloading: {
     icon: "arrow-down-circle",
     color: "#ffffff",
-    a11y: "downloading",
+    a11y: "downloadingAriaLabel",
   },
   queued: {
     icon: "ellipsis-horizontal-circle",
     color: "rgba(255,255,255,0.75)",
-    a11y: "queued",
+    a11y: "queuedAriaLabel",
   },
-  paused: { icon: "pause-circle", color: "#f5c451", a11y: "paused" },
+  paused: {
+    icon: "pause-circle",
+    color: BADGE_PAUSED_COLOR,
+    a11y: "pausedAriaLabel",
+  },
+  // R16: the export outranks the offline state. Same arrow and the same white
+  // as a download (owner decision 2026-09-14), so only the spoken label
+  // separates them. The badge has no tap — the row owns the run's controls.
+  exporting: {
+    icon: "arrow-down-circle",
+    color: EXPORT_BADGE_COLOR,
+    a11y: "savingToFilesAriaLabel",
+  },
+  // A HELD export reads exactly like a held download, by the same decision.
+  // This badge is the only place one paused episode is named: the row above
+  // speaks for the whole run, not for the episode it is on.
+  "exporting-paused": {
+    icon: "pause-circle",
+    color: BADGE_PAUSED_COLOR,
+    a11y: "savingToFilesPausedAriaLabel",
+  },
 }
 
 type SeriesEpisodeCardProps = {
@@ -57,24 +87,34 @@ export function SeriesEpisodeCard({
   onSelect,
   downloadState,
 }: SeriesEpisodeCardProps) {
+  const t = useT("Series")
+  const tWatch = useT("Watch")
   const imageUrl = resolveImageUrl(episode.posterUrl)
   const progressEntry = useWatchProgressEntry(episode.documentId)
   const badge =
     downloadState && downloadState !== "none" ? BADGE[downloadState] : null
-  const title = episode.title ?? "Episode"
+  const title = episode.title ?? t("episodeFallbackTitle")
+  const titleDirection = useTextDirection().text(episode.titleLang)
+  const labelParts = [
+    title,
+    badge ? t(badge.a11y) : null,
+    progressAccessibilityText(progressEntry, tWatch),
+  ].filter(Boolean)
 
   return (
     <View style={styles.cardOuter}>
       <Pressable
         onPress={() => onSelect(episode)}
+        testID="series-episode-card"
         accessibilityRole="button"
-        accessibilityLabel={[
-          title,
-          badge?.a11y,
-          progressAccessibilityText(progressEntry),
-        ]
-          .filter(Boolean)
-          .join(", ")}
+        accessibilityLabel={labelParts.join(", ")}
+        // The mark fits only a label that is the Admin title alone (R10).
+        accessibilityLanguage={
+          episode.title != null && labelParts.length === 1
+            ? titleDirection.accessibilityLanguage
+            : undefined
+        }
+        {...{ "dd-action-name": "series-episode-card" }}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
         <View style={styles.thumb}>
@@ -99,7 +139,11 @@ export function SeriesEpisodeCard({
 
           {episode.title ? (
             <View style={styles.titleOverlay}>
-              <Text style={styles.title} numberOfLines={2}>
+              <Text
+                style={[styles.title, titleDirection.style]}
+                numberOfLines={2}
+                accessibilityLanguage={titleDirection.accessibilityLanguage}
+              >
                 {episode.title}
               </Text>
             </View>
@@ -153,10 +197,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontFamily: "System",
     fontWeight: "700",
     fontSize: 13,
-    lineHeight: 17,
+    lineHeight: 15,
   },
   badge: {
     position: "absolute",

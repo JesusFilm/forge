@@ -68,12 +68,23 @@ export function makeSession(over: Partial<ConversationSessionDeps> = {}) {
   const fetchHistoryThread = vi.fn<
     ConversationSessionDeps["fetchHistoryThread"]
   >(async () => ({ ok: true, messages: [] }))
+  // feat-450: the rename write echoes the submitted title by default.
+  const renameHistoryThread = vi.fn<
+    ConversationSessionDeps["renameHistoryThread"]
+  >(async ({ title }) => ({ ok: true, title }))
   const session = createConversationSession({
     streamReply,
     fetchHistoryPage,
     fetchHistoryThread,
+    renameHistoryThread,
     seekerEnabled: false,
     ...over,
   })
-  return { session, streamReply, fetchHistoryPage, fetchHistoryThread }
+  return {
+    session,
+    streamReply,
+    fetchHistoryPage,
+    fetchHistoryThread,
+    renameHistoryThread,
+  }
 }

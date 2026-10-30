@@ -14,10 +14,13 @@ import { WebView } from "react-native-webview"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useT } from "../../i18n/useT"
 import { QUIZ_GRADIENT } from "../../lib/color"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { layout, feedback } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
 
@@ -43,6 +46,7 @@ type QuizModalState = "loading" | "loaded" | "errored"
 
 function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
   const insets = useSafeAreaInsets()
+  const tCommon = useT("Common")
   const [state, setState] = useState<QuizModalState>("loading")
 
   const handleLoadEnd = useCallback(() => {
@@ -67,43 +71,55 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
-        <Pressable
-          style={[
-            styles.closeButton,
-            { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
-          ]}
-          onPress={onClose}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-        >
-          <Text style={styles.closeIcon}>{"\u2715"}</Text>
-        </Pressable>
+      <View testID="screen-sdui-quiz" style={styles.modalWindow}>
+        <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
+          <Pressable
+            style={[
+              styles.closeButton,
+              { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
+            ]}
+            onPress={onClose}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={tCommon("closeAriaLabel")}
+            {...{ "dd-action-name": "section-quiz-close" }}
+          >
+            <GlassSurface
+              style={styles.closeCircle}
+              fallback={CLOSE_FALLBACK}
+              interactive
+            >
+              <Text style={styles.closeIcon}>{"\u2715"}</Text>
+            </GlassSurface>
+          </Pressable>
 
-        {state === "loading" && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#ffffff" />
-          </View>
-        )}
+          {state === "loading" && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#ffffff" />
+            </View>
+          )}
 
-        <WebView
-          source={{ uri: url }}
-          originWhitelist={["https://*"]}
-          onShouldStartLoadWithRequest={handleNavigationRequest}
-          style={[styles.webView, state === "loading" && styles.webViewHidden]}
-          javaScriptEnabled
-          domStorageEnabled
-          allowFileAccess={false}
-          allowFileAccessFromFileURLs={false}
-          allowUniversalAccessFromFileURLs={false}
-          javaScriptCanOpenWindowsAutomatically={false}
-          mixedContentMode="never"
-          thirdPartyCookiesEnabled={false}
-          mediaPlaybackRequiresUserAction
-          onLoadEnd={handleLoadEnd}
-          onError={handleError}
-        />
+          <WebView
+            source={{ uri: url }}
+            originWhitelist={["https://*"]}
+            onShouldStartLoadWithRequest={handleNavigationRequest}
+            style={[
+              styles.webView,
+              state === "loading" && styles.webViewHidden,
+            ]}
+            javaScriptEnabled
+            domStorageEnabled
+            allowFileAccess={false}
+            allowFileAccessFromFileURLs={false}
+            allowUniversalAccessFromFileURLs={false}
+            javaScriptCanOpenWindowsAutomatically={false}
+            mixedContentMode="never"
+            thirdPartyCookiesEnabled={false}
+            mediaPlaybackRequiresUserAction
+            onLoadEnd={handleLoadEnd}
+            onError={handleError}
+          />
+        </GlassSurface>
       </View>
     </Modal>
   )
@@ -117,6 +133,8 @@ export interface QuizButtonRendererProps {
 
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
+  const t = useT("Sections")
+  const uiTag = useUiTag()
   const [modalVisible, setModalVisible] = useState(false)
 
   useNonRouteSheetSuppression(modalVisible, "sduiQuiz")
@@ -135,7 +153,8 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
           style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel="Open faith quiz"
+          accessibilityLabel={t("openQuizAriaLabel")}
+          {...{ "dd-action-name": "section-quiz-open" }}
         >
           <LinearGradient
             colors={[...QUIZ_GRADIENT]}
@@ -149,13 +168,15 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               >
-                <Text style={styles.badgeText}>QUIZ</Text>
+                <Text style={styles.badgeText}>
+                  {t("quizBadge").toLocaleUpperCase(uiTag)}
+                </Text>
               </View>
               <Text
                 style={[styles.buttonLabel, typography.body]}
                 numberOfLines={2}
               >
-                {buttonText ?? "Take the quiz"}
+                {buttonText ?? t("takeQuiz")}
               </Text>
               <Text
                 style={styles.arrow}
@@ -208,15 +229,13 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#ffffff",
     fontSize: 11,
-    fontWeight: "800",
-    fontFamily: "System",
+    fontWeight: "700",
     letterSpacing: 1,
   },
   buttonLabel: {
     flex: 1,
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   arrow: {
@@ -225,8 +244,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   // Modal styles
-  modalOverlay: {
+  modalWindow: {
     flex: 1,
+  },
+  windowFill: {
     backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   closeButton: {
@@ -235,10 +256,16 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 48,
     height: 48,
+  },
+  closeCircle: {
+    width: 48,
+    height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  closeFill: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
   },
   closeIcon: {
     color: "#ffffff",
@@ -258,3 +285,10 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
 })
+
+// The window and close button where Liquid Glass is unavailable (R1).
+const WINDOW_FALLBACK: GlassFallback = {
+  kind: "fill",
+  style: styles.windowFill,
+}
+const CLOSE_FALLBACK: GlassFallback = { kind: "fill", style: styles.closeFill }

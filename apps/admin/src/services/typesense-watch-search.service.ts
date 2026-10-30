@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 
 import {
   cachedBoundedTtlValue,
@@ -13,12 +14,17 @@ import {
   type TypesenseSearchRequest,
   type TypesenseSearchResult,
 } from "./typesense-client"
+import {
+  availabilityScoreForKind,
+  watchabilityRankForKind,
+} from "./watch-search-availability-score"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
+  type TypesenseWatchContainerLanguage,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
 } from "./typesense-watch-search-schema"
@@ -26,6 +32,10 @@ import {
   TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
   typesenseWatchExactTitleKey,
 } from "./typesense-watch-search-exact-title"
+import {
+  normalizeWatchSearchCurationQuery,
+  TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+} from "./typesense-watch-search-curation"
 import {
   typesenseWatchLanguageIdentity,
   type TypesenseWatchLexicalDocument,
@@ -75,6 +85,18 @@ import {
   type WatchSearchResult,
   WatchSearchValidationError,
 } from "./watch-search.service"
+import {
+  assertBeforeDeadline,
+  beforeDeadline,
+  createWatchSearchRequestDeadline,
+  isWatchSearchDeadlineExceeded,
+  remainingBudgetMs,
+  settleBeforeDeadline,
+  WATCH_SEARCH_DEADLINE_EXCEEDED_EVENT,
+  WatchSearchStageBudgetError,
+  type WatchSearchDeadlineStage,
+  type WatchSearchRequestDeadline,
+} from "./watch-search-request-deadline"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
@@ -100,6 +122,12 @@ const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
 const MAX_RANKING_TRACE_ENTRIES = 250
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
+export const TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS = 2_000
+// A deadline-bounded Typesense request aborts this long after the deadline,
+// so the typed deadline error (HTTP 504) always wins the race and the abort
+// only frees the abandoned socket. It replaces the client's own timeout, which
+// could otherwise fire first as an untyped error.
+const DEADLINE_TRANSPORT_ABORT_GRACE_MS = 50
 const LANGUAGE_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1_000
 const LANGUAGE_CONTEXT_CACHE_MAX_ENTRIES = 4_096
 const MIN_SEMANTIC_SIMILARITY = 0.5
@@ -107,9 +135,20 @@ const CATALOG_PREVIEW_EXCLUDED_FIELDS =
   "coreId,slug,descriptions,localesJson,label,childCount,imageUrl,imageBlurDataUrl,audioOptionsJson,subtitleOptionsJson"
 const LEGACY_CATALOG_LOCALE_FIELDS = "id,titles,localesJson"
 const CATALOG_WATCHABILITY_PREVIEW_FIELDS =
-  "id,audioLanguageSlugs,subtitleLanguageSlugs"
+  "id,audioLanguageSlugs,subtitleLanguageSlugs,containerLanguagesJson"
+// `containerLanguagesJson` is requested unconditionally, including during the
+// window between deploying this code and running the operator reindex, when no
+// document in the live collection carries the key yet.
+//
+// Verified by hand 2026-08-28 against Typesense 30.2 (the pinned local build,
+// `scripts/typesense-watch-search-local.sh start`): an `include_fields` list
+// naming a field that NO document in the collection carries returns HTTP 200
+// and simply omits it — it is not a 400. That matters because a 400 here would
+// land in hydrateResultDocuments' catch, whose classifiers only recognise
+// AVAILABILITY-side field failures, and would be rethrown — failing the whole
+// search rather than degrading one card. Re-verify on a major Typesense upgrade.
 const CATALOG_RESULT_FIELDS =
-  "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl"
+  "id,slug,titles,localesJson,label,childCount,imageUrl,imageBlurDataUrl,containerLanguagesJson"
 const AVAILABILITY_RESULT_FIELDS =
   "id,videoId,videoEditionId,languageId,languageSlug,languageEnglishName,audio,subtitles,playbackId,durationSeconds,hrefLanguageSlug,actionVideoDubId,actionPriority"
 const LEGACY_CATALOG_RESULT_FIELDS = `${CATALOG_RESULT_FIELDS},audioOptionsJson,subtitleOptionsJson`
@@ -150,11 +189,25 @@ type TypesenseWatchSearchDeps = {
   profile?: TypesenseWatchSearchProfile
 }
 
+// `hardTimeoutMs` opts one call into the request-start-derived deadline. Only
+// the public GraphQL resolver passes it; offline evaluation, benchmarks,
+// comparison, shadow, and agent callers keep the unbounded behavior.
+// `requestStartedAtMs` (a `performance.now()` reading) lets a caller that did
+// work before reaching the service, such as resolving the serving profile,
+// count that work against the same budget.
+export type TypesenseWatchSearchOptions = {
+  hardTimeoutMs?: number
+  requestStartedAtMs?: number
+}
+
 export type TypesenseWatchSearchDiagnostics = {
   profile: TypesenseWatchSearchProfile["kind"]
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: bigint | null
+  activeTranscriptProjectionRevision: bigint | null
   binding: TypesenseWatchSearchCollectionBinding
   retrievalCalls: number
   logicalSubsearches: number
@@ -280,6 +333,7 @@ type CandidateRetrieval = {
 )
 
 type RankedCandidateGroup = WatchSearchRankingGroup & {
+  curated: boolean
   evidenceTier: WatchSearchRankingEvidenceTier
   members: Candidate[]
 }
@@ -294,15 +348,65 @@ type RankedCandidate = {
   watchabilityKind: IndexedWatchability["kind"]
 }
 
+function ensureCuratedGroupsOnFirstPage(
+  groups: readonly RankedCandidateGroup[],
+  offset: number,
+  nativeOffset: number,
+  limit: number,
+): RankedCandidateGroup[] {
+  const retrievalWindowStart = offset - nativeOffset
+  if (retrievalWindowStart !== 0 || groups.length <= limit) {
+    return [...groups]
+  }
+
+  const firstPage = groups.slice(0, limit)
+  const promoted = groups
+    .slice(limit)
+    .filter(({ curated }) => curated)
+    .slice(0, firstPage.filter(({ curated }) => !curated).length)
+  if (promoted.length === 0) return [...groups]
+
+  const promotedIds = new Set(
+    promoted.map(({ canonicalVideoId }) => canonicalVideoId),
+  )
+  const retainedFirstPage = [...firstPage]
+  const displaced: RankedCandidateGroup[] = []
+  for (let index = retainedFirstPage.length - 1; index >= 0; index -= 1) {
+    if (displaced.length >= promoted.length) break
+    if (retainedFirstPage[index]?.curated) continue
+    const [group] = retainedFirstPage.splice(index, 1)
+    if (group) displaced.unshift(group)
+  }
+
+  return [
+    ...retainedFirstPage,
+    ...promoted,
+    ...displaced,
+    ...groups
+      .slice(limit)
+      .filter(({ canonicalVideoId }) => !promotedIds.has(canonicalVideoId)),
+  ]
+}
+
 type TypesenseWatchLegacyCatalogLocaleDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "titles" | "localesJson"
 >
 
+/**
+ * Optional because a catalog document written by a generation that predates the
+ * container projection carries no such key at all. Every reader must tolerate
+ * its absence rather than assume the current projection.
+ */
+type WithOptionalContainerLanguages = Partial<
+  Pick<TypesenseWatchCatalogDocument, "containerLanguagesJson">
+>
+
 type TypesenseWatchCatalogWatchabilityPreviewDocument = Pick<
   TypesenseWatchCatalogDocument,
   "id" | "audioLanguageSlugs" | "subtitleLanguageSlugs"
->
+> &
+  WithOptionalContainerLanguages
 
 type TypesenseWatchCatalogResultDocument = Pick<
   TypesenseWatchCatalogDocument,
@@ -314,7 +418,8 @@ type TypesenseWatchCatalogResultDocument = Pick<
   | "childCount"
   | "imageUrl"
   | "imageBlurDataUrl"
->
+> &
+  WithOptionalContainerLanguages
 
 type TypesenseWatchLegacyCatalogResultDocument =
   TypesenseWatchCatalogResultDocument &
@@ -324,7 +429,12 @@ type TypesenseWatchLegacyCatalogResultDocument =
     >
 
 type IndexedWatchability = {
-  kind: "target_audio" | "target_subtitle" | "related_language" | "unavailable"
+  kind:
+    | "target_audio"
+    | "target_subtitle"
+    | "container"
+    | "related_language"
+    | "unavailable"
   languageSlug: string | null
   languageEnglishName: string | null
   audio: boolean
@@ -553,6 +663,7 @@ function lexicalLaneRequest(
   languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
+  lane: "title" | "metadata",
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
   const isFallbackField = (field: string) => field.endsWith("_fallback")
@@ -578,6 +689,12 @@ function lexicalLaneRequest(
     text_match_type: "max_weight",
     prioritize_exact_match: true,
     drop_tokens_threshold: 1,
+    ...(lane === "title"
+      ? { enable_curations: false }
+      : {
+          curation_tags: TYPESENSE_WATCH_SEARCH_CURATION_TAG,
+          filter_curated_hits: true,
+        }),
     include_fields: [
       "id",
       "videoId",
@@ -608,6 +725,7 @@ function exactTitleLaneRequest(
     prefix: false,
     num_typos: 0,
     drop_tokens_threshold: 0,
+    enable_curations: false,
     include_fields: [
       "id",
       "videoId",
@@ -649,9 +767,18 @@ function semanticLaneRequest(
   }
 }
 
-function previewWatchabilityKind(
+/**
+ * Pre-hydration watchability classifier for the compatibility retrieval path.
+ *
+ * Exported for unit testing: this runs during RANKING only, and the emitted
+ * availability kind still comes from `resolveWatchability` afterwards, so an
+ * end-to-end assertion on a result's kind cannot discriminate this function at
+ * all. Its observable effect is result ORDER, and therefore which rows survive
+ * the page slice -- which is why it is pinned directly.
+ */
+export function previewWatchabilityKind(
   document: TypesenseWatchCatalogWatchabilityPreviewDocument,
-  target: TargetLanguageContext,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
 ): IndexedWatchability["kind"] {
   if (document.audioLanguageSlugs.includes(target.slug)) return "target_audio"
   if (document.subtitleLanguageSlugs.includes(target.slug)) {
@@ -663,6 +790,13 @@ function previewWatchabilityKind(
     )
   ) {
     return "related_language"
+  }
+  // Container tier runs LAST — see the note in resolveWatchability. This
+  // classifier feeds the compatibility ranking branch, so a container that
+  // stayed "unavailable" here would be ranked as the weakest kind before the
+  // page slice is taken.
+  if (containerWatchability(document.containerLanguagesJson, target)) {
+    return "container"
   }
   return "unavailable"
 }
@@ -798,6 +932,14 @@ function resolveLegacyWatchability(
       }
     }
   }
+  // Container tier runs LAST here too — see the note in resolveWatchability.
+  // This path is reached on availability-alias fallback and on overflow, so it
+  // must agree with the modern path or containers flip state under load.
+  const container = containerWatchability(
+    document.containerLanguagesJson,
+    target,
+  )
+  if (container) return container
   return {
     kind: "unavailable",
     languageSlug: null,
@@ -815,6 +957,7 @@ function resolveWatchability(
   target: TargetLanguageContext,
   candidateVideoEditionId: string | null,
   requireVideoEditionIdForSubtitle: boolean,
+  containerLanguagesJson?: string,
 ): IndexedWatchability {
   const targetAudio = availability.find(
     (option) => option.languageSlug === target.slug && option.audio,
@@ -873,6 +1016,14 @@ function resolveWatchability(
       }
     }
   }
+  // Container tier runs LAST, mirroring SearchWatchabilityService.hydrate: a
+  // Series-Shaped Video carrying its own playable Dub keeps the state that Dub
+  // earned it, so descendants never override direct playback. Note this is
+  // deliberately the opposite order from watchabilityRank, which places
+  // container ABOVE related_language — rank answers "which is the better
+  // representative", resolution answers "what is this video's own state".
+  const container = containerWatchability(containerLanguagesJson, target)
+  if (container) return container
   return {
     kind: "unavailable",
     languageSlug: null,
@@ -882,6 +1033,73 @@ function resolveWatchability(
     playbackId: null,
     durationSeconds: null,
     hrefLanguageSlug: null,
+  }
+}
+
+/**
+ * Pick the browse language for a container from its projected descendant
+ * languages: the target language first, then each fallback in priority order.
+ *
+ * This is the query-time half of the container tier. The index-time loader
+ * (`loadContainerLanguageRows` in typesense-watch-search-indexer.ts) drops the
+ * per-request accepted-language filter and stores the complete SET, so this
+ * selection reproduces what the Postgres tier's `DISTINCT ON ... ORDER BY
+ * array_position(accepted, language_id)` emits: that ORDER BY leads with the
+ * accepted-list position, and every lower key breaks ties inside one language,
+ * so the emitted language is a function of the language set and the accepted
+ * order alone.
+ *
+ * Note this compares SLUGS while the related-language branch above it compares
+ * language IDs. That asymmetry is deliberate — the projection carries slugs,
+ * which are `@unique`, so the switch is lossless. `target.fallbackLanguageSlugs`
+ * is built by dropping null-slug entries, so it is NOT index-aligned with
+ * `target.fallbackLanguageIds`; never pair the two by index.
+ */
+export function containerWatchability(
+  containerLanguagesJson: string | undefined,
+  target: Pick<TargetLanguageContext, "slug" | "fallbackLanguageSlugs">,
+): IndexedWatchability | null {
+  // Never let a parse failure escape. A catalog document written by a
+  // generation that predates this field carries no key at all (`undefined`,
+  // normalised to an empty array below), and a malformed value would throw.
+  // Either throw would land inside hydrateResultDocuments' try, where the
+  // error classifier does not recognise it and rethrows — failing the whole
+  // search rather than degrading one card to unavailable.
+  let languages: TypesenseWatchContainerLanguage[]
+  try {
+    languages = parseJsonArray<TypesenseWatchContainerLanguage>(
+      containerLanguagesJson ?? "[]",
+    )
+  } catch {
+    return null
+  }
+  if (languages.length === 0) return null
+
+  const bySlug = new Map(
+    languages.flatMap((language) =>
+      language?.languageSlug
+        ? [[language.languageSlug, language] as const]
+        : [],
+    ),
+  )
+  const selected =
+    bySlug.get(target.slug) ??
+    target.fallbackLanguageSlugs
+      .map((slug) => bySlug.get(slug))
+      .find((language) => language != null)
+  if (!selected) return null
+
+  return {
+    kind: "container",
+    languageSlug: selected.languageSlug,
+    languageEnglishName: selected.languageEnglishName,
+    audio: false,
+    subtitles: false,
+    // A container offers browsing, not playback. Never surface a descendant's
+    // playback identity on the container row.
+    playbackId: null,
+    durationSeconds: null,
+    hrefLanguageSlug: selected.languageSlug,
   }
 }
 
@@ -927,14 +1145,7 @@ function candidateScore(
   const sourceRelevance = candidate.sourceScore * 0.55
   const relevance = candidateRelevance(candidate)
   const evidenceBoost = relevance - sourceRelevance
-  const availability =
-    watchability.kind === "target_audio"
-      ? 0.25
-      : watchability.kind === "target_subtitle"
-        ? 0.18
-        : watchability.kind === "related_language"
-          ? 0.08
-          : 0
+  const availability = availabilityScoreForKind(watchability.kind)
   const round = (value: number) => Math.round(value * 1000) / 1000
   return {
     rankingRelevance: relevance,
@@ -951,10 +1162,7 @@ function candidateScore(
 }
 
 function watchabilityRank(kind: IndexedWatchability["kind"]): number {
-  if (kind === "target_audio") return 0
-  if (kind === "target_subtitle") return 1
-  if (kind === "related_language") return 2
-  return 3
+  return watchabilityRankForKind(kind)
 }
 
 function laneStatus({
@@ -1005,21 +1213,70 @@ async function withTimeout<T>(
   }
 }
 
+// Under a deadline: check the budget BEFORE starting the dependency call, then
+// race it. Without a deadline the call runs exactly as before.
+function withinStage<T>(
+  start: () => Promise<T>,
+  deadline: WatchSearchRequestDeadline | undefined,
+  stage: WatchSearchDeadlineStage,
+  atMs: number | undefined,
+): Promise<T> {
+  if (!deadline || atMs == null) return start()
+  deadline.stage = stage
+  assertBeforeDeadline(atMs)
+  return beforeDeadline(start(), atMs)
+}
+
+// The embedding timer started with the request; under a deadline its wait is
+// also capped at the retrieval cutoff. A miss degrades the semantic lane and
+// retrieval goes out lexical-only.
+async function embeddingOutcomeBeforeCutoff(
+  promise: Promise<EmbeddingOutcome>,
+  embeddingStartedAt: number,
+  atMs: number,
+): Promise<EmbeddingOutcome> {
+  const outcome = await settleBeforeDeadline(promise, atMs)
+  if (outcome.status === "fulfilled") return outcome.value
+  if (outcome.status === "rejected") throw outcome.error
+  return {
+    status: "rejected",
+    error: new WatchSearchStageBudgetError(),
+    elapsedMs: performance.now() - embeddingStartedAt,
+  }
+}
+
+// Query-free: the request id, stage, and elapsed time identify the breach
+// without retaining what the viewer typed.
+function logWatchSearchDeadlineExceeded(
+  logger: Pick<Console, "warn">,
+  input: WatchSearchInput,
+  deadline: WatchSearchRequestDeadline,
+): void {
+  logger.warn(
+    `[typesense-watch-search] event=${WATCH_SEARCH_DEADLINE_EXCEEDED_EVENT} stage=${deadline.stage} request_id=${normalizeRequestId(input.clientRequestId)} elapsed_ms=${Math.round(performance.now() - deadline.startedAtMs)}`,
+  )
+}
+
 export class TypesenseWatchSearchService {
   private readonly embedder: WatchSearchQueryEmbedder
   private readonly embeddingTimeoutMs: number
   private readonly logger: Pick<Console, "warn">
   private readonly profile: TypesenseWatchSearchProfile
   private readonly rankingImplementation: WatchSearchRankingImplementation
+  private readonly activeTranscriptProjectionRevision: bigint | null
 
   private retrievalIdentity(): WatchSearchRetrievalIdentity {
     return {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       rankingRevision: this.rankingImplementation,
       transcriptProjectionRevision:
         this.profile.transcriptProjectionRevision?.toString() ?? null,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision?.toString() ?? null,
       evaluationRevision: this.profile.qrelsRevision ?? null,
     }
   }
@@ -1039,6 +1296,12 @@ export class TypesenseWatchSearchService {
       this.profile.kind === "CANDIDATE"
         ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
         : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
+    this.activeTranscriptProjectionRevision =
+      resolveWatchSearchRuntimeEnv().transcriptProjectionRevision ?? null
+  }
+
+  getLexicalCollection(): string {
+    return this.profile.binding.lexical
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
@@ -1048,8 +1311,12 @@ export class TypesenseWatchSearchService {
     const diagnostics: MutableSearchDiagnostics = {
       profile: this.profile.kind,
       generationId: this.profile.generationId,
-      applicationRevision: this.profile.applicationRevision,
+      indexContractRevision: this.profile.indexContractRevision,
+      contentEmbeddingContractId: this.profile.contentEmbeddingContractId,
+      transcriptChunkingVersion: this.profile.transcriptChunkingVersion,
       transcriptProjectionRevision: this.profile.transcriptProjectionRevision,
+      activeTranscriptProjectionRevision:
+        this.activeTranscriptProjectionRevision,
       binding: this.profile.binding,
       retrievalCalls: 0,
       logicalSubsearches: 0,
@@ -1084,7 +1351,11 @@ export class TypesenseWatchSearchService {
   private async multiSearch<T>(
     searches: readonly TypesenseSearchRequest[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchResult<T>[]> {
+    // Every Typesense dispatch is a stage boundary: none starts once the
+    // budget is gone.
+    if (deadline) assertBeforeDeadline(deadline.deadlineAtMs)
     if (diagnostics) {
       diagnostics.retrievalCalls += 1
       diagnostics.logicalSubsearches += searches.length
@@ -1100,7 +1371,13 @@ export class TypesenseWatchSearchService {
       }
     }
     const startedAt = diagnostics ? performance.now() : 0
-    const results = await this.typesense.multiSearch<T>(searches)
+    const results = deadline
+      ? await this.typesense.multiSearch<T>(searches, {
+          timeoutMs:
+            Math.ceil(remainingBudgetMs(deadline.deadlineAtMs)) +
+            DEADLINE_TRANSPORT_ABORT_GRACE_MS,
+        })
+      : await this.typesense.multiSearch<T>(searches)
     if (diagnostics) {
       diagnostics.typesenseWallTimeMs += performance.now() - startedAt
       diagnostics.parsedResponseBytes += Buffer.byteLength(
@@ -1118,13 +1395,33 @@ export class TypesenseWatchSearchService {
     return results
   }
 
-  async search(input: WatchSearchInput): Promise<WatchSearchResponse> {
-    return this.executeSearch(input)
+  async search(
+    input: WatchSearchInput,
+    options: TypesenseWatchSearchOptions = {},
+  ): Promise<WatchSearchResponse> {
+    if (!options.hardTimeoutMs) return this.executeSearch(input)
+    const deadline = createWatchSearchRequestDeadline({
+      startedAtMs: options.requestStartedAtMs ?? performance.now(),
+      hardTimeoutMs: options.hardTimeoutMs,
+    })
+    try {
+      assertBeforeDeadline(deadline.retrievalDeadlineAtMs)
+      return await beforeDeadline(
+        this.executeSearch(input, undefined, deadline),
+        deadline.deadlineAtMs,
+      )
+    } catch (error) {
+      if (isWatchSearchDeadlineExceeded(error)) {
+        logWatchSearchDeadlineExceeded(this.logger, input, deadline)
+      }
+      throw error
+    }
   }
 
   private async executeSearch(
     input: WatchSearchInput,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<WatchSearchResponse> {
     const startedAt = performance.now()
     const query = input.query.trim().slice(0, MAX_QUERY_LENGTH)
@@ -1153,17 +1450,31 @@ export class TypesenseWatchSearchService {
       }),
     )
     const languageStartedAt = performance.now()
-    const baseLanguageInterpretation = await resolveSearchLanguageSignals({
-      prisma: this.prisma,
-      input,
-    })
+    // Language context is required to build every retrieval request, so a
+    // stage that misses the retrieval cutoff fails the request.
+    const baseLanguageInterpretation = await withinStage(
+      () =>
+        resolveSearchLanguageSignals({
+          prisma: this.prisma,
+          input,
+        }),
+      deadline,
+      "language_resolution",
+      deadline?.retrievalDeadlineAtMs,
+    )
     const candidateQueryPlan =
       this.profile.kind === "CANDIDATE"
-        ? await buildTypesenseWatchSearchQueryPlan({
-            prisma: this.prisma,
-            query,
-            baseResolution: baseLanguageInterpretation,
-          })
+        ? await withinStage(
+            () =>
+              buildTypesenseWatchSearchQueryPlan({
+                prisma: this.prisma,
+                query,
+                baseResolution: baseLanguageInterpretation,
+              }),
+            deadline,
+            "language_resolution",
+            deadline?.retrievalDeadlineAtMs,
+          )
         : null
     let languageInterpretation = candidateQueryPlan
       ? {
@@ -1177,10 +1488,16 @@ export class TypesenseWatchSearchService {
       : baseLanguageInterpretation
     const provisionalTargetLanguageSlug =
       languageInterpretation.targetLanguageSlug
-    const [provisionalTarget, evidenceLocales] = await Promise.all([
-      this.targetLanguageContext(provisionalTargetLanguageSlug),
-      this.evidenceLocales(languageInterpretation),
-    ])
+    const [provisionalTarget, evidenceLocales] = await withinStage(
+      () =>
+        Promise.all([
+          this.targetLanguageContext(provisionalTargetLanguageSlug),
+          this.evidenceLocales(languageInterpretation),
+        ]),
+      deadline,
+      "language_resolution",
+      deadline?.retrievalDeadlineAtMs,
+    )
     let target = provisionalTarget
     laneStatuses.push(
       laneStatus({
@@ -1265,8 +1582,14 @@ export class TypesenseWatchSearchService {
       timelineStartedAt: startedAt,
       laneStatuses,
       diagnostics,
+      deadline,
     })
-    const rankingGroups = retrieval.groups
+    const rankingGroups = ensureCuratedGroupsOnFirstPage(
+      retrieval.groups,
+      offset,
+      retrieval.nativeOffset,
+      limit,
+    )
     const candidates = rankingGroups.flatMap((group) => group.members)
     const nativeRanking = retrieval.kind === "native"
     const nativeCandidateGroups = nativeRanking ? rankingGroups : null
@@ -1296,8 +1619,14 @@ export class TypesenseWatchSearchService {
         languageInterpretation.targetLanguageSlug !==
         provisionalTargetLanguageSlug
       ) {
-        target = await this.targetLanguageContext(
-          languageInterpretation.targetLanguageSlug,
+        target = await withinStage(
+          () =>
+            this.targetLanguageContext(
+              languageInterpretation.targetLanguageSlug,
+            ),
+          deadline,
+          "target_language",
+          deadline?.deadlineAtMs,
         )
       }
     }
@@ -1316,10 +1645,17 @@ export class TypesenseWatchSearchService {
         0,
         nativeOffset + limit + 1,
       )
-      hydratedById = await this.hydrateResultDocuments(
-        candidateGroups.flatMap((group) => group.members),
-        target,
-        diagnostics,
+      hydratedById = await withinStage(
+        () =>
+          this.hydrateResultDocuments(
+            candidateGroups.flatMap((group) => group.members),
+            target,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
       )
       rankedCandidates = candidateGroups.flatMap((group) => {
         const watchableMembers = group.members.flatMap((candidate) => {
@@ -1351,12 +1687,18 @@ export class TypesenseWatchSearchService {
       const missingPreviewIds = candidates
         .map((candidate) => candidate.videoId)
         .filter((videoId) => !previewById.has(videoId))
-      const missingPreviews =
-        await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
-          missingPreviewIds,
-          CATALOG_WATCHABILITY_PREVIEW_FIELDS,
-          diagnostics,
-        )
+      const missingPreviews = await withinStage(
+        () =>
+          this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
+            missingPreviewIds,
+            CATALOG_WATCHABILITY_PREVIEW_FIELDS,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
+      )
       for (const [videoId, document] of missingPreviews) {
         previewById.set(videoId, document)
       }
@@ -1389,12 +1731,20 @@ export class TypesenseWatchSearchService {
           return left.candidate.videoId.localeCompare(right.candidate.videoId)
         })
       const fallbackPage = rankedCandidates.slice(offset, offset + limit)
-      hydratedById = await this.hydrateResultDocuments(
-        fallbackPage.map((entry) => entry.candidate),
-        target,
-        diagnostics,
+      hydratedById = await withinStage(
+        () =>
+          this.hydrateResultDocuments(
+            fallbackPage.map((entry) => entry.candidate),
+            target,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
       )
     }
+    if (deadline) deadline.stage = "response"
     if (diagnostics) diagnostics.hydratedRecords = hydratedById.size
     const pageCandidates = nativeRanking
       ? rankedCandidates.slice(nativeOffset, nativeOffset + limit)
@@ -1571,6 +1921,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt,
     laneStatuses,
     diagnostics,
+    deadline,
   }: {
     titleQuery: string
     preferredLocale: string
@@ -1585,6 +1936,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt: number
     laneStatuses: WatchSearchLaneStatus[]
     diagnostics?: MutableSearchDiagnostics
+    deadline?: WatchSearchRequestDeadline
   }): Promise<CandidateRetrieval> {
     const globalCandidateRecall = this.profile.kind === "CANDIDATE"
     const semanticEligible = globalCandidateRecall || evidenceLocales.length > 0
@@ -1602,7 +1954,16 @@ export class TypesenseWatchSearchService {
       )
     }
 
-    const embeddingOutcome = semanticEligible ? await embeddingPromise : null
+    if (deadline) deadline.stage = "retrieval"
+    const embeddingOutcome = !semanticEligible
+      ? null
+      : deadline
+        ? await embeddingOutcomeBeforeCutoff(
+            embeddingPromise,
+            embeddingStartedAt,
+            deadline.retrievalDeadlineAtMs,
+          )
+        : await embeddingPromise
     let embedding: number[] | null = null
     if (embeddingOutcome?.status === "fulfilled") {
       embedding = embeddingOutcome.embedding
@@ -1678,17 +2039,19 @@ export class TypesenseWatchSearchService {
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "title",
         ),
       },
       {
         kind: "metadata",
         request: lexicalLaneRequest(
           this.profile.binding.lexical,
-          titleQuery,
+          normalizeWatchSearchCurationQuery(titleQuery),
           metadataFields,
           globalCandidateRecall ? null : lexicalLanguageIdentities,
           candidateLimit,
           offset,
+          "metadata",
         ),
       },
       ...(embedding
@@ -1713,6 +2076,7 @@ export class TypesenseWatchSearchService {
       >(
         retrievalLanes.map(({ request }) => request),
         diagnostics,
+        deadline,
       )
       const resultByLane = new Map(
         retrievalLanes.map(({ kind }, index) => [kind, results[index]]),
@@ -1811,6 +2175,7 @@ export class TypesenseWatchSearchService {
             : []),
         ],
         diagnostics,
+        deadline,
       )
       const lexicalHits = await this.withLegacyLocaleProjection(
         results
@@ -1821,6 +2186,7 @@ export class TypesenseWatchSearchService {
             candidateLimit,
           ) as TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
         diagnostics,
+        deadline,
       )
       const semanticHits = embedding
         ? ((results.at(-1)?.hits ??
@@ -1907,6 +2273,7 @@ export class TypesenseWatchSearchService {
       metadataValues: string[]
       titleValueSet: Set<string>
       metadataValueSet: Set<string>
+      curated: boolean
       members: Map<string, Candidate>
     }
     const groups = new Map<string, GroupState>()
@@ -2058,6 +2425,7 @@ export class TypesenseWatchSearchService {
           canonicalVideoId,
           fusedScore: 0,
           wholeTitleMatch: false,
+          curated: false,
           titleValues: [],
           metadataValues: [],
           titleValueSet: new Set<string>(),
@@ -2074,6 +2442,7 @@ export class TypesenseWatchSearchService {
           { candidate: Candidate; quality: number }
         >()
         let bestGroupQuality = 0
+        state.curated ||= group.hits.some((hit) => hit.curated === true)
         for (const hit of group.hits) {
           const quality = typesenseLexicalMatchQuality(hit.text_match_info)
           bestGroupQuality = Math.max(bestGroupQuality, quality)
@@ -2185,6 +2554,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId,
         fusedScore: 0,
         wholeTitleMatch: false,
+        curated: false,
         titleValues: [],
         metadataValues: [],
         titleValueSet: new Set<string>(),
@@ -2368,6 +2738,7 @@ export class TypesenseWatchSearchService {
         canonicalVideoId: candidate.videoId,
         fusedScore: relevance,
         wholeTitleMatch: candidate.wholeTitleMatch,
+        curated: false,
         titleValues: titleValuesByVideoId.get(candidate.videoId) ?? [],
         metadataValues: [],
         laneEvidence: {
@@ -2413,6 +2784,7 @@ export class TypesenseWatchSearchService {
     candidates: readonly CandidateHydrationScope[],
     target: TargetLanguageContext,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<Map<string, HydratedResultDocument>> {
     const candidateScopeByVideoId = new Map<string, CandidateHydrationScope>()
     for (const candidate of candidates) {
@@ -2464,7 +2836,7 @@ export class TypesenseWatchSearchService {
     try {
       const initialResults = await this.multiSearchInBatches<
         TypesenseWatchCatalogResultDocument | TypesenseWatchAvailabilityDocument
-      >([...catalogSearches, ...availabilitySearches], diagnostics)
+      >([...catalogSearches, ...availabilitySearches], diagnostics, deadline)
       const catalogResults = initialResults.slice(0, catalogSearches.length)
       const availabilityResults = initialResults.slice(catalogSearches.length)
       const overflowSearches: TypesenseSearchRequest[] = []
@@ -2489,6 +2861,7 @@ export class TypesenseWatchSearchService {
         await this.multiSearchInBatches<TypesenseWatchAvailabilityDocument>(
           overflowSearches,
           diagnostics,
+          deadline,
         )
       const availabilityByVideoId = new Map<
         string,
@@ -2517,6 +2890,9 @@ export class TypesenseWatchSearchService {
                   target,
                   candidateScope?.videoEditionId ?? null,
                   candidateScope?.kind === "semantic",
+                  // A container owns no availability document, so its state
+                  // rides the catalog document instead.
+                  document.containerLanguagesJson,
                 ),
               },
             ] as const
@@ -2545,6 +2921,7 @@ export class TypesenseWatchSearchService {
           ids,
           LEGACY_CATALOG_RESULT_FIELDS,
           diagnostics,
+          deadline,
         )
       return new Map(
         [...legacyById].map(([id, document]) => [
@@ -2566,6 +2943,7 @@ export class TypesenseWatchSearchService {
   private async multiSearchInBatches<TDocument>(
     searches: readonly TypesenseSearchRequest[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchResult<TDocument>[]> {
     const results: TypesenseSearchResult<TDocument>[] = []
     for (
@@ -2577,6 +2955,7 @@ export class TypesenseWatchSearchService {
         ...(await this.multiSearch<TDocument>(
           searches.slice(index, index + TYPESENSE_MAX_MULTI_SEARCHES),
           diagnostics,
+          deadline,
         )),
       )
     }
@@ -2589,6 +2968,7 @@ export class TypesenseWatchSearchService {
     videoIds: readonly string[],
     includeFields?: string,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<Map<string, TDocument>> {
     const ids = [...new Set(videoIds)]
     if (ids.length === 0) return new Map()
@@ -2607,7 +2987,11 @@ export class TypesenseWatchSearchService {
         include_fields: includeFields,
       })
     }
-    const results = await this.multiSearch<TDocument>(searches, diagnostics)
+    const results = await this.multiSearch<TDocument>(
+      searches,
+      diagnostics,
+      deadline,
+    )
     return new Map(
       results.flatMap((result) =>
         (result.hits ?? []).map(
@@ -2620,6 +3004,7 @@ export class TypesenseWatchSearchService {
   private async withLegacyLocaleProjection(
     hits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]> {
     const legacyIds = hits
       .filter((hit) => !hasAlignedLocaleCodes(hit.document))
@@ -2631,6 +3016,7 @@ export class TypesenseWatchSearchService {
         legacyIds,
         LEGACY_CATALOG_LOCALE_FIELDS,
         diagnostics,
+        deadline,
       )
     return hits.map((hit) => {
       const legacy = legacyById.get(hit.document.id)
@@ -2753,6 +3139,45 @@ export class TypesenseWatchSearchService {
   }
 }
 
+// The candidate serving proxy resolves its profile (Typesense and Prisma reads,
+// refreshed every 30 seconds) before a service exists. A bounded call starts
+// its deadline here, and the service reuses this start, so profile work
+// consumes the same request budget.
+export async function searchResolvedTypesenseWatchSearch(
+  resolveService: () => Promise<TypesenseWatchSearchService>,
+  input: WatchSearchInput,
+  options: TypesenseWatchSearchOptions = {},
+  logger: Pick<Console, "warn"> = console,
+): Promise<WatchSearchResponse> {
+  if (!options.hardTimeoutMs) {
+    return (await resolveService()).search(input, options)
+  }
+  const requestStartedAtMs = options.requestStartedAtMs ?? performance.now()
+  const deadline = createWatchSearchRequestDeadline({
+    startedAtMs: requestStartedAtMs,
+    hardTimeoutMs: options.hardTimeoutMs,
+  })
+  let service: TypesenseWatchSearchService
+  try {
+    service = await withinStage(
+      resolveService,
+      deadline,
+      "serving_profile",
+      deadline.retrievalDeadlineAtMs,
+    )
+  } catch (error) {
+    if (isWatchSearchDeadlineExceeded(error)) {
+      logWatchSearchDeadlineExceeded(logger, input, deadline)
+    }
+    throw error
+  }
+  const response = await service.search(input, {
+    ...options,
+    requestStartedAtMs,
+  })
+  return { ...response, latencyMs: performance.now() - requestStartedAtMs }
+}
+
 export function createTypesenseWatchSearchService(
   prisma: PrismaClient,
   profile: TypesenseWatchSearchProfile = createCurrentWatchSearchProfile(),
@@ -2766,7 +3191,11 @@ export function createTypesenseWatchSearchService(
   if (!host || !apiKey) return null
   return new TypesenseWatchSearchService(
     prisma,
-    new TypesenseClient({ host, apiKey, timeoutMs: 2_000 }),
+    new TypesenseClient({
+      host,
+      apiKey,
+      timeoutMs: TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS,
+    }),
     { profile },
   )
 }

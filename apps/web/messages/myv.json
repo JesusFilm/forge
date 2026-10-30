@@ -39,9 +39,8 @@
     "posterAlt": "Video-ть постерезэ",
     "noDownloads": "Те video-ть лангсто download-ть ашт.",
     "fileSizeLabel": "File size-ть вешемс",
-    "termsAgreementPrefix": "Мон сёлгомс те ",
+    "termsAgreement": "Мон вейкетян <link>Пользование шартиятнень</link> марто",
     "termsOfUse": "Пользование шартият",
-    "termsAgreementSuffix": "",
     "close": "Питнемс",
     "download": "Download-темс",
     "authRequiredTitle": "Те video-ть download-темс марто тев?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-са таравтомс (te build-са аш)",
     "shareOnX": "X-са таравтомс",
     "shareOnXUnavailable": "X-са таравтомс (te build-са аш)",
+    "opensInNewTab": "{label} (панжови од вкладкасо)",
     "shareDisabledHint": "Таравтома deployed page вешемс — video-сь production-са лангсо сыстэ лиякштомс.",
     "shareFormat": "Таравтома format",
     "shareLinkTab": "Link таравтома",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language-ть вастомс",
     "home": "JesusFilm прявт лопа",
     "closeSearch": "Вешемась питнемс",
-    "submitSearch": "Вешемс"
+    "submitSearch": "Вешемс",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Седе олонь результатт лофтоземс эзь лезь.",
     "searching": "Вешемс...",
     "connectionHint": "Сети-ть текшнемс, сызь вановт эйстэ.",
+    "rateLimitHint": "Вешематне пек ламот. Вейке минутадо мейле варда вант эйстэ.",
     "retrySearch": "Вешемась вановтмс",
     "retry": "Вановт эйстэ",
     "noResults": "\"{query}\" лангсо результатт аш",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» {language}-са вешемс",
     "inLanguage": "{language}-са",
     "browseByRegion": "Region-ть коряс вановтомс",
+    "allVideosOnSinglePage": "Весе видеотне вейке лопасо",
     "clearLanguages": "Чистомс",
     "queryLanguageDetected": "{language} онкстамс",
     "searchInLanguage": "{language}-са вешемс",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "СЫ ТЕ",
     "tapToUnmute": "Тыкснемс тонгань пазомс",
-    "nextEpisode": "Сиведьме episode"
+    "nextEpisode": "Сиведьме episode",
+    "audioTranslationCount": "{count, plural, one {# кель} other {# кельть}}",
+    "subtitleCount": "Субтитрт: {count, plural, one {# кель} other {# кельть}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content-ть лофтозь",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Feedback form-ть аф лезь аштямс.",
     "loadingForm": "Feedback form-ть лофтозь…",
     "retry": "Вановт эйстэ",
-    "openFormShort": "Form-ть аштямс",
     "cancel": "Отказамс",
-    "title": "Beta feedback",
-    "description": "Лезекс, мезе лезь, и мезе моштезь лиякштомс. Те form-ть Google-сь аскезь.",
-    "openInNewTab": "Form-ть аштямс седе лият тяштень",
     "closeForm": "Feedback form-ть питнемс",
-    "loadingGoogleForm": "Google Form-ть лофтозь…",
-    "iframeTitle": "Beta feedback-ть ветямс"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Платасыз христианонь видеот — {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцият",
     "subtitlesOnly": "Ансяк subtitles",
+    "backToTop": "Верев мекев",
     "newlyAdded": "Неень шкань поладозь",
     "newVideosTitle": "Од христианонь видеот — {language}",
     "newestFirst": "Васня седе одтне",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Башка видеот",
     "videosFromCollection": "Collection: {collection}.",
     "standaloneDescription": "Те кельсэ башка видеот.",
-    "openCollection": "Collection-ть аштямс"
+    "openCollection": "Collection-ть аштямс",
+    "filters": "Ванстомат",
+    "filterLength": "Кувалмозо",
+    "filterLength_under5": "5 минутадо седе аламо",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутадо седе ламо",
+    "filterType": "Тип",
+    "clearFilters": "Ванстоматнень нардамс",
+    "filterResults": "{total}-стэ {count} невтезь",
+    "noFilterResults": "Те ванстоматненень лаксема видео арась. Вейкеде нардак ды вант.",
+    "filterAdded": "Поладозь",
+    "filterAdded_60d": "Остатка 60 чи",
+    "filterAdded_6m": "Остатка 6 ков",
+    "filterAdded_12m": "Остатка 12 ков"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — вановтома",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Прежней video preview",
     "nextVideoPreview": "Сиведьме video preview",
     "mediaCollection": "Медиа collection",
-    "scrollToVideo": "{title} video-ть лангс ваштомс"
+    "scrollToVideo": "{title} video-ть лангс ваштомс",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project прявт лопа",
@@ -404,6 +594,29 @@
     "merryChristmas": "Роштува марто!",
     "daysUntilChristmas": "{count, plural, one {Роштувашка # чи} other {Роштувашка # чит}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Вановтомс библиотеканть",
+    "title": "Вановтомс категориянь коряс",
+    "description": "Тусть вейтьс библиотекань се пельс, кона эряви — Иисусонь эрямо, церьковань иень шкат, ды кудо-кочкатнень, тонавтницятнень ды вишка группатнень туртов теезь видеот.",
+    "seeAll": "Ванномс весе видеотнень",
+    "previous": "Прежней категорият",
+    "next": "Сиведьме категорият",
+    "categories": {
+      "jesus": "JESUS фильмась",
+      "gospels": "Евангелиятне",
+      "shortVideos": "Нурькине видеот",
+      "family": "Семия",
+      "relationships": "Вейтьсэ эрямо",
+      "women": "Аватнень туртов",
+      "students": "Тонавтницятнень туртов",
+      "sports": "Спорт",
+      "goodNews": "Паро куля",
+      "hope": "Надия",
+      "training": "Тонавтома",
+      "easter": "Инечи",
+      "christmas": "Роштува"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Кельть",
     "metadataDescription": "JesusFilm videos-ть language-ть коряс вановтомс.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Лопась а муеви:",
     "title": "Te scene-сь arziat ash.",
     "description": "Page-сь velavtoms avol, story-сь moles.",
+    "languageDescription": "Минь а муинек лопанть, конань вешнят, ансяк ёвтамось моли фильмасо ды видеосо масторлангонь келтнестэ.",
     "actionsLabel": "Лопась а муеви — тевть",
     "backToWatch": "Watch-ть лангс велявтомс",
     "browseVideos": "Videos-ть вановтомс"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Нурькине фильм вановтомс",
-    "actions": {
-      "joinUs": "Минек марто совамс",
-      "shareMission": "Минек миссиянь коряс явомс"
-    },
-    "welcomeStart": {
-      "label": "Вера ды Святой Сёрмадовкс",
-      "title": "Тонеть неень видеокочкат",
-      "description": "Минек библиотекасо верань видеот, кона теть витсь, вешемс, ды оймезь вешемс."
-    },
-    "welcomeMorning": {
-      "label": "Кирань вдохновениесь",
-      "title": "Доброе утро! Неень Bible moments васькстат.",
-      "description": "Кичень вельде тыныцят Bible moments-ть, кона теть вить, лемдь, ды оймезь вельть лездезь."
-    },
-    "welcomeAfternoon": {
-      "label": "Пельгень вдохновениесь",
-      "title": "Добрый день! Тонеть Bible moments.",
-      "description": "Ведьме Bible content, кона пек лезь тонеть пельгень пурныньштямсто эли седе лемс вдохновениесе."
-    },
-    "welcomeEvening": {
-      "label": "Вечерь вдохновениесь",
-      "title": "Добрый вечер! Bible moments марто оймсэ тон.",
-      "description": "Парь Bible moments, кона теть оймезь вешемс ды тыныцямс лезь, кода келензь шкатнешк."
-    },
-    "joinUs": {
-      "label": "Минек марто совамс",
-      "title": "Миллиардась те вешень",
-      "description": "Пайремась седе те. Совамс минек марто, кода минек цифровой media лангсо gospel-ть явтомс масторсонть."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кода тов совамс",
-      "title": "Иисус-ть повесть явомс, минек марто",
-      "description": "Тие лембт, сонтне и вазьт Iisus-ть кенярдома, өзсень кельсэнзэ, кода сонтне сонзэ теевтстат."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% вастови",
-    "none": "Те видеонтень те кельсэ рекомендацият а муевсть."
+    "none": "Те видеонтень те кельсэ рекомендацият а муевсть.",
+    "heading": "Лемдезь видеот",
+    "loadingLabel": "Лемдезь видеот лофтозь",
+    "openingTitle": "Панжови {title}",
+    "openingVideo": "Панжови видеось",
+    "activityNotRecorded": "Рекомендациянь тевтнэ эзть сёрмадов. Ссылкатне важодить.",
+    "showingContextual": "Невтевить контекстэнь коряс рекомендациятне.",
+    "showingSaved": "Невтевить ванстозь рекомендациятне.",
+    "explanationCurated": "Кочказь видеот ваномс.",
+    "explanationViewingMode": "Лемдезь те видеонь ды кода ванат, секе коряс.",
+    "explanationCowatch": "Лемдезь те видеонь ды тонь интересэтнень коряс.",
+    "explanationHybrid": "Лемдезь те видеонь ды тонь ванстомс кочказь интересэтнень коряс.",
+    "explanationContextual": "Лемдезь се видеонь коряс, кона ней ванат.",
+    "explanationSemanticFallback": "Лемдезь се видеонь коряс, кона ней ванат; личастомо ладямось ней а маштови.",
+    "explanationProfileDurable": "Ладязь тонь ванстомс кочказь интересэтнень коряс.",
+    "explanationProfileVisit": "Ладязь те совамонтень.",
+    "personalizationLabel": "Рекомендациятнень личастомо ладямо",
+    "personalizationPrompt": "Мелеть полавтомс, кода рекомендациятне ладявить?",
+    "openCookieSettings": "Панжить куки-койтнень"
   },
   "BetaTesterModal": {
     "title": "Кармамс beta tester-экс",
@@ -538,16 +732,39 @@
     "retryFailed": "А лезьтнень одов download-темс"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Келень версиясь аш",
+    "eyebrow": "Келень версиясь аш",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> келеньсэ аш",
+    "actionsLabel": "Ваномань варианттнэ",
+    "browseInLanguage": "{language} келеньсэ видеотнень ваномс",
+    "backToSearch": "Вешемав кевкстамс",
+    "audioVersionsTitle": "Лия аудио версият",
+    "audioVersionsDescription": "Те видеонть ваномань поладомас кочка аудио кель.",
+    "languageVersionLabel": "Аудио кель",
+    "selectLanguageVersion": "Келень версия кочкамс",
+    "watchSelectedVersion": "Кочказь версиянть ваномс"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Куки-кочкамот",
+    "bannerTitle": "Тонть приватностень кочкамот",
+    "bannerDescription": "Важной кукият ванстыт Watch-нь и теевить сонзэ тевсэ. Тонть ломанень мереметь коряс, валгомо-перть содавикс апак эрявикс куки пештяви содамо интересэт визиттнеде ютксо, медь рекомендациятне лиякстомс. Контекстэнь коряс рекомендациятне улихть телеськак.",
+    "acceptAll": "Ванстомс весе",
+    "essentialOnly": "Ансяк важнойтне",
+    "manageChoices": "Кочкамотнень викшнемс",
+    "savingChoice": "Куки-кочкамонь ванстомась",
+    "settings": "Куки-койтне",
+    "settingsDescription": "Кочкак, маштови ли Watch-нень содамо рекомендациянь интересэт визиттнеде ютксо. Тень саи полавтомс кезэрень шкасто.",
+    "essentialCookies": "Важной кукият",
+    "essentialDescription": "Кемекстамо, видеонь неемачись, приватностень кочкамот ды рекомендациянь вешнемань валдо.",
+    "alwaysActive": "Секить тевсэ",
+    "personalization": "Личастомо ладямо",
+    "personalizationDescription": "Ванстомс чакт интересэт визиттнеде ютксо. Зяро тень палат, контекстэнь коряс рекомендациятне улихть зярдояк.",
+    "erasurePending": "Профилень нардамось эри учемасо. Контекстэнь коряс рекомендациятне уш од активнойт.",
+    "cancel": "А молемс",
+    "saveChoices": "Ванстомс кочкамотнень",
+    "saving": "Ванстовсь…",
+    "loadError": "Тонть кочкамоц эйстэ а маштовсь ловномс. Уликик зярдояк ало кочкамс.",
+    "grantError": "Личастомо ладямось а маштовсь нолдамс. Ансяк важнойтне улихть зярдояк.",
+    "saveError": "Тонть кочкамоц а маштовсь ванстомс. Варштадо одов."
   }
 }

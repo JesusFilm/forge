@@ -1,0 +1,18 @@
+{
+  "attemptId": "8ca78d2b-ceee-4909-b073-6348ff1c6f1f",
+  "recordedAt": "2026-09-29T22:47:15.103008+00:00",
+  "preflightAttemptId": "c806ab0b-dca6-4fcc-bca4-82b6cc4237d2",
+  "generation": "aabb668443e4152c03f0052b6f80123595d101a2c10180ce861098a2afdcd98f",
+  "sourceWindowAndLimitsUnchanged": true,
+  "allCountsAndJsonWidthsWithinOriginalFixture": true,
+  "freshAdmissionSha256": "274c2015a560ea2f4c916e52333d042362e3b72f1ceae7ef115776c1db2199d9",
+  "v5PinsSha256": "1d6d25f44249327b93556f7610cb7337080167589b7b0cb52dc8c314df131e1f",
+  "v5BrokerSha256": "b2ca92a117eb59f6b7eb9854fe6d9676adb9cabec7f2c23018a06c09de821f87",
+  "expectedRuntimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "capacityReceipt": "production-capacity-observation-20260929T2243.json",
+  "capacityStillRecent": true,
+  "naturalDriftCauseUnproven": true,
+  "priorPublicationInsertedNoGraph": true,
+  "publicationDecision": "one exact publication after independent binding review",
+  "automaticRetryPermitted": false
+}

@@ -16,6 +16,8 @@ import {
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
+import * as Linking from "expo-linking"
+import { Image } from "expo-image"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
@@ -24,6 +26,9 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { getResumePosition } from "../../src/lib/watchEvents/continueWatching"
+import { topShelfAutoplayDecision } from "../../src/lib/topShelf/playback"
+import { watchPlaybackLinkIntent } from "../../src/lib/watchPlaybackLink"
+import { useStartupIntroActive } from "../../src/contexts/StartupIntroProvider"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
@@ -38,6 +43,10 @@ import {
 } from "../../src/components/watch/actionRowScrollGlide"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
+import { BrandedLoading } from "../../src/components/BrandedLoading"
+import { useAndroidVideoDetails } from "../../src/hooks/useAndroidVideoDetails"
+import { AndroidLoadingDialog } from "../../src/components/AndroidLoadingDialog"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
 import { UpNextRail } from "../../src/components/watch/UpNextRail"
 import { AboutSection } from "../../src/components/watch/AboutSection"
@@ -66,6 +75,7 @@ import { useBibleVerses } from "../../src/hooks/useBibleVerses"
 import type { WatchBibleCitation } from "../../src/lib/normalizeVideo"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { scale } from "../../src/lib/scale"
+import { deriveDetailsDataState } from "../../src/components/watch/panelState"
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -86,31 +96,52 @@ export default function WatchVideoScreen() {
     slug,
     seed: seedParam,
     autoplay: autoplayParam,
+    topShelf: topShelfParam,
   } = useLocalSearchParams<{
     slug: string
     seed?: string
     autoplay?: string
+    topShelf?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
-  const { video, setVideo, activeVariant } = useWatchSession()
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
+  const {
+    hydrated: preferencesReady,
+    audioLanguageSlug: preferredAudioLanguage,
+  } = useWatchPreferences()
+  const introActive = useStartupIntroActive()
   const {
     state: playerState,
     decoderClaimed,
     playVideo,
+    dismissVideo,
     consumeUpNextChain,
   } = useVideoPlayerContext()
 
-  const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
+  const legacyDetails = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
-    skip: !decodedSlug,
+    skip: !decodedSlug || Platform.OS === "android",
     // cache-first (NOT cache-and-network): the payload is large for videos with
     // many dubs; cache-and-network would refetch + re-normalize every dub on
     // re-entry. returnPartialData paints whatever the cache already holds.
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
+  const androidDetails = useAndroidVideoDetails(
+    decodedSlug,
+    Platform.OS === "android",
+  )
+  const { data, error, loading, refetch } =
+    Platform.OS === "android" ? androidDetails : legacyDetails
 
   // Keyed on the inner videoBySlug object (NOT the outer `data` wrapper): a new
   // wrapper over an unchanged inner object — common on partial → full transitions
@@ -186,9 +217,55 @@ export default function WatchVideoScreen() {
     "pending" | "playing" | "off"
   >(autoplayParam === "1" ? "pending" : "off")
   const autoplayConsumedRef = useRef(false)
+  useEffect(() => {
+    if (topShelfParam === "1") {
+      autoplayConsumedRef.current = false
+      setAutoplayPhase(autoplayParam === "1" ? "pending" : "off")
+      dismissVideo()
+    }
+  }, [decodedSlug, topShelfParam, autoplayParam, dismissVideo])
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "ios" || !Platform.isTV) return
+      const subscription = Linking.addEventListener("url", ({ url }) => {
+        const intent = watchPlaybackLinkIntent(url, decodedSlug)
+        if (intent == null) return
+        autoplayConsumedRef.current = false
+        setAutoplayPhase(intent === "play" ? "pending" : "off")
+        dismissVideo()
+      })
+      return () => subscription.remove()
+    }, [decodedSlug, dismissVideo]),
+  )
 
   useEffect(() => {
     if (autoplayPhase !== "pending" || autoplayConsumedRef.current) return
+    if (topShelfParam === "1" && (!preferencesReady || loading || introActive))
+      return
+    if (topShelfParam === "1" && video && video.slug !== decodedSlug) return
+    if (topShelfParam === "1" && video) {
+      const decision = topShelfAutoplayDecision({
+        requestedSlug: decodedSlug,
+        videoSlug: video.slug ?? null,
+        preferredLanguage: preferredAudioLanguage,
+        activeLanguage: activeVariant?.languageSlug ?? null,
+        playableLanguages: video.variants
+          .filter((variant) => validateStreamingUrl(variant.hls))
+          .map((variant) => variant.languageSlug),
+      })
+      if (decision !== "ready") {
+        if (decision === "unavailable") setAutoplayPhase("off")
+        else {
+          const targetIndex = video.variants.findIndex(
+            (variant) =>
+              variant.languageSlug === (preferredAudioLanguage ?? "english") &&
+              validateStreamingUrl(variant.hls),
+          )
+          if (targetIndex >= 0) setActiveVariantIndex(targetIndex, false)
+        }
+        return
+      }
+    }
     const hls = activeVariant?.hls
     const videoId = video?.documentId
     if (!hls || !videoId || !validateStreamingUrl(hls)) {
@@ -200,7 +277,6 @@ export default function WatchVideoScreen() {
       if (!loading && (error != null || video != null)) setAutoplayPhase("off")
       return
     }
-
     let cancelled = false
     void (async () => {
       const position = await getResumePosition(videoId)
@@ -224,12 +300,29 @@ export default function WatchVideoScreen() {
               posterUrl: video.upNext.posterUrl,
             }
           : null,
+        recommendationAttribution,
+        playbackEntry,
       )
     })()
     return () => {
       cancelled = true
     }
-  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+  }, [
+    autoplayPhase,
+    activeVariant,
+    video,
+    playVideo,
+    loading,
+    error,
+    topShelfParam,
+    decodedSlug,
+    preferredAudioLanguage,
+    preferencesReady,
+    introActive,
+    setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
+  ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
   // Unless the close IS an Up Next hop: the overlay host marks the chain
@@ -247,7 +340,11 @@ export default function WatchVideoScreen() {
     playerWasVisibleRef.current = false
     if (autoplayPhase !== "playing") return
     if (consumeUpNextChain()) return
-    if (router.canGoBack()) router.back()
+    if (router.canGoBack()) {
+      router.back()
+    } else {
+      router.replace("/")
+    }
   }, [playerState.isVisible, autoplayPhase, router, consumeUpNextChain])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
@@ -324,10 +421,22 @@ export default function WatchVideoScreen() {
   )
 
   const hasVideo = video != null
+  const detailsDataState = deriveDetailsDataState({
+    loading: loading || !preferencesReady,
+    error: error != null || (!loading && normalized == null),
+    currentVideoReady: video?.slug === decodedSlug,
+  })
+  const retryDetails = () => {
+    void refetch().catch(() => {})
+  }
 
-  // Error state: only when the query errored AND there's nothing usable to keep
-  // showing — no normalized/cached video and no seed to paint a skeleton from.
-  const showErrorState = error != null && !hasVideo && seed == null
+  // A seed can paint the title/poster, but cannot satisfy metadata or playback.
+  // Terminal failures must expose Retry even when that seed is available.
+  const showErrorState = detailsDataState === "error"
+  const leaveLoading = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace("/")
+  }
 
   // First paint prefers resolved data, falling back to the seed.
   const displayTitle = video?.title ?? seed?.title ?? null
@@ -347,7 +456,9 @@ export default function WatchVideoScreen() {
   const heroMeta = buildMetadataLine(
     null,
     activeVariant?.duration ?? video?.duration,
-    video?.variants.length ?? null,
+    detailsDataState != null && detailsDataState !== "ready"
+      ? null
+      : (video?.variants.length ?? null),
   )
   const descriptionText = video?.description ?? null
 
@@ -369,23 +480,66 @@ export default function WatchVideoScreen() {
     return <View style={styles.screen} />
   }
 
+  if (
+    detailsDataState === "loading" &&
+    !playerState.isVisible &&
+    (Platform.OS === "android" || seed == null)
+  ) {
+    return (
+      <View style={styles.screen}>
+        {Platform.OS === "android" ? (
+          <BrandedLoading label="Loading movie details" />
+        ) : (
+          <ScreenStateView kind="loading" message="Loading movie details…" />
+        )}
+        <AndroidLoadingDialog
+          message="Loading movie details…"
+          onBack={leaveLoading}
+        />
+      </View>
+    )
+  }
+
   // Autoplay pass-through (Continue Watching): background only — while the
   // session resolves, while the player is up, and through the pop back to
   // Home. Same rationale as the redirect frame above: no VideoBackdrop, so
   // this never grabs the decode slot the fullscreen player needs.
   if (autoplayPhase !== "off" && !showErrorState) {
+    if (
+      Platform.OS === "android" &&
+      !playerState.isVisible &&
+      autoplayPhase === "pending"
+    ) {
+      return (
+        <View style={styles.screen}>
+          <BrandedLoading label="Preparing playback" />
+          <AndroidLoadingDialog
+            message="Preparing playback…"
+            onBack={leaveLoading}
+          />
+        </View>
+      )
+    }
     return <View style={styles.screen} />
   }
 
   if (showErrorState) {
     return (
       <View style={styles.screen}>
+        {Platform.OS === "ios" && displayPoster != null ? (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Image
+              source={{ uri: displayPoster }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+            <View style={styles.errorScrim} />
+          </View>
+        ) : null}
         <ScreenStateView
           kind="error"
           message="This video is temporarily unavailable."
-          onRetry={() => {
-            void refetch()
-          }}
+          onRetry={retryDetails}
           retryHint="Reloads this video"
         />
       </View>
@@ -414,6 +568,7 @@ export default function WatchVideoScreen() {
             // one thing that unmounts it if the showcase ever runs above it.
             overlayVisible={playerState.isVisible || decoderClaimed}
             bottomFadeColor={WATCH_THEME.below}
+            scrimVariant="detail"
           />
 
           <View style={styles.heroContent}>
@@ -446,8 +601,18 @@ export default function WatchVideoScreen() {
 
             <DetailsActionRow
               title={displayTitle}
+              metadataReady={detailsDataState === "ready"}
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
+              onOpenFeedback={() =>
+                router.push({
+                  pathname: "/feedback",
+                  params: {
+                    screen: "details",
+                    filmTitle: displayTitle ?? "",
+                  },
+                })
+              }
               onRowFocus={GLIDE_ENABLED ? handleActionRowFocus : undefined}
               onRowBlur={GLIDE_ENABLED ? handleActionRowBlur : undefined}
             />
@@ -500,16 +665,24 @@ export default function WatchVideoScreen() {
       <LanguagePanel
         visible={activePanel === "language"}
         onClose={closePanel}
+        dataState={detailsDataState}
+        onRetry={retryDetails}
       />
       <SubtitlePanel
         visible={activePanel === "subtitle"}
         onClose={closePanel}
+        dataState={detailsDataState}
+        onRetry={retryDetails}
       />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  errorScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
   screen: {
     flex: 1,
     backgroundColor: WATCH_THEME.below,

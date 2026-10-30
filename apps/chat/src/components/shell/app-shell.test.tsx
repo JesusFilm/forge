@@ -255,9 +255,14 @@ describe("AppShell — reply lifecycle (stub path, flag off)", () => {
     expect(messageTexts()).toEqual(["conv one", buildStubReply("conv one")])
   })
 
+  // This used to click the "New conversation" placeholder row, which
+  // feat-401 removed. Re-cut onto a STARTED row — the same no-op path
+  // (selectConversation early-returns on id === activeId).
   it("treats reselecting the active conversation as a no-op and keeps the draft", async () => {
+    await sendMessage("already started")
+    await awaitReply()
     await user.type(getTextarea(), "draft in progress")
-    await selectSidebarConversation("New conversation")
+    await selectSidebarConversation(deriveTitle("already started"))
     expect(getTextarea()).toHaveValue("draft in progress")
   })
 
@@ -271,43 +276,57 @@ describe("AppShell — reply lifecycle (stub path, flag off)", () => {
   })
 })
 
-describe("New conversation reuse + sidebar empties (feat-270)", () => {
-  it("no-ops onto the already-empty active pane instead of minting a duplicate row", async () => {
+describe("New conversation reuse + sidebar empties (feat-270, feat-401)", () => {
+  it("gives an unstarted conversation NO rail row, however often New is pressed", async () => {
     await clickNewConversation()
     await clickNewConversation()
-    expect(navRowTitles().filter((t) => t === "New conversation")).toHaveLength(
-      1,
-    )
+    // Pre-401 this rail held one "New conversation" ROW under the
+    // identically-labeled ACTION. Now it holds nothing at all.
+    expect(navRowTitles()).toEqual([])
     expect(container).toHaveTextContent("What would you like to ask?")
+
+    // One row after the first send. This canNOT detect a lost feat-270
+    // reuse — a second minted conversation stays empty, so feat-401 hides it.
+    // That rule is pinned unprojected in lib/conversation-session.test.ts.
+    await sendMessage("first real message")
+    await awaitReply()
+    expect(navRowTitles()).toEqual([deriveTitle("first real message")])
   })
 
+  // Unchanged by feat-401, deliberately (decision recorded in the ticket):
+  // New on an already-unstarted pane is a full no-op, draft included. That
+  // matches Claude and Gemini, which both keep a typed draft across New.
   it("keeps the draft when New lands on the already-empty active pane", async () => {
     await user.type(getTextarea(), "half a thought")
     await clickNewConversation()
     expect(getTextarea()).toHaveValue("half a thought")
   })
 
-  it("hides an inactive never-used empty from the rail and reuses it from the New action", async () => {
+  it("keeps the rail LENGTH steady across New and reselect — the list never grows or shrinks", async () => {
     await sendMessage("alpha topic")
     await awaitReply()
     await clickNewConversation()
-    expect(navRowTitles()).toEqual([
-      "New conversation",
-      deriveTitle("alpha topic"),
-    ])
+    // Pre-401 this read ["New conversation", "alpha topic"] — the list grew
+    // under the cursor on the press and shrank again on the next click.
+    expect(navRowTitles()).toEqual([deriveTitle("alpha topic")])
 
-    // Selecting the old conversation leaves the fresh empty behind — it
-    // disappears from the rail instead of lingering as a dead duplicate.
     await selectSidebarConversation(deriveTitle("alpha topic"))
     expect(navRowTitles()).toEqual([deriveTitle("alpha topic")])
 
-    // The New action brings the SAME empty back (no second one minted).
+    // The New action still lands on the SAME reused empty pane — it is simply
+    // invisible in the rail now.
     await clickNewConversation()
+    expect(navRowTitles()).toEqual([deriveTitle("alpha topic")])
+    expect(messageTexts()).toHaveLength(0)
+
+    // Two New presses then a send add exactly ONE row. Same caveat as above:
+    // an extra minted conversation would be invisible, not caught here.
+    await sendMessage("beta topic")
+    await awaitReply()
     expect(navRowTitles()).toEqual([
-      "New conversation",
+      deriveTitle("beta topic"),
       deriveTitle("alpha topic"),
     ])
-    expect(messageTexts()).toHaveLength(0)
   })
 
   it("focuses the composer from the New conversation action", async () => {

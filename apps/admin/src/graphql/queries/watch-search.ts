@@ -1,3 +1,5 @@
+import { signWatchSearchSurfaceManifest } from "@/services/recommendations/watch-search-surface-manifest"
+import { GraphQLError } from "graphql"
 import { builder } from "@/graphql/builder"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import type {
@@ -10,6 +12,10 @@ import type {
   WatchSearchLanguageInterpretation,
   WatchSearchResponse,
   WatchSearchResult,
+} from "@/services/watch-search.service"
+import {
+  WATCH_SEARCH_HARD_TIMEOUT_MS,
+  WatchSearchTimeoutError,
 } from "@/services/watch-search.service"
 import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
@@ -124,6 +130,7 @@ const WatchSearchAvailabilityKindEnum = builder.enumType(
       TARGET_AUDIO: { value: "target_audio" },
       TARGET_SUBTITLE: { value: "target_subtitle" },
       RELATED_LANGUAGE: { value: "related_language" },
+      CONTAINER: { value: "container" },
       UNAVAILABLE: { value: "unavailable" },
     } as const,
   },
@@ -342,6 +349,12 @@ const WatchSearchResponseRef = builder
   .objectRef<WatchSearchResponse>("WatchSearchResponse")
   .implement({
     fields: (t) => ({
+      surfaceManifest: t.field({
+        type: "JSON",
+        nullable: true,
+        resolve: (row) =>
+          signWatchSearchSurfaceManifest(row, env.WEB_REVALIDATE_TOKEN),
+      }),
       query: t.exposeString("query"),
       results: t.field({
         type: [WatchSearchResultRef],
@@ -438,7 +451,23 @@ builder.queryFields((t) => ({
           ? ctx.services.typesenseWatchSearch
           : ctx.services.watchSearch
       if (!service) throw new TypesenseWatchSearchUnavailableError()
-      const response = await service.search(input)
+      let response: WatchSearchResponse
+      try {
+        // Both primaries share one request-start-derived deadline. Shadow,
+        // offline evaluation, and agent callers reach the services directly
+        // and stay unbounded.
+        response = await service.search(input, {
+          hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+        })
+      } catch (error) {
+        if (!(error instanceof WatchSearchTimeoutError)) throw error
+        throw new GraphQLError("Watch search timed out", {
+          extensions: {
+            code: "WATCH_SEARCH_TIMEOUT",
+            http: { status: 504 },
+          },
+        })
+      }
       enqueueWatchSearchTrace(
         {
           input,

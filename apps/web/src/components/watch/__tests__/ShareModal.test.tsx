@@ -18,6 +18,7 @@
  * doesn't depend on the runtime env value.
  */
 
+import { setRequestLocale } from "next-intl/server"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -75,7 +76,9 @@ describe("ShareModal — Copy Link", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe("https://share.example/watch/the-call.html")
+    expect(input.value).toBe(
+      "https://share.example/watch/the-call.html?playback_source=share",
+    )
     expect(input.readOnly).toBe(true)
   })
 
@@ -84,6 +87,7 @@ describe("ShareModal — Copy Link", () => {
       Promise.resolve(),
     )
     setClipboard(writeText)
+    const onShareAction = vi.fn()
 
     act(() => {
       root.render(
@@ -91,6 +95,7 @@ describe("ShareModal — Copy Link", () => {
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
+          onShareAction={onShareAction}
           onClose={vi.fn()}
         />,
       )
@@ -104,9 +109,10 @@ describe("ShareModal — Copy Link", () => {
     })
 
     expect(writeText).toHaveBeenCalledWith(
-      "https://share.example/watch/the-call.html",
+      "https://share.example/watch/the-call.html?playback_source=share",
     )
     expect(copyBtn.textContent).toBe("Copied")
+    expect(onShareAction).toHaveBeenCalledWith("link_copy")
   })
 
   it("URL never contains a leading // or empty segment", () => {
@@ -146,7 +152,7 @@ describe("ShareModal — Facebook + X share intents", () => {
       '[data-testid="watch-share-modal-facebook"]',
     ) as HTMLAnchorElement
     expect(fb.href).toBe(
-      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html",
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%3Fplayback_source%3Dshare",
     )
   })
 
@@ -164,7 +170,7 @@ describe("ShareModal — Facebook + X share intents", () => {
     })
     const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
     expect(x.href).toBe(
-      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html&text=The%20Call",
+      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%3Fplayback_source%3Dshare&text=The%20Call",
     )
   })
 })
@@ -364,10 +370,14 @@ describe("ShareModal — local origin fallback", () => {
       "Share on X (opens in a new tab)",
     )
     expect((fb as HTMLAnchorElement).href).toContain(
-      encodeURIComponent("https://www.jesusfilm.org/watch/the-call.html"),
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+      ),
     )
     expect((x as HTMLAnchorElement).href).toContain(
-      encodeURIComponent("https://www.jesusfilm.org/watch/the-call.html"),
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+      ),
     )
 
     const hint = $('[data-testid="watch-share-modal-share-disabled-hint"]')
@@ -375,10 +385,51 @@ describe("ShareModal — local origin fallback", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe("https://www.jesusfilm.org/watch/the-call.html")
+    expect(input.value).toBe(
+      "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+    )
 
     vi.doUnmock("@/env")
     vi.resetModules()
+  })
+
+  // QA N50a: "(opens in a new tab)" was hardcoded English in every locale.
+  it("translates the new-tab hint in the social share accessible names", async () => {
+    vi.resetModules()
+    vi.doMock("@/env", () => ({
+      env: {
+        NEXT_PUBLIC_CANONICAL_ORIGIN: "http://localhost:3000",
+      },
+    }))
+    const { ShareModal: ShareModalLocal } =
+      await import("@/components/watch/ShareModal")
+
+    setRequestLocale("ar")
+    try {
+      act(() => {
+        root.render(
+          <ShareModalLocal
+            open
+            videoSlug="the-call"
+            currentLanguageSlug="arabic"
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      expect(
+        $('[data-testid="watch-share-modal-facebook"]')?.getAttribute(
+          "aria-label",
+        ),
+      ).toBe("مشاركة على Facebook (يُفتح في علامة تبويب جديدة)")
+      expect(
+        $('[data-testid="watch-share-modal-x"]')?.getAttribute("aria-label"),
+      ).toBe("مشاركة على X (يُفتح في علامة تبويب جديدة)")
+    } finally {
+      setRequestLocale("en")
+      vi.doUnmock("@/env")
+      vi.resetModules()
+    }
   })
 
   it("keeps a valid Embed action when the share identity is invalid", () => {
@@ -500,6 +551,35 @@ describe("ShareModal — clipboard failure", () => {
 })
 
 describe("ShareModal — lifecycle", () => {
+  it("scrolls at the viewport edge instead of inside the modal", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const modal = $('[data-testid="watch-share-modal"]')
+    const viewport = modal?.parentElement
+    const content = $('[data-testid="watch-share-modal-content"]')
+
+    expect(viewport?.getAttribute("data-slot")).toBe("dialog-viewport")
+    expect(viewport?.className).toContain("fixed")
+    expect(viewport?.className).toContain("inset-0")
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(modal?.className).toContain("m-auto")
+    expect(modal?.className).toContain("shrink-0")
+    expect(content?.className).not.toContain("overflow-y-auto")
+    expect(content?.className).not.toContain("max-h-")
+    expect(modal?.contains($('[data-testid="watch-share-modal-close"]'))).toBe(
+      true,
+    )
+  })
+
   it("renders the close button at the viewport top-right", () => {
     const onClose = vi.fn()
 

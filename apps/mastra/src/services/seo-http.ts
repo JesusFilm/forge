@@ -58,7 +58,7 @@ export function classifySeoHttpStatus(status: number): {
   }
 }
 
-type ResolveHost = (
+export type ResolveHost = (
   hostname: string,
 ) => Promise<readonly { address: string; family?: number }[]>
 
@@ -116,6 +116,20 @@ export function isPrivateSeoAddress(address: string): boolean {
 
 const defaultResolveHost: ResolveHost = async (hostname) =>
   lookup(hostname, { all: true, verbatim: true })
+
+export function createCachedSeoHostResolver(
+  resolveHost: ResolveHost = defaultResolveHost,
+): ResolveHost {
+  const cache = new Map<string, ReturnType<ResolveHost>>()
+  return (hostname) => {
+    const key = hostname.toLowerCase()
+    const cached = cache.get(key)
+    if (cached) return cached
+    const pending = resolveHost(key)
+    cache.set(key, pending)
+    return pending
+  }
+}
 
 export async function validateSeoUrl(
   value: string | URL,

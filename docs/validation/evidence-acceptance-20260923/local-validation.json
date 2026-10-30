@@ -1,0 +1,105 @@
+{
+  "suite": "apps/admin/src/graphql/plugins/rate-limit-recovery.db.test.ts",
+  "passed": 8,
+  "durationSeconds": 10.31,
+  "observations": [
+    {
+      "redisVersion": "8.10.2"
+    },
+    {
+      "scenario": "restart",
+      "round": 1,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 7
+        },
+        {
+          "status": 500,
+          "elapsedMs": 112
+        },
+        {
+          "status": 500,
+          "elapsedMs": 318
+        }
+      ],
+      "recoveryMs": 265,
+      "facts": 1
+    },
+    {
+      "scenario": "restart",
+      "round": 2,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 5
+        },
+        {
+          "status": 500,
+          "elapsedMs": 110
+        },
+        {
+          "status": 500,
+          "elapsedMs": 316
+        }
+      ],
+      "recoveryMs": 594,
+      "facts": 1
+    },
+    {
+      "scenario": "restart",
+      "round": 3,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 5
+        },
+        {
+          "status": 500,
+          "elapsedMs": 109
+        },
+        {
+          "status": 500,
+          "elapsedMs": 313
+        }
+      ],
+      "recoveryMs": 286,
+      "facts": 1
+    },
+    {
+      "scenario": "short-stall",
+      "elapsedMs": 159,
+      "facts": 1
+    },
+    {
+      "scenario": "bounded-stall",
+      "admissionElapsedMs": 503,
+      "healthStatus": 503,
+      "factsBeforeRecovery": 0
+    },
+    {
+      "scenario": "lost-ack",
+      "facts": 1,
+      "receipt": "replay"
+    },
+    {
+      "scenario": "early-disconnect",
+      "recoveryElapsedMs": 107,
+      "facts": 0
+    }
+  ],
+  "negativeControl": {
+    "removed": "post-admission caller abort fence only",
+    "result": "failed: expected zero resolver calls, observed one",
+    "implementationRestored": true
+  },
+  "browserFixtureSourceHashes": {
+    "proxy.mjs": "e76f65f71e57b76c6245c3ac76a5f8f0ac99d7b0dd07bde7e2a97cfc4819e84f",
+    "client.tsx": "0dd7f65c9ed853198325bac28ac363703eb51dcd9fb9178093d7d26af96388eb",
+    "local-durable.mjs": "c31812c05576eb53dbe5a9d9904368691eb927f98c4031464a75c2a6f026e290"
+  },
+  "browserFixtureBaseRevision": "d49df4aae",
+  "regressionRunBaseRevision": "b81a5f7a5",
+  "runtimeCodeMatchesDeployedRevision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+  "laterMainIncorporated": "396622c4fdc1498ba80e2c288aa0fc56db42c317"
+}

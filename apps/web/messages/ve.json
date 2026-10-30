@@ -39,9 +39,8 @@
     "posterAlt": "Poster ya video",
     "noDownloads": "A hu na zwinwe zwa u dzhenisa zwine zwa wanala kha iyi video.",
     "fileSizeLabel": "Nangani vhuhulwane ha faila",
-    "termsAgreementPrefix": "Ndi tendelana na ",
+    "termsAgreement": "Ndi tendelana na <link>Melao ya u shumisa</link>",
     "termsOfUse": "Melao ya u shumisa",
-    "termsAgreementSuffix": "",
     "close": "Valani",
     "download": "Dzhenisani",
     "authRequiredTitle": "Ni ṱoḓa u dzhenisa iyi video?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Avelani kha Facebook (a i wanali kha iyi build)",
     "shareOnX": "Avelani kha X",
     "shareOnXUnavailable": "Avelani kha X (a i wanali kha iyi build)",
+    "opensInNewTab": "{label} (i vula kha thebu ntswa)",
     "shareDisabledHint": "U avelana zwi ṱoḓa pheji yo itwaho deploy — zwi a shuma musi iyi video i tshi vha production.",
     "shareFormat": "Fomathi ya u avelana",
     "shareLinkTab": "Linki ya u avelana",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
     "closeSearch": "Valani ṱhoḓisiso",
-    "submitSearch": "Ṱolani"
+    "submitSearch": "Ṱolani",
+    "library": "Bugu ya vhutanzi"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Zwo kundelwa u laedza zwiṅwe zwibveledzwa.",
     "searching": "Khou ṱola...",
     "connectionHint": "Ndi humbela ni sedze connection yanu ni lingedze hafhu.",
+    "rateLimitHint": "Khumbelo ndi nnzhi. Ndi humbela ni lingedze hafhu nga murahu ha minete muthihi.",
     "retrySearch": "Lingedzani u ṱola hafhu",
     "retry": "Lingedza hafhu",
     "noResults": "A hu na mvelelo dza \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Ṱolani “{suggestion}” kha {language}",
     "inLanguage": "kha {language}",
     "browseByRegion": "Ṱolangani nga tshiṱiriki",
+    "allVideosOnSinglePage": "Vidio dzoṱhe kha pheji nthihi",
     "clearLanguages": "Thuthani",
     "queryLanguageDetected": "{language} yo wanala",
     "searchInLanguage": "Ṱolani kha {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
     "tapToUnmute": "Kandani u bvisa u fhumutshela",
-    "nextEpisode": "Episode i tevhelaho"
+    "nextEpisode": "Episode i tevhelaho",
+    "audioTranslationCount": "{count, plural, one {# luambo} other {# luambo}}",
+    "subtitleCount": "Zwibulo: {count, plural, one {# luambo} other {# luambo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Khou laedza zwi re ngomu",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Fomo ya mbekanyo yo kundelwa u laedza.",
     "loadingForm": "Khou laedza fomo ya mbekanyo…",
     "retry": "Lingedza hafhu",
-    "openFormShort": "Vulani fomo",
     "cancel": "Khansela",
-    "title": "Mbekanyo ya Beta",
-    "description": "Ẓanḓani zwine zwa khou shuma na zwine ra nga khwinisa. Heḽi fomo ḽiṋekedzwa nga Google.",
-    "openInNewTab": "Vulani fomo kha thebhu ntswa",
     "closeForm": "Valani fomo ya mbekanyo",
-    "loadingGoogleForm": "Khou laedza Fomo ya Google…",
-    "iframeTitle": "Ruma Mbekanyo ya Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vidio dza Vhukriste dza mahala nga {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Miṱaṱisano",
     "subtitlesOnly": "Zwibulo fhedzi",
+    "backToTop": "Vhuya nṱha",
     "newlyAdded": "Zwo engedzwa zwenezwino",
     "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
     "newestFirst": "Zwine zwa vha zwiswa nga phanda",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Vidio dzi imelelaho",
     "videosFromCollection": "Vidio u bva kha {collection}.",
     "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
-    "openCollection": "Vulani muṱaṱisano"
+    "openCollection": "Vulani muṱaṱisano",
+    "filters": "Zwifhaṱi",
+    "filterLength": "Vhulapfu",
+    "filterLength_under5": "Nga fhasi ha mimunithi ya 5",
+    "filterLength_5to10": "Mimunithi ya 5-10",
+    "filterLength_10to30": "Mimunithi ya 10-30",
+    "filterLength_over30": "Nga nṱha ha mimunithi ya 30",
+    "filterType": "Lushaka",
+    "clearFilters": "Phumula zwifhaṱi",
+    "filterResults": "{count} kha {total} zwo sumbedzwa",
+    "noFilterResults": "A hu na vidio ine ya tshimbidzana na zwifhaṱi hezwi. Lingedza u bvisa tshiṅwe.",
+    "filterAdded": "Yo engedzwa",
+    "filterAdded_60d": "Maḓuvha a 60 o fhelaho",
+    "filterAdded_6m": "Miṅwedzi ya 6 yo fhelaho",
+    "filterAdded_12m": "Miṅwedzi ya 12 yo fhelaho"
   },
   "WatchHome": {
     "pageTitle": "U Lavhelesa ha Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Preview ya video yo fhiraho",
     "nextVideoPreview": "Preview ya video i tevhelaho",
     "mediaCollection": "Muṱaṱisano wa media",
-    "scrollToVideo": "Iḓani kha video ya {title}"
+    "scrollToVideo": "Iḓani kha video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Muhuri wa Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Keresemusi yavhuḓi!",
     "daysUntilChristmas": "{count, plural, one {Ho sala ḓuvha ḽithihi uri hu vhe Keresemusi} other {Ho sala maḓuvha a # uri hu vhe Keresemusi}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Ṱolani ḽaiburari",
+    "title": "Ṱolani nga khethekanyo",
+    "description": "Iyani nga ho livhaho kha tshipiḓa tsha ḽaiburari tshine na tshi ṱoḓa — vhutshilo ha Yesu, zwifhinga zwa ṅwaha wa kereke, na vidio dzo itelwaho miṱa, vhagudiswa na zwigwada zwiṱuku.",
+    "seeAll": "Vhonani vidio dzoṱhe",
+    "previous": "Khethekanyo dzo fhiraho",
+    "next": "Khethekanyo dzi tevhelaho",
+    "categories": {
+      "jesus": "Filimu ya YESU",
+      "gospels": "Dziyevangeli",
+      "shortVideos": "Vidio pfufhi",
+      "family": "Muṱa",
+      "relationships": "Vhushaka",
+      "women": "Zwa Vhafumakadzi",
+      "students": "Zwa Vhagudiswa",
+      "sports": "Mitambo",
+      "goodNews": "Mafhungo Maḓifha",
+      "hope": "Fulufhelo",
+      "training": "Vhugudisi",
+      "easter": "Paseka",
+      "christmas": "Keresemusi"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Dzi-luambo",
     "metadataDescription": "Ṱolani vidio dza JesusFilm nga luambo.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Pheji a i wanali:",
     "title": "Sceni iyi a i hofhoni.",
     "description": "Pheji i nga vha yo tshimbidzwa, fhedzi mafhungo a isa phanḓa.",
+    "languageDescription": "A ro ngo wana siaṱari ḽine na khou ḽi ṱoḓa, fhedzi mafhungo a isa phanḓa kha filimu na vidio nga nyambo dza shango ḽoṱhe.",
     "actionsLabel": "Zwiito zwa pheji a i wanali",
     "backToWatch": "Vhuyelani kha Watch",
     "browseVideos": "Ṱolani vidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lavhelani Filimu Pfufhi",
-    "actions": {
-      "joinUs": "Dzhianani na Rine",
-      "shareMission": "Avelani kha Mishumo Yashu"
-    },
-    "welcomeStart": {
-      "label": "Lutendo na Maṅwalo",
-      "title": "Zwaṋu zwa Vidio zwa Ṋamusi",
-      "description": "Zwi re ngomu zwa vidio zwa lutendo u bva kha layibureari yashu zwi itelaho u ṱuṱuwedza, u ṱhasela mihumbulo, na u ita uri muṅwe a elekanye."
-    },
-    "welcomeMorning": {
-      "label": "U ṱuṱuwedza ha Muṅwe Na Muṅwe",
-      "title": "Matsheloni! Zwipiḓa zwa Bivhili zwa ṋamusi zwi khou lindela.",
-      "description": "Thomani ḓuvha ḽaṋu nga zwipiḓa zwa Bivhili zwi ṱuṱuwedzaho zwo itelwaho u ṱuṱuwedza na u khwinisa muya waṋu."
-    },
-    "welcomeAfternoon": {
-      "label": "U ṱuṱuwedza ha Thafha",
-      "title": "Masikuwani! Zwipiḓa zwa Bivhili zwa ḓuvha ḽaṋu.",
-      "description": "Zwi re ngomu zwa Bivhili zwi ṱuṱuwedzaho zwi faneleaho u awela masikuwani kana u isa phanḓa na u ṱuṱuwedzwa."
-    },
-    "welcomeEvening": {
-      "label": "U ṱuṱuwedza ha Madekwana",
-      "title": "Vhusiku! Awelani nga zwipiḓa zwa Bivhili.",
-      "description": "Zwipiḓa zwa Bivhili zwine zwa fha mulalo zwi a ni thusa u elekanya na u wana khuthadzo musi ḓuvha ḽiṋu ḽi tshi khou fhela."
-    },
-    "joinUs": {
-      "label": "Dzhianani na Rine",
-      "title": "Vhabiliyoni vha khou ṱoḓa",
-      "description": "Ṱhoḓea i fhano. Dzhianani na rine musi ri tshi kovhela vhathu vhoṱhe mafhungo maḓifha nga media dza dijithala."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A ri tshimbile roṱhe",
-      "title": "U Anḓadza Nyambo ya Yesu, Roṱhe",
-      "description": "Uri vha kone u pfa na u vhona lufuno lwa Yesu nga luambo lwavho, fhethu he vha vha vha hone."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zwi fana nga {percent}%",
-    "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo."
+    "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo.",
+    "heading": "Vidio dzo themendelwaho",
+    "loadingLabel": "Khou laedza vidio dzo themendelwaho",
+    "openingTitle": "Khou vula {title}",
+    "openingVideo": "Khou vula vidio",
+    "activityNotRecorded": "Mushumo wa themendelo a wo ngo kona u ṅwaliwa. Dzilinki dzi kha ḓi shuma.",
+    "showingContextual": "Hu khou sumbedzwa themendelo dzi yelanaho na zwi re hone.",
+    "showingSaved": "Hu khou sumbedzwa themendelo dzo vhulungwaho.",
+    "explanationCurated": "Vidio dzo khethiwaho uri ni dzi ṱole.",
+    "explanationViewingMode": "Dzo themendelwa u ya nga ino vidio na nḓila ine na sedza ngayo.",
+    "explanationCowatch": "Dzo themendelwa u ya nga ino vidio na zwine na zwi takalela.",
+    "explanationHybrid": "Dzo themendelwa u ya nga ino vidio na zwine na zwi takalela zwe na khetha uri zwi humbulwe.",
+    "explanationContextual": "Dzo themendelwa u ya nga zwine na khou zwi sedza zwino.",
+    "explanationSemanticFallback": "Dzo themendelwa u ya nga zwine na khou zwi sedza zwino, ngeno u ita zwa muthu nga eṱhe zwi sa wanali.",
+    "explanationProfileDurable": "Dzo itelwa inwi u ya nga zwine na zwi takalela zwe na khetha uri zwi humbulwe.",
+    "explanationProfileVisit": "Dzo itelwa inwi kha ili dalo fhedzi.",
+    "personalizationLabel": "U ita themendelo dza muthu nga eṱhe",
+    "personalizationPrompt": "Ni khou ṱoda u shandukisa nḓila ine themendelo dza itelwa inwi ngayo?",
+    "openCookieSettings": "Vulani mavhekanyele a cookie"
   },
   "BetaTesterModal": {
     "title": "Vhanganani vha beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Lingedzani zwo kundelwaho hafhu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Vesheni ya luambo a i wanali",
+    "eyebrow": "Vesheni ya luambo a i wanali",
+    "title": "<contentTitle>{title}</contentTitle> a i wanali nga <languageName>{language}</languageName>",
+    "actionsLabel": "Zwine zwa nga khethwa u ṱalela",
+    "browseInLanguage": "Ṱalelani vidio nga {language}",
+    "backToSearch": "Humelani kha ṱhoḓisiso",
+    "audioVersionsTitle": "Dziṅwe vesheni dza mubvumo",
+    "audioVersionsDescription": "Nangani luambo lwa mubvumo uri ni bvele phanḓa na u ṱalela vidio iyi.",
+    "languageVersionLabel": "Luambo lwa mubvumo",
+    "selectLanguageVersion": "Nangani vesheni ya luambo",
+    "watchSelectedVersion": "Ṱalelani vesheni yo nangiwaho"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dzikhhetho dza cookie",
+    "bannerTitle": "Dzikhhetho zwanu zwa tshidzumbe",
+    "bannerDescription": "Cookie dza ndeme dzi ita uri Watch i dzule yo tsireledzea nahone i shume zwavhuḓi. Nga thendelo yanu, cookie ya u tou bva kha saiti iyi i nga humbula zwine na takalela zwone kha maetele o fhambanaho u itela u ita themendelo dzo teaho. Themendelo dzi yelanaho na zwi re hone dzi a wanala naho zwo ralo.",
+    "acceptAll": "Ṱanganedzani zwoṱhe",
+    "essentialOnly": "Dza ndeme fhedzi",
+    "manageChoices": "Langulani dzikhhetho",
+    "savingChoice": "Khouthu ya cookie i khou vhulungiwa",
+    "settings": "Mavhekanyele a cookie",
+    "settingsDescription": "Nangani arali Watch i tshi tea u humbula zwine na takalela zwa themendelo kha maetele o fhambanaho. Ni nga shandukisa hezwi tshifhinga tshiṅwe na tshiṅwe.",
+    "essentialCookies": "Cookie dza ndeme",
+    "essentialDescription": "Tsireledzo, u tamba vidio, dzikhhetho zwa tshidzumbe, na u sumbedza hune khumbelo ya themendelo ya bva hone.",
+    "alwaysActive": "Dzi dzula dzo shumiswa",
+    "personalization": "U ita zwa muthu nga eṱhe",
+    "personalizationDescription": "Humbulani zwine na takalela zwine zwa vhalelwa kha maetele o fhambanaho. U tima hezwi zwi ita uri themendelo dzi yelanaho na zwi re hone dzi dzule dzi hone.",
+    "erasurePending": "U phumulwa ha phurofaili hu kha di lindelwa. Themendelo dzi yelanaho na zwi re hone dzo no thoma u shuma.",
+    "cancel": "Fhelisani",
+    "saveChoices": "Vhulungani dzikhhetho",
+    "saving": "Zwi khou vhulungiwa…",
+    "loadError": "Khetho yanu a yo ngo kona u laisiwa. Ni kha ḓi nga nanga afho fhasi.",
+    "grantError": "U ita zwa muthu nga eṱhe a zwo ngo kona u shumiswa. Dza ndeme fhedzi dzi kha ḓi wanala.",
+    "saveError": "Khetho yanu a yo ngo kona u vhulungiwa. Ri humbela ni lingedze hafhu."
   }
 }

@@ -52,7 +52,7 @@ function isMobileOrigin(ctx: SessionCreateRequestContext): boolean {
  * - `/sign-in/social` with a provider idToken — native Apple/Google sheets.
  *   Web and every other first-party app sign in through browser flows and
  *   never post idTokens.
- * - `/oauth2/callback/jfp` — the self-RP hosted-page fallback; only the
+ * - `/callback/jfp` — the self-RP hosted-page fallback; only the
  *   mobile app signs in through the jfp generic-oauth provider.
  * - `/sign-in/email` and `/sign-up/email` FROM the mobile app scheme. These
  *   two are shared with web, so unlike the others the path alone proves
@@ -72,13 +72,14 @@ export function resolveSessionClientKind(
     return MOBILE_SESSION_CLIENT_KIND
   }
 
-  // The endpoint context carries the route pattern (":providerId"), so the
-  // provider id is read from params; the concrete-path form is kept too.
+  // The endpoint context carries the route PATTERN: 1.7's core callback is
+  // `/callback/:id`, so the hook sees that pattern plus params.id. The
+  // concrete-path form covers contexts that carry the resolved path instead.
+  const callbackParams = ctx.params as { id?: string } | undefined
   if (
-    ctx.path === `/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}` ||
-    (ctx.path.startsWith("/oauth2/callback") &&
-      (ctx.params as { providerId?: string } | undefined)?.providerId ===
-        JFP_MOBILE_PROVIDER_ID)
+    ctx.path === `/callback/${JFP_MOBILE_PROVIDER_ID}` ||
+    (ctx.path.startsWith("/callback") &&
+      callbackParams?.id === JFP_MOBILE_PROVIDER_ID)
   ) {
     return MOBILE_SESSION_CLIENT_KIND
   }

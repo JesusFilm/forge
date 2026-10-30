@@ -39,9 +39,8 @@
     "posterAlt": "Ruposter video",
     "noDownloads": "Man k'o ta downloads re video re'.",
     "fileSizeLabel": "Tacha' jun nimil file",
-    "termsAgreementPrefix": "Ninwesaj nuwi' chi ",
+    "termsAgreement": "Ninwesaj nuwi' chi <link>Taq K'utunem de Uso</link>",
     "termsOfUse": "Taq K'utunem de Uso",
-    "termsAgreementSuffix": "",
     "close": "Titz'apïx",
     "download": "Tib'än download",
     "authRequiredTitle": "¿La nawajo' natb'än download re video re'?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Tazij pa Facebook (man k'o ta pa re build re')",
     "shareOnX": "Tazij pa X",
     "shareOnXUnavailable": "Tazij pa X (man k'o ta pa re build re')",
+    "opensInNewTab": "{label} (nujaq pa jun k'ak' pestaña)",
     "shareDisabledHint": "Richin tazij k'o chi jun deployed page — nib'an chik wejri' re video re' k'o pa production.",
     "shareFormat": "Ruwäch tzijonem",
     "shareLinkTab": "Tazij Link",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijalk'atisäx ruq'axanem q'axb'äl",
     "home": "JesusFilm takya'j",
     "closeSearch": "Titz'apïx k'utunem",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Wuj ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx yanïk videos",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Xk'ulmataj k'axk'ol richin niq'axaj ch'aqa' chik resultados.",
     "searching": "Nikanöx...",
     "connectionHint": "Taya' tzij chi ri awokib'al riq'in, chuqa' tz'u' chik.",
+    "rateLimitHint": "Janila taq k'utunem. Tz'u' chik pa jun minuto.",
     "retrySearch": "Tz'u' chik richin k'utunem",
     "retry": "Tz'u' chik",
     "noResults": "Man xk'an ta resultados pa \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Tikanöx \"{suggestion}\" pa {language}",
     "inLanguage": "pa {language}",
     "browseByRegion": "Tik'ut pa región",
+    "allVideosOnSinglePage": "Tz'ib'enel videos pa jun página",
     "clearLanguages": "Tijach",
     "queryLanguageDetected": "{language} xrik'äx",
     "searchInLanguage": "Tikanöx pa {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Titz'et wakami",
     "tapToUnmute": "Tich'apon richin titzolin q'oxom",
-    "nextEpisode": "Episodio jun chik"
+    "nextEpisode": "Episodio jun chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nuk'ut contenido",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Ri form de feedback man xuk'ut ta.",
     "loadingForm": "Nuk'ut ri form de feedback…",
     "retry": "Tz'u' chik",
-    "openFormShort": "Tija' form",
     "cancel": "Q'at",
-    "title": "Beta feedback",
-    "description": "K'utuj achike ri k'o chi b'anom. Ri form re' riq'in Google.",
-    "openInNewTab": "Tija' ri form pa jun k'ak'a' tab",
     "closeForm": "Titz'apïx ri form de feedback",
-    "loadingGoogleForm": "Nuk'ut Google Form…",
-    "iframeTitle": "Tijikib'äx Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos free pa {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Taq colección",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Tzalij chikaj",
     "newlyAdded": "K'ak'a' tz'aqat",
     "newVideosTitle": "Videos cristianos k'ak'a' pa {language}",
     "newestFirst": "K'ak'a' nab'e",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Videos junam",
     "videosFromCollection": "Videos pa {collection}.",
     "standaloneDescription": "Videos junam pa re ch'ab'äl re'.",
-    "openCollection": "Tija' colección"
+    "openCollection": "Tija' colección",
+    "filters": "Chaꞌoj",
+    "filterLength": "Raqan",
+    "filterLength_under5": "Man nim ta chuwach 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chuwach 30 minutos",
+    "filterType": "Uwach",
+    "clearFilters": "Chupij ri chaꞌoj",
+    "filterResults": "{count} chike {total} kꞌutunik",
+    "noFilterResults": "Man cꞌo ta jun video junam rucꞌ we chaꞌoj riꞌ. Chesaj jun.",
+    "filterAdded": "Xoc chi",
+    "filterAdded_60d": "Kꞌisbal 60 qꞌij",
+    "filterAdded_6m": "Kꞌisbal 6 ikꞌ",
+    "filterAdded_12m": "Kꞌisbal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Titz'et",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Preview video q'axinaq",
     "nextVideoPreview": "Preview video jun chik",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Desplázate al video {title}"
+    "scrollToVideo": "Desplázate al video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project takya'j",
@@ -404,6 +594,29 @@
     "merryChristmas": "¡Utz Navidad!",
     "daysUntilChristmas": "{count, plural, one {# q'ij k'a ri Navidad} other {# taq q'ij k'a ri Navidad}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Tanik'oj ri wuj ja",
+    "title": "Tanik'oj pa kategorya",
+    "description": "Katok chanim pa ri ruk'ojlem ri wuj ja ri nawajo' — ri ruk'aslemal Jesús, ri taq q'ij rech ri junab' rech ri iglesia, xuqe taq video rech taq familia, tijoxel, xuqe ch'uti'q taq molaj.",
+    "seeAll": "Tawilo' konojel taq video",
+    "previous": "Taq kategorya q'axinaq",
+    "next": "Taq kategorya jun chik",
+    "categories": {
+      "jesus": "Película JESUS",
+      "gospels": "Taq Evangelio",
+      "shortVideos": "Videos cortos",
+      "family": "Familia",
+      "relationships": "Kik'amon ib'",
+      "women": "Pa taq ixoq",
+      "students": "Pa taq tijoxel",
+      "sports": "Deportes",
+      "goodNews": "Utzilaj Tzij",
+      "hope": "Oyob'enik",
+      "training": "Tijonik",
+      "easter": "Pascua",
+      "christmas": "Navidad"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Taq ch'ab'äl",
     "metadataDescription": "Tikanöx JesusFilm videos pa ch'ab'äl.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Page man xkanöx ta:",
     "title": "Re escena re' man k'o ta wawe'.",
     "description": "Ri page k'o chi nijel, xa xe ri tzijonem nitikïr k'o chik.",
+    "languageDescription": "Man xqil ta ri page nakanoj, xa xe ri tzijonem k'o na pa taq película xuqe taq video pa taq ch'ab'äl rech ronojel ri uwach'ulew.",
     "actionsLabel": "Taq chak page man xkanöx ta",
     "backToWatch": "Titzolïx pa Watch",
     "browseVideos": "Tanik'oj videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Titz'et corto video",
-    "actions": {
-      "joinUs": "Katxulan",
-      "shareMission": "Katzijon pa ri qamision"
-    },
-    "welcomeStart": {
-      "label": "Fe chuqa' Escritura",
-      "title": "Taq video rech wa' q'ij",
-      "description": "Taq video ruk' fe chuwe' ri qach'akulal richin nikiq'alajisaj, nikiq'ax, chuqa' nikiq'ojom na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Na'ojib'äl rech aq'ab'",
-      "title": "Saqarik! Ri Biblia chuwe' wa' q'ij tajin nik'ulmataj.",
-      "description": "Tatz'aqatisaj ri aq'ab' ruk' taq Biblia ri nikiq'ojom, nikiq'alajisaj, chuqa' nikiq'uchuj ri awanim."
-    },
-    "welcomeAfternoon": {
-      "label": "Na'ojib'äl rech tz'ikin q'ij",
-      "title": "Jun utz q'ij! Taq Biblia richin wa' q'ij.",
-      "description": "Taq Biblia ri nikiq'ojom, utz richin jun relajo' pa tz'ikin q'ij o richin natz'aqatisaj na'ojib'äl."
-    },
-    "welcomeEvening": {
-      "label": "Na'ojib'äl rech q'ij",
-      "title": "Jun utz aq'ab'! Tiko'j ri awanim ruk' taq Biblia.",
-      "description": "Taq Biblia pa utzil richin nikito' achi'el natz'ët chuqa' nariq' uchuq'a' chi rij ri q'ij."
-    },
-    "joinUs": {
-      "label": "Katxulan",
-      "title": "Milyones tajin nika'n",
-      "description": "Ri qach'akulal k'o chik. Katxulan qik'in richin niqatzijoj ri evangelio pa ruwach'ulew ruk' digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Qak'ulub'ej junam",
-      "title": "Niqatzijoj rutzij Jesus, junam",
-      "description": "Richin nikiqaxaj chuqa' nikiq'etz ri rutzil Jesus pa ri kich'ab'äl, pa ri lugar k'o wi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nijunam",
-    "none": "Man xkanöx ta taq video nik'utüx richin re video re' pa re ch'ab'äl re'."
+    "none": "Man xkanöx ta taq video nik'utüx richin re video re' pa re ch'ab'äl re'.",
+    "heading": "Taq video nik'utüx",
+    "loadingLabel": "Nuk'ut taq video nik'utüx",
+    "openingTitle": "Nijaq {title}",
+    "openingVideo": "Nijaq video",
+    "activityNotRecorded": "Man xtz'ib'ax ta ri samaj rech recomendación. Ri taq link e samajinel na.",
+    "showingContextual": "Nik'utüx recomendaciones pa contexto.",
+    "showingSaved": "Nik'utüx recomendaciones yakon.",
+    "explanationCurated": "Taq video cha'on richin natz'ët.",
+    "explanationViewingMode": "Recomendaciones rik'in re video re' chuqa' achike rub'eyal natz'ët.",
+    "explanationCowatch": "Recomendaciones rik'in re video re' chuqa' ri nawajo'.",
+    "explanationHybrid": "Recomendaciones rik'in re video re' chuqa' ri nawajo' xacha' chi nunataj.",
+    "explanationContextual": "Recomendaciones rik'in ri natz'ët wakami.",
+    "explanationSemanticFallback": "Recomendaciones rik'in ri natz'ët wakami, ruma majun nimaläx wachib'enïk chawe wakami.",
+    "explanationProfileDurable": "Nimaläx wachib'enïk chawe rik'in ri nawajo' xacha' chi nunataj.",
+    "explanationProfileVisit": "Nimaläx wachib'enïk chawe xa pa re b'ey re'.",
+    "personalizationLabel": "Nimaläx wachib'enïk chawe richin recomendaciones",
+    "personalizationPrompt": "Nawajo' najal achike rub'eyal nimaläx wachib'enïk chawe ri recomendaciones?",
+    "openCookieSettings": "Tajaqa' runuk'ulem cookie"
   },
   "BetaTesterModal": {
     "title": "Tab'ana' beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Tz'u' chik ri man xk'ulmataj ta"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Man k'o ta ri ruwäch ch'ab'äl",
+    "eyebrow": "Man k'o ta ri ruwäch ch'ab'äl",
+    "title": "Man k'o ta <contentTitle>{title}</contentTitle> pa <languageName>{language}</languageName>",
+    "actionsLabel": "Taq rub'eyal richin nitz'et",
+    "browseInLanguage": "Tik'ut taq video pa {language}",
+    "backToSearch": "Titzolin pa k'utunem",
+    "audioVersionsTitle": "Ch'aqa' chik taq ruwäch k'oxom",
+    "audioVersionsDescription": "Tacha' jun ruch'ab'äl k'oxom richin natän chik re video re'.",
+    "languageVersionLabel": "Ruch'ab'äl k'oxom",
+    "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
+    "watchSelectedVersion": "Tatz'eta' ri ruwäch xacha'"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Rucha'oj cookie",
+    "bannerTitle": "Acha'oj richin awichinil",
+    "bannerDescription": "Ri cookie k'atzinel yec'uje' Watch jikïl chuqa' nisamäj ütz. We ya'on q'ij, jun cookie chawe at k'o wi nitikïr nunataj ri nawajo' pa ronojel b'ey atsolin richin nuya' aján chawe. Ri recomendaciones pa contexto e k'o na chi ke ri' junam.",
+    "acceptAll": "Tac'ulu' ronojel",
+    "essentialOnly": "Xa xe ri k'atzinel",
+    "manageChoices": "Tanuk'saj ri acha'oj",
+    "savingChoice": "Niyak ri acha'oj richin cookie",
+    "settings": "Runuk'ulem cookie",
+    "settingsDescription": "Tacha'oj we Watch nitikïr nunataj ri nawajo' richin recomendaciones pa ronojel b'ey atsolin. Yatikïr najäl re' xab'achike q'ij.",
+    "essentialCookies": "Cookie k'atzinel",
+    "essentialDescription": "Jikomal, tzijonem, acha'oj richin awichinil, chuqa' rujachik ruwi' k'utunem richin recomendaciones.",
+    "alwaysActive": "Jumul tzijon",
+    "personalization": "Nimaläx wachib'enïk chawe",
+    "personalizationDescription": "Nunataj ri jub'a' nawajo' pa ronojel b'ey atsolin. We nachup, ri recomendaciones pa contexto e k'o na.",
+    "erasurePending": "Noyob'ëx na ruyujik ri perfil. Ri recomendaciones pa contexto e tzijon chic.",
+    "cancel": "Tiq'at",
+    "saveChoices": "Tiyak ri acha'oj",
+    "saving": "Niyak…",
+    "loadError": "Man xutikïr ta xsamajib'ëx ri acha'oj. K'a yatikïr nicha'oj qa panïm.",
+    "grantError": "Man xutikïr ta xtzij ri personalization. Xa xe ri k'atzinel e k'o wi.",
+    "saveError": "Man xutikïr ta xyak ri acha'oj. Tatojtob'ej chik."
   }
 }

@@ -39,9 +39,8 @@
     "posterAlt": "Video-Poster",
     "noDownloads": "Fir dëse Video sinn keng Erofluede verfügbar.",
     "fileSizeLabel": "Wielt eng Dateigréisst",
-    "termsAgreementPrefix": "Ech stëmme zu de ",
+    "termsAgreement": "Ech stëmmen de <link>Benotzungsbedéngungen</link> zou",
     "termsOfUse": "Benotzungsbedéngungen",
-    "termsAgreementSuffix": "",
     "close": "Zoumaachen",
     "download": "Eroflueden",
     "authRequiredTitle": "Wëllt Dir dëse Video eroflueden?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Op Facebook deelen (op dëser Versioun net verfügbar)",
     "shareOnX": "Op X deelen",
     "shareOnXUnavailable": "Op X deelen (op dëser Versioun net verfügbar)",
+    "opensInNewTab": "{label} (gëtt an engem neien Tab opgemaach)",
     "shareDisabledHint": "Deelen erfuerdert eng publizéiert Säit — funktionéiert, soubal dëse Video produktiv ass.",
     "shareFormat": "Deelformat",
     "shareLinkTab": "Link deelen",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "home": "JesusFilm-Startsäit",
     "closeSearch": "Sich zoumaachen",
-    "submitSearch": "Sichen"
+    "submitSearch": "Sichen",
+    "library": "Bibliothek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Weider Resultater konnte net geluede ginn.",
     "searching": "Sich gëtt duerchgefouert...",
     "connectionHint": "Kontrolléiert w.e.g. Är Verbindung a probéiert et nach eng Kéier.",
+    "rateLimitHint": "Ze vill Ufroen. Probéiert et wgl. an enger Minutt nach eng Kéier.",
     "retrySearch": "Sich nach eng Kéier",
     "retry": "Nach eng Kéier",
     "noResults": "Keng Resultater fir \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Op {language} no „{suggestion}“ sichen",
     "inLanguage": "op {language}",
     "browseByRegion": "No Regioun duerchkucken",
+    "allVideosOnSinglePage": "All Videoen op enger Säit",
     "clearLanguages": "Läschen",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Op {language} sichen",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Elo kucken",
     "tapToUnmute": "Tippt fir den Toun unzeschalten",
-    "nextEpisode": "Nächst Episod"
+    "nextEpisode": "Nächst Episod",
+    "audioTranslationCount": "{count, plural, one {# Sprooch} other {# Sproochen}}",
+    "subtitleCount": "Ënnertitelen: {count, plural, one {# Sprooch} other {# Sproochen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt gëtt geluede",
@@ -268,14 +273,183 @@
     "couldNotLoad": "De Feedback-Formulaire konnt net geluede ginn.",
     "loadingForm": "Feedback-Formulaire gëtt geluede…",
     "retry": "Nach eng Kéier",
-    "openFormShort": "Formulaire opmaachen",
     "cancel": "Ofbriechen",
-    "title": "Beta-Feedback",
-    "description": "Deelt mat, wat gutt funktionéiert a wat mir verbessere kënnen. Dëse Formular gëtt vu Google ugebueden.",
-    "openInNewTab": "Formulaire an engem neien Tab opmaachen",
     "closeForm": "Feedback-Formulaire zoumaachen",
-    "loadingGoogleForm": "Google-Formulaire gëtt geluede…",
-    "iframeTitle": "Beta-Feedback ofginn"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis chrëschtlech Videoen op {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollektiounen",
     "subtitlesOnly": "Nëmme Ënnertitelen",
+    "backToTop": "Zréck no uewen",
     "newlyAdded": "Nei dobäigesat",
     "newVideosTitle": "Nei chrëschtlech Videoen op {language}",
     "newestFirst": "Déi neisten éischt",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Eenzel Videoen",
     "videosFromCollection": "Videoen aus {collection}.",
     "standaloneDescription": "Eenzel Videoen op dëser Sprooch.",
-    "openCollection": "Kollektioun opmaachen"
+    "openCollection": "Kollektioun opmaachen",
+    "filters": "Filteren",
+    "filterLength": "Längt",
+    "filterLength_under5": "Ënner 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Iwwer 30 Min.",
+    "filterType": "Typ",
+    "clearFilters": "Filteren zurécksetzen",
+    "filterResults": "{count} vun {total} gewisen",
+    "noFilterResults": "Kee Video passt zu dëse Filteren. Probéier een ewechzehuelen.",
+    "filterAdded": "Dobäigesat",
+    "filterAdded_60d": "Lescht 60 Deeg",
+    "filterAdded_6m": "Lescht 6 Méint",
+    "filterAdded_12m": "Lescht 12 Méint"
   },
   "WatchHome": {
     "pageTitle": "Videoe kucken | Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Virschau vum viregte Video",
     "nextVideoPreview": "Virschau vum nächste Video",
     "mediaCollection": "Mediekollektioun",
-    "scrollToVideo": "Zum Video {title} rullen"
+    "scrollToVideo": "Zum Video {title} rullen",
+    "forYou": "Fir dech"
   },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",
@@ -404,6 +594,29 @@
     "merryChristmas": "Schéi Chrëschtdeeg!",
     "daysUntilChristmas": "{count, plural, one {Nach # Dag bis Chrëschtdag} other {Nach # Deeg bis Chrëschtdag}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "D’Bibliothéik duerchkucken",
+    "title": "No Kategorie duerchkucken",
+    "description": "Gitt direkt op deen Deel vun der Bibliothéik, deen Dir braucht — d’Liewe vu Jesus, d’Zäite vum Kierchejoer a Videoe fir Famillen, Studenten a kleng Gruppen.",
+    "seeAll": "All Videoe kucken",
+    "previous": "Viregt Kategorien",
+    "next": "Nächst Kategorien",
+    "categories": {
+      "jesus": "De Film JESUS",
+      "gospels": "Evangelien",
+      "shortVideos": "Kuerz Videoen",
+      "family": "Famill",
+      "relationships": "Bezéiungen",
+      "women": "Fir Fraen",
+      "students": "Fir Studenten",
+      "sports": "Sport",
+      "goodNews": "Gutt Noriicht",
+      "hope": "Hoffnung",
+      "training": "Formatioun",
+      "easter": "Ouschteren",
+      "christmas": "Chrëschtdag"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Sproochen",
     "metadataDescription": "Kuckt JesusFilm-Videoen no Sprooch duerch.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Säit net fonnt:",
     "title": "Dës Zeen ass net hei.",
     "description": "D’Säit ass vläicht verluecht ginn, mee d’Geschicht geet weider.",
+    "languageDescription": "Mir hunn d’Säit, déi Dir sicht, net fonnt, mee d’Geschicht geet weider a Filmer a Videoe a Sproochen aus der ganzer Welt.",
     "actionsLabel": "Aktioune bei net fonnten Säiten",
     "backToWatch": "Zréck op Watch",
     "browseVideos": "Videoen duerchkucken"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kuerzfilm kucken",
-    "actions": {
-      "joinUs": "Maacht mat",
-      "shareMission": "Maacht mat bei eiser Missioun"
-    },
-    "welcomeStart": {
-      "label": "Glaawen & Schrëft",
-      "title": "Déi hauteg Video-Auswiel",
-      "description": "Glaawenszentéiert Videoen aus eiser Bibliothéik, déi inspiréieren, erausfuerderen an zum Nokéieren anregen."
-    },
-    "welcomeMorning": {
-      "label": "Moiesinspiratioun",
-      "title": "Gudde Moien! Hauteg Bibelmomenter waarden op Iech.",
-      "description": "Start Ären Dag mat ermunternden Bibelmomenter, déi inspiréieren an Äre Geescht opbauen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nomëttesinspiratioun",
-      "title": "Gudden Nomëtteg! Bibelmomenter fir Ären Dag.",
-      "description": "Ermuetigend Bibelinhalter, ideal fir Är Nomëttespaus oder fir weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Owensinspiratioun",
-      "title": "Gudden Owend! Entspannt Iech mat Bibelmomenter.",
-      "description": "Roueg Bibelmomenter, déi Iech hëllefen, nozedenken an Trouscht ze fannen, wann Ären Dag op en Enn geet."
-    },
-    "joinUs": {
-      "label": "Maacht mat",
-      "title": "Milliarde si am Sich",
-      "description": "D’Ernte ass do. Maacht mat a deelt d’Evangelium mat der Welt iwwer digital Medie."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Loosst eis et zesumme maachen",
-      "title": "D’Geschicht vu Jesus zesumme erzielen",
-      "description": "Sou kënne si d’Léift vu Jesus an hirer eegener Sprooch héieren a gesinn, direkt do wou si sinn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Iwwereestëmmung",
-    "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt."
+    "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt.",
+    "heading": "Recommandéiert Videoen",
+    "loadingLabel": "Recommandéiert Videoe ginn gelueden",
+    "openingTitle": "{title} gëtt opgemaach",
+    "openingVideo": "Video gëtt opgemaach",
+    "activityNotRecorded": "D’Recommandatiounsaktivitéit konnt net registréiert ginn. D’Linken funktionéieren ëmmer nach.",
+    "showingContextual": "Kontextuell Recommandatiounen ginn ugewisen.",
+    "showingSaved": "Gespäichert Recommandatiounen ginn ugewisen.",
+    "explanationCurated": "Ausgewielte Videoen fir ze entdecken.",
+    "explanationViewingMode": "Recommandéiert op Basis vun dësem Video an Ärer Aart a Weis ze kucken.",
+    "explanationCowatch": "Recommandéiert op Basis vun dësem Video an Ären Interessen.",
+    "explanationHybrid": "Recommandéiert op Basis vun dësem Video an Interessen, déi Dir gewielt hutt ze späicheren.",
+    "explanationContextual": "Recommandéiert op Basis vun deem, wat Dir elo kuckt.",
+    "explanationSemanticFallback": "Recommandéiert op Basis vun deem, wat Dir elo kuckt, well d’Personaliséierung momentan net verfügbar ass.",
+    "explanationProfileDurable": "Personaliséiert op Basis vun Interessen, déi Dir gewielt hutt ze späicheren.",
+    "explanationProfileVisit": "Personaliséiert fir dës Visitt.",
+    "personalizationLabel": "Personaliséierung vun de Recommandatiounen",
+    "personalizationPrompt": "Wëllt Dir änneren, wéi d’Recommandatioune personaliséiert ginn?",
+    "openCookieSettings": "Cookie-Astellungen opmaachen"
   },
   "BetaTesterModal": {
     "title": "Beta-Tester ginn",
@@ -538,16 +732,39 @@
     "retryFailed": "Gescheitert Erofluede widderhuelen"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sproochversioun net verfügbar",
+    "eyebrow": "Sproochversioun net verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> ass net op <languageName>{language}</languageName> verfügbar",
+    "actionsLabel": "Verfügbar Optioune fir ze kucken",
+    "browseInLanguage": "Videoen op {language} duerchsichen",
+    "backToSearch": "Zeréck bei d'Sich",
+    "audioVersionsTitle": "Aner Audioversiounen",
+    "audioVersionsDescription": "Wielt eng Audiosprooch, fir dëse Video weiderzekucken.",
+    "languageVersionLabel": "Audiosprooch",
+    "selectLanguageVersion": "Eng Sproochversioun auswielen",
+    "watchSelectedVersion": "Ausgewielte Versioun kucken"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Astellungen",
+    "bannerTitle": "Är Privatsphär-Astellungen",
+    "bannerDescription": "Néideg Cookies halen Watch sécher a funktiounsfäeg. Mat Ärer Zoustëmmung kann en optionale First-Party-Cookie Är Interessen iwwer méi Visitte späicheren, fir Recommandatiounen ze personaliséieren. Kontextuell Recommandatioune bleiwen esou oder esou verfügbar.",
+    "acceptAll": "Alles akzeptéieren",
+    "essentialOnly": "Nëmmen dat Néidegst",
+    "manageChoices": "Astellungen verwalten",
+    "savingChoice": "Cookie-Astellung gëtt gespäichert",
+    "settings": "Cookie-Astellungen",
+    "settingsDescription": "Wielt, ob Watch Recommandatiounsinteressen iwwer méi Visitte späichere kann. Dir kënnt dat zu all Moment änneren.",
+    "essentialCookies": "Néideg Cookies",
+    "essentialDescription": "Sécherheet, Ofspillen, Privatsphär-Astellungen an Zouuerdnung vu Recommandatiounsufroen.",
+    "alwaysActive": "Ëmmer aktiv",
+    "personalization": "Personaliséierung",
+    "personalizationDescription": "Späichert begrenzten Interessen iwwer méi Visitten. Wann dat ausgeschalt ass, bleiwen kontextuell Recommandatioune verfügbar.",
+    "erasurePending": "D'Läsche vum Profil ass nach amgaang. Kontextuell Recommandatioune si schonn aktiv.",
+    "cancel": "Ofbriechen",
+    "saveChoices": "Astellunge späicheren",
+    "saving": "Gëtt gespäichert…",
+    "loadError": "Är Astellung konnt net geluede ginn. Dir kënnt awer hei ënnendrënner nach wielen.",
+    "grantError": "Personaliséierung konnt net aktivéiert ginn. Nëmmen dat Néidegst bleift verfügbar.",
+    "saveError": "Är Astellung konnt net gespäichert ginn. Probéiert w.e.g. nach eng Kéier."
   }
 }

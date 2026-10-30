@@ -4,8 +4,17 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import type { MediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import type { VideoLibraryCategory } from "@/app/dashboard/video-library-utils"
+import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
+import type {
+  ExperienceEditorCollectionChildPageActionInput,
+  ExperienceEditorDubPage,
+  ExperienceEditorDubPageActionInput,
+  ExperienceEditorDubSelectionValidationActionInput,
+  ExperienceEditorDubSelectionValidation,
+} from "@/services/experience-editor-video.service"
 import {
   ExperienceEditor,
   buildPublishedWatchUrl,
@@ -14,17 +23,19 @@ import {
   watchLanguageSlugForLocale,
 } from "./experience-editor"
 import type { VideoLibraryItem } from "./experience-editor/block-helpers"
+import { WATCH_AUDIENCE_AUTHORING_DISABLED_MESSAGE } from "./experience-editor/watch-audience-availability"
 
-const { envState } = vi.hoisted(() => ({
+const { envState, routerPush } = vi.hoisted(() => ({
   envState: {
     NEXT_PUBLIC_APP_NAME: "forge-admin",
     NEXT_PUBLIC_WATCH_URL: "http://localhost:3000" as string | undefined,
   },
+  routerPush: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: routerPush,
     refresh: vi.fn(),
   }),
 }))
@@ -84,18 +95,49 @@ const defaultVideoLibrary: VideoLibraryItem[] = [
   },
 ]
 
+function dubChoice(
+  key: string,
+  label: string,
+  languageId: string,
+  streamUrl: string,
+): ExperienceEditorDubPage["choices"][number] {
+  return {
+    key,
+    label,
+    languageId,
+    languageSlug: label.toLowerCase(),
+    bcp47: languageId.replace("language-", ""),
+    iso3: null,
+    languageIdentity: languageId,
+    streamUrl,
+    duration: "01:00",
+    durationSeconds: 60,
+  }
+}
+
 function renderEditorElement(
   blocks: unknown[],
   options: {
+    isHomepage?: boolean
     isTemplate?: boolean
+    isDefaultTemplate?: boolean
+    watchAudienceAuthoringEnabled?: boolean
     saveAction?: typeof action
     publishAction?: typeof action
     discardAction?: typeof action
+    duplicateAction?: () => Promise<{
+      ok: boolean
+      error?: string
+      href?: string
+    }>
+    duplicatePending?: boolean
     canPublish?: boolean
     hasPublishedVersion?: boolean
     hasDraft?: boolean
     previewUrl?: string | null
     mediaLibrary?: MediaLibraryBrowserData
+    loadMediaLibraryAction?: () => Promise<MediaLibraryBrowserData>
+    uploadImageAction?: typeof action
     videoLibrary?: VideoLibraryItem[]
     searchVideoLibraryAction?: (
       query: string,
@@ -110,6 +152,20 @@ function renderEditorElement(
     loadVideoCollectionChildrenAction?: (
       parentVideoId: string,
     ) => Promise<VideoLibraryItem[]>
+    loadVideoCollectionChildrenPageAction?: (
+      input: ExperienceEditorCollectionChildPageActionInput,
+    ) => Promise<{
+      items: VideoLibraryItem[]
+      nextCursor: string | null
+      total: number
+    }>
+    loadVideoDubPageAction?: (
+      input: ExperienceEditorDubPageActionInput,
+    ) => Promise<ExperienceEditorDubPage>
+    validateVideoDubSelectionsAction?: (
+      input: ExperienceEditorDubSelectionValidationActionInput,
+    ) => Promise<ExperienceEditorDubSelectionValidation>
+    onBlocksChange?: (blocks: readonly unknown[]) => void
   } = {},
 ) {
   return (
@@ -138,10 +194,19 @@ function renderEditorElement(
       ]}
       videoLibrary={options.videoLibrary ?? defaultVideoLibrary}
       mediaLibrary={options.mediaLibrary ?? defaultMediaLibrary}
+      loadMediaLibraryAction={options.loadMediaLibraryAction}
       searchVideoLibraryAction={options.searchVideoLibraryAction}
       loadVideoCollectionChildrenAction={
         options.loadVideoCollectionChildrenAction
       }
+      loadVideoCollectionChildrenPageAction={
+        options.loadVideoCollectionChildrenPageAction
+      }
+      loadVideoDubPageAction={options.loadVideoDubPageAction}
+      validateVideoDubSelectionsAction={
+        options.validateVideoDubSelectionsAction
+      }
+      onBlocksChange={options.onBlocksChange}
       canUploadImages
       initialValues={{
         localeId: "locale-1",
@@ -153,16 +218,24 @@ function renderEditorElement(
         ogDescription: "",
         ogImageUrl: "",
         pathSegment: "",
-        isHomepage: false,
+        isHomepage: options.isHomepage ?? false,
         isTemplate: options.isTemplate ?? false,
+        // Independent authority: a generic route template may not own Watch.
+        ...{ isDefaultTemplate: options.isDefaultTemplate },
+        // Server-read release gate; absent is the production default (off).
+        ...{
+          watchAudienceAuthoringEnabled: options.watchAudienceAuthoringEnabled,
+        },
         blocksJson: JSON.stringify(blocks),
       }}
       saveAction={options.saveAction ?? action}
+      duplicateAction={options.duplicateAction}
+      duplicatePending={options.duplicatePending}
       publishAction={options.publishAction ?? action}
       discardAction={options.discardAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
-      uploadImageAction={action}
+      uploadImageAction={options.uploadImageAction ?? action}
     />
   )
 }
@@ -369,6 +442,327 @@ describe("ExperienceEditor", () => {
           content: [{ t: "text", variant: "promotional" }],
         },
       ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("adds the language globe with editable copy from the block library", () => {
+    const view = renderEditorDom([])
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+      })
+
+      expect(view.container.textContent).toContain("Language Globe")
+      expect(view.container.textContent).toContain(
+        "Animated scripture globe with editable language copy and action.",
+      )
+
+      act(() => {
+        findButtonByText(view.container, "Language Globe").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "languageGlobe",
+          sectionKey: "language-globe-0",
+          eyebrow: "Watch languages",
+          title: "Choose a language",
+          description: "Explore languages by region or browse the full list.",
+          ctaEnabled: true,
+          ctaLabel: "Select language",
+          ctaLink: "/languages",
+        },
+      ])
+      expect(
+        view.container.querySelector('input[value="Choose a language"]'),
+      ).not.toBeNull()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("offers one category rail only on a homepage and inserts the shared catalog order", () => {
+    expect(renderEditor([], { isHomepage: false })).not.toContain(
+      "Watch Category Rail",
+    )
+
+    const view = renderEditorDom([], { isHomepage: true })
+
+    try {
+      expect(view.container.textContent).toContain("Watch Category Rail")
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+        findButtonByText(view.container, "Watch Category Rail").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "watch-home-category-rail-0",
+          categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+        },
+      ])
+      expect(view.container.textContent).not.toContain("Watch Category Rail")
+      expect(
+        view.container.querySelector('[aria-label="Category rail heading"]'),
+      ).not.toBeNull()
+      expect(
+        view.container.querySelectorAll('[aria-label="Drag block"]'),
+      ).toHaveLength(1)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves tile membership and order through the normal hidden block payload", async () => {
+    // The assertion lives OUTSIDE the mock: a throw inside an async action
+    // mock becomes an unhandled rejection and the call-count wait still
+    // passes, so an in-mock expect would go green on the wrong payload.
+    const savedBlocks: unknown[] = []
+    const saveAction = vi.fn(async (formData: FormData) => {
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
+      return { ok: true }
+    })
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus", "gospels", "family"],
+        },
+      ],
+      { isHomepage: true, saveAction },
+    )
+
+    try {
+      act(() => findButtonByAriaLabel(view.container, "Move Family up").click())
+      act(() => findButtonByAriaLabel(view.container, "Move Family up").click())
+      act(() => findButtonByAriaLabel(view.container, "Remove Gospels").click())
+
+      await act(async () => {
+        findButtonByText(view.container, "Save Draft").click()
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      // `tiles` is the authored truth; `categoryIds` mirrors its predefined
+      // members so a web deploy that predates tiles still renders the same
+      // rail in the same order.
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["family", "jesus"],
+          tiles: [
+            { id: "category:family", categoryId: "family" },
+            { id: "category:jesus", categoryId: "jesus" },
+          ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves bounded rail copy, drops blank overrides, and preserves every tile field", async () => {
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Library",
+          title: "Old heading",
+          description: "Old description",
+          ctaLabel: "See all",
+        },
+      ],
+      { isHomepage: true },
+    )
+
+    try {
+      const setValue = (label: string, value: string) => {
+        const input = view.container.querySelector(`[aria-label="${label}"]`)
+        if (
+          !(input instanceof HTMLInputElement) &&
+          !(input instanceof HTMLTextAreaElement)
+        ) {
+          throw new Error(`Copy field not found: ${label}`)
+        }
+        const prototype =
+          input instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype
+        Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(
+          input,
+          value,
+        )
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      }
+
+      act(() => {
+        setValue("Category rail eyebrow", "  Explore  ")
+        setValue("Category rail heading", "Stories for everyone")
+        setValue("Category rail description", "   ")
+        setValue("Category rail CTA label", "Watch all")
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            {
+              id: "category:jesus",
+              categoryId: "jesus",
+              title: "Meet Jesus",
+              style: "forest",
+            },
+          ],
+          eyebrow: "Explore",
+          title: "Stories for everyone",
+          ctaLabel: "Watch all",
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("saves an authored custom tile alongside the predefined ones", async () => {
+    const savedBlocks: unknown[] = []
+    const saveAction = vi.fn(async (formData: FormData) => {
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
+      return { ok: true }
+    })
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+        },
+      ],
+      { isHomepage: true, saveAction },
+    )
+
+    try {
+      const addCustom = Array.from(
+        view.container.querySelectorAll("button"),
+      ).find((element) => element.textContent?.includes("Custom tile"))
+      if (!addCustom) throw new Error("Add custom tile button not found")
+      act(() => addCustom.click())
+
+      await act(async () => {
+        findButtonByText(view.container, "Save Draft").click()
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            { id: "category:jesus", categoryId: "jesus" },
+            {
+              id: "custom-1",
+              title: "New tile",
+              href: "/watch",
+              icon: "sparkles",
+              style: "slate",
+            },
+          ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("reopens and discards tile selections through the shared editor state", async () => {
+    const publishedBlocks = [
+      {
+        t: "watchHomeCategoryRail",
+        sectionKey: "categories",
+        categoryIds: ["family", "jesus"],
+      },
+    ]
+    const discardAction = vi.fn(async () => ({
+      ok: true,
+      values: {
+        title: "Experience title",
+        slug: "experience-title",
+        metaDescription: "Meta description",
+        ogTitle: "",
+        ogDescription: "",
+        ogImageUrl: "",
+        pathSegment: "",
+        isHomepage: true,
+        blocksJson: JSON.stringify(publishedBlocks),
+      },
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus", "gospels"],
+        },
+      ],
+      { isHomepage: true, hasDraft: true, discardAction },
+    )
+
+    try {
+      expect(
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:jesus", "category:gospels"])
+
+      act(() => findButtonByText(view.container, "Discard draft").click())
+      const discardDialog = Array.from(
+        document.body.querySelectorAll('[role="dialog"]'),
+      ).find((candidate) =>
+        candidate.textContent?.includes("Discard English draft?"),
+      )
+      if (!(discardDialog instanceof HTMLElement)) {
+        throw new Error("Discard confirmation dialog not found")
+      }
+
+      await act(async () => {
+        findButtonByExactText(discardDialog, "Discard draft").click()
+        await Promise.resolve()
+      })
+
+      expect(discardAction).toHaveBeenCalledWith("locale-1")
+      expect(
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:family", "category:jesus"])
     } finally {
       view.cleanup()
     }
@@ -945,6 +1339,249 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("loads the complete media library only after the image picker opens", async () => {
+    const loadMediaLibraryAction = vi.fn(async () => ({
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-lazy",
+          displayName: "Loaded on demand",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-lazy/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction },
+    )
+
+    try {
+      expect(loadMediaLibraryAction).not.toHaveBeenCalled()
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+      expect(view.container.textContent).toContain("Loaded on demand")
+
+      act(() =>
+        findButtonByAriaLabel(view.container, "Close image library").click(),
+      )
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("retries a failed media catalog load", async () => {
+    const loadedCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-after-retry",
+          displayName: "Loaded after retry",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-after-retry/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce(loadedCatalog)
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+      expect(view.container.textContent).toContain(
+        "Unable to load the image library",
+      )
+
+      act(() => findButtonByExactText(view.container, "Retry").click())
+      await act(async () => await Promise.resolve())
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Loaded after retry")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("refreshes the retained media catalog after a successful picker upload", async () => {
+    const initialCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [...defaultMediaLibrary.images],
+    }
+    const refreshedCatalog = {
+      ...initialCatalog,
+      images: [
+        ...initialCatalog.images,
+        {
+          id: "asset-uploaded",
+          displayName: "Fresh upload",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-uploaded/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockResolvedValueOnce(initialCatalog)
+      .mockResolvedValueOnce(refreshedCatalog)
+    const uploadImageAction = vi.fn(async () => ({ ok: true as const }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction, uploadImageAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      await act(async () => await Promise.resolve())
+
+      const dropTarget = view.container.querySelector(
+        "[data-media-asset-drop-target]",
+      )
+      expect(dropTarget).not.toBeNull()
+      const dropEvent = new Event("drop", { bubbles: true, cancelable: true })
+      Object.defineProperty(dropEvent, "dataTransfer", {
+        value: {
+          types: ["Files"],
+          files: [new File(["image"], "fresh.webp", { type: "image/webp" })],
+        },
+      })
+      await act(async () => dropTarget?.dispatchEvent(dropEvent))
+
+      expect(uploadImageAction).toHaveBeenCalledOnce()
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Fresh upload")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("queues an upload refresh behind an in-flight catalog load", async () => {
+    let resolveInitialCatalog: (
+      library: MediaLibraryBrowserData,
+    ) => void = () => {}
+    const initialCatalogPromise = new Promise<MediaLibraryBrowserData>(
+      (resolve) => {
+        resolveInitialCatalog = resolve
+      },
+    )
+    const refreshedCatalog = {
+      rootLabel: "Library",
+      folders: [],
+      images: [
+        ...defaultMediaLibrary.images,
+        {
+          id: "asset-overlap-upload",
+          displayName: "Upload after overlap",
+          altText: null,
+          mimeType: "image/webp",
+          byteSize: "8.0 KB",
+          previewUrl: "/api/media-assets/asset-overlap-upload/preview",
+          updated: "2026-09-14T00:00:00.000Z",
+          folderId: null,
+          pathLabel: "Library",
+        },
+      ],
+    }
+    const loadMediaLibraryAction = vi
+      .fn<() => Promise<MediaLibraryBrowserData>>()
+      .mockReturnValueOnce(initialCatalogPromise)
+      .mockResolvedValueOnce(refreshedCatalog)
+    const uploadImageAction = vi.fn(async () => ({ ok: true as const }))
+    const view = renderEditorDom(
+      [{ t: "section", sectionKey: "hero", content: [] }],
+      { loadMediaLibraryAction, uploadImageAction },
+    )
+
+    try {
+      act(() =>
+        findButtonByAriaLabel(
+          view.container,
+          "Choose Section image from asset library",
+        ).click(),
+      )
+      const dropTarget = view.container.querySelector(
+        "[data-media-asset-drop-target]",
+      )
+      const dropEvent = new Event("drop", { bubbles: true, cancelable: true })
+      Object.defineProperty(dropEvent, "dataTransfer", {
+        value: {
+          types: ["Files"],
+          files: [new File(["image"], "overlap.webp", { type: "image/webp" })],
+        },
+      })
+      act(() => dropTarget?.dispatchEvent(dropEvent))
+      await act(async () => await Promise.resolve())
+      expect(uploadImageAction).toHaveBeenCalledOnce()
+      expect(loadMediaLibraryAction).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        resolveInitialCatalog({
+          rootLabel: "Library",
+          folders: [],
+          images: [...defaultMediaLibrary.images],
+        })
+        await initialCatalogPromise
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(loadMediaLibraryAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("Upload after overlap")
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("reopens the last browsed folder when no image is selected", () => {
     const view = renderEditorDom(
       [
@@ -1297,6 +1934,34 @@ describe("ExperienceEditor", () => {
       >
 
       expect(blocks[0]?.videoId).toBe("video-3")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("requests a bounded default catalog page when the picker first opens", async () => {
+    const searchVideoLibraryAction = vi.fn(async () => [])
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "empty-video",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { searchVideoLibraryAction, videoLibrary: [] },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(searchVideoLibraryAction).toHaveBeenCalledWith("", {
+        category: "all",
+        client: "experience-editor-video-picker",
+      })
     } finally {
       view.cleanup()
     }
@@ -1729,6 +2394,92 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("selects and removes collection or media exclusions for a dynamic feed", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Digital Training",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const media = {
+      ...defaultVideoLibrary[0]!,
+      key: "video-2",
+      title: "Training Trailer",
+      id: "core-video-2",
+    }
+    const loadVideoCollectionChildrenAction = vi.fn(async () => [])
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "dynamic-feed",
+          variant: "carousel",
+          itemsSource: "dynamicCollections",
+          excludedVideoIds: [],
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection, media],
+        loadVideoCollectionChildrenAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add exclusion").click()
+      })
+      act(() => {
+        findButtonByText(view.container, "Digital Training").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Exclude media").click()
+      })
+
+      act(() => {
+        findButtonByText(view.container, "Add exclusion").click()
+      })
+      act(() => {
+        findButtonByText(view.container, "Training Trailer").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Exclude media").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(
+        (
+          JSON.parse(blocksInput.value) as Array<{
+            excludedVideoIds?: string[]
+          }>
+        )[0]?.excludedVideoIds,
+      ).toEqual(["collection-1", "video-2"])
+      expect(loadVideoCollectionChildrenAction).not.toHaveBeenCalled()
+
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Remove Digital Training from exclusions",
+        ).click()
+      })
+      expect(
+        (
+          JSON.parse(blocksInput.value) as Array<{
+            excludedVideoIds?: string[]
+          }>
+        )[0]?.excludedVideoIds,
+      ).toEqual(["video-2"])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it.each(["carousel", "grid", "collection"])(
     "expands a collection into ordered %s media collection children",
     async (variant) => {
@@ -1916,6 +2667,61 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("cancels an in-flight collection Apply when the picker closes", async () => {
+    let resolveChildren: (children: VideoLibraryItem[]) => void = () => {}
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-cancel",
+      title: "Slow Collection",
+      id: "core-collection-cancel",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "late-child",
+      id: "core-late-child",
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn(
+          () =>
+            new Promise<VideoLibraryItem[]>((resolve) => {
+              resolveChildren = resolve
+            }),
+        ),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+      act(() =>
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+      )
+      await act(async () => resolveChildren([child]))
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0]?.items).toEqual([])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("shows a distinct pending state while video picker search is running", async () => {
     let resolveSearch: (results: VideoLibraryItem[]) => void = () => {}
     const searchVideoLibraryAction = vi.fn(
@@ -1983,6 +2789,7 @@ describe("ExperienceEditor", () => {
   })
 
   it("uses the selected playable dub for picker preview, trimming, and saved stream", () => {
+    const onBlocksChange = vi.fn()
     const view = renderEditorDom(
       [
         {
@@ -1993,6 +2800,7 @@ describe("ExperienceEditor", () => {
         },
       ],
       {
+        onBlocksChange,
         videoLibrary: [
           {
             ...defaultVideoLibrary[0]!,
@@ -2092,6 +2900,938 @@ describe("ExperienceEditor", () => {
       expect(blocks[0]?.languageId).toBe("language-es")
       expect(blocks[0]?.streamingUrl).toBeUndefined()
       expect(blocks[0]?.clipEndSeconds).toBeUndefined()
+      expect(onBlocksChange).toHaveBeenLastCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ languageId: "language-es" }),
+        ]),
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("persists the selected non-default Dub when appending one media item", () => {
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "single-media-dub",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: [defaultVideoLibrary[0]!.playableDubs![0]!, spanish],
+            playableLanguageCount: 2,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      const combobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(combobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+      act(() => combobox.click())
+      act(() => findButtonByText(view.container, "Spanish").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const item = JSON.parse(blocksInput.value)[0].items[0]
+      expect(item.languageId).toBe("language-es")
+      expect(item.streamingUrl).toBeUndefined()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("blocks a standalone selection that exceeds the draft selector limit", () => {
+    const newVideo = {
+      ...defaultVideoLibrary[0]!,
+      key: "new-video",
+      id: "core-new-video",
+      title: "New Video",
+    }
+    const existingItems = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS },
+      (_, index) => ({
+        videoId: `existing-video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "videoCarousel",
+          sectionKey: "full-carousel",
+          itemsSource: "manual",
+          items: existingItems,
+        },
+        {
+          t: "video",
+          sectionKey: "empty-standalone",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [newVideo],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[1]?.videoId).toBeUndefined()
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  }, 20_000)
+
+  it("uses the selected Dub identity for the append selector limit", () => {
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const existingItems = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS - 1 },
+      (_, index) => ({
+        videoId: `existing-video-${index}`,
+        languageId: "language-en",
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "full-media",
+          variant: "grid",
+          itemsSource: "manual",
+          items: existingItems,
+        },
+        {
+          t: "video",
+          sectionKey: "existing-default",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: [defaultVideoLibrary[0]!.playableDubs![0]!, spanish],
+            playableLanguageCount: 2,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      const combobox = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(combobox instanceof HTMLButtonElement)) {
+        throw new Error("Video language combobox not found")
+      }
+      act(() => combobox.click())
+      act(() => findButtonByText(view.container, "Spanish").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toHaveLength(
+        EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS - 1,
+      )
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  }, 20_000)
+
+  it("persists the stream selector for a language-less Dub", () => {
+    const languageLessDub = {
+      key: "dub-language-less",
+      label: "Original audio",
+      languageId: null,
+      languageSlug: null,
+      bcp47: null,
+      streamUrl: "https://example.com/original.m3u8",
+      duration: "01:00",
+      durationSeconds: 60,
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "language-less",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            defaultDub: languageLessDub,
+            playableDubs: [languageLessDub],
+            previewStreamUrl: languageLessDub.streamUrl,
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const block = JSON.parse(blocksInput.value)[0] as Record<string, unknown>
+      expect(block.languageId).toBeUndefined()
+      expect(block.streamingUrl).toBe(languageLessDub.streamUrl)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("requires review when save-time validation returns a changed Dub winner", async () => {
+    const changedChoice: ExperienceEditorDubPage["choices"][number] = {
+      ...defaultVideoLibrary[0]!.playableDubs![0]!,
+      key: "dub-en-replaced",
+      iso3: null,
+      languageIdentity: "language-en",
+      streamUrl: "https://example.com/replaced.m3u8",
+      duration: "10:00",
+      durationSeconds: 600,
+    }
+    const validateVideoDubSelectionsAction = vi.fn(
+      async (input: ExperienceEditorDubSelectionValidationActionInput) => ({
+        available: [{ selector: input.selectors[0]!, choice: changedChoice }],
+        unavailable: [],
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "changed-dub-winner",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { validateVideoDubSelectionsAction },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      await act(async () =>
+        findButtonByExactText(view.container, "Apply video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(JSON.parse(blocksInput.value)[0]?.videoId).toBeUndefined()
+      expect(view.container.textContent).toContain(
+        "That audio language changed. Review it and apply again.",
+      )
+      expect(view.container.textContent).toContain("10m")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("ignores a validated picker choice after the dialog closes", async () => {
+    let resolveValidation: (
+      result: ExperienceEditorDubSelectionValidation,
+    ) => void = () => {}
+    const validateVideoDubSelectionsAction = vi.fn(
+      () =>
+        new Promise<ExperienceEditorDubSelectionValidation>((resolve) => {
+          resolveValidation = resolve
+        }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "stale-validation",
+          useRouteVideo: false,
+          videoId: "",
+        },
+      ],
+      { validateVideoDubSelectionsAction },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Browse library").click())
+      act(() => findButtonByExactText(view.container, "Apply video").click())
+      act(() =>
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+      )
+      await act(async () =>
+        resolveValidation({ available: [], unavailable: [] }),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0]?.videoId).toBeUndefined()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("loads audio languages only when opened and reuses an identical cached page", async () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const spanish = dubChoice(
+      "dub-es",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const loadVideoDubPageAction = vi.fn(async () => ({
+      choices: [english, spanish],
+      selectedChoice: english,
+      nextCursor: null,
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "lazy-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+          clipStartSeconds: 8,
+          clipEndSeconds: 42,
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      expect(loadVideoDubPageAction).not.toHaveBeenCalled()
+
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      )
+      if (!(trigger instanceof HTMLButtonElement)) {
+        throw new Error("Audio language trigger not found")
+      }
+      act(() => trigger.click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+
+      expect(loadVideoDubPageAction).toHaveBeenCalledOnce()
+      expect(view.container.textContent).toContain("Spanish")
+
+      act(() => trigger.click())
+      act(() => trigger.click())
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(loadVideoDubPageAction).toHaveBeenCalledOnce()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("clears an interrupted Load more state when the language picker reopens", async () => {
+    const english = dubChoice(
+      "dub-en-load-more",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    let resolveMore: (page: ExperienceEditorDubPage) => void = () => {}
+    const loadVideoDubPageAction = vi
+      .fn<
+        (
+          input: ExperienceEditorDubPageActionInput,
+        ) => Promise<ExperienceEditorDubPage>
+      >()
+      .mockResolvedValueOnce({
+        choices: [english],
+        selectedChoice: english,
+        nextCursor: "next-page",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise<ExperienceEditorDubPage>((resolve) => {
+            resolveMore = resolve
+          }),
+      )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "load-more-close",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 60,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      ) as HTMLButtonElement
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+      act(() => findButtonByExactText(view.container, "Load more").click())
+      act(() => trigger.click())
+      await act(async () =>
+        resolveMore({ choices: [], selectedChoice: english, nextCursor: null }),
+      )
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+
+      expect(findButtonByExactText(view.container, "Load more").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("does not select a stale active language after the search changes", async () => {
+    const english = dubChoice(
+      "dub-en-stale",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const spanish = dubChoice(
+      "dub-es-stale",
+      "Spanish",
+      "language-es",
+      "https://example.com/es.m3u8",
+    )
+    const loadVideoDubPageAction = vi.fn(async () => ({
+      choices: [english, spanish],
+      selectedChoice: english,
+      nextCursor: null,
+    }))
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "stale-enter",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      const trigger = view.container.querySelector(
+        'button[role="combobox"][aria-label="Audio language"]',
+      ) as HTMLButtonElement
+      act(() => trigger.click())
+      await act(
+        async () => new Promise((resolve) => window.setTimeout(resolve, 0)),
+      )
+      act(() =>
+        findButtonByText(view.container, "Spanish").dispatchEvent(
+          new MouseEvent("mouseover", { bubbles: true }),
+        ),
+      )
+      const input = view.container.querySelector(
+        'input[placeholder="Search languages"]',
+      ) as HTMLInputElement
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+      act(() => {
+        valueSetter?.call(input, "french")
+        input.dispatchEvent(new InputEvent("input", { bubbles: true }))
+      })
+      act(() =>
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        ),
+      )
+
+      expect(trigger.getAttribute("aria-expanded")).toBe("true")
+      expect(trigger.textContent).toContain("English")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("evicts a rejected audio-language request and provides a working retry", async () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const loadVideoDubPageAction = vi
+      .fn<() => Promise<ExperienceEditorDubPage>>()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce({
+        choices: [english],
+        selectedChoice: english,
+        nextCursor: null,
+      })
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "retry-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-en",
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [english],
+          },
+        ],
+        loadVideoDubPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      act(() => {
+        const trigger = view.container.querySelector(
+          'button[role="combobox"][aria-label="Audio language"]',
+        )
+        if (!(trigger instanceof HTMLButtonElement))
+          throw new Error("No trigger")
+        trigger.click()
+      })
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+      expect(view.container.textContent).toContain(
+        "Languages could not be loaded.",
+      )
+
+      await act(async () => {
+        findButtonByExactText(view.container, "Retry").click()
+      })
+      expect(loadVideoDubPageAction).toHaveBeenCalledTimes(2)
+      expect(view.container.textContent).toContain("English")
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("keeps an unavailable authored language and clip visibly unchanged", () => {
+    const english = dubChoice(
+      "dub-en",
+      "English",
+      "language-en",
+      "https://example.com/en.m3u8",
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "video",
+          sectionKey: "unavailable-video",
+          useRouteVideo: false,
+          videoId: "video-1",
+          languageId: "language-fr",
+          clipStartSeconds: 12,
+          clipEndSeconds: 24,
+        },
+      ],
+      {
+        videoLibrary: [
+          {
+            ...defaultVideoLibrary[0]!,
+            playableDubs: undefined,
+            playableLanguageCount: 2,
+            defaultDub: english,
+            authoredDubs: [],
+          },
+        ],
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Video settings").click())
+      expect(view.container.textContent).toContain("Unavailable language")
+      expect(view.container.textContent).toContain(
+        "This draft’s audio language is no longer available.",
+      )
+      expect(view.container.textContent).toContain("Preview image only")
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      const block = JSON.parse(blocksInput.value)[0] as Record<string, unknown>
+      expect(block.languageId).toBe("language-fr")
+      expect(block.clipStartSeconds).toBe(12)
+      expect(block.clipEndSeconds).toBe(24)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("stages paged collection children and commits once every page succeeds", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-paged",
+      id: "core-collection-paged",
+      title: "Paged Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 2,
+    }
+    const childOne = {
+      ...defaultVideoLibrary[0]!,
+      key: "paged-child-1",
+      id: "core-paged-child-1",
+    }
+    const childTwo = {
+      ...defaultVideoLibrary[0]!,
+      key: "paged-child-2",
+      id: "core-paged-child-2",
+    }
+    let resolveLastPage: (value: {
+      items: VideoLibraryItem[]
+      nextCursor: string | null
+      total: number
+    }) => void = () => {}
+    const loadVideoCollectionChildrenPageAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [childOne],
+        nextCursor: "next-page",
+        total: 2,
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveLastPage = resolve
+          }),
+      )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "paged-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() => findButtonByText(view.container, "Paged Collection").click())
+      act(() => findButtonByExactText(view.container, "Add video").click())
+      await act(async () => {})
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain("1 of 2")
+      expect(
+        findButtonByExactText(view.container, "Adding videos…").disabled,
+      ).toBe(true)
+
+      await act(async () => {
+        resolveLastPage({ items: [childTwo], nextCursor: null, total: 2 })
+      })
+      expect(
+        JSON.parse(blocksInput.value)[0].items.map(
+          (item: Record<string, unknown>) => item.videoId,
+        ),
+      ).toEqual(["paged-child-1", "paged-child-2"])
+      expect(loadVideoCollectionChildrenPageAction).toHaveBeenCalledTimes(2)
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("rejects an oversized collection before mutating the draft", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-over-limit",
+      title: "Oversized Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1,
+    }
+    const children = Array.from(
+      { length: EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS + 1 },
+      (_, index) => ({
+        ...defaultVideoLibrary[0]!,
+        key: `oversized-child-${index}`,
+        id: `core-oversized-child-${index}`,
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "oversized-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenAction: vi.fn().mockResolvedValue(children),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Oversized Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain(
+        `exceed the ${EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS.toLocaleString()} video audio selection limit`,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("keeps collection state unchanged when paging ends before the declared total", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-truncated",
+      id: "core-collection-truncated",
+      title: "Truncated Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 2,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "truncated-child-1",
+      id: "core-truncated-child-1",
+    }
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "truncated-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction: vi.fn().mockResolvedValue({
+          items: [child],
+          nextCursor: null,
+          total: 2,
+        }),
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Truncated Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(view.container.textContent).toContain(
+        "Collection videos could not be loaded. Nothing was added.",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("blocks collection Apply when a child has no playable Dub", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-unplayable",
+      title: "Unplayable Collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+      childCount: 1,
+    }
+    const child = {
+      ...defaultVideoLibrary[0]!,
+      key: "unplayable-child",
+      defaultDub: null,
+      playableDubs: undefined,
+      playableLanguageCount: 0,
+      previewStreamUrl: null,
+    }
+    const validateVideoDubSelectionsAction = vi.fn(
+      async (input: ExperienceEditorDubSelectionValidationActionInput) => ({
+        available: [],
+        unavailable: input.selectors.map((selector) => ({
+          selector,
+          preExisting: false,
+          reason: "video-or-dub-unavailable" as const,
+        })),
+      }),
+    )
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "unplayable-media",
+          variant: "grid",
+          itemsSource: "manual",
+          title: "Media",
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection],
+        loadVideoCollectionChildrenPageAction: vi.fn().mockResolvedValue({
+          items: [child],
+          nextCursor: null,
+          total: 1,
+        }),
+        validateVideoDubSelectionsAction,
+      },
+    )
+
+    try {
+      act(() => findButtonByText(view.container, "Add video").click())
+      act(() =>
+        findButtonByText(view.container, "Unplayable Collection").click(),
+      )
+      await act(async () =>
+        findButtonByExactText(view.container, "Add video").click(),
+      )
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement))
+        throw new Error("No blocks")
+      expect(JSON.parse(blocksInput.value)[0].items).toEqual([])
+      expect(validateVideoDubSelectionsAction).toHaveBeenCalledWith({
+        selectors: [
+          {
+            videoId: "unplayable-child",
+            languageId: null,
+            legacyStreamingUrl: null,
+          },
+        ],
+      })
     } finally {
       view.cleanup()
     }
@@ -2226,6 +3966,221 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("View live")
     expect(html).toContain("Publish")
     expect(html).toContain("Discard draft")
+  })
+
+  it("shows the Duplicate action when duplication is available", () => {
+    const html = renderEditor([], {
+      duplicateAction: async () => ({
+        ok: true,
+        href: "/dashboard/experiences/exp-copy?locale=en",
+      }),
+    })
+
+    expect(html).toContain("Duplicate")
+    expect(html).toContain(
+      "into a new unpublished draft. It never becomes the live homepage.",
+    )
+  })
+
+  it("disables Duplicate for unsaved changes with an accessible explanation", () => {
+    const view = renderEditorDom([], {
+      duplicateAction: async () => ({ ok: true, href: "/copy" }),
+    })
+
+    try {
+      const titleInput = view.container.querySelector(
+        'input[placeholder="Untitled Experience"]',
+      )
+      if (!(titleInput instanceof HTMLInputElement)) {
+        throw new Error("Title input not found")
+      }
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(titleInput, "Unsaved title")
+        titleInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      const duplicateButton = findButtonByText(view.container, "Duplicate")
+      const helperId = duplicateButton.getAttribute("aria-describedby")
+      expect(duplicateButton.disabled).toBe(true)
+      expect(helperId).toBe("duplicate-experience-save-first")
+      expect(duplicateButton.parentElement?.getAttribute("tabindex")).toBe("0")
+      expect(
+        duplicateButton.parentElement?.getAttribute("aria-describedby"),
+      ).toBe(helperId)
+      expect(document.getElementById(helperId!)?.textContent).toContain(
+        "Save your changes before duplicating.",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows a distinct pending state and navigates once on success", async () => {
+    let resolveDuplicate:
+      | ((result: { ok: true; href: string }) => void)
+      | null = null
+    const duplicateAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; href: string }>((resolve) => {
+          resolveDuplicate = resolve
+        }),
+    )
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      const pendingButton = findButtonByText(view.container, "Duplicating")
+      expect(pendingButton.disabled).toBe(true)
+      expect(pendingButton.getAttribute("aria-busy")).toBe("true")
+      expect(pendingButton.hasAttribute("aria-describedby")).toBe(false)
+      expect(duplicateAction).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveDuplicate?.({
+          ok: true,
+          href: "/dashboard/experiences/exp-copy?locale=en",
+        })
+      })
+
+      expect(routerPush).toHaveBeenCalledTimes(1)
+      expect(routerPush).toHaveBeenCalledWith(
+        "/dashboard/experiences/exp-copy?locale=en",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("disables Duplicate while another editor mutation is pending", async () => {
+    const duplicateAction = vi.fn(async () => ({ ok: true, href: "/copy" }))
+    const view = renderEditorDom([], {
+      duplicateAction,
+      duplicatePending: true,
+    })
+
+    try {
+      const button = findButtonByExactText(view.container, "Duplicate")
+      expect(button.disabled).toBe(true)
+      expect(button.hasAttribute("aria-describedby")).toBe(false)
+      button.click()
+      expect(duplicateAction).not.toHaveBeenCalled()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows safe errors and restores Duplicate after a resolved failure", async () => {
+    const duplicateAction = vi.fn(async () => ({
+      ok: false,
+      error: "Experience cannot be duplicated from its current saved state.",
+    }))
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      expect(view.container.textContent).toContain(
+        "Experience cannot be duplicated from its current saved state.",
+      )
+      expect(routerPush).not.toHaveBeenCalled()
+      expect(findButtonByExactText(view.container, "Duplicate").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows a generic error and restores Duplicate after rejection", async () => {
+    const duplicateAction = vi.fn(async () => {
+      throw new Error("sensitive database detail")
+    })
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      expect(view.container.textContent).toContain(
+        "Unable to duplicate experience.",
+      )
+      expect(view.container.textContent).not.toContain(
+        "sensitive database detail",
+      )
+      expect(routerPush).not.toHaveBeenCalled()
+      expect(findButtonByExactText(view.container, "Duplicate").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows the publish action error without clearing the draft", async () => {
+    const publishAction = vi.fn(async () => ({
+      ok: false,
+      error:
+        "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+    }))
+    const view = renderEditorDom([], {
+      hasDraft: true,
+      previewUrl: "https://watch.jesusfilm.org/watch/preview/experience/token",
+      publishAction,
+    })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Publish").click()
+      })
+
+      expect(publishAction).toHaveBeenCalledWith("locale-1")
+      expect(view.container.textContent).toContain(
+        "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+      )
+      expect(view.container.textContent).not.toContain("Locale published.")
+      expect(
+        findButtonByExactText(view.container, "Discard draft"),
+      ).toBeTruthy()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("ignores a duplicate completion after the editor unmounts", async () => {
+    let resolveDuplicate:
+      | ((result: { ok: true; href: string }) => void)
+      | null = null
+    const duplicateAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; href: string }>((resolve) => {
+          resolveDuplicate = resolve
+        }),
+    )
+    const view = renderEditorDom([], { duplicateAction })
+
+    await act(async () => {
+      findButtonByExactText(view.container, "Duplicate").click()
+    })
+    view.cleanup()
+
+    await act(async () => {
+      resolveDuplicate?.({ ok: true, href: "/late-copy" })
+    })
+
+    expect(routerPush).not.toHaveBeenCalled()
   })
 
   it("renders the live control on the server even when the watch URL is inferred in the browser", () => {
@@ -2470,5 +4425,186 @@ describe("ExperienceEditor", () => {
     expect(templateHtml).toContain("Route Video Hero")
     expect(templateHtml).toContain("Route Video")
     expect(templateHtml).toContain("Route Video Carousel")
+  })
+
+  // Public reads project only the default template's published questionnaire,
+  // so offering the block elsewhere previews content that publish never ships.
+  describe("Watch Audience questionnaire availability", () => {
+    function audienceBlocksIn(container: HTMLElement) {
+      const input = container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      return JSON.parse(input?.value ?? "[]") as Array<{ t?: string }>
+    }
+
+    it.each([
+      ["a standard page", { isTemplate: false }],
+      ["the homepage", { isTemplate: false, isHomepage: true }],
+      [
+        "non-default route template B",
+        { isTemplate: true, isDefaultTemplate: false },
+      ],
+      ["a route template without selected identity", { isTemplate: true }],
+    ])("does not offer the questionnaire on %s", (_label, options) => {
+      const view = renderEditorDom([], options)
+
+      try {
+        act(() => {
+          findButtonByText(view.container, "Browse All Blocks").click()
+        })
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+        expect(view.container.textContent).not.toContain(
+          "Four audience roles with three questions",
+        )
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    it("offers and inserts exactly one questionnaire on the default template", () => {
+      const view = renderEditorDom([], {
+        isTemplate: true,
+        isDefaultTemplate: true,
+        watchAudienceAuthoringEnabled: true,
+      })
+
+      try {
+        act(() => {
+          findButtonByText(view.container, "Browse All Blocks").click()
+          findButtonByText(view.container, "Watch Audience").click()
+        })
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience"])
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    describe("while forge.watch.audience is off", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-1", configuration: {} },
+        { t: "text", sectionKey: "text-1", heading: "Sibling" },
+      ]
+
+      it.each([
+        ["off", false],
+        ["unread (absent)", undefined],
+      ])(
+        "does not offer the questionnaire on the default template when the gate is %s",
+        (_label, watchAudienceAuthoringEnabled) => {
+          const view = renderEditorDom([], {
+            isTemplate: true,
+            isDefaultTemplate: true,
+            watchAudienceAuthoringEnabled,
+          })
+          try {
+            act(() => {
+              findButtonByText(view.container, "Browse All Blocks").click()
+            })
+            expect(() =>
+              findButtonByText(view.container, "Watch Audience"),
+            ).toThrow("Button not found: Watch Audience")
+            // Unrelated blocks stay available.
+            expect(view.container.textContent).toContain("Language Globe")
+            expect(audienceBlocksIn(view.container)).toEqual([])
+          } finally {
+            view.cleanup()
+          }
+        },
+      )
+
+      it("keeps a persisted questionnaire verbatim and hides only its authoring controls", () => {
+        const off = renderEditor(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: false,
+        })
+        const on = renderEditor(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: true,
+        })
+        expect(on).toContain("Watch audience questionnaire")
+        expect(off).not.toContain("Watch audience questionnaire")
+        expect(off).toContain(WATCH_AUDIENCE_AUTHORING_DISABLED_MESSAGE)
+
+        const view = renderEditorDom(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: false,
+        })
+        try {
+          expect(audienceBlocksIn(view.container)).toEqual(existing)
+        } finally {
+          view.cleanup()
+        }
+      })
+    })
+
+    it("keeps generic route blocks available on non-default template B", () => {
+      const html = renderEditor([], {
+        isTemplate: true,
+        isDefaultTemplate: false,
+      })
+      expect(html).toContain("Route Video Hero")
+      expect(html).toContain("Route Video")
+      expect(html).toContain("Route Video Carousel")
+    })
+
+    it("preserves B's historical questionnaire and sibling order", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-b" },
+        { t: "text", sectionKey: "text-b", heading: "B sibling" },
+        { t: "videoHero", sectionKey: "hero-b", useRouteVideo: true },
+      ]
+      const view = renderEditorDom(existing, {
+        isTemplate: true,
+        isDefaultTemplate: false,
+      })
+      try {
+        expect(audienceBlocksIn(view.container)).toEqual(existing)
+        act(() => {
+          findButtonByText(view.container, "Add block").click()
+        })
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+        expect(audienceBlocksIn(view.container)).toEqual(existing)
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    it("keeps an existing questionnaire and its siblings on a non-template without offering another", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-1" },
+        { t: "text", sectionKey: "text-1" },
+      ]
+      const view = renderEditorDom(existing, { isTemplate: false })
+
+      try {
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience", "text"])
+        act(() => {
+          findButtonByText(view.container, "Add block").click()
+        })
+        expect(view.container.textContent).toContain("Language Globe")
+        expect(view.container.textContent).not.toContain(
+          "Four audience roles with three questions",
+        )
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience", "text"])
+      } finally {
+        view.cleanup()
+      }
+    })
   })
 })

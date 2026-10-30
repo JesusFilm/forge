@@ -38,6 +38,41 @@ afterEach(() => {
 })
 
 describe("ScripturePassageService.getPassageForCitation", () => {
+  it.each([
+    ["arabic-modern-standard", 195, "arabic-modern-standard"],
+    ["arabic-hassaniya", 195, "arabic-modern-standard"],
+    ["spanish-latin-american", 147, "spanish-latin-american"],
+    ["unmapped-language", 3034, "english"],
+    [undefined, 3034, "english"],
+  ])(
+    "labels cached %s text by the selected version, without a fetch",
+    async (languageSlug, versionId, expectedLanguage) => {
+      const { ScripturePassageService } = await loadService({
+        appKey: "app-key",
+      })
+      const prisma = mockPrisma()
+      prisma.bibleCitation.findFirst.mockResolvedValue(makeCitation())
+      prisma.biblePassageCache.findUnique.mockResolvedValue({
+        content: "Selected version text",
+        provider: "youversion",
+        versionId: String(versionId),
+        reference: "JHN.3.16",
+        humanReference: "John 3:16",
+        copyright: "Copyright",
+        expiresAt: new Date(Date.now() + 60_000),
+      })
+      const fetchFn = vi.fn()
+      const passage = await new ScripturePassageService(
+        prisma,
+        fetchFn as never,
+      ).getPassageForCitation({ citationId: "bc-1", languageSlug })
+      expect(passage).toEqual(
+        expect.objectContaining({ languageSlug: expectedLanguage, versionId }),
+      )
+      expect(fetchFn).not.toHaveBeenCalled()
+    },
+  )
+
   it("returns a fresh cached passage without calling YouVersion", async () => {
     const { ScripturePassageService } = await loadService({
       appKey: "app-key",
@@ -64,6 +99,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
 
     expect(fetchFn).not.toHaveBeenCalled()
     expect(passage).toEqual({
+      languageSlug: "english",
       content: "For God so loved the world.",
       copyright: "Copyright.",
       humanReference: "John 3:16",
@@ -145,6 +181,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
     )
     expect(passage).toEqual(
       expect.objectContaining({
+        languageSlug: "english",
         content: "For God so loved the world.",
         humanReference: "John 3:16",
         reference: "JHN.3.16",
@@ -276,6 +313,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
     )
     expect(passage).toEqual(
       expect.objectContaining({
+        languageSlug: "spanish-latin-american",
         humanReference: "Juan 3:16",
         versionAbbreviation: "NTV",
         versionId: 147,
@@ -341,6 +379,67 @@ describe("ScripturePassageService.getPassageForCitation", () => {
       }),
     )
   })
+
+  it.each([
+    ["Mandarin China slug", { languageSlug: "mandarin-china" }, 43],
+    ["Simplified Chinese slug", { languageSlug: "chinese-simplified" }, 43],
+    ["Mandarin Taiwan slug", { languageSlug: "mandarin-taiwan" }, 312],
+    ["Traditional Chinese slug", { languageSlug: "chinese-traditional" }, 312],
+    ["Mandarin China Core id", { languageId: "20615" }, 43],
+    ["Simplified Chinese Core id", { languageId: "21754" }, 43],
+    ["Mandarin Taiwan Core id", { languageId: "23221" }, 312],
+    ["Traditional Chinese Core id", { languageId: "21753" }, 312],
+  ])(
+    "uses the Chinese Standard Bible for %s",
+    async (_label, language, versionId) => {
+      const { ScripturePassageService } = await loadService({
+        appKey: "app-key",
+        ttlSeconds: "60",
+      })
+      const prisma = mockPrisma()
+      prisma.bibleCitation.findFirst.mockResolvedValueOnce(makeCitation())
+      prisma.biblePassageCache.findUnique.mockResolvedValueOnce(null)
+      prisma.biblePassageCache.upsert.mockImplementationOnce(
+        async ({ create }: { create: Record<string, unknown> }) => ({
+          ...create,
+        }),
+      )
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            id: versionId,
+            localized_abbreviation: versionId === 43 ? "CSBS" : "CSBT",
+            localized_title: versionId === 43 ? "中文标准译本" : "中文標準譯本",
+            copyright: "Copyright.",
+          }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            id: "JHN.3.16",
+            reference: "约翰福音 3:16",
+            content: "神爱世人。",
+          }),
+        )
+
+      const service = new ScripturePassageService(prisma, fetchFn as never)
+      const passage = await service.getPassageForCitation({
+        citationId: "bc-1",
+        ...language,
+      })
+
+      expect(fetchFn).toHaveBeenNthCalledWith(
+        1,
+        `https://api.youversion.com/v1/bibles/${versionId}`,
+        expect.any(Object),
+      )
+      expect(passage).toEqual(
+        expect.objectContaining({
+          versionId,
+        }),
+      )
+    },
+  )
 
   it("uses the code-approved version id for the requested language id", async () => {
     const { ScripturePassageService } = await loadService({

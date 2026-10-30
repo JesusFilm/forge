@@ -1878,11 +1878,11 @@ describe("ai-chat erasure — langfuse seam default wiring (feat-283-style pins)
 })
 
 describe("ai-chat erasure — persisted-store seam (KTD1)", () => {
-  it("builds Memory over getAiChatStorage() even when the kill switch is on", async () => {
-    // The kill switch (`AI_CHAT_MEMORY_BACKEND=memory`) swaps
-    // `getAiChatMemory()` to an InMemoryStore. An erasure over THAT would
-    // report success while every Postgres row survived, so the default
-    // acquisition must reach the persisted store regardless.
+  it("builds Memory over getAiChatStorage() even when the shared backend is memory", async () => {
+    // `MASTRA_STORAGE_BACKEND=memory` makes ordinary conversation memory an
+    // InMemoryStore. Erasure must still reach the persisted store explicitly;
+    // using `getAiChatMemory()` here could report success while every Postgres
+    // row survived.
     vi.resetModules()
     const storage = { id: "ai-chat-storage" }
     const getAiChatStorage = vi.fn(() => storage)
@@ -1901,7 +1901,10 @@ describe("ai-chat erasure — persisted-store seam (KTD1)", () => {
       },
     }))
     vi.doMock("../config/env", () => ({
-      env: { DATABASE_URL: "postgresql://user:pw@db.example:5432/forge" },
+      env: {
+        DATABASE_URL: "postgresql://user:pw@db.example:5432/forge",
+        MASTRA_STORAGE_BACKEND: "memory",
+      },
     }))
 
     const module = await import("./ai-chat-erasure")

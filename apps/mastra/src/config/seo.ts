@@ -1,7 +1,10 @@
 import { z } from "zod"
+import { PUBLIC_WATCH_ORIGIN } from "@forge/watch-url-policy/routes"
 
 export const SeoAutomationModeSchema = z.enum(["off", "dry_run", "live"])
 export type SeoAutomationMode = z.infer<typeof SeoAutomationModeSchema>
+
+const MAX_WATCH_ROUTE_ALERT_PROPERTIES = 2
 
 const optionalString = z.preprocess(
   (value) => (value === "" ? undefined : value),
@@ -12,6 +15,19 @@ const seoEnvironmentSchema = z.object({
   SEO_AUTOMATION_MODE: SeoAutomationModeSchema.default("off"),
   SEO_GSC_PROPERTY_IDS: optionalString,
   SEO_GA4_PROPERTY_IDS: optionalString,
+  WATCH_ROUTE_ALERT_MODE: SeoAutomationModeSchema.default("off"),
+  WATCH_ROUTE_ALERT_MAX_CANDIDATES: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(25),
+  WATCH_ROUTE_ALERT_REPROBE_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(25)
+    .default(25),
   SEO_GOOGLE_ACCESS_TOKEN: optionalString,
   SEO_GOOGLE_CREDENTIALS_JSON: optionalString,
   SEO_GOOGLE_PROJECT_ID: optionalString,
@@ -87,6 +103,12 @@ export type SeoConfig = {
   automationMode: SeoAutomationMode
   gscPropertyIds: string[]
   ga4PropertyIds: string[]
+  watchRouteAlerts: {
+    mode: SeoAutomationMode
+    properties: Array<{ propertyId: string; origin: string }>
+    maxCandidates: number
+    reprobeLimit: number
+  }
   googleAccessToken?: string
   googleCredentialsJson?: string
   googleProjectId?: string
@@ -173,10 +195,28 @@ export function getSeoConfig(
       "SEO_ASSERTION_ENVIRONMENT must be explicit outside local development.",
     )
   }
+  const ga4PropertyIds = csv(parsed.SEO_GA4_PROPERTY_IDS)
+  if (
+    parsed.WATCH_ROUTE_ALERT_MODE !== "off" &&
+    ga4PropertyIds.length > MAX_WATCH_ROUTE_ALERT_PROPERTIES
+  ) {
+    throw new Error(
+      `Watch route monitoring supports at most ${MAX_WATCH_ROUTE_ALERT_PROPERTIES} GA4 properties per scheduled run.`,
+    )
+  }
   return {
     automationMode: parsed.SEO_AUTOMATION_MODE,
     gscPropertyIds: csv(parsed.SEO_GSC_PROPERTY_IDS),
-    ga4PropertyIds: csv(parsed.SEO_GA4_PROPERTY_IDS),
+    ga4PropertyIds,
+    watchRouteAlerts: {
+      mode: parsed.WATCH_ROUTE_ALERT_MODE,
+      properties: ga4PropertyIds.map((propertyId) => ({
+        propertyId,
+        origin: PUBLIC_WATCH_ORIGIN,
+      })),
+      maxCandidates: parsed.WATCH_ROUTE_ALERT_MAX_CANDIDATES,
+      reprobeLimit: parsed.WATCH_ROUTE_ALERT_REPROBE_LIMIT,
+    },
     googleAccessToken: parsed.SEO_GOOGLE_ACCESS_TOKEN,
     googleCredentialsJson: parsed.SEO_GOOGLE_CREDENTIALS_JSON,
     googleProjectId: parsed.SEO_GOOGLE_PROJECT_ID,

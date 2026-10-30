@@ -5,11 +5,17 @@ const {
   clearWatchSeoManifestCacheMock,
   revalidatePathMock,
   revalidateTagMock,
+  purgeWatchDynamicCollectionsCacheMock,
 } = vi.hoisted(() => ({
   clearWatchRouteManifestCacheMock: vi.fn(),
   clearWatchSeoManifestCacheMock: vi.fn(),
   revalidatePathMock: vi.fn(),
   revalidateTagMock: vi.fn(),
+  purgeWatchDynamicCollectionsCacheMock: vi.fn(),
+}))
+
+vi.mock("@/lib/cloudflare-cache", () => ({
+  purgeWatchDynamicCollectionsCache: purgeWatchDynamicCollectionsCacheMock,
 }))
 
 vi.mock("@/lib/watch-route-manifest", () => ({
@@ -31,8 +37,43 @@ describe("POST /api/revalidate", () => {
     clearWatchSeoManifestCacheMock.mockReset()
     revalidatePathMock.mockReset()
     revalidateTagMock.mockReset()
+    purgeWatchDynamicCollectionsCacheMock.mockReset()
+    purgeWatchDynamicCollectionsCacheMock.mockResolvedValue("purged")
     vi.doUnmock("@/i18n/generated-ui-locales")
     vi.resetModules()
+  })
+
+  it("expires every tag the published audience configuration is cached on when the default template publishes", async () => {
+    // Pinned to `WATCH_AUDIENCE_CACHE_TAGS` in watch-audience-content.test.ts.
+    const audienceTags = ["watch:settings", "watch:experience"]
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "watch-setting",
+          entry: { locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    for (const tag of audienceTags) {
+      expect(body.tags).toContain(tag)
+      expect(revalidateTagMock).toHaveBeenCalledWith(tag, { expire: 0 })
+    }
+    // Home and every video route re-render from the one refreshed definition.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/en/en")
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/[locale]/[htmlLang]",
+      "layout",
+    )
   })
 
   it("revalidates the full watch app when watch settings change (Bearer)", async () => {
@@ -104,6 +145,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
       expire: 0,
     })
+    expect(purgeWatchDynamicCollectionsCacheMock).toHaveBeenCalledTimes(1)
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:settings", {
       expire: 0,
     })
@@ -251,6 +293,28 @@ describe("POST /api/revalidate", () => {
     } finally {
       warnSpy.mockRestore()
     }
+  })
+
+  it("keeps webhook invalidation successful when Cloudflare purge fails", async () => {
+    purgeWatchDynamicCollectionsCacheMock.mockResolvedValue("failed")
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({ model: "video", entry: {} }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(revalidateTagMock).toHaveBeenCalledWith("watch:home", {
+      expire: 0,
+    })
+    expect(purgeWatchDynamicCollectionsCacheMock).toHaveBeenCalledTimes(1)
   })
 
   it("uses the canonical public audio slug for non-English localized content", async () => {
@@ -589,6 +653,7 @@ describe("POST /api/revalidate", () => {
     expect(revalidateTagMock).toHaveBeenCalledWith("watch:route-manifest", {
       expire: 0,
     })
+    expect(purgeWatchDynamicCollectionsCacheMock).not.toHaveBeenCalled()
   })
 
   it("clears the cached watch seo manifest and revalidates sitemap routes", async () => {
@@ -640,6 +705,7 @@ describe("POST /api/revalidate", () => {
     )
 
     expect(response.status).toBe(401)
+    expect(purgeWatchDynamicCollectionsCacheMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
     expect(revalidateTagMock).not.toHaveBeenCalled()
   })

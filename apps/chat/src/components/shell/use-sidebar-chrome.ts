@@ -72,11 +72,20 @@ export function useSidebarChrome({
     return () => clearTimeout(id)
   }, [animatingCollapse])
 
-  // Escape closes the mobile drawer (parity with the X button and scrim).
+  // Escape closes the mobile drawer unless the event's TARGET owns Escape (the
+  // rename editor, feat-450 KTD10) — checked by target, not propagation, since
+  // this listener and React's delegated handler both live on `document`.
   useEffect(() => {
     if (!mobileOpen) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCloseMobile()
+      if (event.key !== "Escape") return
+      if (
+        event.target instanceof Element &&
+        event.target.closest("[data-escape-owner]") !== null
+      ) {
+        return
+      }
+      onCloseMobile()
     }
     document.addEventListener("keydown", onKeyDown)
     return () => document.removeEventListener("keydown", onKeyDown)

@@ -39,9 +39,8 @@
     "posterAlt": "Video póster",
     "noDownloads": "Ndaipóri mba'e boguejy hag̃uáicha ko video-pe g̃uarã.",
     "fileSizeLabel": "Eiporavo peteĩ file tuichakue",
-    "termsAgreementPrefix": "Amoĩporã ",
+    "termsAgreement": "Amoneĩ <link>Mba'éichapa ojeporu hag̃ua</link>",
     "termsOfUse": "Mba'éichapa ojeporu hag̃ua",
-    "termsAgreementSuffix": "",
     "close": "Emboty",
     "download": "Emboguejy",
     "authRequiredTitle": "Reipota piko emboguejy ko video?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Emboja'o Facebook-pe (ndaipóri ko versión-pe)",
     "shareOnX": "Emboja'o X-pe",
     "shareOnXUnavailable": "Emboja'o X-pe (ndaipóri ko versión-pe)",
+    "opensInNewTab": "{label} (ojeipe'a peteĩ tab pyahúpe)",
     "shareDisabledHint": "Emboja'o hag̃ua tekotevẽ peteĩ página oñemoherakuãmava — omba'apóta peteĩ jey ko video oĩ rire producción-pe.",
     "shareFormat": "Mba'éichapa emboja'o",
     "shareLinkTab": "Emboja'o enlace",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
     "home": "JesusFilm óga",
     "closeSearch": "Emboty jeheka",
-    "submitSearch": "Eheka"
+    "submitSearch": "Eheka",
+    "library": "Kuatiarenda"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ndaikatúi oñemyanyhẽve resultados.",
     "searching": "Ojeheka hag̃uáicha...",
     "connectionHint": "Ehecha ne conexión ha eha'ãjey.",
+    "rateLimitHint": "Hetaiterei mba’ejerure. Eha’ãjey peteĩ aravo’i rire.",
     "retrySearch": "Eha'ãjey jeheka",
     "retry": "Eha'ãjey",
     "noResults": "Ndojejuhúi mba'eve \"{query}\" rehegua",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Eheka “{suggestion}” {language}-pe",
     "inLanguage": "{language}-pe",
     "browseByRegion": "Ehesa'ỹijo región rupive",
+    "allVideosOnSinglePage": "Opaite video peteĩ kuatiaroguépe",
     "clearLanguages": "Embogue",
     "queryLanguageDetected": "Ojekuaa {language}",
     "searchInLanguage": "Eheka {language}-pe",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Epytáke ko'ág̃a",
     "tapToUnmute": "Etoque hag̃ua emohendatyrõ hag̃ua ayvu",
-    "nextEpisode": "Episodio oútava"
+    "nextEpisode": "Episodio oútava",
+    "audioTranslationCount": "{count, plural, one {# ñe'ẽ} other {# ñe'ẽnguéra}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ñe'ẽ} other {# ñe'ẽnguéra}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Oñemyanyhẽ contenido",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Ndaikatúi oñemyanyhẽ formulario de feedback.",
     "loadingForm": "Oñemyanyhẽ formulario de feedback…",
     "retry": "Eha'ãjey",
-    "openFormShort": "Eike formulario-pe",
     "cancel": "Heja",
-    "title": "Beta rehegua remiandu",
-    "description": "Emombe'u mba'épa omba'apo porã ha mba'épa ikatu ñamoporãve. Ko formulario ome'ẽ Google.",
-    "openInNewTab": "Eike formulario-pe peteĩ pestaña pyahúpe",
     "closeForm": "Emboty formulario de feedback",
-    "loadingGoogleForm": "Oñemyanyhẽ Google Form…",
-    "iframeTitle": "Emondo Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Video cristiano gratuitos {language}-pe | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Jevy yvate",
     "newlyAdded": "Oñemoĩramo pyahu",
     "newVideosTitle": "Video cristiano pyahu {language}-pe",
     "newestFirst": "Pya'eve guive",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Video ojehechakuaa hag̃uáicha",
     "videosFromCollection": "Video {collection} guive.",
     "standaloneDescription": "Video ojehechakuaa hag̃uáicha ko ñe'ẽme.",
-    "openCollection": "Eike colección-pe"
+    "openCollection": "Eike colección-pe",
+    "filters": "Mboavykuéra",
+    "filterLength": "Puku",
+    "filterLength_under5": "5 aravo'imi mboyve",
+    "filterLength_5to10": "5-10 aravo'i",
+    "filterLength_10to30": "10-30 aravo'i",
+    "filterLength_over30": "30 aravo'i rire",
+    "filterType": "Tipo",
+    "clearFilters": "Emboguete mboavykuéra",
+    "filterResults": "{count} {total} apytégui ojechauka",
+    "noFilterResults": "Mba'evete ta'angamýi ojojoguái ko mboavykuérandi. Eñeha'ã emboguete peteĩ.",
+    "filterAdded": "Ojeikeve",
+    "filterAdded_60d": "60 ára paha",
+    "filterAdded_6m": "6 jasy paha",
+    "filterAdded_12m": "12 jasy paha"
   },
   "WatchHome": {
     "pageTitle": "Ehecha Jesus Film Project-pe",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video mboyvegua preview",
     "nextVideoPreview": "Video oútava preview",
     "mediaCollection": "Colección de medios",
-    "scrollToVideo": "Ehecha hag̃ua video {title}"
+    "scrollToVideo": "Ehecha hag̃ua video {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project óga",
@@ -404,6 +594,29 @@
     "merryChristmas": "Vy'apavẽ Navidad rehe!",
     "daysUntilChristmas": "{count, plural, one {# ára hembýva Navidad peve} other {# ára hembýva Navidad peve}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Ehesa'ỹijo kuatiarenda",
+    "title": "Ehesa'ỹijo categoría rupive",
+    "description": "Eho pya'e pe kuatiarenda pehẽngue reikotevẽvape — Jesús rekove, tupao ary ára, ha video ojejapóva hogaygua, temimbo'e ha aty michĩvape g̃uarã.",
+    "seeAll": "Ehecha opaite video",
+    "previous": "Categorías mboyvegua",
+    "next": "Categorías oútava",
+    "categories": {
+      "jesus": "Película JESUS",
+      "gospels": "Evangelio-kuéra",
+      "shortVideos": "Video mbykymíva",
+      "family": "Hogaygua",
+      "relationships": "Joaju",
+      "women": "Kuñanguérape g̃uarã",
+      "students": "Temimbo'ekuérape g̃uarã",
+      "sports": "Deportes",
+      "goodNews": "Marandu Porã",
+      "hope": "Ñeha'arõ",
+      "training": "Ñembokatupyry",
+      "easter": "Pascua",
+      "christmas": "Navidad"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Ñe'ẽnguéra",
     "metadataDescription": "Ehesa'ỹijo video JesusFilm ñe'ẽ rupive.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Página ndojejuhúiva:",
     "title": "Ko escena ndaha'éi ko'ápe.",
     "description": "Página ikatu ohasáma ambue hendápe, péro tembiasakue osegi.",
+    "languageDescription": "Ndorojuhúi página rehekáva, péro tembiasakue osegi película ha video ñe'ẽ opaichagua yvy ape ári guápe.",
     "actionsLabel": "Mba'e ojejapo hag̃ua página ndojejuhúiva",
     "backToWatch": "Evytajejy Watch-pe",
     "browseVideos": "Ehesa'ỹijo videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ehecha película mbykymíva",
-    "actions": {
-      "joinUs": "Eike ore ndive",
-      "shareMission": "Emboja'o ore misión ndive"
-    },
-    "welcomeStart": {
-      "label": "Fe ha Escritura",
-      "title": "Video ñeporavo ko árape g̃uarã",
-      "description": "Oĩ video ore biblioteca-gui oñemopyenda hag̃ua fe rehe, oipytyvõ hag̃ua, ha omoakã hag̃ua reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Ñepyrũ porã ko ãra",
-      "title": "Mba'éichapa! Ko árape Biblia moménto oha'arõ ndéve.",
-      "description": "Eñepyrũ hag̃ua nde ára umi moménto bíblico oipytyvõva, ohechauka hag̃uáicha ha omopu'ã hag̃ua ne ánga."
-    },
-    "welcomeAfternoon": {
-      "label": "Yvápe ñemoingove",
-      "title": "Mba'éichapa! Biblia moménto nde ára pehẽnguépe.",
-      "description": "Contenido bíblico oipytyvõva, iporãite hag̃ua ne descanso ka'aru térã ne ñemokyre'ỹrã."
-    },
-    "welcomeEvening": {
-      "label": "Ka'aru porã ñemoingove",
-      "title": "Mba'éichapa! Ehasa hag̃uáicha nde ára Biblia moménto reheve.",
-      "description": "Moménto bíblico py'aguapýva oipytyvõ hag̃ua reñemomombyry hag̃ua, reñemomandu'a hag̃ua ha revy'a hag̃ua nde ára opakuévo."
-    },
-    "joinUs": {
-      "label": "Eike ore ndive",
-      "title": "Hetaite tapicha ohekáva",
-      "description": "Oguahẽma trigo jeikutu. Eike ore ndive jaikuaauka hag̃ua evangelio ko yvy ape ári medios digitales rupive."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Jaha hag̃ua oñondive",
-      "title": "Jesús rembiasakue oñemombe'u hag̃ua oñondive",
-      "description": "Upéicha ohendu ha ohecha hag̃ua Jesús mborayhu iñe'ẽ tee hag̃uáicha, oĩ hag̃uáicha oñeime hag̃uáicha."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ojoaju {percent}%",
-    "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme."
+    "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme.",
+    "heading": "Video oñembojeroviáva",
+    "loadingLabel": "Oñemyanyhẽ video oñembojeroviáva",
+    "openingTitle": "Ojeipe’a {title}",
+    "openingVideo": "Ojeipe'a video",
+    "activityNotRecorded": "Ndaikatúi oñeñongatu ñeñemoñe'ẽ rembiapo. Umi link omba'apo gueteri.",
+    "showingContextual": "Ojehechauka ñeñemoñe'ẽ contexto rehegua.",
+    "showingSaved": "Ojehechauka ñeñemoñe'ẽ oñeñongatúva.",
+    "explanationCurated": "Video jeporavopyre rehecha hag̃ua.",
+    "explanationViewingMode": "Ñeñemoñe'ẽ ko video ha mba'éichapa rehecha rehegua.",
+    "explanationCowatch": "Ñeñemoñe'ẽ ko video ha umi mba'e reipotáva rehegua.",
+    "explanationHybrid": "Ñeñemoñe'ẽ ko video ha umi mba'e reipotáva reiporavóva ojemomandu'a hag̃ua rehegua.",
+    "explanationContextual": "Ñeñemoñe'ẽ ko'ág̃a rehecháva rehegua.",
+    "explanationSemanticFallback": "Ñeñemoñe'ẽ ko'ág̃a rehecháva rehegua, ndaipóri aja ñemomba'ete ndéve g̃uarã.",
+    "explanationProfileDurable": "Ojejapo ndéve g̃uarã umi mba'e reipotáva reiporavóva ojemomandu'a hag̃ua rehegua.",
+    "explanationProfileVisit": "Ojejapo ndéve g̃uarã ko jeike g̃uarã añónte.",
+    "personalizationLabel": "Ñeñemoñe'ẽ ñemomba'ete",
+    "personalizationPrompt": "Reipotápa remoambue mba'éichapa ojejapo ñeñemoñe'ẽ ndéve g̃uarã?",
+    "openCookieSettings": "Embojuruja Cookie ñemboheko"
   },
   "BetaTesterModal": {
     "title": "Eiko beta tester ramo",
@@ -538,16 +732,39 @@
     "retryFailed": "Eha'ãjey umi ndoikóiva"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ñe’ẽ versión ndojeporukuaái",
+    "eyebrow": "Ñe’ẽ versión ndojeporukuaái",
+    "title": "<contentTitle>{title}</contentTitle> ndojeporukuaái <languageName>{language}</languageName>-pe",
+    "actionsLabel": "Jehecha poravorã ojeporukuaáva",
+    "browseInLanguage": "Eheka ta’ãngamýi {language}-pe",
+    "backToSearch": "Ejevy jehekápe",
+    "audioVersionsTitle": "Ambue ñe’ẽpu versión",
+    "audioVersionsDescription": "Eiporavo peteĩ ñe’ẽpu resegui hag̃ua rehecha ko ta’ãngamýi.",
+    "languageVersionLabel": "Ñe’ẽpu ñe’ẽ",
+    "selectLanguageVersion": "Eiporavo peteĩ ñe’ẽ versión",
+    "watchSelectedVersion": "Ehecha versión reiporavóva"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Jeporavorã cookie rehegua",
+    "bannerTitle": "Nde poravokuéra ñemigua rehegua",
+    "bannerDescription": "Umi cookie tekotevẽva omantene Watch hag̃ua seguro ha oiko porã hag̃uáicha. Nde permiso rupive, peteĩ cookie jeporavopyre ko sitiopegua ikatu nemandu'a umi mba'e nde rehecharamóva nde jevy jave hag̃ua ome'ẽ hag̃ua ndéve ñeñemoñe'ẽ oĩporãva ndéve g̃uarã. Umi ñeñemoñe'ẽ contexto rehegua katu oĩnte mokõive hendáicha.",
+    "acceptAll": "Emoneĩ opaite",
+    "essentialOnly": "Tekotevẽva añoite",
+    "manageChoices": "Eñangareko nde poravokuéra rehe",
+    "savingChoice": "Oñeñongatu hína cookie jeporavo",
+    "settings": "Cookie ñemboheko",
+    "settingsDescription": "Eiporavo ikatúpa Watch nemandu'a umi mba'e ñeñemoñe'ẽ rehegua nde jevy hag̃ua jave. Ikatu emoambue ko mba'e araka'eve.",
+    "essentialCookies": "Cookie tekotevẽva",
+    "essentialDescription": "Tekorosã, reproducción, poravokuéra ñemigua rehegua ha ñeñemoñe'ẽ jerure ñemombe'upy.",
+    "alwaysActive": "Tapiaite oñemyendy",
+    "personalization": "Ñemomba'ete hag̃ua ndéve g̃uarã",
+    "personalizationDescription": "Tomandu'a umi mba'e nde rehecharamóva nde jevy jave. Embogue ramo kóva, umi ñeñemoñe'ẽ contexto rehegua oĩta gueteri.",
+    "erasurePending": "Nde perfil ñemboguete oha'arõ hína. Umi ñeñemoñe'ẽ contexto rehegua oñemyendyma.",
+    "cancel": "Heja rei",
+    "saveChoices": "Eñongatu nde poravokuéra",
+    "saving": "Oñeñongatu hína…",
+    "loadError": "Nde jeporavo ndaikatúi oñemyenyhẽ. Ikatu gueteri eiporavo iguýpe.",
+    "grantError": "Ndaikatúi oñemyendy ñemomba'ete ndéve g̃uarã. Tekotevẽva añoite opyta disponible.",
+    "saveError": "Nde jeporavo ndaikatúi oñeñongatu. Eha'ãjey."
   }
 }

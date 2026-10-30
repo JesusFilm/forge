@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
 import { describe, expect, it, vi } from "vitest"
 import {
   parseTypesenseWatchSearchIndexArgs,
@@ -31,6 +33,22 @@ describe("Typesense Watch Search index CLI", () => {
     expect(
       parseTypesenseWatchSearchIndexArgs(["--rebuild-transcripts"]),
     ).toEqual({ transcriptStrategy: "rebuild" })
+  })
+
+  it("requires the operator credential for destructive Typesense publication", async () => {
+    const source = await readFile(
+      fileURLToPath(
+        new URL("./index-typesense-watch-search.ts", import.meta.url),
+      ),
+      "utf8",
+    )
+
+    expect(source).toMatch(
+      /const apiKey = process\.env\.TYPESENSE_OPERATOR_API_KEY/,
+    )
+    expect(source).not.toMatch(
+      /const apiKey = process\.env\.TYPESENSE_API_KEY(?:\s|$)/,
+    )
   })
 
   it("does not start publication when the candidate guard rejects", async () => {

@@ -1,0 +1,23 @@
+{
+  "name": "[forge-admin] push provider_auth_failed — the Expo credential was refused",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=provider_auth_failed\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "The push provider refused the worker's credential, so every row in the chunk failed and the run stopped.\n\nThis should never fire. Check EXPO_ACCESS_TOKEN on the @forge/admin worker service only: the token is a Railway variable there and never in the shared Doppler config. A rotated or revoked token, or a token that reached admin web instead of the worker, produces this line.\n\nThe log line carries provider_code and never the provider's message, because that message embeds the push token. Set PUSH_CAMPAIGNS_ENABLED=false and cancel the campaign before you rotate.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:push-campaigns",
+    "area:push"
+  ],
+  "priority": 1,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

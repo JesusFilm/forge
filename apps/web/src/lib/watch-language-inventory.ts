@@ -5,6 +5,7 @@ import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import adminClient from "@/lib/admin-client"
 import {
   isPublicWatchHomeLanguageSlug,
+  isPublicWatchLanguageSlugShape,
   publicWatchHomeLanguageSlugForLocale,
 } from "@/lib/locale"
 import {
@@ -13,8 +14,59 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
+import {
+  nativeNameMatchesLanguageScript,
+  selectOwnLanguageName,
+} from "@/lib/language-native-name"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
-import { getWatchRouteManifest } from "@/lib/watch-route-manifest"
+import {
+  getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
+} from "@/lib/watch-route-manifest"
+
+/**
+ * Whether the language-inventory surface may serve `slug`.
+ *
+ * This is the ONE admission definition for the surface: the route guard in
+ * `[locale]/[htmlLang]/videos/[languageSlug]/page.tsx` and
+ * `resolveWatchLanguageInventory` below both call it. They used to carry
+ * separate copies of the same three steps, which is how a route guard and a
+ * resolver drift into disagreeing — and the way they disagree is the resolver
+ * answering an admitted URL with ENGLISH inventory instead of the language
+ * named in it. Silent wrong content is worse than the 404 it replaces, so
+ * there is exactly one copy.
+ *
+ * The compiled `PUBLIC_WATCH_LANGUAGE_SLUGS` corpus is a build-time snapshot,
+ * so gating on it alone hard-404s every language admin published since the
+ * last regeneration — and because that 404 comes from a compiled constant, ISR
+ * re-rendering regenerates the identical 404 until the next deploy. The proxy
+ * already rewrites those languages here via `isWatchAudioLanguageSlug`, so
+ * this surface has to admit the same namespace or the two disagree (the
+ * inventory half of Linear FGE-81).
+ *
+ * Three properties, each load-bearing:
+ *
+ * - The shape test runs FIRST and so applies to both branches. The corpus
+ *   branch already enforces it internally; the manifest branch would not, and
+ *   an admitted slug is interpolated raw into this route's canonical and Open
+ *   Graph URLs.
+ * - The manifest is awaited ONLY on a corpus miss, mirroring `classify` in the
+ *   catch-all page, so the common path never serializes content resolution
+ *   behind the manifest request.
+ * - A failed manifest fetch degrades to the corpus alone, so unknown slugs
+ *   still fail closed and a manifest outage can never widen the namespace or
+ *   throw into a route that has no error boundary for it.
+ */
+export async function isAdmittedWatchInventoryLanguageSlug(
+  slug: string,
+): Promise<boolean> {
+  if (!isPublicWatchLanguageSlugShape(slug)) return false
+  if (isPublicWatchHomeLanguageSlug(slug)) return true
+  return isWatchAudioLanguageSlug(
+    slug,
+    await getWatchRouteManifest().catch(() => null),
+  )
+}
 
 const WATCH_LANGUAGE_INVENTORY_LIMIT = 1_000
 const WATCH_LANGUAGE_SWITCHER_LIMIT = 5_000
@@ -29,6 +81,7 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     description
     imageUrl
     imageAlt
+    muxPlaybackId
     label
     availability
     watchLanguageSlug
@@ -40,6 +93,16 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     publishedAt
     createdAt
     updatedAt
+  }
+`)
+
+const getWatchCollectionLanguageCountsOperation = adminGraphql(`
+  query GetWatchCollectionLanguageCounts($slugs: [String!]!) {
+    watchCollectionLanguageCounts(slugs: $slugs) {
+      slug
+      audioLanguageCount
+      subtitleLanguageCount
+    }
   }
 `)
 
@@ -110,6 +173,12 @@ export type WatchLanguageInventoryCard = {
   description: string | null
   imageUrl: string | null
   imageAlt: string
+  /**
+   * Frame source for videos with no authored artwork. Kept separate from
+   * `imageUrl` so surfaces that need a specific resolution (or that pick a
+   * hero by "first item with real artwork") can decide for themselves.
+   */
+  muxPlaybackId: string | null
   label: string | null
   availability: WatchLanguageInventoryAvailability
   href: Route | null
@@ -128,6 +197,8 @@ export type WatchLanguageInventorySwitcherLanguage = {
   slug: string
   languageName: string
   nativeName: string | null
+  /** Verified declarable tag of `nativeName`; absent means untagged. */
+  nativeNameLang?: string
   bcp47: string | null
 }
 
@@ -141,6 +212,16 @@ export type WatchLanguageInventoryModel = {
   audioCollections: WatchLanguageInventoryCard[]
   audioVideos: WatchLanguageInventoryCard[]
   subtitleOnlyVideos: WatchLanguageInventoryCard[]
+  /// Per-collection language availability, keyed by collection slug. Absent
+  /// entries mean "not known" (the counts query failed or the collection has
+  /// no children) — NOT "zero languages", which is why the sidebar renders
+  /// nothing rather than a 0 for a missing entry.
+  collectionLanguageCounts: Record<string, WatchCollectionLanguageCounts>
+}
+
+export type WatchCollectionLanguageCounts = {
+  audioLanguageCount: number
+  subtitleLanguageCount: number
 }
 
 type ErrorLike = { message?: string }
@@ -209,6 +290,67 @@ async function queryWatchLanguageInventoryLanguages(): Promise<
   return languages
 }
 
+// Admin omits unknown slugs and does NOT preserve request order, so the result
+// must be joined back by slug — never zipped by index.
+async function queryWatchCollectionLanguageCounts(
+  slugs: readonly string[],
+): Promise<Record<string, WatchCollectionLanguageCounts>> {
+  if (slugs.length === 0) return {}
+
+  const result = await adminClient.query({
+    query: getWatchCollectionLanguageCountsOperation,
+    variables: { slugs: [...slugs] },
+    fetchPolicy: "no-cache",
+  })
+
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+
+  const counts: Record<string, WatchCollectionLanguageCounts> = {}
+  for (const row of result.data?.watchCollectionLanguageCounts ?? []) {
+    counts[row.slug] = {
+      audioLanguageCount: row.audioLanguageCount,
+      subtitleLanguageCount: row.subtitleLanguageCount,
+    }
+  }
+  return counts
+}
+
+const fetchWatchCollectionLanguageCounts = unstable_cache(
+  queryWatchCollectionLanguageCounts,
+  ["watch-collection-language-counts"],
+  {
+    // Cached far harder than the inventory itself (60s): a collection's
+    // language roster changes when a new dub is published, i.e. rarely, and
+    // this is decoration rather than routing or playability. The route is
+    // `force-static` with `revalidate = 3600`, so this never runs on a
+    // visitor's request path at all — it runs during ISR regeneration.
+    revalidate: 86_400,
+    tags: [WATCH_CACHE_TAGS.video, WATCH_CACHE_TAGS.series],
+  },
+)
+
+// The indicator is decoration. A failure here must cost the page nothing, so
+// the whole call is swallowed into "no counts known" rather than propagated.
+async function resolveCollectionLanguageCounts(
+  slugs: readonly string[],
+): Promise<Record<string, WatchCollectionLanguageCounts>> {
+  try {
+    return await fetchWatchCollectionLanguageCounts(slugs)
+  } catch (error) {
+    console.error(
+      `[watch] event=watch_collection_language_counts.failed collections=${slugs.length} detail=${
+        error instanceof Error
+          ? error.message.replaceAll(/\s+/g, "_")
+          : "unknown"
+      }`,
+    )
+    return {}
+  }
+}
+
 const fetchWatchLanguageInventory = unstable_cache(
   queryWatchLanguageInventory,
   ["watch-language-inventory"],
@@ -274,7 +416,8 @@ function nativeLanguageNameFromJson(
     if (
       typeof value === "string" &&
       value.trim() &&
-      value.trim().toLowerCase() !== englishName.toLowerCase()
+      value.trim().toLowerCase() !== englishName.toLowerCase() &&
+      nativeNameMatchesLanguageScript(value.trim(), bcp47)
     ) {
       return value.trim()
     }
@@ -283,20 +426,54 @@ function nativeLanguageNameFromJson(
   return null
 }
 
+// Tag only when the displayed text is the language's OWN-language entry
+// (`selectOwnLanguageName`); the `native`/`local`/script-mismatched fallbacks in
+// `nativeLanguageNameFromJson` stay untagged.
+function nativeNameLangFromJson(
+  name: unknown,
+  bcp47: string | null | undefined,
+  nativeName: string | null,
+): { nativeNameLang?: string } {
+  const own = nativeName ? selectOwnLanguageName(name, bcp47) : null
+  return own?.lang && own.text === nativeName
+    ? { nativeNameLang: own.lang }
+    : {}
+}
+
+/**
+ * `additionalAdmittedSlugs` widens this veto beyond the compiled corpus. The
+ * corpus alone silently drops every language admin published since the last
+ * regeneration from the switcher, so a newly published language could not be
+ * reached from any other language's picker.
+ *
+ * It is required and deliberately has no default: a default would make
+ * "corpus only" a one-word revert at either call site that still compiles,
+ * typechecks, and leaves the suite green. Callers pass either the languages
+ * the live manifest publishes or the single slug the request already renders.
+ */
 function switcherLanguageFromRaw(
   language: WatchLanguageInventoryLanguageRaw,
+  additionalAdmittedSlugs: ReadonlySet<string>,
 ): WatchLanguageInventorySwitcherLanguage | null {
   const slug = language.slug
-  if (!slug || !isPublicWatchHomeLanguageSlug(slug)) return null
+  if (!slug) return null
+  if (
+    !isPublicWatchHomeLanguageSlug(slug) &&
+    !additionalAdmittedSlugs.has(slug)
+  ) {
+    return null
+  }
   const languageName = languageNameFromJson(language.name, slug)
+  const nativeName = nativeLanguageNameFromJson(
+    language.name,
+    language.bcp47,
+    languageName,
+  )
   return {
     slug,
     languageName,
-    nativeName: nativeLanguageNameFromJson(
-      language.name,
-      language.bcp47,
-      languageName,
-    ),
+    nativeName,
+    ...nativeNameLangFromJson(language.name, language.bcp47, nativeName),
     bcp47: language.bcp47 ?? null,
   }
 }
@@ -314,14 +491,17 @@ function uniqueSwitcherLanguages(
 async function resolveSwitcherLanguages(
   current: WatchLanguageInventorySwitcherLanguage,
 ): Promise<WatchLanguageInventorySwitcherLanguage[]> {
+  // `.catch` is not optional here: this await is reached on the corpus-hit
+  // path too, where admission never touched the manifest. Without it a
+  // manifest outage turns a fully renderable page into a 500.
   const [languages, manifest] = await Promise.all([
     fetchWatchLanguageInventoryLanguages(),
-    getWatchRouteManifest(),
+    getWatchRouteManifest().catch(() => null),
   ])
   const manifestLanguageSlugs = new Set(manifest?.audioLanguageSlugs ?? [])
   const options = languages
     .flatMap((language) => {
-      const option = switcherLanguageFromRaw(language)
+      const option = switcherLanguageFromRaw(language, manifestLanguageSlugs)
       return option ? [option] : []
     })
     .filter(
@@ -336,6 +516,47 @@ async function resolveSwitcherLanguages(
     if (b.slug === current.slug) return 1
     return a.languageName.localeCompare(b.languageName)
   })
+}
+
+/**
+ * Switcher options WITHOUT the language's inventory payload.
+ *
+ * `resolveWatchLanguageInventory` also fetches every promoted card,
+ * collection, dubbed video, and subtitle-only video for the language; a
+ * surface that only needs the language LIST (the /whats-new switcher)
+ * must not pay for that. Degrades to the current language alone when
+ * Admin is unreachable, so an otherwise data-free static page never fails
+ * to render because of this control.
+ */
+export async function resolveWatchLanguageSwitcherOptions(
+  currentSlug: string,
+): Promise<WatchLanguageInventorySwitcherLanguage[]> {
+  const fallback = {
+    slug: currentSlug,
+    languageName: labelFromSlug(currentSlug),
+    nativeName: null,
+    bcp47: null,
+  } satisfies WatchLanguageInventorySwitcherLanguage
+
+  try {
+    const languages = await fetchWatchLanguageInventoryLanguages()
+    const current =
+      languages
+        .flatMap((language) => {
+          // Admit the current slug explicitly: a language published since the
+          // last corpus build would otherwise fall through to `fallback` and
+          // lose its real name and native name in the picker.
+          const option = switcherLanguageFromRaw(
+            language,
+            new Set([currentSlug]),
+          )
+          return option && option.slug === currentSlug ? [option] : []
+        })
+        .at(0) ?? fallback
+    return await resolveSwitcherLanguages(current)
+  } catch {
+    return [fallback]
+  }
 }
 
 export function primaryLanguageNameForSeo(languageName: string): string {
@@ -393,6 +614,7 @@ function normalizeCard(
     description: item.description ?? null,
     imageUrl: item.imageUrl ?? null,
     imageAlt: item.imageAlt ?? item.title,
+    muxPlaybackId: item.muxPlaybackId ?? null,
     label: item.label ?? null,
     availability: item.availability,
     href: buildInventoryHref(item, inventoryLanguageSlug),
@@ -408,14 +630,41 @@ function normalizeCard(
   } satisfies WatchLanguageInventoryCard
 }
 
+/**
+ * The language whose inventory to fetch for this request.
+ *
+ * Admitting on the compiled corpus alone made this substitute the locale's
+ * default language for anything published since the last regeneration — so
+ * fixing only the route guard would have served ENGLISH inventory under a
+ * newly published language's URL instead of 404ing it.
+ *
+ * Admission is `isAdmittedWatchInventoryLanguageSlug`, the same call the route
+ * guard makes, so the two cannot disagree about which slugs are real. Both
+ * reads land in the manifest's 60s process cache, so in practice they see one
+ * snapshot; the locale-default fallback survives only for the no-segment call
+ * shape and for a slug the route guard would itself have 404'd.
+ */
+async function inventoryLanguageSlugForRequest(
+  locale: string,
+  routeLanguageSegment?: string | null,
+): Promise<string> {
+  if (
+    routeLanguageSegment &&
+    (await isAdmittedWatchInventoryLanguageSlug(routeLanguageSegment))
+  ) {
+    return routeLanguageSegment
+  }
+  return publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
+}
+
 export async function resolveWatchLanguageInventory(
   locale: string,
   routeLanguageSegment?: string | null,
 ): Promise<WatchLanguageInventoryModel> {
-  const languageSlug =
-    routeLanguageSegment && isPublicWatchHomeLanguageSlug(routeLanguageSegment)
-      ? routeLanguageSegment
-      : (publicWatchHomeLanguageSlugForLocale(locale) ?? "english")
+  const languageSlug = await inventoryLanguageSlugForRequest(
+    locale,
+    routeLanguageSegment,
+  )
   const raw = await fetchWatchLanguageInventory(languageSlug)
   const resolvedLanguageSlug = raw.language?.slug ?? languageSlug
   const languageName = languageNameFromJson(
@@ -431,11 +680,23 @@ export async function resolveWatchLanguageInventory(
     slug: resolvedLanguageSlug,
     languageName,
     nativeName: languageNativeName,
+    ...nativeNameLangFromJson(
+      raw.language?.name,
+      raw.language?.bcp47,
+      languageNativeName,
+    ),
     bcp47: raw.language?.bcp47 ?? null,
   } satisfies WatchLanguageInventorySwitcherLanguage
-  const switcherLanguages = await resolveSwitcherLanguages(
-    currentSwitcherLanguage,
-  )
+  // Independent of each other, so they must not form a serial waterfall on the
+  // ISR regeneration path.
+  const [switcherLanguages, collectionLanguageCounts] = await Promise.all([
+    resolveSwitcherLanguages(currentSwitcherLanguage),
+    resolveCollectionLanguageCounts(
+      raw.audioCollections
+        .map((collection) => collection.slug)
+        .filter((slug): slug is string => Boolean(slug)),
+    ),
+  ])
   const normalizeInventoryCard = (item: WatchLanguageInventoryItemRaw) =>
     normalizeCard(item, resolvedLanguageSlug)
 
@@ -449,5 +710,180 @@ export async function resolveWatchLanguageInventory(
     audioCollections: raw.audioCollections.map(normalizeInventoryCard),
     audioVideos: raw.audioVideos.map(normalizeInventoryCard),
     subtitleOnlyVideos: raw.subtitleOnlyVideos.map(normalizeInventoryCard),
+    collectionLanguageCounts,
+  }
+}
+
+// A series wears the new-release badge for 60 days after the COLLECTION's own
+// publish date (decided 2026-08-27; the alternative — newest episode date —
+// would keep long-running series permanently fresh, which is not what "new
+// release" means here).
+export const NEW_RELEASE_WINDOW_DAYS = 60
+
+const NEW_RELEASE_WINDOW_MS = NEW_RELEASE_WINDOW_DAYS * 24 * 60 * 60 * 1000
+
+// Future dates are legitimate but only just: admin stores date-only midnights,
+// so a renderer behind that boundary sees "tomorrow". Anything further ahead is
+// a data error, and left unbounded it would pin that collection to the top of
+// the page, take the hero, and wear a NEW badge forever.
+const PUBLISHED_AT_FUTURE_TOLERANCE_DAYS = 2
+const PUBLISHED_AT_FUTURE_TOLERANCE_MS =
+  PUBLISHED_AT_FUTURE_TOLERANCE_DAYS * 24 * 60 * 60 * 1000
+
+// Admin serves Postgres timestamps as `2026-07-31 00:00:00+00` — a space
+// separator and a bare two-digit UTC offset. Neither is valid ISO-8601, so
+// `Date.parse` accepts that form only through V8's implementation-defined
+// fallback path, which is not something to build a feature on.
+//
+// Normalize to real ISO instead. Two traps, both measured by hand on node
+// 24.19.0 (2026-08-27), both silent — they yield "no badge, ever", never an
+// error:
+//   1. Replacing ONLY the space is worse than doing nothing: once a `T` is
+//      present the strict ISO parser runs and rejects the bare offset, so
+//      `2026-07-31T00:00:00+00` is NaN while the original string parses.
+//   2. Expanding the offset with a loose `/([+-]\d{2})$/` corrupts a bare
+//      date — `2026-07-31` ends in `-31`, so it becomes `2026-07-31:00`.
+//      Hence the offset expansion is gated on a preceding time component.
+/// Parsed publish time, or NaN when unusable OR implausibly far in the future.
+/// Shared by the badge, the sort, and the age windows so one bad row cannot be
+/// treated differently by each.
+export function publishedAtSortTime(value: string, now: Date): number {
+  const parsed = parsePublishedAt(value)
+  if (Number.isNaN(parsed)) return Number.NaN
+  return parsed > now.getTime() + PUBLISHED_AT_FUTURE_TOLERANCE_MS
+    ? Number.NaN
+    : parsed
+}
+
+export function parsePublishedAt(value: string): number {
+  const withTimeSeparator = value.replace(" ", "T")
+  const normalized = /T[\d:.]+[+-]\d{2}$/.test(withTimeSeparator)
+    ? `${withTimeSeparator}:00`
+    : withTimeSeparator
+  return Date.parse(normalized)
+}
+
+// Future `publishedAt` values DO badge: admin stores date-only publish dates at
+// midnight UTC, so a series dated "tomorrow" is legitimately the newest thing
+// in the catalog for any render running behind that boundary. Unparseable and
+// absent dates fail closed.
+export function isNewRelease(
+  publishedAt: string | null | undefined,
+  now: Date,
+): boolean {
+  if (!publishedAt) return false
+  const parsed = parsePublishedAt(publishedAt)
+  if (Number.isNaN(parsed)) return false
+  if (parsed > now.getTime() + PUBLISHED_AT_FUTURE_TOLERANCE_MS) return false
+  return parsed >= now.getTime() - NEW_RELEASE_WINDOW_MS
+}
+
+// ---------------------------------------------------------------------------
+// Inventory filter facets
+//
+// Every dimension here is derived from fields the inventory payload ALREADY
+// carries (`durationSeconds`, `label`, `availability`, `publishedAt`), so
+// filtering costs no extra query and no admin change.
+//
+// Two axes the product asked for are deliberately absent because the data does
+// not support them (surveyed against a restored production snapshot,
+// 2026-08-27, 1,107 videos):
+//   - Release year: `video.published_at` is the platform-publish/sync stamp,
+//     not a production year — every row is 2025 (1,024) or 2026 (83). The
+//     honest version of that axis is `recent` below.
+//   - Animated / explainer format: `animated` tags 9 videos, `animation` 3,
+//     `explainer` 0. Needs new admin tagging before it can be a filter.
+// ---------------------------------------------------------------------------
+
+export type InventoryLengthBucket = "under5" | "5to10" | "10to30" | "over30"
+export type InventoryTypeGroup =
+  | "featureFilm"
+  | "shortFilm"
+  | "episode"
+  | "collection"
+
+/// Bucket boundaries follow the real distribution rather than round numbers:
+/// 30-60min holds exactly ONE English video, so a separate bucket for it would
+/// render a permanently near-empty option. 30+ is one bucket.
+export function inventoryLengthBucket(
+  durationSeconds: number | null,
+): InventoryLengthBucket | null {
+  if (durationSeconds == null || durationSeconds <= 0) return null
+  if (durationSeconds < 300) return "under5"
+  if (durationSeconds < 600) return "5to10"
+  if (durationSeconds < 1800) return "10to30"
+  return "over30"
+}
+
+/// Feature and short films stay SEPARATE (product decision 2026-08-27) even
+/// though `featureFilm` is only 12 English items against `shortFilm`'s 171 —
+/// the distinction is the point of the filter. `episode`/`segment` and
+/// `series`/`collection` still pair up, because those splits are internal
+/// bookkeeping rather than something a viewer chooses between.
+export function inventoryTypeGroup(
+  label: string | null,
+): InventoryTypeGroup | null {
+  switch (label) {
+    case "featureFilm":
+      return "featureFilm"
+    case "shortFilm":
+      return "shortFilm"
+    case "episode":
+    case "segment":
+      return "episode"
+    case "series":
+    case "collection":
+      return "collection"
+    default:
+      return null
+  }
+}
+
+/// Whole days between `publishedAt` and `now`, for the date-window filter.
+///
+/// NOTE the axis this measures: `publishedAt` is when the video was published
+/// on the PLATFORM, not when the film was released. Surveyed 2026-08-27 against
+/// a production snapshot, 89% of the English library (887 of 1,001 items)
+/// carries a single month — 2025-06, the bulk import — which is why the offered
+/// windows stop at 12 months. A "last 2 years" option would match 1,001 of
+/// 1,001 and filter nothing.
+export function inventoryAgeDays(
+  publishedAt: string | null,
+  now: Date,
+): number | null {
+  if (!publishedAt) return null
+  const parsed = publishedAtSortTime(publishedAt, now)
+  if (Number.isNaN(parsed)) return null
+  // A just-future publish (date-only midnight) counts as 0 days old rather than
+  // negative, so it lands in the newest window.
+  return Math.max(0, Math.floor((now.getTime() - parsed) / 86_400_000))
+}
+
+/// Cumulative windows: choosing 6 months includes everything inside 60 days.
+/// Counts on the English page at the time of writing: 3 / 72 / 85 of 1,001.
+export const INVENTORY_ADDED_WINDOW_DAYS = {
+  "60d": 60,
+  "6m": 183,
+  "12m": 365,
+} as const
+
+export type InventoryAddedWindow = keyof typeof INVENTORY_ADDED_WINDOW_DAYS
+
+export type InventoryFilterFacets = {
+  id: string
+  length: InventoryLengthBucket | null
+  type: InventoryTypeGroup | null
+  ageDays: number | null
+}
+
+export function inventoryFilterFacets(
+  card: WatchLanguageInventoryCard,
+  now: Date,
+): InventoryFilterFacets {
+  return {
+    id: card.id,
+    length: inventoryLengthBucket(card.durationSeconds),
+    type: inventoryTypeGroup(card.label),
+    ageDays: inventoryAgeDays(card.publishedAt, now),
   }
 }

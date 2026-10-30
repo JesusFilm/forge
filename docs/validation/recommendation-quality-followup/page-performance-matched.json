@@ -1,0 +1,754 @@
+{
+  "capturedAt": "2026-09-16T02:38:51.308724+00:00",
+  "baselineRevision": "0a1c585998a6dbb4bf1399fe4c5eed25310a5512",
+  "currentRevision": "469edc6f996db1c6bd729b9a1b9f0e2732a0cd58",
+  "method": "isolated production builds, identical CI build configuration, local servers with the same production catalog read backend, fresh browser per sample; recommendation mutations rejected by canonical-origin policy",
+  "samples": [
+    {
+      "label": "baseline",
+      "order": 1,
+      "hostLoad": [1.03564453125, 0.87841796875, 0.947265625],
+      "frames": [
+        {
+          "blockingDuration": 52.7,
+          "duration": 133.19999998807907,
+          "scripts": [],
+          "start": 4738.100000023842
+        },
+        {
+          "blockingDuration": 74.6,
+          "duration": 130.39999997615814,
+          "scripts": [
+            {
+              "duration": 122.89999997615814,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "start": 13111.700000047684
+            }
+          ],
+          "start": 13106.200000047684
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 103,
+          "scripts": [
+            {
+              "duration": 14.599999964237211,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 14040.700000047684
+            },
+            {
+              "duration": 8,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 14090.80000001192
+            }
+          ],
+          "start": 13997.30000001192
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 4920,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 4920,
+          "size": 88480,
+          "tag": "H1",
+          "time": 4920
+        }
+      ],
+      "longTasks": 3,
+      "longestTask": 124,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.511358
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 4772.800000011921,
+          "load": 4983.5,
+          "ttfb": 4697.600000023842
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "label": "current",
+      "order": 2,
+      "hostLoad": [1.39892578125, 0.98193359375, 0.9814453125],
+      "frames": [
+        {
+          "blockingDuration": 66.3,
+          "duration": 168.4000000357628,
+          "scripts": [],
+          "start": 4567.399999976158
+        },
+        {
+          "blockingDuration": 77.7,
+          "duration": 127.6,
+          "scripts": [
+            {
+              "duration": 124.0999999642372,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 4886.5
+            }
+          ],
+          "start": 4886.5
+        },
+        {
+          "blockingDuration": 50.6,
+          "duration": 103.39999997615814,
+          "scripts": [
+            {
+              "duration": 99.10000002384186,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/05d.n0b4na8j6.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/05d.n0b4na8j6.js",
+              "start": 13201.399999976158
+            }
+          ],
+          "start": 13198.69999998808
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 4788,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 4788,
+          "size": 88480,
+          "tag": "H1",
+          "time": 4788
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 127,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.423414
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 4773.599999964237,
+          "load": 5072.300000011921,
+          "ttfb": 4545.899999976158
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "label": "current",
+      "order": 3,
+      "hostLoad": [1.513671875, 1.0302734375, 0.9990234375],
+      "frames": [
+        {
+          "blockingDuration": 50.6,
+          "duration": 140,
+          "scripts": [],
+          "start": 70.60000002384186
+        },
+        {
+          "blockingDuration": 76.1,
+          "duration": 126.1,
+          "scripts": [
+            {
+              "duration": 122,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 409.5
+            }
+          ],
+          "start": 409.5
+        },
+        {
+          "blockingDuration": 32.8,
+          "duration": 100.39999997615814,
+          "scripts": [
+            {
+              "duration": 80,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 251.39999997615817
+            }
+          ],
+          "start": 245.80000001192093
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 102.4000000357628,
+          "scripts": [],
+          "start": 1447.199999988079
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 324,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 324,
+          "size": 88480,
+          "tag": "H1",
+          "time": 324
+        }
+      ],
+      "longTasks": 6,
+      "longestTask": 126,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.533865
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 102.89999997615814,
+          "load": 408.10000002384186,
+          "ttfb": 42.80000001192093
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "label": "baseline",
+      "order": 4,
+      "hostLoad": [1.46728515625, 1.04443359375, 1.00390625],
+      "frames": [
+        {
+          "blockingDuration": 61.8,
+          "duration": 111.8,
+          "scripts": [
+            {
+              "duration": 108.5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 428.5999999642372
+            }
+          ],
+          "start": 428.5
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1013.600000023842,
+          "scripts": [],
+          "start": 3472.699999988079
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1014.0999999642372,
+          "scripts": [],
+          "start": 7771.800000011921
+        },
+        {
+          "blockingDuration": 114.4,
+          "duration": 205.19999998807907,
+          "scripts": [],
+          "start": 77.69999998807907
+        },
+        {
+          "blockingDuration": 16.9,
+          "duration": 742.3000000119209,
+          "scripts": [
+            {
+              "duration": 62.80000001192093,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 696.5999999642372
+            },
+            {
+              "duration": 5.599999964237213,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 770.8000000119209
+            }
+          ],
+          "start": 696.5999999642372
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1008.5999999642372,
+          "scripts": [],
+          "start": 1445.800000011921
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1015.100000023842,
+          "scripts": [
+            {
+              "duration": 5.900000035762787,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "start": 2469.899999976158
+            }
+          ],
+          "start": 2455.699999988079
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1014.7000000476836,
+          "scripts": [],
+          "start": 6755.599999964237
+        },
+        {
+          "blockingDuration": 40.6,
+          "duration": 1016.100000023842,
+          "scripts": [
+            {
+              "duration": 5.5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 8786.699999988079
+            },
+            {
+              "duration": 89.19999998807907,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "start": 8795
+            },
+            {
+              "duration": 25.599999964237213,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9094.5
+            },
+            {
+              "duration": 8.800000011920929,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9129
+            },
+            {
+              "duration": 11.899999976158142,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 9375
+            },
+            {
+              "duration": 10.600000023841858,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 9706.099999964235
+            }
+          ],
+          "start": 8786.699999988079
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 181.30000001192093,
+          "scripts": [
+            {
+              "duration": 30.30000001192093,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 9825.399999976158
+            },
+            {
+              "duration": 26.80000001192093,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 9880.099999964235
+            },
+            {
+              "duration": 17.899999976158142,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 9939.30000001192
+            }
+          ],
+          "start": 9804.5
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 9988,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9988,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9988
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 111,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.278428
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 402.300000011921,
+          "load": 404.39999997615814,
+          "ttfb": 39
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "label": "baseline",
+      "order": 5,
+      "hostLoad": [1.3291015625, 1.04052734375, 1.00244140625],
+      "frames": [
+        {
+          "blockingDuration": 63.4,
+          "duration": 113.5,
+          "scripts": [
+            {
+              "duration": 110.10000002384186,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1848.2999999523165
+            }
+          ],
+          "start": 1848.2999999523165
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1013.399999976158,
+          "scripts": [],
+          "start": 5120.899999976158
+        },
+        {
+          "blockingDuration": 70.6,
+          "duration": 142.10000002384186,
+          "scripts": [],
+          "start": 1576.2999999523165
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 783.5,
+          "scripts": [],
+          "start": 9186.299999952316
+        },
+        {
+          "blockingDuration": 10.5,
+          "duration": 972.6999999880792,
+          "scripts": [
+            {
+              "duration": 56,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 2114.699999988079
+            }
+          ],
+          "start": 2114.599999964237
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1008.1999999880792,
+          "scripts": [],
+          "start": 3094.099999964237
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1015.5,
+          "scripts": [
+            {
+              "duration": 5.700000047683716,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "start": 4115.799999952316
+            }
+          ],
+          "start": 4103.599999964237
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1015.100000023842,
+          "scripts": [],
+          "start": 8169.799999952316
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 101.30000001192091,
+          "scripts": [
+            {
+              "duration": 19.099999964237213,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 10971
+            },
+            {
+              "duration": 8.700000047683716,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 11024.299999952316
+            },
+            {
+              "duration": 7.800000011920929,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 11056.799999952316
+            }
+          ],
+          "start": 10968.399999976158
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 9972,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9972,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9972
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 113,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.526191
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1764.2999999523165,
+          "load": 1841.399999976158,
+          "ttfb": 1550.399999976158
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "label": "current",
+      "order": 6,
+      "hostLoad": [1.18212890625, 1.021484375, 0.99658203125],
+      "frames": [
+        {
+          "blockingDuration": 75.6,
+          "duration": 125.6,
+          "scripts": [
+            {
+              "duration": 121.60000002384186,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 1515.300000011921
+            }
+          ],
+          "start": 1515.300000011921
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1012,
+          "scripts": [],
+          "start": 4585
+        },
+        {
+          "blockingDuration": 52.2,
+          "duration": 130.70000004768372,
+          "scripts": [],
+          "start": 1242
+        },
+        {
+          "blockingDuration": 17.5,
+          "duration": 745.5,
+          "scripts": [
+            {
+              "duration": 63.19999998807907,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 1804.300000011921
+            },
+            {
+              "duration": 6.599999964237213,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 1876.4000000357628
+            }
+          ],
+          "start": 1804.300000011921
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1007.3000000119208,
+          "scripts": [
+            {
+              "duration": 5.199999988079071,
+              "function": "",
+              "invoker": "IntersectionObserverCallback",
+              "invokerType": "user-callback",
+              "source": "/watch/_next/static/chunks/14g92e00qth_l.js",
+              "start": 2561.400000035763
+            }
+          ],
+          "start": 2558
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1016,
+          "scripts": [
+            {
+              "duration": 5.899999976158142,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/00u8c6skr-rio.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/00u8c6skr-rio.js",
+              "start": 3578.400000035763
+            }
+          ],
+          "start": 3566.7000000476837
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 999.1999999880792,
+          "scripts": [],
+          "start": 7864.600000023842
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1016.399999976158,
+          "scripts": [],
+          "start": 8864.700000047684
+        },
+        {
+          "blockingDuration": 43.3,
+          "duration": 106,
+          "scripts": [
+            {
+              "duration": 5.5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/11cqoc4146xqb.js",
+              "start": 9883.100000023842
+            },
+            {
+              "duration": 91.10000002384186,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/05d.n0b4na8j6.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/05d.n0b4na8j6.js",
+              "start": 9892.30000001192
+            }
+          ],
+          "start": 9882.600000023842
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 110,
+          "scripts": [],
+          "start": 12018.80000001192
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 120.69999998807909,
+          "scripts": [],
+          "start": 11896.700000047684
+        }
+      ],
+      "heading": "1. The Simple Gospel",
+      "lcp": 9988,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9988,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9988
+        }
+      ],
+      "longTasks": 5,
+      "longestTask": 125,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.454202
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1420.5,
+          "load": 1492.800000011921,
+          "ttfb": 1220.800000011921
+        }
+      ],
+      "watchNow": true
+    }
+  ]
+}

@@ -22,17 +22,14 @@
  *
  * The purge bounds total junk to roughly one retention window of inflow; it
  * does NOT bound in-window growth (see plan §F — inbound auth + rate caps
- * remain the real inflow bound). It runs at boot and on a daily timer, gated
- * on a postgres backend being CONFIGURED AT ALL (`canAiChatDataPersist`) —
- * deliberately not on the resolved ai-chat backend: the kill-switch
- * (`AI_CHAT_MEMORY_BACKEND=memory`) stops writes but must never pause
- * retention on already-stored rows. For the same reason the purge operates on
- * a Memory built DIRECTLY over the persisted `ai_chat` store — never the
- * backend-resolved `getAiChatMemory()`, which under the kill-switch is an
- * InMemoryStore (a purge over it would log success while Postgres rows age).
- * `MASTRA_STORAGE_BACKEND=memory` local runs stay pool-free (the "boots clean
- * with no Postgres" invariant). Logging is enum/count-only plain strings —
- * never thread ids or resource ids.
+ * remain the real inflow bound). It runs at boot and on a daily timer only
+ * when the shared backend is Postgres (`canAiChatDataPersist`). The purge
+ * operates on a Memory built DIRECTLY over the persisted `ai_chat` store —
+ * never the backend-selected `getAiChatMemory()` — because retention is a
+ * durable-row obligation. `MASTRA_STORAGE_BACKEND=memory` local runs skip
+ * before constructing that store (the "boots clean with no Postgres"
+ * invariant). Logging is enum/count-only plain strings — never thread ids or
+ * resource ids.
  */
 
 import { Memory } from "@mastra/memory"
@@ -212,10 +209,10 @@ let cachedRetentionMemory: AiChatRetentionMemory | null = null
 
 /**
  * The Memory the purge operates on: built DIRECTLY over the persisted
- * `ai_chat` store, never `getAiChatMemory()` — under the kill-switch that
- * resolves to an InMemoryStore, and a purge over it would report success
- * (`scanned=0`) while the Postgres rows age past their windows. Lazy
- * singleton; wraps the PostgresStore singleton, so no extra pool.
+ * `ai_chat` store, never `getAiChatMemory()`. The shared-backend gate keeps
+ * memory-mode processes construction-free; once enabled, the direct seam
+ * makes the durable target explicit. Lazy singleton; wraps the PostgresStore
+ * singleton, so no extra pool.
  */
 function getPersistedAiChatRetentionMemory(): AiChatRetentionMemory {
   if (cachedRetentionMemory === null) {
@@ -230,14 +227,14 @@ export function __resetAiChatRetentionMemoryForTesting(): void {
 
 /**
  * Boot-time entry point: run one purge now and re-run daily. No-ops (returns
- * null) unless a postgres backend is configured at all (`canAiChatDataPersist`)
- * — NOT the resolved ai-chat backend, so the production kill-switch never
- * pauses retention while `MASTRA_STORAGE_BACKEND=memory` local runs never
- * open a pool. A failed run logs and waits for the next tick; it never
- * crashes the service. The timer is unref'd so it cannot hold the process
- * open. Single-instance assumption: a multi-replica deploy would run
- * redundant (harmless, wasteful) sweeps — add a leader guard before scaling
- * out.
+ * null) unless the shared backend is Postgres (`canAiChatDataPersist`), so
+ * `MASTRA_STORAGE_BACKEND=memory` local runs never open a pool. This lifecycle
+ * gate is independent of `SEEKER_ROUTE_ENABLED`: route admission does not
+ * suspend retention for durable rows. A failed run logs and waits for the next
+ * tick; it never crashes the service. The timer is unref'd so it cannot hold
+ * the process open. Single-instance assumption: a multi-replica deploy would
+ * run redundant (harmless, wasteful) sweeps — add a leader guard before
+ * scaling out.
  */
 export function startAiChatRetentionPurge({
   isEnabled = canAiChatDataPersist,

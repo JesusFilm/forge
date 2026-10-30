@@ -8,6 +8,7 @@ import {
   type StreamReplyInput,
   type StreamReplyResult,
 } from "./chat-stub"
+import { mergeReplayMessages } from "./conversation-session"
 import {
   deferred,
   flush,
@@ -780,9 +781,151 @@ describe("module contract", () => {
       .slice(0, literalEnd)
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "")
-    for (const field of ["sources:", "grounded:", "engine:", "video:"]) {
+    for (const field of [
+      "sources:",
+      "grounded:",
+      "engine:",
+      "video:",
+      "followUps:",
+    ]) {
       expect(literal).toContain(field)
     }
     expect(literal.match(/\bvideo:/g)).toHaveLength(1)
+    expect(literal.match(/\bfollowUps:/g)).toHaveLength(1)
+  })
+})
+
+describe("suggested follow-ups on the finalized turn (feat-366)", () => {
+  const QUESTIONS = ["Why pray?", "Who wrote the gospels?"]
+
+  function lastTurn(session: ReturnType<typeof makeSession>["session"]) {
+    const messages = session.getSnapshot().activeConversation.messages
+    return messages[messages.length - 1]!
+  }
+
+  it("lands the terminal result's questions on the finalized assistant message", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({ ...OK_SEEKER, followUps: QUESTIONS })
+    session.send("what is grace?")
+    await flush()
+    expect(lastTurn(session).followUps).toEqual(QUESTIONS)
+  })
+
+  it("leaves followUps absent when the terminal result carries none", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce(OK_SEEKER)
+    session.send("a plain question")
+    await flush()
+    expect(lastTurn(session).followUps).toBeUndefined()
+  })
+
+  it("never attaches followUps on a failed terminal", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({
+      ok: false,
+      reason: "timeout",
+      partialText: "part",
+    })
+    session.send("q")
+    await flush()
+    expect(lastTurn(session).followUps).toBeUndefined()
+  })
+
+  it("never attaches followUps on the gate_denied stub-downgrade rebuild", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    streamReply.mockResolvedValueOnce({
+      ok: false,
+      reason: "gate_denied",
+      partialText: "",
+    })
+    session.send("q")
+    await flush()
+    const turn = lastTurn(session)
+    expect(turn.engine).toBe("stub")
+    expect(turn.followUps).toBeUndefined()
+  })
+
+  it("passes promptSource: follow_up to the seam on a chip-originated send", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    session.send("Why pray?", "follow_up")
+    await flush()
+    expect(streamReply.mock.calls[0][0].promptSource).toBe("follow_up")
+  })
+
+  it("OMITS promptSource on a typed send", async () => {
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    session.send("typed question")
+    await flush()
+    expect(streamReply.mock.calls[0][0].promptSource).toBeUndefined()
+  })
+
+  it("carries the chip origin through to the seam even mid-switch", async () => {
+    // The origin must travel with the request the same way the target id
+    // does — a conversation switch mid-reply must not retag it.
+    const { session, streamReply } = makeSession({ seekerEnabled: true })
+    const pending = deferred<StreamReplyResult>()
+    streamReply.mockReturnValueOnce(pending.promise)
+    session.send("Why pray?", "follow_up")
+    session.newConversation()
+    pending.resolve({ ...OK_SEEKER, followUps: QUESTIONS })
+    await flush()
+    expect(streamReply.mock.calls[0][0].promptSource).toBe("follow_up")
+  })
+})
+
+describe("mergeReplayMessages — followUps (feat-366, AE3 client half)", () => {
+  it("carries the replay wire's questions onto the merged turn", () => {
+    const merged = mergeReplayMessages(
+      [
+        {
+          id: "r1",
+          role: "assistant",
+          text: "Replayed answer.",
+          createdAt: "2026-08-20T00:00:00.000Z",
+          followUps: ["Why pray?"],
+        },
+      ],
+      [],
+    )
+    expect(merged[0].followUps).toEqual(["Why pray?"])
+  })
+
+  it("omits the key entirely when the wire message carries none", () => {
+    const merged = mergeReplayMessages(
+      [
+        {
+          id: "r1",
+          role: "assistant",
+          text: "Replayed answer.",
+          createdAt: "2026-08-20T00:00:00.000Z",
+        },
+      ],
+      [],
+    )
+    expect("followUps" in merged[0]).toBe(false)
+  })
+
+  it("keeps an in-session turn's own questions over a duplicate replay row", () => {
+    const existing = [
+      {
+        id: "r1",
+        role: "assistant" as const,
+        content: "Live answer.",
+        followUps: ["Live question?"],
+      },
+    ]
+    const merged = mergeReplayMessages(
+      [
+        {
+          id: "r1",
+          role: "assistant",
+          text: "Replayed answer.",
+          createdAt: "2026-08-20T00:00:00.000Z",
+          followUps: ["Replayed question?"],
+        },
+      ],
+      existing,
+    )
+    expect(merged).toEqual(existing)
   })
 })

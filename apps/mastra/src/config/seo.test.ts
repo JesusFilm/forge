@@ -11,6 +11,15 @@ afterEach(() => {
 })
 
 describe("SEO Google credential configuration", () => {
+  it("bounds the GA4 properties used by one live Watch alert run", () => {
+    expect(() =>
+      getSeoConfig({
+        SEO_GA4_PROPERTY_IDS: "one,two,three",
+        WATCH_ROUTE_ALERT_MODE: "live",
+      }),
+    ).toThrow("at most 2 GA4 properties")
+  })
+
   it("reports sealed renewable credentials as configured", () => {
     vi.stubEnv("GOOGLE_APPLICATION_CREDENTIALS", "")
     vi.stubEnv("GOOGLE_CLOUD_PROJECT", "")

@@ -22,7 +22,16 @@ const VIDEO_LABEL_KEYS: Record<string, VideoLabelMessageKey> = {
   TRAILER: "trailer",
 }
 
-function normalizeLabel(label: string | null | undefined): string | null {
+/**
+ * Canonicalizes any spelling of a video label to admin's SNAKE_CASE wire form.
+ * Handles camelCase (`featureFilm`), lowercase (`feature_film`), and
+ * space/hyphen separators, so callers never compare raw label strings.
+ * Exported for `content.ts`'s carousel parent ranking, which needs the same
+ * canonicalization but maps to its own value set rather than a message key.
+ */
+export function normalizeLabel(
+  label: string | null | undefined,
+): string | null {
   if (label == null) return null
 
   const normalized = label

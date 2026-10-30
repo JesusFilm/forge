@@ -4,9 +4,8 @@
 # (railway-dashboard-override-shadows-railway-toml).
 #
 # First Dockerfile-built app in the worker fleet (crop-worker uses NIXPACKS).
-# The image bakes ffmpeg, whisper.cpp + the large-v3-turbo model, Chromium,
-# and the Remotion bundle — see apps/shorts-worker/Dockerfile for the layer
-# ordering rules that keep code deploys from reshipping the ~1.6GB model.
+# The image bakes ffmpeg, Chromium and the retained devotional bundle.
+# The separate Studio renderer has its own deployment and acceptance gates.
 
 [build]
 builder = "DOCKERFILE"
@@ -15,6 +14,7 @@ watchPatterns = [
   "/apps/shorts-worker/**",
   "/packages/devotional-workspace/**",
   "/packages/shorts-compositions/**",
+  "/packages/studio-contracts/**",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",

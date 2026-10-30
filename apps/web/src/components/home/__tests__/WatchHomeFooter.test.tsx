@@ -170,7 +170,12 @@ describe("WatchHomeFooter", () => {
     )
 
     expect(contactGrid?.classList.contains("grid")).toBe(true)
-    expect(contactGrid?.classList.contains("grid-cols-3")).toBe(true)
+    // Stacks on phones (three 12px columns wrap mid-address below ~640px),
+    // then returns to three equal columns with a real gutter from `sm` up.
+    expect(contactGrid?.classList.contains("grid-cols-1")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:grid-cols-3")).toBe(true)
+    expect(contactGrid?.classList.contains("gap-y-4")).toBe(true)
+    expect(contactGrid?.classList.contains("sm:gap-x-6")).toBe(true)
     expect(contactGrid?.classList.contains("w-full")).toBe(true)
     expect(contactGrid?.classList.contains("break-words")).toBe(true)
     expect(contactGrid?.children).toHaveLength(3)
@@ -197,6 +202,16 @@ describe("WatchHomeFooter", () => {
     )
     expect(addressColumn?.textContent).not.toContain("fea8f46")
     expect(resourcesLink?.textContent).toBe("Resources")
+  })
+
+  it("does not expose retired recommendation personalization controls", () => {
+    renderFooter()
+    expect(
+      Array.from(container.querySelectorAll("button")).some(
+        (button) => button.textContent === "Cookie settings",
+      ),
+    ).toBe(false)
+    expect(container.querySelector("footer")).not.toBeNull()
   })
 
   it("paints its complete white surface above preceding sticky media", () => {

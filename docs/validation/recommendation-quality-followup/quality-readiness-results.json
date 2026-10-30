@@ -1,0 +1,65 @@
+{
+  "capturedAt": "2026-09-16T00:21:39.730Z",
+  "results": [
+    {
+      "name": "capture",
+      "milliseconds": 432,
+      "rows": [
+        {
+          "captured_at": "2026-09-16T00:21:37.206Z"
+        }
+      ]
+    },
+    {
+      "name": "promotion",
+      "milliseconds": 435,
+      "rows": [
+        {
+          "active_manifest_id": "semantic-transcript-pgvector-v1",
+          "last_known_good_manifest_id": "semantic-transcript-pgvector-v1",
+          "stage": "control",
+          "exposure_ceiling_bps": 0,
+          "generation": 1,
+          "kill_switch_enabled": false,
+          "reason_code": "semantic_control",
+          "has_approval": false
+        }
+      ]
+    },
+    {
+      "name": "experiments",
+      "milliseconds": 437,
+      "rows": [
+        {
+          "id": "semantic-aa-v1",
+          "experiment_version": "semantic-aa-v1",
+          "control_manifest_id": "semantic-transcript-pgvector-v1",
+          "challenger_manifest_id": "semantic-experiment-aa-v1",
+          "assignment_policy_version": "sticky-deterministic-assignment-v1",
+          "outcome_policy_version": "active-watch-multi-outcome-v1",
+          "evaluation_policy_version": "recommendation-experiment-aa-v1",
+          "state": "active",
+          "generation": 1,
+          "challenger_probability": 0.5,
+          "starts_at": "2026-01-01T00:00:00.000Z",
+          "ends_at": "2027-01-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "name": "shadow_decisions",
+      "milliseconds": 431,
+      "rows": []
+    },
+    {
+      "name": "shadow_counts",
+      "milliseconds": 432,
+      "rows": []
+    },
+    {
+      "name": "assignment_counts",
+      "milliseconds": 432,
+      "rows": []
+    }
+  ]
+}

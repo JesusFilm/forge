@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
+import { textDirectionForLocale } from "@/lib/locale"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
@@ -65,11 +66,12 @@ function DialogContent({
   portalContainer?: HTMLElement | null
 }) {
   const t = useTranslations("WatchModal")
+  const locale = useLocale()
   const popup = (
     <DialogPrimitive.Popup
       data-slot="dialog-content"
       className={cn(
-        "z-50 grid w-full gap-4 rounded-xl bg-background p-4 text-sm ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        "z-50 grid w-full gap-4 rounded-xl bg-background p-4 text-base sm:text-sm ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
         viewportClassName === undefined
           ? "fixed top-1/2 left-1/2 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 sm:max-w-sm"
           : "relative",
@@ -82,6 +84,8 @@ function DialogContent({
         <DialogPrimitive.Close
           data-slot="dialog-close"
           data-testid="dialog-close-button"
+          lang={locale}
+          dir={textDirectionForLocale(locale)}
           render={
             <Button
               variant="ghost"
@@ -172,7 +176,7 @@ function DialogDescription({
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "text-base sm:text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className,
       )}
       {...props}

@@ -1,9 +1,4 @@
-// Bakes the Remotion bundle for @forge/shorts-compositions/entry into a
-// directory (default ./bundle; Docker passes /app/bundle). Runs at IMAGE
-// BUILD time so webpack never runs at runtime and the first render after a
-// deploy costs the same as the Nth (plan perf O1). Runtime points
-// SHORTS_WORKER_BUNDLE_DIR at the output.
-//
+// Bake the retained devotional bundle once for portrait and wide rendering.
 // Usage: pnpm --filter @forge/shorts-worker prebundle [outDir]
 
 import { rm } from "node:fs/promises"
@@ -12,13 +7,7 @@ import { fileURLToPath } from "node:url"
 import { bundle } from "@remotion/bundler"
 
 async function main(): Promise<void> {
-  const outDir = resolve(process.argv[2] ?? "./bundle")
-  const devotionalOutDir = resolve(
-    process.argv[3] ?? `${process.argv[2] ?? "./bundle"}-devotional`,
-  )
-  const entryPoint = fileURLToPath(
-    import.meta.resolve("@forge/shorts-compositions/entry"),
-  )
+  const devotionalOutDir = resolve(process.argv[2] ?? "./devotional-bundle")
   const schemaPath = fileURLToPath(
     import.meta.resolve("@forge/shorts-compositions/schema"),
   )
@@ -28,29 +17,7 @@ async function main(): Promise<void> {
     "entry.ts",
   )
 
-  await rm(outDir, { recursive: true, force: true })
   await rm(devotionalOutDir, { recursive: true, force: true })
-
-  console.log(
-    `[shorts-worker] event=prebundle_started entryPoint=${entryPoint} outDir=${outDir}`,
-  )
-
-  let lastReported = -10
-  const serveUrl = await bundle({
-    entryPoint,
-    outDir,
-    webpackOverride: (config) => config,
-    onProgress: (progress) => {
-      if (progress - lastReported >= 10 || progress === 100) {
-        lastReported = progress
-        console.log(
-          `[shorts-worker] event=prebundle_progress percent=${progress}`,
-        )
-      }
-    },
-  })
-
-  console.log(`[shorts-worker] event=prebundle_complete serveUrl=${serveUrl}`)
 
   console.log(
     `[shorts-worker] event=prebundle_started entryPoint=${devotionalEntryPoint} outDir=${devotionalOutDir}`,

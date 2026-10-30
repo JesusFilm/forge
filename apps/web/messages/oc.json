@@ -39,9 +39,8 @@
     "posterAlt": "Aficha del vidèo",
     "noDownloads": "Pas cap de telecargament disponible per aqueste vidèo.",
     "fileSizeLabel": "Seleccionar una talha de fichièr",
-    "termsAgreementPrefix": "Accepti los ",
+    "termsAgreement": "Accepti los <link>Tèrmes d'utilizacion</link>",
     "termsOfUse": "Tèrmes d'utilizacion",
-    "termsAgreementSuffix": "",
     "close": "Tampar",
     "download": "Telecargar",
     "authRequiredTitle": "Volètz telecargar aqueste vidèo?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Partejar sus Facebook (indisponible dins aqueste bastiment)",
     "shareOnX": "Partejar sus X",
     "shareOnXUnavailable": "Partejar sus X (indisponible dins aqueste bastiment)",
+    "opensInNewTab": "{label} (se dobrís dins un onglet novèl)",
     "shareDisabledHint": "Lo partiment requerís una pagina desployada — foncionarà quand aqueste vidèo serà en produccion.",
     "shareFormat": "Format de partiment",
     "shareLinkTab": "Partejar lo ligam",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar la lenga de l'àudio",
     "home": "Pagina d'acuèlh JesusFilm",
     "closeSearch": "Tampar la recèrca",
-    "submitSearch": "Recercar"
+    "submitSearch": "Recercar",
+    "library": "Bibliotèca"
   },
   "SearchOverlay": {
     "dialogLabel": "Recercar e explorar de vidèos",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Impossible de cargar mai de resultats.",
     "searching": "Recèrca en cors...",
     "connectionHint": "Verificatz vòstra connexion e tornatz ensajar.",
+    "rateLimitHint": "Tròp de requèstas. Tornatz ensajar dins una minuta.",
     "retrySearch": "Tornar ensajar la recèrca",
     "retry": "Tornar ensajar",
     "noResults": "Pas cap de resultat per \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Recercar « {suggestion} » en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navegar per region",
+    "allVideosOnSinglePage": "Totes los vidèos sus una pagina",
     "clearLanguages": "Escafar",
     "queryLanguageDetected": "{language} detectat",
     "searchInLanguage": "Recercar en {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Veire ara",
     "tapToUnmute": "Picatz per tornar activar lo son",
-    "nextEpisode": "Episòdi seguent"
+    "nextEpisode": "Episòdi seguent",
+    "audioTranslationCount": "{count, plural, one {# lenga} other {# lengas}}",
+    "subtitleCount": "Sostítols: {count, plural, one {# lenga} other {# lengas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargament del contengut",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Lo formulari de comentaris a pas pogut se cargar.",
     "loadingForm": "Cargament del formulari de comentaris…",
     "retry": "Tornar ensajar",
-    "openFormShort": "Dobrir lo formulari",
     "cancel": "Anullar",
-    "title": "Comentaris beta",
-    "description": "Partatz çò que fonciona e çò que podèm melhorar. Aqueste formulari es provesit per Google.",
-    "openInNewTab": "Dobrir lo formulari dins un onglet novèl",
     "closeForm": "Tampar lo formulari de comentaris",
-    "loadingGoogleForm": "Cargament del formulari Google…",
-    "iframeTitle": "Enviar de comentaris beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vidèos crestianas gratuitas en {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Espòrt",
     "collections": "Colleccions",
     "subtitlesOnly": "Solament sostítols",
+    "backToTop": "Tornar amont",
     "newlyAdded": "Ajustat recentament",
     "newVideosTitle": "Vidèos crestianas novèlas en {language}",
     "newestFirst": "Los mai recents primièr",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Vidèos independentas",
     "videosFromCollection": "Vidèos de {collection}.",
     "standaloneDescription": "Vidèos independentas dins aquesta lenga.",
-    "openCollection": "Dobrir la colleccion"
+    "openCollection": "Dobrir la colleccion",
+    "filters": "Filtres",
+    "filterLength": "Durada",
+    "filterLength_under5": "Mens de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mai de 30 min",
+    "filterType": "Tipe",
+    "clearFilters": "Escafar los filtres",
+    "filterResults": "{count} sus {total} afichats",
+    "noFilterResults": "Cap de vidèo correspond pas a aquestes filtres. Ensajatz d'ne levar un.",
+    "filterAdded": "Ajustat",
+    "filterAdded_60d": "Darrièrs 60 jorns",
+    "filterAdded_6m": "Darrièrs 6 meses",
+    "filterAdded_12m": "Darrièrs 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Visionament",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Apercebut del vidèo precedent",
     "nextVideoPreview": "Apercebut del vidèo seguent",
     "mediaCollection": "Colleccion de mèdias",
-    "scrollToVideo": "Far defilar cap al vidèo {title}"
+    "scrollToVideo": "Far defilar cap al vidèo {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Pagina d'acuèlh Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Bon Nadal !",
     "daysUntilChristmas": "{count, plural, one {# jorn abans Noël} other {# jorns abans Noël}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Navegar per la bibliotèca",
+    "title": "Navegar per categoria",
+    "description": "Anatz dirèctament a la part de la bibliotèca que vos cal — la vida de Jèsus, los temps de l’annada liturgica e de vidèos fachas per las familhas, los estudiants e los pichons grops.",
+    "seeAll": "Veire totes los vidèos",
+    "previous": "Categorias precedentas",
+    "next": "Categorias seguentas",
+    "categories": {
+      "jesus": "Lo film JESUS",
+      "gospels": "Evangèlis",
+      "shortVideos": "Vidèos corts",
+      "family": "Familha",
+      "relationships": "Relacions",
+      "women": "Per las femnas",
+      "students": "Pels estudiants",
+      "sports": "Espòrt",
+      "goodNews": "Bona Novèla",
+      "hope": "Esperança",
+      "training": "Formacion",
+      "easter": "Pascas",
+      "christmas": "Nadal"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Lengas",
     "metadataDescription": "Exploratz de vidèos JesusFilm per lenga.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Pagina pas trobada :",
     "title": "Aquesta scèna es pas aicí.",
     "description": "La pagina a benlèu cambiat de lòc, mas l'istòria contunha.",
+    "languageDescription": "Avèm pas pogut trobar la pagina que cercatz, mas l’istòria contunha dins de films e de vidèos en lengas del mond entièr.",
     "actionsLabel": "Accions per pagina pas trobada",
     "backToWatch": "Tornar a Visionament",
     "browseVideos": "Navegar pels vidèos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Veire lo cort-metratge",
-    "actions": {
-      "joinUs": "Rejonhètz-nos",
-      "shareMission": "Partejar nòstra mission"
-    },
-    "welcomeStart": {
-      "label": "Fe e Escritura",
-      "title": "Las causidas vidèo d'uèi",
-      "description": "Contengut vidèo centrat sus la fe de nòstra bibliotèca per inspirar, desafiar e espotir la reflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiracion del matin",
-      "title": "Bonjorn ! Las moments biblicas d'uèi vos espèran.",
-      "description": "Començatz la jornada amb de moments biblics encoratjants concebuts per inspirar e elevar vòstre esperit."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiracion de la tantòst",
-      "title": "Bon vèspre ! Moments biblics per vòstre jorn.",
-      "description": "Contengut biblic encoratjant, ideal per una pausa de la tantòst o per contunhar d'èsser inspirat."
-    },
-    "welcomeEvening": {
-      "label": "Inspiracion de ser",
-      "title": "Bon ser ! Relaxatz-vos amb de moments biblics.",
-      "description": "De moments biblics pacifics per vos ajudar a reflectir e trobar de consòrt a mesura que la jornada s'acaba."
-    },
-    "joinUs": {
-      "label": "Rejonhètz-nos",
-      "title": "De miliards recercan",
-      "description": "La meisson es aquí. Rejonhètz-nos per partejar l'evangèli amb lo mond per mejan dels mèdias numerics."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Anem amassa",
-      "title": "Contar l'istòria de Jèsus, amassa",
-      "description": "Per que pòscan ausir e veire l'amor de Jèsus dins lor pròpria lenga, aquí ont son."
-    }
-  },
   "VideoRecommendations": {
     "match": "Correspondéncia de {percent} %",
-    "none": "Cap de recomandacion trobada per aqueste vidèo dins aquesta lenga."
+    "none": "Cap de recomandacion trobada per aqueste vidèo dins aquesta lenga.",
+    "heading": "Vidèos recomandats",
+    "loadingLabel": "Cargament dels vidèos recomandats",
+    "openingTitle": "Dobertura de {title}",
+    "openingVideo": "Dobertura del vidèo",
+    "activityNotRecorded": "L’activitat de recomandacion a pas pogut èsser enregistrada. Los ligams foncionan totjorn.",
+    "showingContextual": "Afichatge de recomandacions contextualas.",
+    "showingSaved": "Afichatge de recomandacions enregistradas.",
+    "explanationCurated": "Vidèos causits per explorar.",
+    "explanationViewingMode": "Recomandats segon aqueste vidèo e vòstras abitudas de visionatge.",
+    "explanationCowatch": "Recomandats segon aqueste vidèo e vòstres interèsses.",
+    "explanationHybrid": "Recomandats segon aqueste vidèo e los interèsses que avètz causit de far memorizar.",
+    "explanationContextual": "Recomandats segon çò que gaitatz ara.",
+    "explanationSemanticFallback": "Recomandats segon çò que gaitatz ara, perque la personalizacion es pas disponibla.",
+    "explanationProfileDurable": "Personalizats segon los interèsses que avètz causit de far memorizar.",
+    "explanationProfileVisit": "Personalizats per aquesta visita.",
+    "personalizationLabel": "Personalizacion de las recomandacions",
+    "personalizationPrompt": "Volètz cambiar la faiçon que las recomandacions son personalizadas?",
+    "openCookieSettings": "Dobrir los paramètres de cookies"
   },
   "BetaTesterModal": {
     "title": "Venètz tester la beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Tornar ensajar los telecargaments fracassats"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Version lingüistica indisponibla",
+    "eyebrow": "Version lingüistica indisponibla",
+    "title": "<contentTitle>{title}</contentTitle> es pas disponible en <languageName>{language}</languageName>",
+    "actionsLabel": "Opcions de visionatge disponiblas",
+    "browseInLanguage": "Percórrer las vidèos en {language}",
+    "backToSearch": "Tornar a la recèrca",
+    "audioVersionsTitle": "Autras versions àudio",
+    "audioVersionsDescription": "Causissètz una lenga àudio per contunhar de veire aquesta vidèo.",
+    "languageVersionLabel": "Lenga àudio",
+    "selectLanguageVersion": "Seleccionar una version lingüistica",
+    "watchSelectedVersion": "Veire la version seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opcions de cookies",
+    "bannerTitle": "Vòstras opcions de confidencialitat",
+    "bannerDescription": "Las cookies essencialas mantenon Watch segur e foncional. Amb vòstra permission, una cookie opcionala del site pòt se remembrar dels interèsses d’una visita a l’autra per personalizar las recomandacions. Las recomandacions contextualas demòran disponiblas dins totes los cases.",
+    "acceptAll": "Tot acceptar",
+    "essentialOnly": "Essencialas solament",
+    "manageChoices": "Gerir las opcions",
+    "savingChoice": "Enregistrament de l’opcion de cookies",
+    "settings": "Paramètres de cookies",
+    "settingsDescription": "Causissètz se Watch pòt memorizar vòstres interèsses de recomandacion d’una visita a l’autra. Podètz cambiar aquò a tot moment.",
+    "essentialCookies": "Cookies essencialas",
+    "essentialDescription": "Seguretat, lectura, opcions de confidencialitat e atribucion de las demandas de recomandacion.",
+    "alwaysActive": "Totjorn activas",
+    "personalization": "Personalizacion",
+    "personalizationDescription": "Memorizar d’interèsses limitats d’una visita a l’autra. Se desactivatz aquò, las recomandacions contextualas demoraràn disponiblas.",
+    "erasurePending": "L’escafament del perfil es en espèra. Las recomandacions contextualas son ja activas.",
+    "cancel": "Anullar",
+    "saveChoices": "Enregistrar las opcions",
+    "saving": "Enregistrament…",
+    "loadError": "Impossible de cargar vòstra causida. Podètz totjorn causir çai-jos.",
+    "grantError": "Impossible d’activar la personalizacion. L’opcion essenciala solament demòra disponibla.",
+    "saveError": "Impossible d’enregistrar vòstra causida. Tornatz ensajar."
   }
 }

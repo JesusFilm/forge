@@ -15,8 +15,13 @@
  */
 
 import { act, useImperativeHandle, type ComponentProps } from "react"
-import { createRoot, type Root } from "react-dom/client"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  PLAYBACK_NAVIGATION_INTENT_EVENT,
+  type PlaybackNavigationIntent,
+} from "@/lib/playback-navigation-intent"
 
 type MuxVideoCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
@@ -102,6 +107,14 @@ vi.mock("next-intl", () => ({
           nextEpisode: "Next Episode",
           playWithSound: "Watch now",
           tapToUnmute: "Tap to Unmute",
+          audioTranslationCount:
+            values?.count === 1
+              ? "1 audio translation"
+              : `${values?.count ?? 0} audio translations`,
+          subtitleCount:
+            values?.count === 1
+              ? "1 subtitle"
+              : `${values?.count ?? 0} subtitles`,
         },
         VideoLabels: {
           episode: "Episode",
@@ -112,6 +125,10 @@ vi.mock("next-intl", () => ({
           share: "Share",
         },
         LanguagePickerModal: {
+          subtitlesHeading: "Subtitles",
+          toggleOn: "On",
+          toggleOff: "Off",
+          notAvailable: "Not available",
           languageCount:
             values?.count === 1
               ? "1 language"
@@ -237,6 +254,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { LowestRungFallbackAbrController } from "@/lib/hls-start-level"
 
 let container: HTMLDivElement
 let root: Root
@@ -268,6 +286,8 @@ function makeBlock({
   downloads = [],
   subtitles = [],
   publishedAt = null,
+  audioLanguageCountLabel,
+  subtitleLanguageCountLabel,
 }: {
   muxHeroPosterBlurDataUrl?: string | null
   playbackId?: string | null
@@ -276,6 +296,8 @@ function makeBlock({
   downloads?: WatchHeroPlayerBlock["variant"]["downloads"]
   subtitles?: WatchHeroPlayerBlock["video"]["subtitles"]
   publishedAt?: string | null
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
 } = {}): WatchHeroPlayerBlock {
   return {
     kind: "HeroPlayer",
@@ -305,6 +327,8 @@ function makeBlock({
         name: "English",
       },
     } as never,
+    audioLanguageCountLabel,
+    subtitleLanguageCountLabel,
     nextWatchItem,
   }
 }
@@ -612,9 +636,12 @@ describe("HeroPlayer — initial mount", () => {
                 aiGenerated: false,
               },
             ],
+            audioLanguageCountLabel: "2\u00a0285 iilwimi",
+            subtitleLanguageCountLabel: "IMibhalo engezantsi: 1 ulwimi",
           })}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={3}
+          hasSubtitleOptions
         />,
       )
     })
@@ -650,7 +677,7 @@ describe("HeroPlayer — initial mount", () => {
         ?.className,
     ).toContain("font-normal")
     expect(languageTag.tagName).toBe("BUTTON")
-    expect(languageTag.getAttribute("aria-label")).toBe("3 languages")
+    expect(languageTag.getAttribute("aria-label")).toBe("2\u00a0285 iilwimi")
     expect(languageTag.querySelector("svg")).not.toBeNull()
     expect(languageTag.className).toContain("text-xs")
     expect(languageTag.className).toContain("md:text-sm")
@@ -667,7 +694,7 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector(
         '[data-testid="hero-player-subtitle-language-count"]',
       )?.textContent,
-    ).toBe("1 language")
+    ).toBe("IMibhalo engezantsi: 1 ulwimi")
     expect(
       container.querySelector(
         '[data-testid="hero-player-subtitle-language-count"] svg',
@@ -721,11 +748,57 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-subtitle-language-count"]',
     ) as HTMLButtonElement
     expect(subtitleLanguageTag.tagName).toBe("BUTTON")
-    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe("1 language")
+    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe(
+      "IMibhalo engezantsi: 1 ulwimi",
+    )
     await act(async () => {
       subtitleLanguageTag.click()
     })
     expect(onLanguageClick).toHaveBeenCalledTimes(2)
+  })
+
+  it("opens the subtitle picker once when subtitles are offered for one audio language", async () => {
+    const onLanguageClick = vi.fn()
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={1}
+          hasSubtitleOptions
+        />,
+      )
+    })
+
+    const subtitleLanguageTag = container.querySelector(
+      '[data-testid="hero-player-subtitle-language-count"]',
+    ) as HTMLButtonElement
+    expect(subtitleLanguageTag.tagName).toBe("BUTTON")
+    expect(subtitleLanguageTag.textContent).toBe("1 subtitle")
+    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe("1 subtitle")
+
+    await act(async () => {
+      subtitleLanguageTag.click()
+    })
+    expect(onLanguageClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps an offered subtitle count explicit and informational without a callback", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
+          playableLanguageCount={1}
+          hasSubtitleOptions
+        />,
+      )
+    })
+
+    const subtitleLanguageTag = container.querySelector(
+      '[data-testid="hero-player-subtitle-language-count"]',
+    ) as HTMLSpanElement
+    expect(subtitleLanguageTag.tagName).toBe("SPAN")
+    expect(subtitleLanguageTag.textContent).toBe("1 subtitle")
   })
 
   it("keeps a one-language count informational and omits unavailable factual tags", () => {
@@ -733,7 +806,7 @@ describe("HeroPlayer — initial mount", () => {
     act(() => {
       root.render(
         <HeroPlayer
-          block={makeBlock()}
+          block={makeBlock({ audioLanguageCountLabel: "1 audio translation" })}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={1}
         />,
@@ -744,7 +817,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-language-tag"]',
     ) as HTMLSpanElement
     expect(languageTag.tagName).toBe("SPAN")
-    expect(languageTag.textContent).toBe("1 language")
+    expect(languageTag.textContent).toBe("1 audio translation")
     expect(languageTag.className).not.toContain("compact-landscape:min-h-11")
     expect(languageTag.className).not.toContain("compact-landscape:min-w-11")
     expect(
@@ -754,6 +827,79 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector('[data-testid="hero-player-quality-tag"]'),
     ).toBeNull()
     expect(onLanguageClick).not.toHaveBeenCalled()
+  })
+
+  it("does not synthesize count tags when server labels are explicitly null", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            audioLanguageCountLabel: null,
+            subtitleLanguageCountLabel: null,
+            subtitles: [
+              {
+                documentId: "subtitle-en",
+                language: {
+                  slug: "english",
+                  name: "English",
+                  nativeName: null,
+                  bcp47: "en",
+                },
+                vttSrc: "https://cdn.example/subtitles.vtt",
+                primary: true,
+                aiGenerated: false,
+              },
+            ],
+          })}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-language-tag"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("keeps client count formatting for direct Hero blocks without serialized labels", () => {
+    act(() => {
+      root.render(
+        <HeroPlayer
+          block={makeBlock({
+            subtitles: [
+              {
+                documentId: "subtitle-en",
+                language: {
+                  slug: "english",
+                  name: "English",
+                  nativeName: null,
+                  bcp47: "en",
+                },
+                vttSrc: "https://cdn.example/subtitles.vtt",
+                primary: true,
+                aiGenerated: false,
+              },
+            ],
+          })}
+          playableLanguageCount={2}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="hero-player-language-tag"]')
+        ?.textContent,
+    ).toBe("2 audio translations")
+    expect(
+      container.querySelector(
+        '[data-testid="hero-player-subtitle-language-count"]',
+      )?.textContent,
+    ).toBe("1 subtitle")
   })
 
   it("removes the metadata strip when Watch now reveals player chrome", async () => {
@@ -1142,6 +1288,11 @@ describe("HeroPlayer — initial mount", () => {
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
       enableWebVTT: false,
+      // Bandwidth-test start (N63a): without these hls.js starts on Mux's
+      // first-listed 720p rung, which stalls slow connections.
+      startLevel: -1,
+      testBandwidth: true,
+      abrController: LowestRungFallbackAbrController,
     })
     expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
@@ -2382,6 +2533,7 @@ describe("HeroPlayer — custom chrome render", () => {
       playableLanguageCount: 1,
       hasSubtitleOptions: true,
       subtitleLanguageCode: "ES",
+      subtitleVttSrc: "https://cdn.example/subtitles/es.vtt",
     })
 
     expect(
@@ -2398,28 +2550,60 @@ describe("HeroPlayer — custom chrome render", () => {
   })
 
   it.each([
-    { hasSubtitleOptions: true, subtitleLanguageCode: "EN" },
-    { hasSubtitleOptions: true, subtitleLanguageCode: null },
-    { hasSubtitleOptions: false, subtitleLanguageCode: "ES" },
+    {
+      hasSubtitleOptions: true,
+      subtitleLanguageCode: "EN",
+      subtitleVttSrc: "https://cdn.example/subtitles/en.vtt",
+      expectedState: "EN",
+      expectedLabel: "Subtitles: On (EN)",
+    },
+    {
+      hasSubtitleOptions: true,
+      subtitleLanguageCode: null,
+      subtitleVttSrc: null,
+      expectedState: null,
+      expectedLabel: "Subtitles: Off",
+    },
+    {
+      hasSubtitleOptions: false,
+      subtitleLanguageCode: "ES",
+      subtitleVttSrc: null,
+      expectedState: null,
+      expectedLabel: "Subtitles: Not available",
+    },
   ])(
-    "suppresses the subtitle code for $subtitleLanguageCode with availability $hasSubtitleOptions",
-    async ({ hasSubtitleOptions, subtitleLanguageCode }) => {
+    "shows subtitle state $expectedState for $subtitleLanguageCode with availability $hasSubtitleOptions",
+    async ({
+      hasSubtitleOptions,
+      subtitleLanguageCode,
+      subtitleVttSrc,
+      expectedState,
+      expectedLabel,
+    }) => {
       await revealChrome(makeBlock(), {
         onLanguageClick: vi.fn(),
         playableLanguageCount: 2,
         hasSubtitleOptions,
         subtitleLanguageCode,
+        subtitleVttSrc,
       })
 
       const subtitleButton = container.querySelector(
         '[data-testid="hero-chrome-subtitles"]',
       )
-      expect(subtitleButton === null).toBe(!hasSubtitleOptions)
+      expect(subtitleButton).not.toBeNull()
+      expect(subtitleButton?.getAttribute("aria-disabled")).toBe(
+        hasSubtitleOptions ? null : "true",
+      )
       expect(
         container.querySelector(
           '[data-testid="hero-chrome-subtitle-language-code"]',
-        ),
-      ).toBeNull()
+        )?.textContent ?? null,
+      ).toBe(expectedState)
+      expect(subtitleButton?.getAttribute("aria-label")).toBe(expectedLabel)
+      expect(
+        subtitleButton?.querySelector('[role="tooltip"]')?.textContent,
+      ).toBe(expectedLabel)
     },
   )
 
@@ -3985,14 +4169,51 @@ describe("HeroPlayer — language switch button", () => {
     listener.cleanup()
   })
 
+  it("publishes pending subtitle-picker cancellation with only one audio language", async () => {
+    const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
+            onLanguageClick={onLanguageClick}
+            onCancelLanguageOpen={onCancelLanguageOpen}
+            playableLanguageCount={1}
+            hasSubtitleOptions
+          />,
+        )
+      })
+      const latest = listener.updates.at(-1)
+      expect(latest?.visible).toBe(false)
+      expect(latest?.onClick).toBeNull()
+      expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="hero-player-subtitle-language-count"]',
+          )!
+          .click()
+      })
+      expect(onLanguageClick).toHaveBeenCalledTimes(1)
+      listener.updates.at(-1)?.cancelPendingOpen?.()
+      expect(onCancelLanguageOpen).toHaveBeenCalledTimes(1)
+    } finally {
+      listener.cleanup()
+    }
+  })
+
   it("publishes a header language switcher when playableLanguageCount >= 2 with onLanguageClick", () => {
     const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
     const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
           block={makeBlock()}
           onLanguageClick={onLanguageClick}
+          onCancelLanguageOpen={onCancelLanguageOpen}
           playableLanguageCount={2}
         />,
       )
@@ -4000,6 +4221,7 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
     expect(latest?.languageCode).toBe("EN")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
@@ -4049,6 +4271,31 @@ describe("HeroPlayer — language switch button", () => {
 })
 
 describe("HeroPlayer — autoplay on ?autoplay=1", () => {
+  it("hydrates cached poster HTML before applying an autoplay arrival", async () => {
+    const block = makeBlock()
+    const onPlayerActivated = vi.fn()
+    act(() => root.unmount())
+    // force-static renders without query parameters; the arriving browser has them.
+    setSearchParams("")
+    container.innerHTML = renderToString(<HeroPlayer block={block} />)
+    expect(container.querySelector("h1")?.textContent).toBe("Jesus")
+    setSearchParams("autoplay=1")
+    const hydrationErrors: unknown[] = []
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <HeroPlayer block={block} onPlayerActivated={onPlayerActivated} />,
+        { onRecoverableError: (error) => hydrationErrors.push(error) },
+      )
+    })
+    expect(hydrationErrors).toEqual([])
+    expect(muxVideoMock).toHaveBeenCalled()
+    await fireCanPlay()
+    expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(onPlayerActivated).toHaveBeenCalledWith("automatic")
+  })
+
   // The effect signals language-switch arrivals: fired by LanguagePickerModal
   // Apply, consumed here as a one-shot unmuted play attempt. Each test sets
   // the URL params before render, fires onCanPlay to satisfy videoReady,
@@ -4117,8 +4364,14 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
 
   it("attempts unmuted play and reveals chrome when ?autoplay=1 is set and play resolves", async () => {
     setSearchParams("autoplay=1")
+    const onPlayerActivated = vi.fn()
     act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onPlayerActivated={onPlayerActivated}
+        />,
+      )
     })
     expect(
       container.querySelector('[data-testid="hero-player-poster-layer"]')
@@ -4157,10 +4410,12 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       "[@media(max-width:767px)_and_(orientation:portrait)]:aspect-video",
     )
     expect(writeWatchVolumePreferenceMock).not.toHaveBeenCalled()
+    expect(onPlayerActivated).toHaveBeenCalledWith("automatic")
   })
 
   it("leaves the player muted when play() rejects (no MEI grant)", async () => {
     setSearchParams("autoplay=1")
+    const onPlayerActivated = vi.fn()
     // Re-prime the player factory: install a play() that rejects on the
     // FIRST call only (the autoplay attempt). Subsequent calls (e.g. the
     // unmute pill click) resolve normally.
@@ -4184,7 +4439,12 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
       return null
     })
     act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
+      root.render(
+        <HeroPlayer
+          block={makeBlock()}
+          onPlayerActivated={onPlayerActivated}
+        />,
+      )
     })
     await fireCanPlay()
     await nextTick()
@@ -4202,6 +4462,18 @@ describe("HeroPlayer — autoplay on ?autoplay=1", () => {
     expect(
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).not.toBeNull()
+    expect(onPlayerActivated).not.toHaveBeenCalled()
+
+    player.play.mockResolvedValue(undefined)
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="hero-player-unmute-pill"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    await nextTick()
+    expect(onPlayerActivated).toHaveBeenCalledWith("manual")
   })
 
   it("is a no-op when ?autoplay=1 is absent (no play attempt, player stays muted)", async () => {
@@ -4345,6 +4617,17 @@ describe("HeroPlayer — MuxVideo backend events", () => {
 })
 
 describe("HeroPlayer — Watch Next countdown", () => {
+  function captureNavigationIntents() {
+    const intents: PlaybackNavigationIntent[] = []
+    const capture = (event: Event) =>
+      intents.push((event as CustomEvent<PlaybackNavigationIntent>).detail)
+    window.addEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture)
+    return {
+      intents,
+      stop: () =>
+        window.removeEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture),
+    }
+  }
   const nextWatchItem = {
     parentSlug: "jesus",
     slug: "chapter-two",
@@ -4445,6 +4728,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
   })
 
   it("auto-advances at the end after natural playback crosses the countdown threshold", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4486,9 +4770,15 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).not.toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("navigates when the armed Watch Next button is clicked", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4525,6 +4815,11 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("cancels auto-advance when portaled chrome is used in the countdown window", async () => {

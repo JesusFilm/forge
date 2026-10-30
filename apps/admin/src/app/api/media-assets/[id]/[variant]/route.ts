@@ -28,10 +28,13 @@ export async function GET(
         query: {},
       })
     : await prisma.mediaAsset.findFirst({
-        where: { id, status: "READY" },
+        where: { id, status: "READY", visibility: "PUBLIC" },
       })
 
-  if (!asset) {
+  if (
+    !asset ||
+    (!user && (asset.visibility !== "PUBLIC" || asset.status !== "READY"))
+  ) {
     return new NextResponse("Not found", { status: 404 })
   }
 

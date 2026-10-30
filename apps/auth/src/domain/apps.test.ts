@@ -7,7 +7,12 @@ import {
   ADMIN_APP_SEED,
   CHAT_APP_KEY,
   CHAT_APP_SEED,
+  CHANGELOG_APP_KEY,
+  CHANGELOG_APP_SEED,
+  CHANGELOG_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
+  FIRST_PARTY_OAUTH_CLIENT_IDS,
+  isFirstPartyOAuthClientId,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
   MANAGER_APP_KEY,
@@ -26,11 +31,13 @@ import { assertKnownScopes } from "./scopes"
 describe("first-party app seeds", () => {
   it("keeps Admin and Manager registered as distinct first-party OAuth apps", () => {
     expect(FIRST_PARTY_APP_SEEDS.map((app) => app.key)).toEqual([
+      "shorts-mcp",
       ADMIN_APP_SEED.key,
       MANAGER_APP_KEY,
       WEB_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
       CHAT_APP_KEY,
+      CHANGELOG_APP_KEY,
       ADMIN_MCP_APP_KEY,
       MOBILE_APP_KEY,
       TV_APP_KEY,
@@ -43,6 +50,53 @@ describe("first-party app seeds", () => {
         ownerType: "jesus_film",
       }),
     )
+  })
+
+  it("registers exact local and production Changelog OAuth clients", () => {
+    expect(CHANGELOG_APP_SEED).toEqual(
+      expect.objectContaining({
+        key: "changelog",
+        displayName: "Jesus Film Changelog",
+        trustTier: "first_party",
+        ownerType: "jesus_film",
+        ownerName: "Jesus Film Project",
+      }),
+    )
+    expect(CHANGELOG_DEFAULT_SCOPES).toEqual([
+      "openid",
+      "profile:read",
+      "email:read",
+      "membership:read",
+      "changelog:read",
+      "changelog:submit",
+      "changelog:admin",
+    ])
+    expect(CHANGELOG_APP_SEED.environments).toEqual([
+      {
+        key: "local",
+        kind: "local",
+        clientId: "jfp_changelog_local",
+        mcpResourceAudience: "http://localhost:3000/mcp",
+        redirectUris: ["http://localhost:3000/api/auth/callback"],
+        postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
+        allowedOrigins: ["http://localhost:3000"],
+        defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+        autoApprove: true,
+      },
+      {
+        key: "production",
+        kind: "production",
+        clientId: "jfp_changelog_production",
+        mcpResourceAudience: "https://changelog.jesusfilm.org/mcp",
+        redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
+        postLogoutRedirectUris: [
+          "https://changelog.jesusfilm.org/api/auth/login",
+        ],
+        allowedOrigins: ["https://changelog.jesusfilm.org"],
+        defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+        autoApprove: true,
+      },
+    ])
   })
 
   it("registers Manager OAuth clients for local, preview, staging, and production", () => {
@@ -126,6 +180,11 @@ describe("first-party app seeds", () => {
       ]),
     )
     expect(new Set(clientIds).size).toBe(clientIds.length)
+    expect(FIRST_PARTY_OAUTH_CLIENT_IDS).toEqual(clientIds)
+    expect(isFirstPartyOAuthClientId("jfp_manager_local_session_service")).toBe(
+      true,
+    )
+    expect(isFirstPartyOAuthClientId("dynamic_loopback_client")).toBe(false)
   })
 
   it("registers Admin MCP OAuth clients with trusted locale factory scopes", () => {
@@ -284,6 +343,7 @@ describe("first-party app seeds", () => {
           key: "codex",
           kind: "production",
           clientId: "jfp_admin_mcp_codex",
+          mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
           redirectUris: [],
           postLogoutRedirectUris: [],
           allowedOrigins: [],
@@ -303,11 +363,36 @@ describe("first-party app seeds", () => {
             "experience:publish",
             "experience:create",
             "experience:generate",
+            "push:campaign:read",
+            "push:campaign:draft",
           ]),
           autoApprove: true,
         }),
       ]),
     )
+  })
+
+  it("grants the push campaign scopes to every Admin MCP client and its resource ceiling", () => {
+    expect(ADMIN_MCP_DEFAULT_SCOPES).toEqual(
+      expect.arrayContaining(["push:campaign:read", "push:campaign:draft"]),
+    )
+    for (const environment of ADMIN_MCP_APP_SEED.environments) {
+      expect(environment.defaultScopes).toEqual(
+        expect.arrayContaining(["push:campaign:read", "push:campaign:draft"]),
+      )
+    }
+  })
+
+  it("keeps the push campaign scopes off every client outside the Admin MCP app", () => {
+    const otherEnvironments = FIRST_PARTY_APP_SEEDS.filter(
+      (app) => app.key !== ADMIN_MCP_APP_KEY,
+    ).flatMap((app) => app.environments)
+
+    expect(otherEnvironments.length).toBeGreaterThan(0)
+    for (const environment of otherEnvironments) {
+      expect(environment.defaultScopes).not.toContain("push:campaign:read")
+      expect(environment.defaultScopes).not.toContain("push:campaign:draft")
+    }
   })
 
   it("keeps experience-level create and generate scopes distinct from publish", () => {
@@ -528,7 +613,10 @@ describe("mobile app seed", () => {
         expect.objectContaining({
           key: "local",
           clientId: "jfp_mobile_local",
-          redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+          redirectUris: [
+            "http://localhost:3004/api/auth/callback/jfp",
+            "http://localhost:3004/api/auth/oauth2/callback/jfp",
+          ],
           allowedOrigins: ["http://localhost:3004"],
           autoApprove: true,
         }),
@@ -536,6 +624,7 @@ describe("mobile app seed", () => {
           key: "production",
           clientId: "jfp_mobile_production",
           redirectUris: [
+            "https://auth.jesusfilm.org/api/auth/callback/jfp",
             "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
           ],
           allowedOrigins: ["https://auth.jesusfilm.org"],

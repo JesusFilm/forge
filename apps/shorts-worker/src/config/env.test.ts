@@ -17,10 +17,7 @@ describe("parseEnv", () => {
     expect(env.SHORTS_WORKER_ALLOWED_SOURCE_HOSTS).toBe("stream.mux.com")
     expect(env.SHORTS_WORKER_RENDER_CONCURRENCY).toBe(2)
     expect(env.SHORTS_WORKER_QUEUE_LIMIT).toBe(2)
-    expect(env.SHORTS_WORKER_PREPARE_JOB_TIMEOUT_MS).toBe(2_700_000)
     expect(env.SHORTS_WORKER_RENDER_JOB_TIMEOUT_MS).toBe(4_200_000)
-    expect(env.SHORTS_WORKER_WHISPER_CPP_VERSION).toBe("1.7.4")
-    expect(env.SHORTS_WORKER_BUNDLE_DIR).toBeUndefined()
     expect(env.SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR).toBeUndefined()
   })
 
@@ -67,11 +64,7 @@ const fullProductionSource = {
   RAILWAY_S3_ACCESS_KEY_ID: "access",
   RAILWAY_S3_SECRET_ACCESS_KEY: "secret",
   DEVOTIONAL_WORKSPACE_CAPABILITY_ORIGIN: "https://workspace.example",
-  SHORTS_WORKER_BUNDLE_DIR: "/app/bundle",
   SHORTS_WORKER_DEVOTIONAL_BUNDLE_DIR: "/app/devotional-bundle",
-  SHORTS_WORKER_WHISPER_MODEL_PATH:
-    "/opt/whisper-models/ggml-large-v3-turbo.bin",
-  SHORTS_WORKER_WHISPER_CPP_DIR: "/opt/whisper",
 }
 
 describe("assertRuntimeEnv", () => {
@@ -86,15 +79,9 @@ describe("assertRuntimeEnv", () => {
     expect(() =>
       assertRuntimeEnv(parseEnv({ NODE_ENV: "production" }), () => true),
     ).toThrow(/SHORTS_WORKER_API_KEYS/)
-    expect(() =>
-      assertRuntimeEnv(parseEnv({ NODE_ENV: "production" }), () => true),
-    ).toThrow(/SHORTS_WORKER_WHISPER_MODEL_PATH/)
-    expect(() =>
-      assertRuntimeEnv(parseEnv({ NODE_ENV: "production" }), () => true),
-    ).toThrow(/SHORTS_WORKER_BUNDLE_DIR/)
   })
 
-  it("throws when the model/bundle/cpp paths do not exist on disk", () => {
+  it("throws when the devotional bundle path do not exist on disk", () => {
     expect(() =>
       assertRuntimeEnv(parseEnv(fullProductionSource), () => false),
     ).toThrow(/missing path/)
@@ -105,4 +92,15 @@ describe("assertRuntimeEnv", () => {
       assertRuntimeEnv(parseEnv(fullProductionSource), () => true),
     ).not.toThrow()
   })
+})
+
+it("boots devotional production without retired Shorts bundle or Whisper model", () => {
+  expect(() =>
+    assertRuntimeEnv(
+      parseEnv({
+        ...fullProductionSource,
+      }),
+      () => true,
+    ),
+  ).not.toThrow()
 })

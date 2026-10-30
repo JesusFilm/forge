@@ -39,7 +39,11 @@ function collectMissingLanguageVideoIds(value: unknown, ids: Set<string>) {
   if (!record) return
 
   const videoId = asString(record.videoId)
-  if (videoId && !asString(record.languageId)) {
+  if (
+    videoId &&
+    !asString(record.languageId) &&
+    !asString(record.streamingUrl)
+  ) {
     ids.add(videoId)
   }
 
@@ -62,12 +66,17 @@ function hasStaticStreamUrl(value: unknown): boolean {
 function reconcileVideoLanguageIdentity(
   value: unknown,
   languageIdForVideoId: ReadonlyMap<string, string>,
+  canonicalizeLegacySelectors: boolean,
 ): { value: unknown; changed: boolean; updatedRecords: number } {
   if (Array.isArray(value)) {
     let changed = false
     let updatedRecords = 0
     const items = value.map((item) => {
-      const result = reconcileVideoLanguageIdentity(item, languageIdForVideoId)
+      const result = reconcileVideoLanguageIdentity(
+        item,
+        languageIdForVideoId,
+        canonicalizeLegacySelectors,
+      )
       changed ||= result.changed
       updatedRecords += result.updatedRecords
       return result.value
@@ -83,7 +92,11 @@ function reconcileVideoLanguageIdentity(
   const next: BlockRecord = {}
 
   for (const [key, item] of Object.entries(record)) {
-    const result = reconcileVideoLanguageIdentity(item, languageIdForVideoId)
+    const result = reconcileVideoLanguageIdentity(
+      item,
+      languageIdForVideoId,
+      canonicalizeLegacySelectors,
+    )
     next[key] = result.value
     changed ||= result.changed
     updatedRecords += result.updatedRecords
@@ -95,13 +108,17 @@ function reconcileVideoLanguageIdentity(
     existingLanguageId || (videoId ? languageIdForVideoId.get(videoId) : null)
   let recordChanged = false
 
-  if (languageId && !existingLanguageId) {
+  if (languageId && !existingLanguageId && !asString(record.streamingUrl)) {
     next.languageId = languageId
     changed = true
     recordChanged = true
   }
 
-  if (Object.hasOwn(record, "streamingUrl")) {
+  if (
+    canonicalizeLegacySelectors &&
+    existingLanguageId &&
+    Object.hasOwn(record, "streamingUrl")
+  ) {
     delete next.streamingUrl
     changed = true
     recordChanged = true
@@ -131,11 +148,13 @@ export async function backfillExperienceVideoLanguageIds({
   blocks,
   locale,
   fallbackLocale = "en",
+  canonicalizeLegacySelectors = false,
 }: {
   prisma: VideoLanguageBackfillDb
   blocks: unknown
   locale: string
   fallbackLocale?: string
+  canonicalizeLegacySelectors?: boolean
 }): Promise<BackfillExperienceVideoLanguageIdsResult> {
   const videoIds = new Set<string>()
   collectMissingLanguageVideoIds(blocks, videoIds)
@@ -152,7 +171,20 @@ export async function backfillExperienceVideoLanguageIds({
   }
 
   if (videoIds.size === 0) {
-    const result = reconcileVideoLanguageIdentity(cloneJson(blocks), new Map())
+    if (!canonicalizeLegacySelectors) {
+      return {
+        blocks,
+        changed: false,
+        updatedRecords: 0,
+        targetLanguageId: null,
+        fallbackLanguageId: null,
+      }
+    }
+    const result = reconcileVideoLanguageIdentity(
+      cloneJson(blocks),
+      new Map(),
+      canonicalizeLegacySelectors,
+    )
     return {
       blocks: result.value,
       changed: result.changed,
@@ -180,23 +212,26 @@ export async function backfillExperienceVideoLanguageIds({
 
   const targetAvailableVideoIds = new Set<string>()
   if (targetLanguageId) {
-    const rows = await prisma.videoDub.findMany({
-      where: {
-        videoId: { in: [...videoIds] },
-        languageId: targetLanguageId,
-        deletedAt: null,
-        published: true,
-        OR: [
-          { hls: { not: null } },
-          { dash: { not: null } },
-          { share: { not: null } },
-        ],
-        video: { deletedAt: null },
-      },
-      select: { videoId: true },
-      distinct: ["videoId"],
-    })
-    rows.forEach((row) => targetAvailableVideoIds.add(row.videoId))
+    const orderedVideoIds = [...videoIds]
+    for (let offset = 0; offset < orderedVideoIds.length; offset += 100) {
+      const rows = await prisma.videoDub.findMany({
+        where: {
+          videoId: { in: orderedVideoIds.slice(offset, offset + 100) },
+          languageId: targetLanguageId,
+          deletedAt: null,
+          published: true,
+          OR: [
+            { hls: { not: null } },
+            { dash: { not: null } },
+            { share: { not: null } },
+          ],
+          video: { deletedAt: null },
+        },
+        select: { videoId: true },
+        distinct: ["videoId"],
+      })
+      rows.forEach((row) => targetAvailableVideoIds.add(row.videoId))
+    }
   }
 
   const languageIdForVideoId = new Map<string, string>()
@@ -212,6 +247,7 @@ export async function backfillExperienceVideoLanguageIds({
   const result = reconcileVideoLanguageIdentity(
     cloneJson(blocks),
     languageIdForVideoId,
+    canonicalizeLegacySelectors,
   )
   return {
     blocks: result.value,

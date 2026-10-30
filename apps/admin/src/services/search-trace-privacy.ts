@@ -352,6 +352,9 @@ export function projectWatchSearchComparisonResult(
               },
         transcriptProjectionRevision:
           side.diagnostics.transcriptProjectionRevision?.toString() ?? null,
+        activeTranscriptProjectionRevision:
+          side.diagnostics.activeTranscriptProjectionRevision?.toString() ??
+          null,
       },
     }
   }

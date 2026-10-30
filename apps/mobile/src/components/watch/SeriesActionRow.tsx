@@ -8,7 +8,15 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../../lib/color"
-import { DOWNLOAD_DONE_COLOR } from "../../lib/downloadGlyph"
+import {
+  DOWNLOAD_DONE_COLOR,
+  EXPORT_IN_PROGRESS_COLOR,
+} from "../../lib/downloadGlyph"
+import { useT } from "../../i18n/useT"
+import {
+  subtitleLabelText,
+  type SubtitleActionLabel,
+} from "../../lib/subtitleSelection"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import { DownloadProgressRing } from "./DownloadProgressRing"
@@ -34,12 +42,20 @@ export type SeriesActionRowProps = {
   onShare: () => void
   /** Selected language name shown in the Language pill. */
   languageLabel?: string | null
-  /** Selected subtitle name (or "Off") shown in the Subtitles pill. */
-  subtitleLabel?: string | null
+  /** Selected subtitle name, or the off state, shown in the Subtitles pill. */
+  subtitleLabel?: SubtitleActionLabel
   /** Subtitles on → bright pill; off → muted, matching the "Off" state. */
   subtitleActive?: boolean
   /** Series-wide download progress driving the Download icon/ring. */
   downloadState: SeriesDownloadState
+  /**
+   * The running export's controls. While an export runs these REPLACE the
+   * download tap: a tap pauses, and a tap on the paused ring opens the
+   * stop/resume alert. Owner decision 2026-09-10, superseding R24's
+   * cancel-only rule.
+   */
+  onPauseExport?: () => void
+  onResumeExport?: () => void
 }
 
 export function SeriesActionRow({
@@ -51,22 +67,47 @@ export function SeriesActionRow({
   subtitleLabel,
   subtitleActive,
   downloadState,
+  onPauseExport,
+  onResumeExport,
 }: SeriesActionRowProps) {
   const typography = useTypography()
+  const tSubtitles = useT("Subtitles")
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const tDownload = useT("DownloadButton")
 
-  const language = languageLabel?.trim() || "Language"
-  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  const language = languageLabel?.trim() || t("language")
+  const subtitle =
+    subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
+    t("subtitles")
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   const allDownloaded = seriesAllDownloaded(downloadState)
+  // R16: an export outranks every offline state, and its tap drives the
+  // export's own pause/resume. Unwired, the control stays inert.
+  const exporting = downloadState.exporting
+  const pausedExport = downloadState.pausedExport
+  const onPress = exporting
+    ? pausedExport
+      ? onResumeExport
+      : onPauseExport
+    : onDownload
   // The ring IS the control: it holds a pause glyph while downloading (tap →
   // pause) and a play glyph once paused (tap → resume/cancel sheet). Icon-only,
   // so the spoken label carries the action.
-  const downloadA11y = downloadState.pausedAggregate
-    ? "Downloads paused. Tap for resume or cancel options"
-    : downloadState.inProgress
-      ? "Pause downloads"
-      : seriesDownloadLabel(downloadState)
+  const downloadA11y = exporting
+    ? pausedExport
+      ? onResumeExport
+        ? tDownload("exportPausedAriaLabel")
+        : tDownload("exportPausedInertAriaLabel")
+      : onPauseExport
+        ? tDownload("exportingAriaLabel")
+        : tDownload("exportingInertAriaLabel")
+    : downloadState.pausedAggregate
+      ? tDownload("seriesPausedAriaLabel")
+      : downloadState.inProgress
+        ? tDownload("pauseDownloadsAriaLabel")
+        : seriesDownloadLabel(downloadState, tDownload)
 
   return (
     <View style={styles.row}>
@@ -77,7 +118,8 @@ export function SeriesActionRow({
           onPress={onLanguage}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Language, ${language}`}
+          accessibilityLabel={t("languageAriaLabel", { language })}
+          {...{ "dd-action-name": "series-language" }}
         >
           <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
           <Text
@@ -91,7 +133,9 @@ export function SeriesActionRow({
           onPress={onSubtitles}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Subtitles, ${subtitle}`}
+          accessibilityLabel={t("subtitlesAriaLabel", { subtitle })}
+          // The label carries catalog text, so the RUM name is fixed (KTD15).
+          {...{ "dd-action-name": "series-subtitles" }}
         >
           <MaterialCommunityIcons
             name="closed-caption-outline"
@@ -112,15 +156,32 @@ export function SeriesActionRow({
       {/* Download all + Share are clean icons, grouped right. */}
       <View style={styles.icons}>
         <Pressable
-          onPress={onDownload}
+          onPress={onPress}
+          disabled={onPress == null}
           style={({ pressed }) => [
             styles.iconButton,
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
           accessibilityLabel={downloadA11y}
+          {...{ "dd-action-name": "series-download" }}
         >
-          {downloadState.inProgress ? (
+          {exporting ? (
+            <DownloadProgressRing
+              size={26}
+              strokeWidth={2.5}
+              progress={downloadState.exportProgress}
+              color={EXPORT_IN_PROGRESS_COLOR}
+              trackColor="rgba(255, 255, 255, 0.18)"
+              cutoutColor={SURFACE_COLOR}
+            >
+              <Ionicons
+                name={downloadState.pausedExport ? "play" : "pause"}
+                size={12}
+                color={EXPORT_IN_PROGRESS_COLOR}
+              />
+            </DownloadProgressRing>
+          ) : downloadState.inProgress ? (
             <DownloadProgressRing
               size={26}
               strokeWidth={2.5}
@@ -156,7 +217,8 @@ export function SeriesActionRow({
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Share"
+          accessibilityLabel={tCommon("shareAriaLabel")}
+          {...{ "dd-action-name": "series-share" }}
         >
           <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
         </Pressable>
@@ -204,7 +266,6 @@ const styles = StyleSheet.create({
     // Shrink + ellipsize only when the pill hits its max width.
     flexShrink: 1,
     minWidth: 0,
-    fontFamily: "System",
   },
   divider: {
     width: 1,

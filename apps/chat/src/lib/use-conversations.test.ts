@@ -159,6 +159,9 @@ describe("mergeReplayMessages (KTD11/KTD5)", () => {
   })
 })
 
+// feat-401: the fresh-empty-LOCAL pin below no longer reaches the RAIL —
+// listConversations filters every local empty out. These stay as the ordering
+// primitive's own contract; do not read them as live sidebar policy.
 describe("orderConversations (KTD9)", () => {
   it("pins fresh empty local conversations on top, then activity-descending", () => {
     const ordered = orderConversations(

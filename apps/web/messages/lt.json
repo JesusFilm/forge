@@ -39,9 +39,8 @@
     "posterAlt": "Vaizdo įrašo plakatas",
     "noDownloads": "Šiam vaizdo įrašui nėra prieinamų atsisiuntimų.",
     "fileSizeLabel": "Pasirinkite failo dydį",
-    "termsAgreementPrefix": "Sutinku su ",
-    "termsOfUse": "Naudojimo sąlygomis",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "Sutinku su <link>Naudojimo sąlygomis</link>",
+    "termsOfUse": "Naudojimo sąlygos",
     "close": "Uždaryti",
     "download": "Atsisiųsti",
     "authRequiredTitle": "Norite atsisiųsti šį vaizdo įrašą?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Dalytis „Facebook“ (šiame leidime nepasiekiama)",
     "shareOnX": "Dalytis X",
     "shareOnXUnavailable": "Dalytis X (šiame leidime nepasiekiama)",
+    "opensInNewTab": "{label} (atidaroma naujame skirtuke)",
     "shareDisabledHint": "Dalytis galima tik paskelbtame puslapyje — veiks, kai šis vaizdo įrašas bus pradėtas rodyti viešai.",
     "shareFormat": "Dalijimosi formatas",
     "shareLinkTab": "Nuoroda",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Keisti garso kalbą",
     "home": "JesusFilm pradžia",
     "closeSearch": "Uždaryti paiešką",
-    "submitSearch": "Ieškoti"
+    "submitSearch": "Ieškoti",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Ieškoti ir naršyti vaizdo įrašus",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Nepavyko įkelti daugiau rezultatų.",
     "searching": "Ieškoma...",
     "connectionHint": "Patikrinkite ryšį ir bandykite dar kartą.",
+    "rateLimitHint": "Per daug užklausų. Bandykite dar kartą po minutės.",
     "retrySearch": "Kartoti paiešką",
     "retry": "Bandyti dar kartą",
     "noResults": "Nėra rezultatų pagal „{query}“",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Ieškoti „{suggestion}“ šia kalba: {language}",
     "inLanguage": "{language} kalba",
     "browseByRegion": "Naršyti pagal regioną",
+    "allVideosOnSinglePage": "Visi vaizdo įrašai viename puslapyje",
     "clearLanguages": "Išvalyti",
     "queryLanguageDetected": "Aptikta {language} kalba",
     "searchInLanguage": "Ieškoti šia kalba: {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Žiūrėti dabar",
     "tapToUnmute": "Bakstelėkite, kad įjungtumėte garsą",
-    "nextEpisode": "Kitas epizodas"
+    "nextEpisode": "Kitas epizodas",
+    "audioTranslationCount": "{count, plural, one {# kalba} few {# kalbos} other {# kalbų}}",
+    "subtitleCount": "Subtitrai: {count, plural, one {# kalba} few {# kalbos} other {# kalbų}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Įkeliamas turinys",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Nepavyko įkelti atsiliepimų formos.",
     "loadingForm": "Įkeliama atsiliepimų forma…",
     "retry": "Bandyti dar kartą",
-    "openFormShort": "Atidaryti formą",
     "cancel": "Atšaukti",
-    "title": "Beta versijos atsiliepimai",
-    "description": "Pasidalykite, kas veikia gerai ir ką galime patobulinti. Šią formą teikia „Google“.",
-    "openInNewTab": "Atidaryti formą naujame skirtuke",
     "closeForm": "Uždaryti atsiliepimų formą",
-    "loadingGoogleForm": "Įkeliama „Google“ forma…",
-    "iframeTitle": "Pateikti beta versijos atsiliepimą"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Nemokami krikščioniški vaizdo įrašai {language} kalba | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sportas",
     "collections": "Rinkiniai",
     "subtitlesOnly": "Tik subtitrai",
+    "backToTop": "Atgal į viršų",
     "newlyAdded": "Neseniai pridėta",
     "newVideosTitle": "Nauji krikščioniški vaizdo įrašai {language} kalba",
     "newestFirst": "Naujausi pirmiausia",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Atskirti vaizdo įrašai",
     "videosFromCollection": "Vaizdo įrašai iš {collection}.",
     "standaloneDescription": "Atskirti šios kalbos vaizdo įrašai.",
-    "openCollection": "Atidaryti rinkinį"
+    "openCollection": "Atidaryti rinkinį",
+    "filters": "Filtrai",
+    "filterLength": "Ilgis",
+    "filterLength_under5": "Mažiau nei 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Daugiau nei 30 min",
+    "filterType": "Tipas",
+    "clearFilters": "Išvalyti filtrus",
+    "filterResults": "Rodoma {count} iš {total}",
+    "noFilterResults": "Nė vienas vaizdo įrašas neatitinka šių filtrų. Pabandykite pašalinti vieną.",
+    "filterAdded": "Pridėta",
+    "filterAdded_60d": "Paskutinės 60 dienų",
+    "filterAdded_6m": "Paskutiniai 6 mėnesiai",
+    "filterAdded_12m": "Paskutiniai 12 mėnesių"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project žiūrėjimas",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Ankstesnio vaizdo įrašo peržiūra",
     "nextVideoPreview": "Kito vaizdo įrašo peržiūra",
     "mediaCollection": "მედijos rinkinys",
-    "scrollToVideo": "Slinkite iki {title} vaizdo įrašo"
+    "scrollToVideo": "Slinkite iki {title} vaizdo įrašo",
+    "forYou": "Jums"
   },
   "WatchFooter": {
     "home": "Jesus Film Project pradžia",
@@ -404,6 +594,29 @@
     "merryChristmas": "Linksmų Kalėdų!",
     "daysUntilChristmas": "{count, plural, one {Iki Kalėdų liko # diena} few {Iki Kalėdų liko # dienos} other {Iki Kalėdų liko # dienų}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Naršyti biblioteką",
+    "title": "Naršyti pagal kategoriją",
+    "description": "Pereikite tiesiai į reikiamą bibliotekos dalį – Jėzaus gyvenimą, bažnytinių metų laikotarpius ir vaizdo įrašus šeimoms, studentams bei mažoms grupėms.",
+    "seeAll": "Žiūrėti visus vaizdo įrašus",
+    "previous": "Ankstesnės kategorijos",
+    "next": "Kitos kategorijos",
+    "categories": {
+      "jesus": "Filmas „JĖZUS“",
+      "gospels": "Evangelijos",
+      "shortVideos": "Trumpi vaizdo įrašai",
+      "family": "Šeima",
+      "relationships": "Santykiai",
+      "women": "Moterims",
+      "students": "Studentams",
+      "sports": "Sportas",
+      "goodNews": "Geroji Naujiena",
+      "hope": "Viltis",
+      "training": "Mokymai",
+      "easter": "Velykos",
+      "christmas": "Kalėdos"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Kalbos",
     "metadataDescription": "Naršykite JesusFilm vaizdo įrašus pagal kalbą.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Puslapis nerastas:",
     "title": "Šios scenos čia nėra.",
     "description": "Puslapis galėjo būti perkeltas, bet istorija tęsiasi.",
+    "languageDescription": "Nepavyko rasti ieškomo puslapio, bet istorija tęsiasi filmuose ir vaizdo įrašuose įvairiomis pasaulio kalbomis.",
     "actionsLabel": "Veiksmai, kai puslapis nerastas",
     "backToWatch": "Grįžti į žiūrėjimą",
     "browseVideos": "Naršyti vaizdo įrašus"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Žiūrėti trumpametražį filmą",
-    "actions": {
-      "joinUs": "Prisijunkite prie mūsų",
-      "shareMission": "Prisidėkite prie mūsų misijos"
-    },
-    "welcomeStart": {
-      "label": "Tikėjimas ir Raštas",
-      "title": "Šiandienos vaizdo įrašų pasirinkimai",
-      "description": "Tikėjimu grįstas vaizdo turinys iš mūsų bibliotekos, skirtas įkvėpti, paskatinti ir paskatinti apmąstymus."
-    },
-    "welcomeMorning": {
-      "label": "Rytinis įkvėpimas",
-      "title": "Labas rytas! Šiandienos Biblijos akimirkos jūsų laukia.",
-      "description": "Pradėkite dieną su padrąsinančiomis Biblijos akimirkomis, skirtomis įkvėpti ir pakylėti jūsų dvasią."
-    },
-    "welcomeAfternoon": {
-      "label": "Popietės įkvėpimas",
-      "title": "Labas! Biblijos akimirkos jūsų dienai.",
-      "description": "Padrąsinantis Biblijos turinys, puikiai tinkantis popietės pertraukai arba tolesniam įkvėpimui."
-    },
-    "welcomeEvening": {
-      "label": "Vakaro įkvėpimas",
-      "title": "Labas vakaras! Atsipalaiduokite su Biblijos akimirkomis.",
-      "description": "Ramybę suteikiančios Biblijos akimirkos, padedančios apmąstyti ir rasti paguodą dienai baigiantis."
-    },
-    "joinUs": {
-      "label": "Prisijunkite prie mūsų",
-      "title": "Milijardai ieško",
-      "description": "Derlius jau čia. Prisijunkite prie mūsų, kai dalijamės Evangelija su pasauliu naudodami skaitmenines medijas."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Eikime kartu",
-      "title": "Kartu pasakokime Jėzaus istoriją",
-      "description": "Kad jie galėtų girdėti ir matyti Jėzaus meilę savo kalba ten, kur yra."
-    }
-  },
   "VideoRecommendations": {
     "match": "Atitiktis: {percent} %",
-    "none": "Šiam vaizdo įrašui rekomendacijų šia kalba nerasta."
+    "none": "Šiam vaizdo įrašui rekomendacijų šia kalba nerasta.",
+    "heading": "Rekomenduojami vaizdo įrašai",
+    "loadingLabel": "Įkeliami rekomenduojami vaizdo įrašai",
+    "openingTitle": "Atidaroma: {title}",
+    "openingVideo": "Atidaromas vaizdo įrašas",
+    "activityNotRecorded": "Nepavyko užfiksuoti veiksmų su rekomendacijomis. Nuorodos vis tiek veikia.",
+    "showingContextual": "Rodomos kontekstinės rekomendacijos.",
+    "showingSaved": "Rodomos išsaugotos rekomendacijos.",
+    "explanationCurated": "Atrinkti vaizdo įrašai, kuriuos verta atrasti.",
+    "explanationViewingMode": "Rekomenduojama pagal šį vaizdo įrašą ir tai, kaip žiūrite.",
+    "explanationCowatch": "Rekomenduojama pagal šį vaizdo įrašą ir jūsų pomėgius.",
+    "explanationHybrid": "Rekomenduojama pagal šį vaizdo įrašą ir pomėgius, kuriuos pasirinkote įsiminti.",
+    "explanationContextual": "Rekomenduojama pagal tai, ką žiūrite dabar.",
+    "explanationSemanticFallback": "Rekomenduojama pagal tai, ką žiūrite dabar, kol suasmeninimas nepasiekiamas.",
+    "explanationProfileDurable": "Suasmeninta pagal pomėgius, kuriuos pasirinkote įsiminti.",
+    "explanationProfileVisit": "Suasmeninta šiam apsilankymui.",
+    "personalizationLabel": "Rekomendacijų suasmeninimas",
+    "personalizationPrompt": "Norite pakeisti, kaip suasmeninamos rekomendacijos?",
+    "openCookieSettings": "Atidaryti slapukų nustatymus"
   },
   "BetaTesterModal": {
     "title": "Tapti beta testeriu",
@@ -538,16 +732,39 @@
     "retryFailed": "Kartoti nepavykusius atsisiuntimus"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versija šia kalba nepasiekiama",
+    "eyebrow": "Versija šia kalba nepasiekiama",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>{language}</languageName> kalba versijos nėra",
+    "actionsLabel": "Galimi peržiūros būdai",
+    "browseInLanguage": "Visi vaizdo įrašai {language} kalba",
+    "backToSearch": "Grįžti į paiešką",
+    "audioVersionsTitle": "Kitos garso versijos",
+    "audioVersionsDescription": "Pasirinkite garso kalbą, kad galėtumėte toliau žiūrėti šį vaizdo įrašą.",
+    "languageVersionLabel": "Garso kalba",
+    "selectLanguageVersion": "Pasirinkite kalbos versiją",
+    "watchSelectedVersion": "Žiūrėti pasirinktą versiją"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Slapukų pasirinkimai",
+    "bannerTitle": "Jūsų privatumo pasirinkimai",
+    "bannerDescription": "Būtini slapukai užtikrina „Watch“ saugumą ir veikimą. Jums sutikus, pasirenkamas pirmosios šalies slapukas gali įsiminti jūsų pomėgius tarp apsilankymų, kad rekomendacijos būtų suasmenintos. Kontekstinės rekomendacijos pasiekiamos bet kuriuo atveju.",
+    "acceptAll": "Priimti visus",
+    "essentialOnly": "Tik būtinus",
+    "manageChoices": "Tvarkyti pasirinkimus",
+    "savingChoice": "Įrašomas slapukų pasirinkimas",
+    "settings": "Slapukų nustatymai",
+    "settingsDescription": "Pasirinkite, ar „Watch“ gali įsiminti rekomendacijų pomėgius tarp apsilankymų. Tai galite bet kada pakeisti.",
+    "essentialCookies": "Būtini slapukai",
+    "essentialDescription": "Saugumas, atkūrimas, privatumo pasirinkimai ir rekomendacijų užklausų priskyrimas.",
+    "alwaysActive": "Visada aktyvuota",
+    "personalization": "Suasmeninimas",
+    "personalizationDescription": "Įsiminti ribotus pomėgius tarp apsilankymų. Išjungus šią parinktį, kontekstinės rekomendacijos vis tiek bus pasiekiamos.",
+    "erasurePending": "Profilio ištrynimas laukia patvirtinimo. Kontekstinės rekomendacijos jau aktyvios.",
+    "cancel": "Atšaukti",
+    "saveChoices": "Išsaugoti pasirinkimus",
+    "saving": "Išsaugoma…",
+    "loadError": "Nepavyko įkelti jūsų pasirinkimo. Vis tiek galite pasirinkti toliau.",
+    "grantError": "Nepavyko įjungti suasmeninimo. Galima naudoti tik būtinus nustatymus.",
+    "saveError": "Nepavyko išsaugoti jūsų pasirinkimo. Bandykite dar kartą."
   }
 }

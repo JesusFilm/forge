@@ -26,6 +26,7 @@ const {
   heroPlayerMock,
   siblingCarouselMock,
   watchBodyMock,
+  watchSemanticRecommendationsMock,
   watchStudyQuestionsMock,
   bibleQuotesSectionMock,
 } = vi.hoisted(() => ({
@@ -151,6 +152,16 @@ const {
       )
     },
   ),
+  watchSemanticRecommendationsMock: vi.fn(
+    ({ seedMediaId }: { seedMediaId: string }) => (
+      <div
+        data-block-type="SemanticRecommendations"
+        data-seed-media-id={seedMediaId}
+      >
+        Semantic recommendations mock
+      </div>
+    ),
+  ),
   // U7 — WatchStudyQuestions has its own test file. Mocked here so the
   // dispatch test doesn't depend on its internal markup.
   watchStudyQuestionsMock: vi.fn(() => (
@@ -184,6 +195,16 @@ const {
   ),
 }))
 
+const { audienceFrameMock } = vi.hoisted(() => ({
+  audienceFrameMock: vi.fn((props: { languageSlug?: string }) => (
+    <div
+      data-testid="watch-audience-frame-mock"
+      data-language={props.languageSlug}
+    />
+  )),
+}))
+vi.mock("next/dynamic", () => ({ default: () => audienceFrameMock }))
+
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: experienceSectionRendererMock,
 }))
@@ -200,6 +221,10 @@ vi.mock("@/components/watch/WatchBody", () => ({
   WatchBody: watchBodyMock,
 }))
 
+vi.mock("@/components/recommendations/WatchSemanticRecommendations", () => ({
+  WatchSemanticRecommendations: watchSemanticRecommendationsMock,
+}))
+
 vi.mock("@/components/watch/WatchStudyQuestions", () => ({
   WatchStudyQuestions: watchStudyQuestionsMock,
 }))
@@ -211,6 +236,7 @@ vi.mock("@/components/watch/BibleQuotesSection", () => ({
 import {
   buildBibleQuotesBlock,
   buildHeroBlock,
+  buildSemanticRecommendationsBlock,
   buildShareBlock,
   buildSiblingCarouselBlock,
   buildStudyQuestionsBlock,
@@ -224,10 +250,12 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  audienceFrameMock.mockClear()
   experienceSectionRendererMock.mockClear()
   heroPlayerMock.mockClear()
   siblingCarouselMock.mockClear()
   watchBodyMock.mockClear()
+  watchSemanticRecommendationsMock.mockClear()
   watchStudyQuestionsMock.mockClear()
   bibleQuotesSectionMock.mockClear()
   container = document.createElement("div")
@@ -294,6 +322,35 @@ function makeParent(childrenCount = 2) {
 }
 
 describe("WatchSectionRenderer — synthetic block dispatch", () => {
+  it("dispatches the route-owned semantic recommendation slot", () => {
+    const block = buildSemanticRecommendationsBlock(makeVideo())
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          languageSlug="english"
+          locale="en"
+        />,
+      )
+    })
+
+    expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        seedMediaId: "video-1",
+        seedMediaSlug: "jesus",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }),
+      undefined,
+    )
+    expect(
+      container
+        .querySelector('[data-block-type="SemanticRecommendations"]')
+        ?.getAttribute("data-seed-media-id"),
+    ).toBe("video-1")
+  })
+
   it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {
     const video = makeVideo({
       studyQuestions: [{ documentId: "sq-1", value: "Q?", order: 1 }],
@@ -445,8 +502,10 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
   })
 
-  it("passes the page Share modal callback to HeroPlayer", () => {
+  it("passes page modal actions and pending-language cancellation to HeroPlayer", () => {
     const openShare = vi.fn()
+    const openLanguage = vi.fn()
+    const cancelPendingLanguage = vi.fn()
 
     act(() => {
       root.render(
@@ -455,8 +514,9 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           modalCallbacks={{
             closeModal: vi.fn(),
             openDownload: vi.fn(),
-            openLanguage: vi.fn(),
+            openLanguage,
             openShare,
+            cancelPendingLanguage,
           }}
         />,
       )
@@ -468,6 +528,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(share).not.toBeNull()
     share.click()
     expect(openShare).toHaveBeenCalledTimes(1)
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onLanguageClick: openLanguage,
+        onCancelLanguageOpen: cancelPendingLanguage,
+      }),
+      undefined,
+    )
   })
 
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {
@@ -619,6 +686,84 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain(
       "STRAPI:ComponentSectionsPromoBanner",
+    )
+  })
+})
+
+describe("audience integration", () => {
+  it("adds the frame without moving authored blocks or remounting the player", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const blocks = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+    ]
+    act(() =>
+      root.render(
+        <WatchSectionRenderer blocks={blocks} languageSlug="spanish" />,
+      ),
+    )
+    const player = container.querySelector('[data-block-type="HeroPlayer"]')
+    expect(
+      container.querySelector('[data-testid="watch-audience-frame-mock"]'),
+    ).toBeNull()
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audienceEnabled
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(container.querySelector('[data-block-type="HeroPlayer"]')).toBe(
+      player,
+    )
+    expect(
+      Array.from(container.querySelectorAll("[data-block-type]"), (element) =>
+        element.getAttribute("data-block-type"),
+      ),
+    ).toEqual(["HeroPlayer", "WatchBody"])
+    expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ languageSlug: "spanish" }),
+    )
+  })
+
+  it("hands the published audience configuration to the one lazy frame, only while the rollout is on", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const blocks = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+    ]
+    const audience = { kind: "rejected" } as const
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audience={audience}
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    // The rollout flag still gates the frame; a configuration alone mounts nothing.
+    expect(audienceFrameMock).not.toHaveBeenCalled()
+
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audience={audience}
+          audienceEnabled
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(
+      container.querySelectorAll('[data-testid="watch-audience-frame-mock"]'),
+    ).toHaveLength(1)
+    expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ audience, languageSlug: "spanish" }),
     )
   })
 })

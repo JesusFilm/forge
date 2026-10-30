@@ -12,11 +12,29 @@ export default defineConfig(
       "**/build/**",
       "**/.next/**",
       "**/node_modules/**",
+      "**/src/generated/**",
       "**/next-env.d.ts",
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ["apps/manager/**/*.{ts,tsx}", "apps/web/**/*.{ts,tsx}"],
+    // Match the apps' Next lint passes so their intentional full-navigation
+    // directives also work when lint-staged runs from the repository root.
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        location: "readonly",
+        document: "readonly",
+        self: "readonly",
+      },
+    },
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      "@next/next/no-location-assign-relative-destination": "warn",
+    },
+  },
   {
     files: ["apps/manager/**/*.tsx", "apps/manager/**/*.ts"],
     plugins: {
@@ -40,6 +58,26 @@ export default defineConfig(
     },
   },
   {
+    files: ["apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] JSXExpressionContainer > TemplateLiteral TemplateElement[value.raw=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+      ],
+    },
+  },
+  {
     // Keep exhaustive-deps enabled here so it matches apps/chat's own
     // next/core-web-vitals config — a directive valid in one lint pass
     // must not be an unknown rule or unused suppression in the other.
@@ -52,6 +90,30 @@ export default defineConfig(
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/exhaustive-deps": "warn",
       "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    // Same rule as the apps/chat block above: apps/web's own lint pass runs
+    // next/core-web-vitals, so a react-hooks directive valid there must not
+    // be an unknown rule in this pass (it error-fails lint-staged at commit).
+    files: ["apps/web/**/*.tsx", "apps/web/**/*.ts"],
+    plugins: {
+      "react-hooks": reactHooksPlugin,
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    files: ["apps/rag/**/*.ts", "apps/rag/**/*.tsx"],
+    rules: {
+      "max-lines": [
+        "error",
+        { max: 300, skipBlankLines: true, skipComments: true },
+      ],
     },
   },
   {

@@ -1,5 +1,4 @@
 import { Clapperboard, Globe2, UsersRound } from "lucide-react"
-import { BetaTesterTrigger } from "@/components/watch/BetaTesterModalProvider"
 import { useTranslations } from "next-intl"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
@@ -45,7 +44,7 @@ export function WatchHomePromo() {
       <div className={WATCH_PAGE_CONTENT_CLASSES}>
         <div className="flex flex-col gap-14">
           <div className="max-w-3xl space-y-4">
-            <p className="text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
+            <p className="text-sm sm:text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
               {t("eyebrow")}
             </p>
             <h2 className="text-3xl leading-tight font-semibold tracking-normal text-white sm:text-4xl lg:text-5xl">
@@ -71,7 +70,7 @@ export function WatchHomePromo() {
                   <h3 className="mt-6 text-xl font-semibold text-white">
                     {t(point.titleKey)}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  <p className="mt-3 text-base sm:text-sm leading-relaxed text-white/70">
                     {t(point.descriptionKey)}
                   </p>
                 </article>
@@ -92,33 +91,12 @@ export function WatchHomePromo() {
                   <h3 className="text-lg font-semibold text-white">
                     {t(highlight.titleKey)}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  <p className="mt-3 text-base sm:text-sm leading-relaxed text-white/70">
                     {t(highlight.descriptionKey)}
                   </p>
                 </article>
               ))}
             </div>
-          </div>
-
-          <div className="mt-12 mb-16 text-center">
-            <p className="mb-4 text-xs font-semibold tracking-[0.3em] text-red-100/70 uppercase">
-              {t("invitationEyebrow")}
-            </p>
-            <h3 className="mb-4 text-3xl font-semibold text-white">
-              {t.rich("invitationTitle", {
-                highlight: (chunks) => (
-                  <span className="bg-gradient-to-r from-purple-400 via-blue-500 to-pink-500 bg-clip-text text-transparent">
-                    {chunks}
-                  </span>
-                ),
-              })}
-            </h3>
-            <p className="mx-auto mb-8 max-w-2xl text-lg text-white/80 lg:text-xl">
-              {t("invitationDescription")}
-            </p>
-            <BetaTesterTrigger className="inline-flex h-12 items-center justify-center rounded-md bg-white px-10 py-3 text-base font-medium text-black transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
-              {t("betaTester")}
-            </BetaTesterTrigger>
           </div>
         </div>
       </div>

@@ -154,6 +154,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -172,6 +173,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
         utilitySlot={<button type="button">Create persona version</button>}
       />,
     )
@@ -182,6 +184,76 @@ describe("ExperienceChatPanel", () => {
       '[data-testid="experience-chat-panel"]',
     )
     expect(panel?.textContent).toContain("Create persona version")
+  })
+
+  it("reports Experience-mutating generation as busy", async () => {
+    const onBusyChange = vi.fn()
+    const draftDeferred: {
+      resolve?: (result: {
+        ok: true
+        draft: {
+          title: string
+          metaDescription: string
+          blocks: unknown[]
+        }
+      }) => void
+    } = {}
+    const generateDraftAction = vi.fn(
+      () =>
+        new Promise<{
+          ok: true
+          draft: {
+            title: string
+            metaDescription: string
+            blocks: unknown[]
+          }
+        }>((resolve) => {
+          draftDeferred.resolve = resolve
+        }),
+    )
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        defaultCollapsed={false}
+        generateDraftAction={generateDraftAction}
+        onBusyChange={onBusyChange}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+    onBusyChange.mockClear()
+
+    const textarea = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    )
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      throw new Error("Chat input not found")
+    }
+    setTextareaValue(textarea, "Create a hopeful draft")
+    const quickDraft = view.container.querySelector(
+      '[data-testid="experience-chat-quick-draft"]',
+    )
+    if (!(quickDraft instanceof HTMLButtonElement)) {
+      throw new Error("Quick draft button not found")
+    }
+
+    act(() => quickDraft.click())
+    await flush()
+    expect(onBusyChange).toHaveBeenCalledWith(true)
+
+    draftDeferred.resolve?.({
+      ok: true,
+      draft: {
+        title: "Hope",
+        metaDescription: "A hopeful page",
+        blocks: [],
+      },
+    })
+    await flush()
+    expect(onBusyChange).toHaveBeenLastCalledWith(false)
   })
 
   it("video-anchored section: stages an append-mode draft and Apply appends to existing canvas blocks", async () => {
@@ -239,6 +311,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={canvas}
         actions={makeActions()}
+        defaultCollapsed={false}
         videoLibrary={[makeVideo({ key: "vid1", title: "The Resurrection" })]}
         generateSectionAction={generateSectionAction}
       />,
@@ -298,6 +371,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
         videoLibrary={[makeVideo({ key: "vid1", title: "The Resurrection" })]}
         generateSectionAction={generateSectionAction}
       />,
@@ -358,6 +432,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
         videoLibrary={[
           makeVideo({
             key: "bare",
@@ -412,6 +487,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -439,6 +515,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -508,6 +585,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -540,6 +618,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -569,6 +648,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -622,6 +702,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={canvas}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -668,6 +749,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -730,6 +812,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={canvas}
         actions={actions}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -754,6 +837,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -810,6 +894,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -856,6 +941,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={makeActions()}
+        defaultCollapsed={false}
       />,
     )
     cleanup = view.cleanup
@@ -885,6 +971,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -923,6 +1010,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -1004,6 +1092,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={canvas}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -1073,6 +1162,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={makeCanvasController()}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -1138,6 +1228,7 @@ describe("ExperienceChatPanel", () => {
         locale="en"
         canvasController={canvas}
         actions={actions}
+        defaultCollapsed={false}
         streamFactory={streamFactory as never}
       />,
     )
@@ -1167,5 +1258,233 @@ describe("ExperienceChatPanel", () => {
         '[data-testid="experience-chat-message-asst-err"]',
       ),
     ).toBeNull()
+  })
+  // ---------------------------------------------------------------------------
+  // Collapsible rail
+  // ---------------------------------------------------------------------------
+
+  it("starts collapsed: the rail shows only the expand affordance", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const panel = view.container.querySelector(
+      '[data-testid="experience-chat-panel"]',
+    ) as HTMLElement
+    expect(panel.dataset.collapsed).toBe("true")
+
+    const expandBtn = view.container.querySelector(
+      '[data-testid="experience-chat-expand"]',
+    ) as HTMLButtonElement
+    expect(expandBtn.hidden).toBe(false)
+
+    // Body stays mounted but is out of the a11y tree / tab order.
+    const body = view.container.querySelector(
+      '[data-testid="experience-chat-composer"]',
+    )?.parentElement as HTMLElement
+    expect(body.hidden).toBe(true)
+    expect(
+      view.container.querySelector('[data-testid="experience-chat-input"]'),
+    ).not.toBeNull()
+  })
+
+  it("expand then collapse flips the rail back and forth", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const panel = view.container.querySelector(
+      '[data-testid="experience-chat-panel"]',
+    ) as HTMLElement
+    const expandBtn = view.container.querySelector(
+      '[data-testid="experience-chat-expand"]',
+    ) as HTMLButtonElement
+    expect(panel.dataset.collapsed).toBe("true")
+
+    act(() => expandBtn.click())
+    await flush()
+    expect(panel.dataset.collapsed).toBe("false")
+    expect(expandBtn.hidden).toBe(true)
+    const body = view.container.querySelector(
+      '[data-testid="experience-chat-composer"]',
+    )?.parentElement as HTMLElement
+    expect(body.hidden).toBe(false)
+
+    const collapseBtn = view.container.querySelector(
+      '[data-testid="experience-chat-collapse"]',
+    ) as HTMLButtonElement
+    act(() => collapseBtn.click())
+    await flush()
+    expect(panel.dataset.collapsed).toBe("true")
+    expect(body.hidden).toBe(true)
+  })
+
+  it("honours defaultCollapsed={false} for callers that want it open", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        defaultCollapsed={false}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const panel = view.container.querySelector(
+      '[data-testid="experience-chat-panel"]',
+    ) as HTMLElement
+    expect(panel.dataset.collapsed).toBe("false")
+    expect(
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-expand"]',
+        ) as HTMLButtonElement
+      ).hidden,
+    ).toBe(true)
+  })
+
+  it("collapsing keeps panel state: an unsent draft survives the round trip", async () => {
+    const actions = makeActions()
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={actions}
+        defaultCollapsed={false}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const input = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    ) as HTMLTextAreaElement
+    setTextareaValue(input, "half-written prompt")
+    await flush()
+
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-collapse"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-expand"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    // Same node, same value — the body was hidden, never unmounted.
+    expect(
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-input"]',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe("half-written prompt")
+    // The mount-time thread load ran exactly once (no remount refetch).
+    expect(actions.listThreads).toHaveBeenCalledTimes(1)
+  })
+  it("re-runs the scroll-to-bottom on expand (a hidden list has scrollHeight 0)", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const list = view.container.querySelector(
+      '[data-testid="experience-chat-message-list"]',
+    ) as HTMLDivElement
+    // jsdom has no layout; stand in for a list taller than its viewport.
+    Object.defineProperty(list, "scrollHeight", { value: 640, writable: true })
+    list.scrollTop = 0
+
+    act(() =>
+      (
+        view.container.querySelector(
+          '[data-testid="experience-chat-expand"]',
+        ) as HTMLButtonElement
+      ).click(),
+    )
+    await flush()
+
+    expect(list.scrollTop).toBe(640)
+  })
+
+  it("hands focus to the counterpart control on each toggle", async () => {
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+
+    const expandBtn = view.container.querySelector(
+      '[data-testid="experience-chat-expand"]',
+    ) as HTMLButtonElement
+
+    act(() => expandBtn.click())
+    await flush()
+    const collapseBtn = view.container.querySelector(
+      '[data-testid="experience-chat-collapse"]',
+    ) as HTMLButtonElement
+    expect(document.activeElement).toBe(collapseBtn)
+
+    act(() => collapseBtn.click())
+    await flush()
+    expect(document.activeElement).toBe(expandBtn)
+  })
+
+  it("does not steal focus on first paint", async () => {
+    const outside = document.createElement("button")
+    document.body.appendChild(outside)
+    outside.focus()
+
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+      />,
+    )
+    cleanup = () => {
+      view.cleanup()
+      outside.remove()
+    }
+    await flush()
+
+    expect(document.activeElement).toBe(outside)
   })
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   cosineSimilarityFromText,
   dedupeByVideoIdentity,
+  videoIdentityDuplicateReason,
   type VideoDedupKeys,
 } from "./video-dedup"
 
@@ -10,6 +11,15 @@ function toEmbeddingText(values: number[]): string {
 }
 
 describe("dedupeByVideoIdentity", () => {
+  it("exposes the canonical identity rule used by candidate-stage evidence", () => {
+    expect(
+      videoIdentityDuplicateReason(
+        { videoCoreId: "core-a-square", videoTitle: "Square" },
+        { videoCoreId: "core-a", videoTitle: "Wide" },
+      ),
+    ).toBe("core_prefix")
+  })
+
   it("removes coreId-prefix duplicate (candidate prefix of kept)", () => {
     const rows: VideoDedupKeys[] = [
       { resultType: "video", videoCoreId: "4_Win4GoodNewsJesus" },

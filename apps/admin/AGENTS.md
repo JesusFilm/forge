@@ -85,6 +85,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 
 ## Workflow
 
+- Recommendation cleanup runs concurrently with serving. Keep retention health
+  reporting separate from delivery admission and preserve per-record privacy
+  and expiry checks; see `docs/analytics-and-recommendation-policy.md`.
+
 - Requirements: `docs/brainstorms/2026-04-13-admin-app-graphql-postgres-requirements.md`
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - Follow compound engineering: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
@@ -124,3 +128,23 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
   `apps/mobile`, `apps/mobile-v2`, or `apps/manager`.
 - Do not hand-edit `.next/`, generated Prisma Client, or Pothos-generated types.
 - Do not introduce new direct `process.env` reads — extend `src/config/env.ts`.
+  The standalone migration deploy/recovery scripts are the exception: they may
+  read required database and retry settings without loading application auth
+  configuration. Validate those inputs and never print connection strings.
+
+## Studio authoring foundation
+
+For Studio project commands, history, approval or publication changes, read
+`docs/solutions/database-issues/studio-command-revisions-and-publication-latch.md`
+from the repository root. Admin owns the durable module; Manager uses
+`apps/manager/src/backend/studio-client.ts` through Admin GraphQL. The neutral contract is
+`@forge/studio-contracts`. The internal publication seam has no public publish
+mutation until feat-460 supplies its catalog/render/approval checks.
+
+For shared Studio assets, Content Packs, source capture/materialization or asset
+lifecycle guards, read
+`docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`.
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

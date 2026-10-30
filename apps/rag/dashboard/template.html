@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JesusFilm RAG — source &amp; language coverage</title>
+    <meta
+      name="description"
+      content="Every source known to the JesusFilm RAG project — what is retrievable in production, what is blocked, and what is documented for future ingestion."
+    />
+    <!--
+      Styling follows the Jesus Film Project design system (colors_and_type.css):
+      Jesus Film Red leads, warm neutrals, Inter + Noto Serif, hairline dividers,
+      no green in the brand — status uses navy / marigold / red instead. Built to
+      the anti-slop checklist: no gradients, functional color, real hierarchy,
+      honest data, a semantic left-aligned table — no hero, no card grid.
+      NOTE: Inter is the JFP brand typeface, used here intentionally; the anti-
+      slop "avoid Inter as a lazy default" rule is satisfied by it being a
+      deliberate brand decision, not a fallback.
+
+      Layout (issue #100): a source LEDGER — one row per source, languages as
+      stage-colored chips (label + count only; stage = color + one glyph, never
+      color alone), grouped In production / Blocked / Proposed / Retired. Chips
+      wrap with the viewport, so a many-language source stays one row. The
+      secondary "Unclassified documents" table (#86) remains below the ledger.
+    -->
+    <style>
+      :root {
+        --red: #ef3340;
+        --maroon: #91214a;
+        --navy: #424a66;
+        --marigold: #ff9e00;
+        --soft-black: #4d4d4d;
+        --white: #ffffff;
+        --warm-white: #f0ede3;
+        --warm-gray-1: #b0afa8;
+        --gray-2: #e7e9e9;
+        --fg: #2e2e2e;
+        --fg-secondary: #6a6a6a;
+        --border: #e7e9e9;
+
+        --font-sans:
+          "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-serif: "Noto Serif", Georgia, serif;
+        --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 24px;
+        --space-6: 32px;
+        --space-7: 48px;
+        --radius: 4px;
+        --container: 1180px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--white);
+        color: var(--fg);
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+      }
+      .skip-link:focus {
+        left: var(--space-4);
+        top: var(--space-4);
+        z-index: 2;
+        background: var(--white);
+        color: var(--fg);
+        padding: var(--space-3);
+        outline: 3px solid var(--red);
+      }
+      a:focus-visible {
+        outline: 3px solid var(--red);
+        outline-offset: 3px;
+      }
+
+      .wrap {
+        max-width: var(--container);
+        margin: 0 auto;
+        padding: var(--space-7) var(--space-5) var(--space-7);
+      }
+
+      /* ── Header ─────────────────────────────────────────────────────────── */
+      header {
+        border-bottom: 2px solid var(--red);
+        padding-bottom: var(--space-4);
+        margin-bottom: var(--space-6);
+      }
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--red);
+        margin: 0 0 var(--space-2);
+      }
+      h1 {
+        font-family: var(--font-sans);
+        font-weight: 800;
+        font-size: 36px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        margin: 0;
+        color: var(--fg);
+      }
+      h1 .brand {
+        color: var(--red);
+      }
+      .subtitle {
+        font-family: var(--font-serif);
+        font-size: 18px;
+        color: var(--fg-secondary);
+        margin: var(--space-3) 0 0;
+        max-width: 62ch;
+      }
+      .updated {
+        font-size: 13px;
+        color: var(--fg-secondary);
+        margin: var(--space-3) 0 0;
+      }
+
+      /* ── Summary stats ──────────────────────────────────────────────────── */
+      .summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-6);
+        margin: 0 0 var(--space-6);
+        padding: var(--space-4) 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .stat {
+        display: flex;
+        flex-direction: column;
+      }
+      .stat-value {
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 600;
+        color: var(--fg);
+        line-height: 1.1;
+      }
+      .stat-label {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        margin-top: var(--space-1);
+      }
+
+      /* ── Ledger table ───────────────────────────────────────────────────── */
+      .table-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 940px;
+      }
+      thead th {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        text-align: left;
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+        background: var(--warm-white);
+        white-space: nowrap;
+      }
+      thead th.col-count {
+        text-align: right;
+      }
+      tbody td {
+        padding: var(--space-3) var(--space-4);
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: rgba(239, 51, 64, 0.04);
+      }
+
+      .source-name {
+        display: block;
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .source-host {
+        display: block;
+        font-size: 13px;
+        color: var(--fg-secondary);
+        font-family: var(--font-mono);
+      }
+      .col-count {
+        text-align: right;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .col-missing {
+        font-size: 13px;
+        color: var(--fg);
+        max-width: 42ch;
+      }
+      .col-missing em {
+        color: var(--fg-secondary);
+      }
+      .method {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--fg);
+        background: var(--warm-white);
+        border-radius: var(--radius);
+        padding: 1px 7px;
+        white-space: nowrap;
+      }
+
+      /* group separator rows */
+      .group-row td {
+        background: var(--warm-white);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--fg-secondary);
+        padding: var(--space-2) var(--space-4);
+        border-bottom: 1px solid var(--border);
+      }
+      tr.row-documented.state-retired td {
+        color: var(--fg-secondary);
+      }
+      tr.row-documented.state-retired .source-name {
+        color: var(--fg-secondary);
+      }
+
+      /* ── State pills (progressive lifecycle, brand palette — no green) ──── */
+      .stage {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--fg-secondary);
+        white-space: nowrap;
+      }
+      .stage-evaluated {
+        color: var(--red);
+        border-color: rgba(239, 51, 64, 0.4);
+        background: rgba(239, 51, 64, 0.06);
+      }
+      .stage-ingested {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.4);
+        background: rgba(66, 74, 102, 0.06);
+      }
+      .stage-acquired {
+        color: var(--soft-black);
+        background: var(--warm-white);
+      }
+      .stage-blocked {
+        color: var(--maroon);
+        border-color: rgba(145, 33, 74, 0.4);
+        background: rgba(145, 33, 74, 0.06);
+      }
+      .stage-proposed {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.35);
+        background: var(--white);
+      }
+      .stage-not-started,
+      .stage-retired {
+        color: var(--soft-black);
+        border-color: var(--warm-gray-1);
+        background: var(--gray-2);
+      }
+
+      /* ── Language chips: label + count only; stage = color + one glyph ──── */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 5px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        line-height: 1;
+        padding: 4px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .chip .g {
+        font-weight: 700;
+      }
+      .chip .l {
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+      .chip .n {
+        font-variant-numeric: tabular-nums;
+      }
+      .chip-evaluated {
+        color: var(--red);
+        border-color: rgba(239, 51, 64, 0.45);
+        background: rgba(239, 51, 64, 0.06);
+      }
+      .chip-ingested {
+        color: var(--navy);
+        border-color: rgba(66, 74, 102, 0.45);
+        background: rgba(66, 74, 102, 0.06);
+      }
+      .chip-acquired {
+        color: var(--soft-black);
+        border-color: var(--warm-gray-1);
+        background: var(--warm-white);
+      }
+      .chip-blocked {
+        color: var(--maroon);
+        border-color: rgba(145, 33, 74, 0.5);
+        background: rgba(145, 33, 74, 0.06);
+      }
+      .chip-proposed {
+        color: var(--fg-secondary);
+        border-style: dashed;
+        background: var(--white);
+      }
+
+      /* ── Unclassified documents (secondary table, #86) ──────────────────── */
+      .unclassified {
+        margin-top: var(--space-7);
+      }
+      .section-title {
+        font-family: var(--font-sans);
+        font-weight: 700;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+        margin: 0 0 var(--space-2);
+        color: var(--fg);
+      }
+      .section-note {
+        font-family: var(--font-serif);
+        font-size: 15px;
+        color: var(--fg-secondary);
+        margin: 0 0 var(--space-4);
+        max-width: 70ch;
+      }
+      .unclassified-table {
+        min-width: 420px;
+      }
+
+      /* ── Legend (the chip key, between the stats and the ledger) ────────── */
+      .legend {
+        margin: 0 0 var(--space-5);
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          padding: var(--space-6) var(--space-4);
+        }
+        h1 {
+          font-size: 28px;
+        }
+        .summary {
+          gap: var(--space-5);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#corpus-ledger">Skip to corpus inventory</a>
+    <main class="wrap" id="main">
+      <header>
+        <p class="eyebrow">JesusFilm RAG</p>
+        <h1><span class="brand">JesusFilm</span> RAG</h1>
+        <p class="subtitle">
+          Sources in production, blocked, and planned for ingestion.
+        </p>
+        <p class="updated">
+          Production inventory observed
+          <!-- DASHBOARD_GENERATED_AT -->. Snapshot target: production-read.
+        </p>
+      </header>
+
+      <section class="summary"><!-- DASHBOARD_SUMMARY --></section>
+
+      <section class="legend" aria-labelledby="status-key">
+        <h2 id="status-key">How to read this status</h2>
+        <p>
+          <strong>Observed facts</strong> are document counts read from
+          production. <strong>Reviewed assertions</strong> are lifecycle
+          decisions stored in Forge and may describe work not yet present in
+          production. State text and symbols carry meaning; color is
+          supplementary.
+        </p>
+        <div class="chips">
+          <span class="chip chip-evaluated"
+            ><span class="n">evaluated</span></span
+          >
+          <span class="chip chip-ingested"
+            ><span class="g">◐</span
+            ><span class="n">ingested, eval pending</span></span
+          >
+          <span class="chip chip-acquired"
+            ><span class="g">○</span><span class="n">acquired only</span></span
+          >
+          <span class="chip chip-blocked"
+            ><span class="g">✕</span><span class="n">blocked</span></span
+          >
+          <span class="chip chip-proposed"
+            ><span class="g">⋯</span
+            ><span class="n">proposed / documented only</span></span
+          >
+        </div>
+      </section>
+
+      <div class="table-scroll">
+        <table id="corpus-ledger">
+          <caption>
+            Corpus sources: reviewed lifecycle state alongside
+            production-observed document inventory
+          </caption>
+          <thead>
+            <tr>
+              <th class="col-source" scope="col">Source</th>
+              <th class="col-state" scope="col">Reviewed lifecycle</th>
+              <th class="col-langs" scope="col">Declared languages</th>
+              <th class="col-count" scope="col">Production-observed docs</th>
+              <th class="col-missing" scope="col">Reviewed next step</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- DASHBOARD_ROWS -->
+          </tbody>
+        </table>
+      </div>
+
+      <section class="unclassified"><!-- DASHBOARD_UNCLASSIFIED --></section>
+    </main>
+  </body>
+</html>

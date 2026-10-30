@@ -1,6 +1,7 @@
 ---
 title: "Fullscreen watch route stopped auto-rotating to landscape: expo-dev-launcher 57 replaces the root view controller expo-screen-orientation needs"
 date: 2026-08-17
+superseded_by: docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md
 category: integration-issues
 module: "apps/mobile — fullscreen watch player (orientation lock)"
 problem_type: integration_issue
@@ -10,6 +11,7 @@ symptoms:
   - "expo-screen-orientation's lockAsync(LANDSCAPE) resolves successfully but getOrientationAsync still reports PORTRAIT_UP immediately after, confirmed via instrumentation."
   - "The identical pre-SDK-57-upgrade code also failed to rotate in the dev client, falsifying both the dual-orientation-mask and cross-layer-disagreement hypotheses tested first."
   - "A Release simulator build of the same app rotates to landscape on fullscreen enter and restores portrait on exit; the dev client cannot rotate under any orientation-mask combination."
+  - "SUPERSEDED 2026-08-26 — the clause above, 'the dev client cannot rotate under any orientation-mask combination', holds only while a react-native-screens orientation screen option is set. Read docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md."
 root_cause: config_error
 resolution_type: code_fix
 severity: high
@@ -28,6 +30,19 @@ framework_version: "expo 57.0.12 / expo-dev-launcher 57.0.11 / expo-screen-orien
 ---
 
 # Fullscreen watch route stopped auto-rotating to landscape: expo-dev-launcher 57 replaces the root view controller expo-screen-orientation needs
+
+> **Superseded 2026-08-26 — the dev client CAN rotate.** The mechanism below
+> (expo-dev-launcher's view-controller nesting) is right; the conclusion drawn
+> from it — "never judge orientation-forcing on the SDK 57 dev client, it cannot
+> force a rotation at all" — was scoped to a codebase that set a
+> react-native-screens `orientation` screen option. That option is what makes
+> `ScreenOrientationViewController` defer to the broken chain in the first
+> place; without it, expo answers from its own registry mask and the dev client
+> rotates exactly like a Release build. `useFullscreenPresentation` no longer
+> sets it. Read
+> `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`
+> before acting on the Prevention section below. The rest of this document
+> stays as the record of how the nesting was found.
 
 ## Problem
 
@@ -195,9 +210,22 @@ orientation values the app code passes.
 
 ## Prevention
 
+> **Superseded 2026-08-26 — read this section against the successor doc.** The
+> dev client CAN force a rotation. A change removed the react-native-screens
+> `orientation` screen option, which is what arms the broken view-controller
+> chain. The two claims below that still assert the old conclusion carry their
+> own dated markers. Successor:
+> `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+
 **Never judge orientation-forcing behavior on the SDK 57 dev client.** It
 cannot force a programmatic rotation at all, independent of mask choice. Any
 test of "does Fullscreen force landscape" must run on a Release build.
+
+> **Superseded 2026-08-26.** The dev client rotates like a Release build once
+> no screen carries a react-native-screens `orientation` option. Release-only
+> verification stays necessary for the window traits the launcher nesting still
+> blocks, such as the status bar. See
+> `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 
 **Symptom signature to recognize this class of bug fast:** physical
 rotation works, but programmatic forcing does not, and the lock call resolves
@@ -240,6 +268,14 @@ versions in this repo; re-verify the string-to-mask mapping in
 `RNSScreen.mm` / `ModuleOrientationLock.swift` (iOS) and `Screen.kt` /
 `OrientationLock.kt` (Android) after any react-native-screens or
 expo-screen-orientation version bump.
+
+> **Superseded 2026-08-26 — do NOT re-add the screen option.** There is one
+> orientation layer now. `useFullscreenPresentation` sets only the
+> `expo-screen-orientation` lock, and a react-native-screens `orientation`
+> screen option is what breaks the dev client.
+> `apps/mobile/app/__tests__/screenOrientationOption.guard.test.js` blocks the
+> re-add. See
+> `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 
 ## Related Issues
 

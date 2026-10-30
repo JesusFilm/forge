@@ -39,9 +39,8 @@
     "posterAlt": "Pānui ataata",
     "noDownloads": "Kāore he tikiake e wātea ana mō tēnei ataata.",
     "fileSizeLabel": "Tīpakohia te rahi kōnae",
-    "termsAgreementPrefix": "E whakaae ana ahau ki te ",
+    "termsAgreement": "E whakaae ana ahau ki <link>Ngā Ture Whakamahi</link>",
     "termsOfUse": "Ngā Ture Whakamahi",
-    "termsAgreementSuffix": "",
     "close": "Katia",
     "download": "Tikiake",
     "authRequiredTitle": "Kei te hiahia koe ki te tikiake i tēnei ataata?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Tiri ki Facebook (kāore i te wātea i tēnei putanga)",
     "shareOnX": "Tiri ki X",
     "shareOnXUnavailable": "Tiri ki X (kāore i te wātea i tēnei putanga)",
+    "opensInNewTab": "{label} (ka huaki i tētahi ripa hou)",
     "shareDisabledHint": "Me whai whārangi kua whakaputaina te tiri — ka mahi ina kei te production tēnei ataata.",
     "shareFormat": "Hōputu tiri",
     "shareLinkTab": "Tiri Hononga",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Panoni i te reo oro",
     "home": "Kainga JesusFilm",
     "closeSearch": "Katia te rapu",
-    "submitSearch": "Rapu"
+    "submitSearch": "Rapu",
+    "library": "Whare pukapuka"
   },
   "SearchOverlay": {
     "dialogLabel": "Rapu me te tirotiro ataata",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "I rahua te uta i ētahi atu hua.",
     "searching": "E rapu ana...",
     "connectionHint": "Tēnā tirohia tō hononga, ā, ngana anō.",
+    "rateLimitHint": "He nui rawa ngā tono. Me ngana anō ā te meneti.",
     "retrySearch": "Ngana anō ki te rapu",
     "retry": "Ngana anō",
     "noResults": "Kāore he hua mō \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Rapua “{suggestion}” mā te reo {language}",
     "inLanguage": "i roto i {language}",
     "browseByRegion": "Tirotiro mā te rohe",
+    "allVideosOnSinglePage": "Ngā ataata katoa i te whārangi kotahi",
     "clearLanguages": "Ūkui",
     "queryLanguageDetected": "Kua kitea {language}",
     "searchInLanguage": "Rapu mā te reo {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Mātakitaki ināianei",
     "tapToUnmute": "Pāwhiria kia whakakā te oro",
-    "nextEpisode": "Wāhanga Panuku"
+    "nextEpisode": "Wāhanga Panuku",
+    "audioTranslationCount": "{count, plural, one {# reo} other {# reo}}",
+    "subtitleCount": "Ngā Taitararoto: {count, plural, one {# reo} other {# reo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E uta ana i te ihirangi",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Kāore i taea te uta te puka urupare.",
     "loadingForm": "E uta ana i te puka urupare…",
     "retry": "Ngana anō",
-    "openFormShort": "Whakatuwhera puka",
     "cancel": "Whakakore",
-    "title": "Urupare Beta",
-    "description": "Tuhia ngā mea e pai ana te mahi me ngā mea ka taea te whakapai ake. Nā Google tēnei puka.",
-    "openInNewTab": "Whakatuwhera puka ki tētahi ripa hōu",
     "closeForm": "Katia te puka urupare",
-    "loadingGoogleForm": "E uta ana i te Puka Google…",
-    "iframeTitle": "Tuku Urupare Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Ngā ataata Karaitiana koreutu i roto i {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Hākinakina",
     "collections": "Ngā kohinga",
     "subtitlesOnly": "Ngā taitararoto anake",
+    "backToTop": "Hoki ki runga",
     "newlyAdded": "Kua tāpiritia hōu",
     "newVideosTitle": "Ngā ataata Karaitiana hōu i roto i {language}",
     "newestFirst": "Tō muri rawa ki mua",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Ngā ataata tū takitahi",
     "videosFromCollection": "Ngā ataata mai i {collection}.",
     "standaloneDescription": "Ngā ataata tū takitahi i tēnei reo.",
-    "openCollection": "Whakatuwhera kohinga"
+    "openCollection": "Whakatuwhera kohinga",
+    "filters": "Tātari",
+    "filterLength": "Roa",
+    "filterLength_under5": "Iti iho i te 5 meneti",
+    "filterLength_5to10": "5-10 meneti",
+    "filterLength_10to30": "10-30 meneti",
+    "filterLength_over30": "Neke atu i te 30 meneti",
+    "filterType": "Momo",
+    "clearFilters": "Whakakore i ngā tātari",
+    "filterResults": "E whakaatu ana i te {count} o te {total}",
+    "noFilterResults": "Kāore he ataata e ōrite ana ki ēnei tātari. Ngana ki te tango i tētahi.",
+    "filterAdded": "Kua tāpiritia",
+    "filterAdded_60d": "Ngā rā 60 kua hipa",
+    "filterAdded_6m": "Ngā marama 6 kua hipa",
+    "filterAdded_12m": "Ngā marama 12 kua hipa"
   },
   "WatchHome": {
     "pageTitle": "Mātakitaki | Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Arokite ataata o mua",
     "nextVideoPreview": "Arokite ataata panuku",
     "mediaCollection": "Kohinga pāpāho",
-    "scrollToVideo": "Panuku ki te ataata {title}"
+    "scrollToVideo": "Panuku ki te ataata {title}",
+    "forYou": "Māu"
   },
   "WatchFooter": {
     "home": "Kainga Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Meri Kirihimete!",
     "daysUntilChristmas": "{count, plural, one {# rā ki te Kirihimete} other {# rā ki te Kirihimete}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Tirotiro i te whare pukapuka",
+    "title": "Tirotiro mā te kāwai",
+    "description": "Haere tika atu ki te wāhanga o te whare pukapuka e hiahia ana koe — te oranga o Ihu, ngā wā o te tau hāhi, me ngā ataata i hangaia mō ngā whānau, ngā ākonga, me ngā rōpū iti.",
+    "seeAll": "Tirohia ngā ataata katoa",
+    "previous": "Ngā kāwai o mua",
+    "next": "Ngā kāwai panuku",
+    "categories": {
+      "jesus": "Te Kiriata JESUS",
+      "gospels": "Ngā Rongopai",
+      "shortVideos": "Ngā ataata poto",
+      "family": "Whānau",
+      "relationships": "Ngā Hononga",
+      "women": "Mō ngā Wāhine",
+      "students": "Mō ngā Ākonga",
+      "sports": "Hākinakina",
+      "goodNews": "Te Rongo Pai",
+      "hope": "Tūmanako",
+      "training": "Whakangungu",
+      "easter": "Aranga",
+      "christmas": "Kirihimete"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngā reo",
     "metadataDescription": "Tirotirohia ngā ataata JesusFilm mā te reo.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Kāore te whārangi i kitea:",
     "title": "Kāore tēnei āhuatanga i konei.",
     "description": "Kua neke pea te whārangi, engari kei te haere tonu te kōrero.",
+    "languageDescription": "Kāore i kitea e mātou te whārangi e rapua ana e koe, engari kei te haere tonu te kōrero i ngā kiriata me ngā ataata mai i ngā reo puta noa i te ao.",
     "actionsLabel": "Ngā mahi mō te whārangi kāore i kitea",
     "backToWatch": "Hoki ki te Watch",
     "browseVideos": "Tirotiro i ngā ataata"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mātakitaki Pikitia Poto",
-    "actions": {
-      "joinUs": "Hono mai",
-      "shareMission": "Tiri i tā mātou mīhana"
-    },
-    "welcomeStart": {
-      "label": "Whakapono me te Karaipiture",
-      "title": "Ngā whiringa ataata o tēnei rā",
-      "description": "Ngā ataata e aro ana ki te whakapono mai i tā mātou whare kōpaki hei whakaawe, hei wero, hei whakaohooho whakaaro hoki."
-    },
-    "welcomeMorning": {
-      "label": "Whakaawe i te ata",
-      "title": "Kia ora! Kei konei ngā wāhanga Paipera o tēnei rā.",
-      "description": "Tīmatahia tō rā ki ngā wāhanga Paipera whakatenatena i hangaia hei whakaawe, hei hiki i tō wairua."
-    },
-    "welcomeAfternoon": {
-      "label": "Whakaawe i te ahiahi",
-      "title": "Kia ora i te ahiahi! Ngā wāhanga Paipera mō tō rā.",
-      "description": "He ihirangi Paipera whakatenatena e tino pai ana mō tō wā whakatā i te ahiahi, hei whakaohooho tonu rānei."
-    },
-    "welcomeEvening": {
-      "label": "Whakaawe i te ahiahi pō",
-      "title": "Kia ora i te ahiahi pō! Whakatā mā ngā wāhanga Paipera.",
-      "description": "Ngā wāhanga Paipera rangimārie hei āwhina i a koe ki te whakaaroaro, ki te kimi whakamarie hoki i te whakatau o tō rā."
-    },
-    "joinUs": {
-      "label": "Hono mai",
-      "title": "Kei te rapu ngā piriona",
-      "description": "Kua tae mai te kotinga. Hono mai ki a mātou i a mātou e tiri ana i te rongopai ki te ao mā ngā pāpāho matihiko."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Haere tahi tātou",
-      "title": "Te kōrero tahi i te kōrero mō Hēhu",
-      "description": "Kia rongo, kia kite hoki rātou i te aroha o Hēhu i roto i tō rātou ake reo, i reira tonu e noho ana rātou."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% te ōritetanga",
-    "none": "Kāore he tūtohutanga i kitea mō tēnei ataata i tēnei reo."
+    "none": "Kāore he tūtohutanga i kitea mō tēnei ataata i tēnei reo.",
+    "heading": "Ngā ataata e taunakitia ana",
+    "loadingLabel": "E uta ana i ngā ataata e taunakitia ana",
+    "openingTitle": "E huaki ana i {title}",
+    "openingVideo": "E huaki ana i te ataata",
+    "activityNotRecorded": "Kāore i taea te pupuri i te mahi tūtohutanga. Ka mahi tonu ngā hono.",
+    "showingContextual": "E whakaatu ana i ngā tūtohutanga horopaki.",
+    "showingSaved": "E whakaatu ana i ngā tūtohutanga kua tiakina.",
+    "explanationCurated": "He ataata kua kōwhiria hei tūhura māu.",
+    "explanationViewingMode": "E taunakitia ana i runga i tēnei ataata me tō tikanga mātaki.",
+    "explanationCowatch": "E taunakitia ana i runga i tēnei ataata me ō hiahia.",
+    "explanationHybrid": "E taunakitia ana i runga i tēnei ataata me ngā hiahia i kōwhiria e koe kia maumaharatia.",
+    "explanationContextual": "E taunakitia ana i runga i tāu e mātaki nā.",
+    "explanationSemanticFallback": "E taunakitia ana i runga i tāu e mātaki nā, i te mea kāore e wātea ana te whakawhaiaro.",
+    "explanationProfileDurable": "Kua whakawhaiarotia mai i ngā hiahia i kōwhiria e koe kia maumaharatia.",
+    "explanationProfileVisit": "Kua whakawhaiarotia mō tēnei toronga.",
+    "personalizationLabel": "Whakawhaiaro tūtohutanga",
+    "personalizationPrompt": "Kei te hiahia koe ki te huri i te whakawhaiaro o ngā tūtohutanga?",
+    "openCookieSettings": "Huakina ngā tautuhinga pihikete"
   },
   "BetaTesterModal": {
     "title": "Me noho hei kaiwhakamātau beta",
@@ -538,16 +732,39 @@
     "retryFailed": "I rahua te ngana anō"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kāore te putanga reo i te wātea",
+    "eyebrow": "Kāore te putanga reo i te wātea",
+    "title": "Kāore a <contentTitle>{title}</contentTitle> i te wātea i te reo <languageName>{language}</languageName>",
+    "actionsLabel": "Ngā kōwhiringa mātakitaki e wātea ana",
+    "browseInLanguage": "Tirotiro ataata i te reo {language}",
+    "backToSearch": "Hoki ki te rapu",
+    "audioVersionsTitle": "Ētahi atu putanga ororongo",
+    "audioVersionsDescription": "Kōwhiria he reo ororongo kia mātakitaki tonu i tēnei ataata.",
+    "languageVersionLabel": "Reo ororongo",
+    "selectLanguageVersion": "Kōwhiria he putanga reo",
+    "watchSelectedVersion": "Mātakitakihia te putanga kua kōwhiria"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ngā kōwhiringa pihikete",
+    "bannerTitle": "Ō kōwhiringa tūmataiti",
+    "bannerDescription": "Mā ngā pihikete matua e noho haumaru ai a Watch, e pai ai hoki tana mahi. Ki tō whakaae, ka taea e tētahi pihikete kōwhiringa nā te pae tonu te maumahara ki ō hiahia puta noa i ngā toronga kia whakawhaiaro ai ngā tūtohutanga. Ahakoa tērā, ka wātea tonu ngā tūtohutanga horopaki.",
+    "acceptAll": "Whakaae katoa",
+    "essentialOnly": "Ngā mea matua anake",
+    "manageChoices": "Whakahaere kōwhiringa",
+    "savingChoice": "E tiaki ana i te kōwhiringa pihikete",
+    "settings": "Ngā tautuhinga pihikete",
+    "settingsDescription": "Kōwhiria mēnā ka āhei a Watch ki te maumahara ki ō hiahia tūtohutanga puta noa i ngā toronga. Ka taea te whakarerekē tēnei i ngā wā katoa.",
+    "essentialCookies": "Ngā pihikete matua",
+    "essentialDescription": "Te haumaru, te purei anō, ngā kōwhiringa tūmataiti, me te tautohenga tono tūtohutanga.",
+    "alwaysActive": "Ka noho hohe tonu",
+    "personalization": "Whakawhaiaro",
+    "personalizationDescription": "Maumaharatia ngā hiahia whāiti puta noa i ngā toronga. Ki te whakaweto i tēnei, ka wātea tonu ngā tūtohutanga horopaki.",
+    "erasurePending": "Kei te tatari tonu te mukunga kōtaha. Kua hohe kē ngā tūtohutanga horopaki.",
+    "cancel": "Whakakore",
+    "saveChoices": "Tiaki kōwhiringa",
+    "saving": "E tiaki ana…",
+    "loadError": "Kāore i taea te uta i tō kōwhiringa. Ka taea tonu e koe te kōwhiri i raro iho nei.",
+    "grantError": "Kāore i taea te whakakā te whakawhaiaro. E wātea tonu ana ngā mea matua anake.",
+    "saveError": "Kāore i taea te tiaki tō kōwhiringa. Tēnā, whakamātauria anō."
   }
 }

@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { type TextStyle, useWindowDimensions } from "react-native"
 
+import { LINE_HEIGHT_REDUCTION } from "../lib/lineHeight"
+
 type TypographyToken = Required<Pick<TextStyle, "fontSize" | "lineHeight">>
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
@@ -46,7 +48,7 @@ export function computeTypographyScale(screenWidth: number): TypographyScale {
   // Math.round() all values — critical on Android to avoid sub-pixel blur.
   const scale = (token: TypographyToken): TypographyToken => ({
     fontSize: Math.round(token.fontSize * factor),
-    lineHeight: Math.round(token.lineHeight * factor),
+    lineHeight: Math.round(token.lineHeight * factor) - LINE_HEIGHT_REDUCTION,
   })
 
   return {

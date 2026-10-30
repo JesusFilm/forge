@@ -531,6 +531,7 @@ describe("toVideo — projection_rejected diagnostic (feat-328)", () => {
       "utf8",
     )
       .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1")
       // Drop the DEFINITION so only true call sites are counted — feat-329
       // made it a local arrow const (the reject sink is injectable now), and
       // this tolerates either spelling rather than baking one into an offset.
@@ -556,11 +557,11 @@ describe("toVideo — projection_rejected diagnostic (feat-328)", () => {
   })
 
   it("never emits a wire VALUE — checked at EVERY branch independently", () => {
-    // One field poisoned per case from an otherwise-valid baseline, so each
-    // iteration reaches its OWN gate. The earlier all-fields-poisoned fixture
-    // only ever tripped video_id, proving one branch and implying four.
+    // Shape uses a marker string; other cases poison one field at a time
+    // from a valid baseline so each iteration reaches its own rejection gate.
     const MARK = "ZZMARKERZZ"
     const perBranch: Array<[string, unknown]> = [
+      ["shape", MARK],
       ["video_id", wireVideo({ videoId: `${MARK}/!` })],
       ["title", wireVideo({ title: "   ", languageSlug: `${MARK}-lang` })],
       ["playback_id", wireVideo({ playbackId: `${MARK}!!` })],

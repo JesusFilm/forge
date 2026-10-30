@@ -34,6 +34,11 @@ const PHRASE_VALIDATION_CACHE_TTL_MS = 60 * 1_000
 const MAX_CACHED_PHRASE_VALIDATIONS = 512
 const PHRASE_VALIDATION_CONTRACT_VERSION = "v1"
 const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
+// Short queries stay strict so generic terms cannot get noisy.
+const MULTI_TOKEN_DROP_MIN_QUERY_TOKENS = 3
+// Bounds fallback anchor scanning per text value so a long metadata blob
+// cannot expand into an unbounded phrase-window search.
+const MAX_FALLBACK_PHRASE_ANCHORS = 8
 const SAFE_BCP47_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 const PHRASE_WORD = /[\p{L}\p{N}]+(?:['’’-][\p{L}\p{N}]+)*/gu
 const PHRASE_EDGE_STOP_WORDS = new Set([
@@ -187,26 +192,72 @@ function comparableTitle(value: string): string {
   return value.normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase()
 }
 
-function matchTier(title: string, prefix: string): number | null {
+function uniqueComparableQueryTokens(query: string): string[] {
+  return [
+    ...new Set(
+      [...query.normalize("NFC").matchAll(PHRASE_WORD)].map((match) =>
+        match[0].toLocaleLowerCase(),
+      ),
+    ),
+  ]
+}
+
+// Multi-token coverage mirrors the bounded Typesense recall relaxation: every
+// query token must prefix-match a word, except that queries with three or more
+// tokens may drop exactly one. At least one MATCHED token must be meaningful
+// (not an edge stop word) so an overlap like "the … of" can never qualify.
+function matchesQueryTokens(
+  comparableWords: readonly string[],
+  queryTokens: readonly string[],
+): boolean {
+  if (queryTokens.length < 2) return false
+  const matched = queryTokens.filter((token) =>
+    comparableWords.some((word) => word.startsWith(token)),
+  )
+  const allowedDrops =
+    queryTokens.length >= MULTI_TOKEN_DROP_MIN_QUERY_TOKENS ? 1 : 0
+  return (
+    queryTokens.length - matched.length <= allowedDrops &&
+    matched.some((token) => !PHRASE_EDGE_STOP_WORDS.has(token))
+  )
+}
+
+function matchTier(
+  title: string,
+  prefix: string,
+  relaxedQueryTokens?: readonly string[],
+): number | null {
   const comparable = comparableTitle(title)
   if (comparable === prefix) return 0
   if (comparable.startsWith(prefix)) return 1
+  const strictPrefixWords = comparable
+    .split(TITLE_WORD_SEPARATOR)
+    .filter(Boolean)
+  if (strictPrefixWords.some((word) => word.startsWith(prefix))) return 2
+  // Token coverage stays below exact and prefix evidence.
+  const relaxedWords = [...comparable.matchAll(PHRASE_WORD)].map(
+    (match) => match[0],
+  )
   if (
-    comparable
-      .split(TITLE_WORD_SEPARATOR)
-      .filter(Boolean)
-      .some((word) => word.startsWith(prefix))
+    relaxedQueryTokens &&
+    matchesQueryTokens(relaxedWords, relaxedQueryTokens)
   ) {
-    return 2
+    return 3
   }
   return null
+}
+
+type MatchedValue = {
+  value: string
+  tier: number
 }
 
 function matchingValue(
   document: TypesenseWatchLexicalDocument,
   fields: readonly string[],
   prefix: string,
-): string | null {
+  relaxedQueryTokens?: readonly string[],
+): MatchedValue | null {
   const candidates = fields.flatMap((field, fieldIndex) => {
     const value = document[field]
     const titles = Array.isArray(value) ? value : value ? [value] : []
@@ -214,7 +265,7 @@ function matchingValue(
       fieldIndex,
       title,
       valueIndex,
-      tier: matchTier(title, prefix),
+      tier: matchTier(title, prefix, relaxedQueryTokens),
     }))
   })
   candidates.sort(
@@ -224,7 +275,10 @@ function matchingValue(
       a.fieldIndex - b.fieldIndex ||
       a.valueIndex - b.valueIndex,
   )
-  return candidates.find((candidate) => candidate.tier != null)?.title ?? null
+  const candidate = candidates.find((entry) => entry.tier != null)
+  return candidate?.tier == null
+    ? null
+    : { value: candidate.title, tier: candidate.tier }
 }
 
 function firstValue(
@@ -261,30 +315,14 @@ function comparablePhrase(value: string): string {
   return value.normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase()
 }
 
-function phraseWindows(
-  value: string,
-  query: string,
+function phraseWindowsFromAnchors(
+  words: readonly string[],
+  anchors: readonly number[],
   minimumMultiwordLength: number,
+  requiredQueryTokens: readonly string[] | null,
 ): string[] {
-  const words = [...value.normalize("NFC").matchAll(PHRASE_WORD)].map(
-    (match) => match[0],
-  )
-  if (words.length === 0) return []
-  const comparableQuery = comparablePhrase(query)
-  const matches = words.flatMap((word, index) => {
-    const suffix = words
-      .slice(index, Math.min(words.length, index + 5))
-      .map((candidate) => candidate)
-      .join(" ")
-      .toLocaleLowerCase()
-    return suffix.startsWith(comparableQuery) ||
-      word.toLocaleLowerCase().startsWith(comparableQuery)
-      ? [index]
-      : []
-  })
-
   const phrases = new Set<string>()
-  for (const matchIndex of matches) {
+  for (const matchIndex of anchors) {
     for (
       let start = Math.max(0, matchIndex - 3);
       start <= matchIndex;
@@ -303,6 +341,15 @@ function phraseWindows(
         if (!first || !last) continue
         if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(first)) continue
         if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(last)) continue
+        if (
+          requiredQueryTokens &&
+          !matchesQueryTokens(
+            words.slice(start, end + 1).map((word) => word.toLocaleLowerCase()),
+            requiredQueryTokens,
+          )
+        ) {
+          continue
+        }
         phrases.add(words.slice(start, end + 1).join(" "))
       }
     }
@@ -310,11 +357,65 @@ function phraseWindows(
   return [...phrases]
 }
 
+function phraseWindows(
+  value: string,
+  query: string,
+  queryTokens: readonly string[],
+  minimumMultiwordLength: number,
+): string[] {
+  const words = [...value.normalize("NFC").matchAll(PHRASE_WORD)].map(
+    (match) => match[0],
+  )
+  if (words.length === 0) return []
+  const comparableQuery = comparablePhrase(query)
+  const matches = words.flatMap((word, index) => {
+    const suffix = words
+      .slice(index, Math.min(words.length, index + 5))
+      .join(" ")
+      .toLocaleLowerCase()
+    return suffix.startsWith(comparableQuery) ||
+      word.toLocaleLowerCase().startsWith(comparableQuery)
+      ? [index]
+      : []
+  })
+  if (matches.length > 0) {
+    return phraseWindowsFromAnchors(
+      words,
+      matches,
+      minimumMultiwordLength,
+      null,
+    )
+  }
+
+  // Dropped-token candidates must still cover the query under the bounded
+  // client-side rule before they can become displayed phrases.
+  if (queryTokens.length < 2) return []
+  const meaningfulTokens = queryTokens.filter(
+    (token) => !PHRASE_EDGE_STOP_WORDS.has(token),
+  )
+  if (meaningfulTokens.length === 0) return []
+  const anchors: number[] = []
+  for (const [index, word] of words.entries()) {
+    const comparableWord = word.toLocaleLowerCase()
+    if (meaningfulTokens.some((token) => comparableWord.startsWith(token))) {
+      anchors.push(index)
+      if (anchors.length >= MAX_FALLBACK_PHRASE_ANCHORS) break
+    }
+  }
+  return phraseWindowsFromAnchors(
+    words,
+    anchors,
+    minimumMultiwordLength,
+    queryTokens,
+  )
+}
+
 function extractedQuerySuggestions(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
   titleFields: readonly string[],
   metadataFields: readonly string[],
   query: string,
+  queryTokens: readonly string[],
   excludedTitles: ReadonlySet<string>,
 ): WatchSearchSuggestion[] {
   const byPhrase = new Map<string, PhraseCandidate>()
@@ -325,7 +426,12 @@ function extractedQuerySuggestions(
     sourceWeight: number,
     minimumMultiwordLength: number,
   ) => {
-    for (const phrase of phraseWindows(value, query, minimumMultiwordLength)) {
+    for (const phrase of phraseWindows(
+      value,
+      query,
+      queryTokens,
+      minimumMultiwordLength,
+    )) {
       const key = comparablePhrase(phrase)
       const wordCount = phrase.match(PHRASE_WORD)?.length ?? 0
       if (!key || (wordCount > 1 && excludedTitles.has(key))) continue
@@ -373,6 +479,7 @@ function extractedQuerySuggestions(
 
 function suggestionRequest(
   query: string,
+  queryTokens: readonly string[],
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
@@ -390,6 +497,10 @@ function suggestionRequest(
     group_by: "canonicalVideoId",
     group_limit: 1,
     prefix: true,
+    // Typesense may return broader candidates; displayed results still pass
+    // bounded client-side coverage and strict phrase validation.
+    drop_tokens_threshold:
+      queryTokens.length >= MULTI_TOKEN_DROP_MIN_QUERY_TOKENS ? 1 : 0,
     include_fields: ["videoId", "canonicalVideoId", ...fields].join(","),
   }
 }
@@ -441,9 +552,11 @@ function phraseValidationCacheKey(
   suggestion: WatchSearchSuggestion,
   languageIdentity: string,
   fields: readonly string[],
+  collection: string,
 ): string {
   return [
     PHRASE_VALIDATION_CONTRACT_VERSION,
+    collection,
     languageIdentity,
     fields.join(","),
     comparablePhrase(suggestion.title),
@@ -457,12 +570,13 @@ async function validateQuerySuggestions(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  collection: string,
 ): Promise<WatchSearchSuggestion[]> {
   if (suggestions.length === 0) return []
 
   const fields = [...titleFields, ...metadataFields]
   const keys = suggestions.map((suggestion) =>
-    phraseValidationCacheKey(suggestion, languageIdentity, fields),
+    phraseValidationCacheKey(suggestion, languageIdentity, fields, collection),
   )
   const suggestionByKey = new Map(
     suggestions.map((suggestion, index) => [keys[index], suggestion]),
@@ -480,12 +594,15 @@ async function validateQuerySuggestions(
           if (!suggestion) {
             throw new Error("Missing phrase validation suggestion")
           }
-          return phraseValidationRequest(
-            suggestion.title,
-            titleFields,
-            metadataFields,
-            languageIdentity,
-          )
+          return {
+            ...phraseValidationRequest(
+              suggestion.title,
+              titleFields,
+              metadataFields,
+              languageIdentity,
+            ),
+            collection,
+          }
         }),
         { timeoutMs: WATCH_SEARCH_PHRASE_VALIDATION_TIMEOUT_MS },
       )
@@ -524,13 +641,19 @@ function directMatchCandidates(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   prefix: string,
+  queryTokens: readonly string[],
 ): DirectMatchCandidate[] {
   const candidates = groups.flatMap((group, groupIndex) => {
     const document = group.hits[0]?.document
     if (!document) return []
-    const matchedTitle = matchingValue(document, titleFields, prefix)
+    const matchedTitle = matchingValue(
+      document,
+      titleFields,
+      prefix,
+      queryTokens,
+    )
     const matchedDescription = matchingValue(document, metadataFields, prefix)
-    const title = matchedTitle ?? firstValue(document, titleFields)
+    const title = matchedTitle?.value ?? firstValue(document, titleFields)
     if (!title || (!matchedTitle && !matchedDescription)) return []
     return [
       {
@@ -539,9 +662,10 @@ function directMatchCandidates(
           videoId: typeof document.videoId === "string" ? document.videoId : "",
           title,
           description:
-            matchedDescription ?? firstValue(document, metadataFields),
+            matchedDescription?.value ?? firstValue(document, metadataFields),
           matchSource: matchedTitle ? "title" : "description",
         } satisfies DirectMatchCandidate,
+        tier: matchedTitle?.tier ?? matchedDescription?.tier ?? 0,
       },
     ]
   })
@@ -549,6 +673,10 @@ function directMatchCandidates(
     (a, b) =>
       (a.suggestion.matchSource === "title" ? 0 : 1) -
         (b.suggestion.matchSource === "title" ? 0 : 1) ||
+      (a.suggestion.matchSource === "title" &&
+      b.suggestion.matchSource === "title"
+        ? a.tier - b.tier
+        : 0) ||
       a.groupIndex - b.groupIndex,
   )
 
@@ -610,6 +738,8 @@ export class TypesenseWatchSearchSuggestionsService {
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
     private readonly logger: Pick<Console, "warn"> = console,
+    private readonly resolveCollection: () => string | Promise<string> = () =>
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
   ) {}
 
   async suggest(
@@ -620,8 +750,14 @@ export class TypesenseWatchSearchSuggestionsService {
     const languageSlug = normalizedLanguageSlug(input.languageSlug)
     if (!languageSlug) return []
 
+    let collection: string
+    try {
+      collection = await this.resolveCollection()
+    } catch {
+      return []
+    }
     const requestState = suggestionRequestState(this.prisma)
-    const requestKey = `${languageSlug}\0${query}`
+    const requestKey = `${collection}\0${languageSlug}\0${query}`
     const existing = requestState.inFlight.get(requestKey)
     if (existing) return existing
     if (
@@ -631,7 +767,7 @@ export class TypesenseWatchSearchSuggestionsService {
     }
 
     requestState.activeRequests += 1
-    const request = this.fetchSuggestions(query, languageSlug)
+    const request = this.fetchSuggestions(query, languageSlug, collection)
     requestState.inFlight.set(requestKey, request)
     try {
       return await request
@@ -646,6 +782,7 @@ export class TypesenseWatchSearchSuggestionsService {
   private async fetchSuggestions(
     query: string,
     languageSlug: string,
+    collection: string,
   ): Promise<WatchSearchSuggestion[]> {
     try {
       const language = await resolveSuggestionLanguage(
@@ -654,6 +791,7 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       if (!language) return []
 
+      const queryTokens = uniqueComparableQueryTokens(query)
       const titleFields = watchLexicalQueryFields(language.locale, "title")
       const metadataFields = watchLexicalQueryFields(
         language.locale,
@@ -661,12 +799,16 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       const [result] =
         await this.typesense.multiSearch<TypesenseWatchLexicalDocument>([
-          suggestionRequest(
-            query,
-            titleFields,
-            metadataFields,
-            language.languageIdentity,
-          ),
+          {
+            ...suggestionRequest(
+              query,
+              queryTokens,
+              titleFields,
+              metadataFields,
+              language.languageIdentity,
+            ),
+            collection,
+          },
         ])
       if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
         return []
@@ -676,6 +818,7 @@ export class TypesenseWatchSearchSuggestionsService {
         titleFields,
         metadataFields,
         comparableTitle(query),
+        queryTokens,
       )
       const directMatches = await hydrateDirectMatches(this.prisma, candidates)
       const directTitles = new Set(
@@ -686,6 +829,7 @@ export class TypesenseWatchSearchSuggestionsService {
         titleFields,
         metadataFields,
         query,
+        queryTokens,
         directTitles,
       )
       let querySuggestions: WatchSearchSuggestion[] = []
@@ -697,6 +841,7 @@ export class TypesenseWatchSearchSuggestionsService {
           titleFields,
           metadataFields,
           language.languageIdentity,
+          collection,
         )
       } catch {
         this.logger.warn(
@@ -713,10 +858,16 @@ export class TypesenseWatchSearchSuggestionsService {
 
 export function createTypesenseWatchSearchSuggestionsService(
   prisma: PrismaClient,
+  resolveCollection?: () => string | Promise<string>,
 ): TypesenseWatchSearchSuggestionsService | null {
   if (!watchSearchSuggestionsEnabled()) return null
   const client = createConfiguredTypesenseClient()
   return client
-    ? new TypesenseWatchSearchSuggestionsService(prisma, client)
+    ? new TypesenseWatchSearchSuggestionsService(
+        prisma,
+        client,
+        console,
+        resolveCollection,
+      )
     : null
 }

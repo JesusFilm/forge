@@ -10,9 +10,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  // @ts-expect-error TVEventControl is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVEventControl,
-  // @ts-expect-error useTVEventHandler is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   useTVEventHandler,
   View,
 } from "react-native"
@@ -37,6 +35,8 @@ import {
 } from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
+import { FeedbackQrOverlay } from "./feedback/FeedbackQrOverlay"
+import { useFeedbackQr } from "./feedback/useFeedbackQr"
 import { UpNextOverlay } from "./watch/UpNextOverlay"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
@@ -630,6 +630,10 @@ export type VideoPlayerProps = {
   /** Periodic playback position for the Continue Watching shelf: every ~10s
    *  during playback, on natural completion, and on unmount (Back). */
   onPlaybackPosition?: (snapshot: PlaybackSnapshot) => void
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   /** The next episode to offer when playback ends, or null/omitted (standalone
    *  film, last episode, experience-card playback). */
   upNextTarget?: UpNextTarget | null
@@ -652,11 +656,29 @@ export function VideoPlayer({
   meaningfulResetKey,
   startAtSeconds,
   onPlaybackPosition,
+  sourceGeneration = 0,
+  onPlaybackState,
   upNextTarget,
   onPlayNext,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const feedbackOpenRef = useRef(false)
+  feedbackOpenRef.current = feedbackOpen
+  const [feedbackTimestamp, setFeedbackTimestamp] = useState<
+    string | undefined
+  >()
+  const [feedbackReturnFocus, setFeedbackReturnFocus] = useState(false)
+  useEffect(() => {
+    if (feedbackReturnFocus) setFeedbackReturnFocus(false)
+  }, [feedbackReturnFocus])
+  const feedback = useFeedbackQr(feedbackOpen, {
+    screen: "player",
+    player: "react-native",
+    filmTitle: title,
+    timestamp: feedbackTimestamp,
+  })
   const [duration, setDuration] = useState(0)
   // Buffered head (seconds) from timeUpdate — drives the scrubber's buffer
   // hint. -1 from native means "unknown"; we clamp at render.
@@ -907,6 +929,7 @@ export function VideoPlayer({
         type === "panBegin" ||
         type === "panEnd"
       if (isSyntheticFocusEvent) return
+      if (feedbackOpenRef.current) return
 
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
@@ -947,6 +970,13 @@ export function VideoPlayer({
   // Returning `true` consumes it so Expo Router's Stack doesn't pop.
   useEffect(() => {
     const handler = () => {
+      if (feedbackOpenRef.current) {
+        feedbackOpenRef.current = false
+        setFeedbackOpen(false)
+        setControlsFocusable(true)
+        setFeedbackReturnFocus(true)
+        return true
+      }
       // In-player menu open: Back closes the MENU, not playback — else the menu
       // was a trap (Back exited the video). menuOpenRef/closeMenu declared below;
       // closure runs post-commit and both identities are stable.
@@ -989,6 +1019,41 @@ export function VideoPlayer({
       setDuration(p.duration)
     }
   })
+  const observationEndedRef = useRef(false)
+  const observationCallbackRef = useRef({ sourceGeneration, onPlaybackState })
+  observationCallbackRef.current = { sourceGeneration, onPlaybackState }
+  useEffect(() => {
+    observationEndedRef.current = false
+    const emit = () => {
+      const state = observationEndedRef.current
+        ? "ended"
+        : player.status === "error"
+          ? "error"
+          : player.status === "loading"
+            ? "buffering"
+            : player.playing
+              ? "playing"
+              : "paused"
+      onPlaybackState?.({
+        sourceGeneration,
+        state,
+        positionSeconds: Math.max(0, player.currentTime),
+        durationSeconds: player.duration > 0 ? player.duration : null,
+        seeking:
+          sourceSwappingRef.current ||
+          seekTargetRef.current != null ||
+          pendingStartAtRef.current != null,
+      })
+    }
+    const status = player.addListener("statusChange", emit)
+    const playing = player.addListener("playingChange", emit)
+    const interval = setInterval(emit, 250)
+    return () => {
+      clearInterval(interval)
+      status.remove()
+      playing.remove()
+    }
+  }, [player, sourceGeneration, onPlaybackState])
 
   // ── Playback QoE session (U13) ──────────────────────────────────────
   // Pure accumulator created once per session (mount = ttff origin). content_id
@@ -1088,6 +1153,13 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      observationEndedRef.current = true
+      observationCallbackRef.current.onPlaybackState?.({
+        sourceGeneration: observationCallbackRef.current.sourceGeneration,
+        state: "ended",
+        positionSeconds: Math.max(0, player.currentTime),
+        durationSeconds: player.duration > 0 ? player.duration : null,
+      })
       // QoE: natural completion. finalize is idempotent — if unmount already
       // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
       const summary = qoeRef.current?.finalize("ended")
@@ -1586,7 +1658,8 @@ export function VideoPlayer({
       isScreenReaderEnabledRef.current ||
       // U7: the in-player menu suppresses auto-hide — the chrome (and the menu
       // over it) must stay put while the viewer navigates the dub/subtitle list.
-      menuOpenRef.current
+      menuOpenRef.current ||
+      feedbackOpenRef.current
     ) {
       return
     }
@@ -1786,6 +1859,7 @@ export function VideoPlayer({
               />
               <PlayCircle
                 isPaused={isPaused}
+                hasTVPreferredFocus={feedbackReturnFocus}
                 onPress={() => {
                   togglePlayPause()
                   scheduleHide()
@@ -1843,6 +1917,24 @@ export function VideoPlayer({
                   />
                 </>
               )}
+              {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+                <MenuPill
+                  icon="chatbox-ellipses-outline"
+                  label="Feedback"
+                  sub={null}
+                  onPress={() => {
+                    player.pause()
+                    setIsPaused(true)
+                    setFeedbackTimestamp(formatTime(player.currentTime))
+                    feedbackOpenRef.current = true
+                    setFeedbackOpen(true)
+                    setControlsFocusable(false)
+                  }}
+                  onFocusActivity={scheduleHide}
+                  focusable={controlsFocusable && !hasError}
+                  dimmed={hasError}
+                />
+              ) : null}
             </View>
           </View>
 
@@ -1904,6 +1996,17 @@ export function VideoPlayer({
             }}
           />
         )}
+        {feedbackOpen && (
+          <FeedbackQrOverlay
+            feedback={feedback}
+            onClose={() => {
+              feedbackOpenRef.current = false
+              setFeedbackOpen(false)
+              setControlsFocusable(true)
+              setFeedbackReturnFocus(true)
+            }}
+          />
+        )}
 
         {/* ── Up Next countdown (QoL) ─────────────────────────────────
             Inside the overlay's focus trap like the menu (never a Modal).
@@ -1929,7 +2032,9 @@ export function VideoPlayer({
           Mounted until first confirmed playback, never on error; conditionally
           mounted (not faded) so it can't linger. Unmounts while the menu is open —
           the veil (zIndex 20) outranks contentLayer (10) and would dim the menu (its zIndex 50 can't escape its parent's context). */}
-      {!hasStarted && !hasError && !menuOpen && <LoadingVeil />}
+      {!hasStarted && !hasError && !menuOpen && !feedbackOpen && (
+        <LoadingVeil />
+      )}
     </View>
   )
 }

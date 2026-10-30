@@ -8,8 +8,6 @@
       "command": "npx",
       "args": [
         "chrome-devtools-mcp@latest",
-        "--executablePath",
-        "/home/vscode/.cache/chrome-devtools-mcp/chromium-bin",
         "--headless",
         "--isolated",
         "--chromeArg=--no-sandbox",

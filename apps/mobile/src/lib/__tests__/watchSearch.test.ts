@@ -3,12 +3,21 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import type { WatchSearchResultItem } from "../queries"
 import {
   SEARCH_LANGUAGE_SLUG,
+  ENGLISH_SEARCH_LANGUAGE,
   buildWatchSearchInput,
   mapWatchSearchResponse,
   mapWatchSearchResult,
-  parseSearchError,
+  searchErrorKind,
+  searchErrorMessage,
+  searchLanguageFor,
   stripHtml,
 } from "../watchSearch"
+import { adminFormsFor } from "../../i18n/adminLanguage"
+import { getT } from "../../i18n/useT"
+
+// The screen's two steps in one, so each case still pins the English copy.
+const parseSearchError = (error: unknown) =>
+  searchErrorMessage(searchErrorKind(error), getT("Discover"))
 
 // Admin returns every watchSearch field nullable; the UI reads slug/title/type/id
 // unconditionally. These cover the narrowing at that seam.
@@ -35,17 +44,61 @@ function row(overrides: Partial<WatchSearchResultItem> = {}) {
     score: 0.9,
     label: "featureFilm",
     childCount: 0,
+    durationSeconds: 384,
     ...overrides,
   } as WatchSearchResultItem
 }
+
+// U7 (R9, KTD9): results come back in the UI language's text rows.
+describe("searchLanguageFor", () => {
+  // `ab` has no Admin language, so it sends english.
+  it.each([
+    ["ru", "russian"],
+    ["es", "spanish-latin-american"],
+    ["ab", "english"],
+  ])("sends the mapped slug for the UI catalog %s", (tag, slug) => {
+    expect(searchLanguageFor(adminFormsFor(tag), "jesus").display).toBe(slug)
+  })
+
+  // Browse-topic terms are English, whatever the UI language.
+  it.each([
+    ["family", "english"],
+    [" Family ", "english"],
+    ["family jesus", null],
+    ["\u0441\u0435\u043c\u044c\u044f", null],
+  ])("gives the query %j the query language %p", (query, language) => {
+    expect(searchLanguageFor(adminFormsFor("ru"), query).query).toBe(language)
+  })
+})
 
 // Admin resolves availability, playbackId and durationSeconds against the target
 // language. Sending a BCP-47 tag where a language.slug is expected resolved the
 // target to the literal "en", which matches no language row — every result came
 // back UNAVAILABLE with a null playbackId (verified against prod).
 describe("buildWatchSearchInput", () => {
+  it("sends the pinned display slug, and a query slug only when one is set", () => {
+    const typed = buildWatchSearchInput({
+      language: { display: "russian", query: null },
+      query: "jesus",
+      offset: 0,
+      limit: 20,
+    })
+    expect(typed.displayLanguageSlug).toBe("russian")
+    expect(typed).not.toHaveProperty("queryLanguageSlug")
+
+    const topic = buildWatchSearchInput({
+      language: { display: "russian", query: "english" },
+      query: "family",
+      offset: 0,
+      limit: 20,
+    })
+    expect(topic.displayLanguageSlug).toBe("russian")
+    expect(topic.queryLanguageSlug).toBe("english")
+  })
+
   it("sends the language SLUG, never a BCP-47 tag", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -59,6 +112,7 @@ describe("buildWatchSearchInput", () => {
   // so "jesus in spanish" would stop returning Spanish results.
   it("omits targetLanguageSlug so query-named-language inference still runs", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -70,6 +124,7 @@ describe("buildWatchSearchInput", () => {
   // mobile has no URL language segment to source it from.
   it("omits routeLanguageSlug, which has no mobile equivalent", () => {
     const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
       query: "jesus",
       offset: 0,
       limit: 20,
@@ -80,6 +135,7 @@ describe("buildWatchSearchInput", () => {
   it("threads query, paging and the correlation id through", () => {
     expect(
       buildWatchSearchInput({
+        language: ENGLISH_SEARCH_LANGUAGE,
         query: "hope",
         offset: 40,
         limit: 20,
@@ -95,7 +151,12 @@ describe("buildWatchSearchInput", () => {
   })
 
   it("omits clientRequestId entirely when none is supplied", () => {
-    const input = buildWatchSearchInput({ query: "hope", offset: 0, limit: 20 })
+    const input = buildWatchSearchInput({
+      language: ENGLISH_SEARCH_LANGUAGE,
+      query: "hope",
+      offset: 0,
+      limit: 20,
+    })
     expect(input).not.toHaveProperty("clientRequestId")
   })
 })
@@ -148,7 +209,22 @@ describe("mapWatchSearchResult", () => {
       score: 0.9,
       label: "featureFilm",
       childCount: 0,
+      durationSeconds: 384,
     })
+  })
+
+  // The result card's chip branches on exactly this pair: a series row
+  // carries a childCount and no duration, a leaf video the reverse.
+  it("keeps a series row's absent duration distinct from a leaf's", () => {
+    const series = mapWatchSearchResult(
+      row({ durationSeconds: null, childCount: 6 }),
+    )
+    expect(series?.durationSeconds).toBeNull()
+    expect(series?.childCount).toBe(6)
+
+    const leaf = mapWatchSearchResult(row())
+    expect(leaf?.durationSeconds).toBe(384)
+    expect(leaf?.childCount).toBe(0)
   })
 
   // Each of these is separately load-bearing: the card renders title, the

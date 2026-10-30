@@ -9,6 +9,8 @@ import { builder } from "@/graphql/builder"
 import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
 import type { ExperiencePreviewShape } from "@/services/experience-preview.service"
+import { stampPreviewLocaleOnMediaCollections } from "@/services/experience-preview-blocks"
+import { resolveWatchHomeCategoryRailReadBlocks } from "@/services/watch-home-category-rail-rollout"
 
 // PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
 // `unauthorizedResolver: () => null` overrides Pothos scope-auth's default
@@ -36,6 +38,11 @@ builder.prismaObject("ExperienceLocale", {
     slug: t.exposeString("slug"),
     // Stripped for PUBLIC so anonymous callers cannot enumerate homepage flags.
     isHomepage: t.exposeBoolean("isHomepage", { ...STRIPPED_FOR_PUBLIC }),
+    homepageLayout: t.exposeBoolean("homepageLayout", {
+      ...STRIPPED_FOR_PUBLIC,
+      description:
+        "Renders with the Watch home layout and admits homepage-only blocks without being the live homepage (see isHomepage).",
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -52,7 +59,12 @@ builder.prismaObject("ExperienceLocale", {
       nullable: false,
       description:
         "Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.",
-      resolve: (row) => row.blocks as Block[],
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -134,6 +146,7 @@ ExperienceLocaleEffectiveRef.implement({
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
     isHomepage: t.exposeBoolean("isHomepage"),
+    homepageLayout: t.exposeBoolean("homepageLayout"),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -143,7 +156,12 @@ ExperienceLocaleEffectiveRef.implement({
     blocks: t.field({
       type: [ExperienceBlock],
       nullable: false,
-      resolve: (row) => row.blocks,
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage || row.homepageLayout,
+        }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -221,7 +239,26 @@ ExperiencePreviewRef.implement({
     localeId: t.exposeID("localeId", { nullable: false }),
     locale: t.exposeString("locale", { nullable: false }),
     slug: t.exposeString("slug", { nullable: false }),
-    isHomepage: t.exposeBoolean("isHomepage", { nullable: false }),
+    isHomepage: t.exposeBoolean("isHomepage", {
+      nullable: false,
+      description:
+        "Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.",
+    }),
+    homepageLayout: t.exposeBoolean("homepageLayout", {
+      nullable: false,
+      description:
+        "Render this draft with the Watch home layout even though it is not the live homepage. Renderers use isHomepage OR homepageLayout.",
+    }),
+    isTemplate: t.exposeBoolean("isTemplate", {
+      nullable: false,
+      description:
+        "Whether the parent Experience is a route template. Multiple Experiences may be route templates.",
+    }),
+    isDefaultTemplate: t.exposeBoolean("isDefaultTemplate", {
+      nullable: false,
+      description:
+        "Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.",
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -231,7 +268,22 @@ ExperiencePreviewRef.implement({
     blocks: t.field({
       type: [ExperienceBlock],
       nullable: false,
-      resolve: (row) => row.blocks,
+      // Bind the locale of this preview to every media collection item so
+      // `MediaCollectionItem.previewResolvedTitle` resolves without a
+      // caller-supplied locale argument. Runs after the rail projection so
+      // synthesized blocks go through the same stamp. Deliberately NOT applied
+      // to the published blocks resolvers above: published callers pass
+      // `$locale` to `resolvedTitle` explicitly, and leaving their items
+      // unstamped is what stops one from borrowing a preview locale.
+      resolve: (row, _args, ctx) =>
+        stampPreviewLocaleOnMediaCollections(
+          resolveWatchHomeCategoryRailReadBlocks({
+            rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+            blocks: row.blocks,
+            isHomepage: row.isHomepage || row.homepageLayout,
+          }),
+          row.locale,
+        ) as Block[],
     }),
   }),
 })

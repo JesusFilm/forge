@@ -1,12 +1,21 @@
 import {
+  READER_COVER_ROUTE_PATTERNS,
+  READER_ROUTE_PATTERNS,
+  SLOT_PAGE_ROUTE_PATTERNS,
+  TAB_ROOT_ROUTE_PATTERNS,
   canOriginateRoutePattern,
+  expandAction,
   isFullScreenRoute,
+  isReaderCovering,
   isTabRootRoute,
   miniPlayerPresentation,
+  readerRouteKind,
+  slotCoverSource,
   type MiniPlayerPresentation,
 } from "../presentation"
-import { routePattern } from "../suppression"
+import { IN_APP_SHEET_ROUTE_PATTERNS, routePattern } from "../suppression"
 import { createMiniPlayerStore } from "../store"
+import { TAB_GROUP_SEGMENT, TAB_ROUTE_NAMES } from "../../tabBar"
 
 function storeWithSession() {
   const store = createMiniPlayerStore()
@@ -23,13 +32,16 @@ function storeWithSession() {
  * Every route the app declares, read from app/_layout.tsx, app/(tabs)/_layout.tsx,
  * app/watch/_layout.tsx and app/series/_layout.tsx. Segments are route patterns
  * and the router pops a trailing "index", so the Home tab is ["(tabs)"].
+ * feat-553 U11 adds the Bible tab, the pushed reader, and its three sheets;
+ * U13 owns how the window behaves over the reader.
  */
 const ROUTE_TABLE: ReadonlyArray<
   [pattern: string, segments: string[], expected: MiniPlayerPresentation]
 > = [
   ["(tabs) — Home", ["(tabs)"], "floating"],
+  ["(tabs)/explore", ["(tabs)", "explore"], "floating"],
   ["(tabs)/watch — Discover", ["(tabs)", "watch"], "floating"],
-  ["(tabs)/library", ["(tabs)", "library"], "floating"],
+  ["(tabs)/bible — Bible", ["(tabs)", "bible"], "floating"],
   ["(tabs)/profile", ["(tabs)", "profile"], "floating"],
   ["watch/[slug]", ["watch", "[slug]"], "full"],
   ["watch/language", ["watch", "language"], "full"],
@@ -43,6 +55,13 @@ const ROUTE_TABLE: ReadonlyArray<
   ["video/[sectionKey]", ["video", "[sectionKey]"], "floating"],
   ["collection/[sectionKey]", ["collection", "[sectionKey]"], "floating"],
   ["mission", ["mission"], "floating"],
+  ["downloads", ["downloads"], "floating"],
+  ["more", ["more"], "floating"],
+  ["account", ["account"], "floating"],
+  ["reader", ["reader"], "floating"],
+  ["reader-passage", ["reader-passage"], "hidden"],
+  ["reader-translation", ["reader-translation"], "hidden"],
+  ["reader-settings", ["reader-settings"], "hidden"],
 ]
 
 describe("miniPlayerPresentation over the real route table", () => {
@@ -138,14 +157,81 @@ describe("R19 origination exclusion", () => {
   })
 })
 
+// The owner (2026-09-30): iOS presents every in-app sheet as a native modal
+// over the host, so the window stays under the sheet and its dimming darkens
+// it. Android draws the host over a sheet, so there the window still hides.
+describe("sheets that draw over the host (iOS)", () => {
+  const SHEET_ROWS = ROUTE_TABLE.filter(
+    ([, , expected]) => expected === "hidden",
+  )
+
+  it("covers every sheet route the table hides without the flag", () => {
+    expect(SHEET_ROWS.map(([pattern]) => pattern)).toEqual([
+      "series/language",
+      "series/subtitle",
+      "series/download",
+      "reader-passage",
+      "reader-translation",
+      "reader-settings",
+    ])
+  })
+
+  it.each(SHEET_ROWS)("%s → floating", (_pattern, segments) => {
+    const store = storeWithSession()
+    expect(miniPlayerPresentation(store.getSnapshot(), segments, 0, true)).toBe(
+      "floating",
+    )
+  })
+
+  it("keeps the window floating under a non-route sheet", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(
+        store.getSnapshot(),
+        ["(tabs)", "profile"],
+        1,
+        true,
+      ),
+    ).toBe("floating")
+  })
+
+  // An inline sheet (the Downloads delete confirm) draws inside its route, so
+  // the host would cover it on iOS too.
+  it("still hides for an inline sheet", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 1),
+    ).toBe("hidden")
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["downloads"], 1, true, 0),
+    ).toBe("floating")
+  })
+
+  it("still hides for the picture-in-picture hold, and keeps the full view", () => {
+    const store = storeWithSession()
+    expect(
+      miniPlayerPresentation(
+        store.getSnapshot(),
+        ["watch", "language"],
+        0,
+        true,
+      ),
+    ).toBe("full")
+    store.setPipHold(true)
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["reader-settings"], 0, true),
+    ).toBe("hidden")
+  })
+})
+
 describe("suppression and phases", () => {
   it("hides for a non-route sheet and restores when the count returns to zero", () => {
     const store = storeWithSession()
     expect(
-      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "library"], 1),
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "profile"], 1),
     ).toBe("hidden")
     expect(
-      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "library"], 0),
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "profile"], 0),
     ).toBe("floating")
   })
 
@@ -213,14 +299,38 @@ describe("suppression and phases", () => {
 })
 
 describe("route predicates", () => {
-  it("recognises the four tab roots and nothing else", () => {
+  it("recognises the five tab roots and nothing else", () => {
     expect(isTabRootRoute(["(tabs)"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "index"])).toBe(true)
+    expect(isTabRootRoute(["(tabs)", "explore"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "watch"])).toBe(true)
-    expect(isTabRootRoute(["(tabs)", "library"])).toBe(true)
+    expect(isTabRootRoute(["(tabs)", "bible"])).toBe(true)
     expect(isTabRootRoute(["(tabs)", "profile"])).toBe(true)
     expect(isTabRootRoute(["watch", "[slug]"])).toBe(false)
     expect(isTabRootRoute(["mission"])).toBe(false)
+    // The Library tab is gone; its downloads list lives on Profile.
+    expect(isTabRootRoute(["(tabs)", "library"])).toBe(false)
+    // The pushed reader is a root route, not the Bible tab (KTD9).
+    expect(isTabRootRoute(["reader"])).toBe(false)
+    expect(isTabRootRoute(["reader-passage"])).toBe(false)
+  })
+
+  it("lists one tab root per tab route, plus the popped Home index", () => {
+    // Anti-drift: a sixth tab must reach the mini player's tab-root policy too.
+    expect(
+      TAB_ROOT_ROUTE_PATTERNS.filter((pattern) => pattern.includes("/")).map(
+        (pattern) => pattern.replace("(tabs)/", ""),
+      ),
+    ).toEqual([...TAB_ROUTE_NAMES])
+  })
+
+  // A new tab that misses the table would leave R23's back handler unarmed
+  // there, and nothing else would notice.
+  it("covers every tab the navigator declares", () => {
+    expect(TAB_ROUTE_NAMES.length).toBeGreaterThan(0)
+    TAB_ROUTE_NAMES.forEach((name) =>
+      expect(isTabRootRoute([TAB_GROUP_SEGMENT, name])).toBe(true),
+    )
   })
 
   it("recognises the watch group as full-screen and the series group as not", () => {
@@ -229,5 +339,236 @@ describe("route predicates", () => {
     expect(isFullScreenRoute(["series", "[slug]"])).toBe(false)
     expect(isFullScreenRoute(["series", "download"])).toBe(false)
     expect(isFullScreenRoute(["(tabs)", "watch"])).toBe(false)
+  })
+})
+
+// feat-553 KTD10, KTD11: the reader routes and the watch slot they cover.
+describe("the reader cover (KTD10)", () => {
+  // Every route in the table above, so an added route has to take a side.
+  const COVERING = [
+    "reader",
+    "reader-passage",
+    "reader-translation",
+    "reader-settings",
+  ]
+
+  it.each(ROUTE_TABLE)(
+    "%s covers the watch slot only if it is a reader route",
+    (pattern, segments) => {
+      const expected = COVERING.includes(routePattern(segments))
+      expect(isReaderCovering(segments)).toBe(expected)
+      // Anti-vacuous: the label and the segments name the same route.
+      expect(pattern.startsWith(routePattern(segments))).toBe(true)
+    },
+  )
+
+  it("lists the pushed reader and its three sheets, never the Bible tab", () => {
+    expect([...READER_COVER_ROUTE_PATTERNS]).toEqual(COVERING)
+    // No watch slot is mounted under the tab, so there is nothing to cover.
+    expect(isReaderCovering(["(tabs)", "bible"])).toBe(false)
+  })
+
+  it("names the reader host of every reader route", () => {
+    expect(readerRouteKind(["(tabs)", "bible"])).toBe("tab")
+    expect(readerRouteKind(["reader"])).toBe("pushed")
+    expect(readerRouteKind(["reader-passage"])).toBe("sheet")
+    expect(readerRouteKind(["reader-translation"])).toBe("sheet")
+    expect(readerRouteKind(["reader-settings"])).toBe("sheet")
+    expect(readerRouteKind(["(tabs)"])).toBeNull()
+    expect(readerRouteKind(["watch", "[slug]"])).toBeNull()
+    expect(readerRouteKind(["(tabs)", "watch"])).toBeNull()
+    expect([...READER_ROUTE_PATTERNS].sort()).toEqual(
+      [...COVERING, "(tabs)/bible"].sort(),
+    )
+  })
+})
+
+// 2026-10-20: a screen pushed over the watch or series page keeps that page
+// mounted, so its slot stays attached. Any route but the page's own covers it.
+describe("slotCoverSource", () => {
+  const PAGES = {
+    watch: [
+      "watch/[slug]",
+      "watch/language",
+      "watch/subtitle",
+      "watch/download",
+    ],
+    series: [
+      "series/[slug]",
+      "series/language",
+      "series/subtitle",
+      "series/download",
+    ],
+  }
+
+  describe.each(["watch", "series", null] as const)("a %s slot", (page) => {
+    const own = page == null ? [...PAGES.watch, ...PAGES.series] : PAGES[page]
+    it.each(ROUTE_TABLE)(
+      "%s: the reader, another screen, or the slot's own page",
+      (_pattern, segments) => {
+        const pattern = routePattern(segments)
+        const under = READER_COVER_ROUTE_PATTERNS.some((p) => p === pattern)
+          ? "reader"
+          : own.includes(pattern)
+            ? null
+            : "screen"
+        expect(slotCoverSource(segments, true, null, page)).toBe(under)
+        // On top, only the reader's routes cover, as before.
+        expect(slotCoverSource(segments, false, null, page)).toBe(
+          under === "reader" ? "reader" : null,
+        )
+      },
+    )
+  })
+
+  // A push or lapse-reminder tap opens a series with no trailer, which mounts
+  // no slot of its own: the watch slot under it is the one the host draws.
+  it("covers a watch slot under a series page, and a series slot under a watch page", () => {
+    expect(slotCoverSource(["series", "[slug]"], true, null, "watch")).toBe(
+      "screen",
+    )
+    expect(slotCoverSource(["watch", "[slug]"], true, null, "series")).toBe(
+      "screen",
+    )
+  })
+
+  it("lists each page with the sheets of its own group, all in-app sheets", () => {
+    expect(SLOT_PAGE_ROUTE_PATTERNS).toEqual(PAGES)
+    // A new sheet in one table and not the other would cover its own page.
+    for (const [group, routes] of Object.entries(PAGES)) {
+      const sheets = IN_APP_SHEET_ROUTE_PATTERNS.filter((p) =>
+        p.startsWith(`${group}/`),
+      )
+      expect(routes.slice(1).sort()).toEqual([...sheets].sort())
+    }
+  })
+
+  // A tap on the window pushes a watch route over the screen cover. The cover
+  // holds until the slot's own screen has focus again; a reader's does not.
+  it("holds a live screen cover over a watch route while the slot stays under", () => {
+    expect(slotCoverSource(["watch", "[slug]"], true, "screen", "watch")).toBe(
+      "screen",
+    )
+    expect(
+      slotCoverSource(["watch", "[slug]"], false, "screen", "watch"),
+    ).toBeNull()
+    expect(
+      slotCoverSource(["watch", "[slug]"], true, "reader", "watch"),
+    ).toBeNull()
+    expect(slotCoverSource(["reader"], true, "screen", "watch")).toBe("reader")
+  })
+
+  // A screen pushed over an open sheet closes back onto that sheet: the page is
+  // in view under it again, though the slot's screen still has no focus.
+  it("ends a live screen cover over the page's own sheet", () => {
+    for (const sheet of ["language", "subtitle", "download"]) {
+      expect(slotCoverSource(["watch", sheet], true, "screen", "watch")).toBe(
+        null,
+      )
+      expect(
+        slotCoverSource(["series", sheet], true, "screen", "series"),
+      ).toBeNull()
+    }
+  })
+
+  // The slot's focus changes a commit before the segments do, so on the push
+  // the old route is still the slot's own page: nothing covers yet.
+  it("waits for the new route while the segments still name the page", () => {
+    expect(slotCoverSource(["watch", "[slug]"], true, null, "watch")).toBeNull()
+    expect(slotCoverSource(["experience", "[slug]"], true, null, "watch")).toBe(
+      "screen",
+    )
+  })
+})
+
+describe("expandAction (KTD10, AE14)", () => {
+  const SESSION = { videoId: "video-1", videoSlug: "birth-of-jesus" }
+
+  it("pops to the covered watch screen from the reader", () => {
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: SESSION,
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("pop")
+  })
+
+  it("pops when the descriptor names the video by slug alone", () => {
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: { videoId: null, videoSlug: "birth-of-jesus" },
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("pop")
+  })
+
+  it("pushes when no watch slot is covered, as from the Bible tab", () => {
+    expect(
+      expandAction({
+        cover: null,
+        descriptor: null,
+        session: SESSION,
+        segments: ["(tabs)", "bible"],
+      }),
+    ).toBe("push")
+  })
+
+  it("pushes when the covered slot plays another video", () => {
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: { videoId: "video-2", videoSlug: "other" },
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
+  })
+
+  it("pushes when the top route is a reader sheet, not the reader", () => {
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: SESSION,
+        session: SESSION,
+        segments: ["reader-settings"],
+      }),
+    ).toBe("push")
+  })
+
+  // A pop closes only the top route; the watch screen may be several below.
+  it("pushes over a screen cover, even with the reader on top of it", () => {
+    for (const segments of [["downloads"], ["reader"]]) {
+      expect(
+        expandAction({
+          cover: "screen",
+          descriptor: SESSION,
+          session: SESSION,
+          segments,
+        }),
+      ).toBe("push")
+    }
+  })
+
+  it("pushes with no descriptor or no session", () => {
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: null,
+        session: SESSION,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
+    expect(
+      expandAction({
+        cover: "reader",
+        descriptor: SESSION,
+        session: null,
+        segments: ["reader"],
+      }),
+    ).toBe("push")
   })
 })

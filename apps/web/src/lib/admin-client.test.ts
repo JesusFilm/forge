@@ -28,17 +28,28 @@ function mockSuccessfulFetch() {
   return fetchSpy
 }
 
-function mockAbortSignalTimeout() {
+function mockAbortSignalTimeout(mockAny = true) {
   const signals: AbortSignal[] = []
+  const combinedSignals: AbortSignal[] = []
   const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
     const controller = new AbortController()
     signals.push(controller.signal)
     return controller.signal
   })
-  return { signals, timeoutSpy }
+  const anySpy = mockAny
+    ? vi.spyOn(AbortSignal, "any").mockImplementation(() => {
+        const controller = new AbortController()
+        combinedSignals.push(controller.signal)
+        return controller.signal
+      })
+    : undefined
+  return { signals, combinedSignals, timeoutSpy, anySpy }
 }
 
-async function runQuery(client: Pick<ApolloClient, "query">) {
+async function runQuery(
+  client: Pick<ApolloClient, "query">,
+  signal?: AbortSignal,
+) {
   const { gql } = await import("@apollo/client")
   await client.query({
     query: gql`
@@ -47,6 +58,7 @@ async function runQuery(client: Pick<ApolloClient, "query">) {
       }
     `,
     fetchPolicy: "no-cache",
+    context: signal ? { fetchOptions: { signal } } : undefined,
   })
 }
 
@@ -163,29 +175,29 @@ describe("admin-client timeout budgets", () => {
 
   it("keeps the default Admin GraphQL client on the 15 second timeout", async () => {
     const fetchSpy = mockSuccessfulFetch()
-    const { signals, timeoutSpy } = mockAbortSignalTimeout()
+    const { combinedSignals, timeoutSpy } = mockAbortSignalTimeout()
 
     const { default: client } = await import("./admin-client")
     await runQuery(client)
 
     expect(timeoutSpy).toHaveBeenCalledWith(15_000)
-    expect(extractSignal(fetchSpy)).toBe(signals[0])
+    expect(extractSignal(fetchSpy)).toBe(combinedSignals[0])
   })
 
   it("uses a longer bounded timeout for semantic search Admin GraphQL calls", async () => {
     const fetchSpy = mockSuccessfulFetch()
-    const { signals, timeoutSpy } = mockAbortSignalTimeout()
+    const { combinedSignals, timeoutSpy } = mockAbortSignalTimeout()
 
     const { semanticSearchAdminClient } = await import("./admin-client")
     await runQuery(semanticSearchAdminClient)
 
     expect(timeoutSpy).toHaveBeenCalledWith(45_000)
-    expect(extractSignal(fetchSpy)).toBe(signals[0])
+    expect(extractSignal(fetchSpy)).toBe(combinedSignals[0])
   })
 
   it("keeps default and semantic search clients on independent timeouts", async () => {
     const fetchSpy = mockSuccessfulFetch()
-    const { signals, timeoutSpy } = mockAbortSignalTimeout()
+    const { combinedSignals, timeoutSpy } = mockAbortSignalTimeout()
 
     const { default: client, semanticSearchAdminClient } =
       await import("./admin-client")
@@ -195,13 +207,13 @@ describe("admin-client timeout budgets", () => {
     expect(timeoutSpy.mock.calls.map(([timeoutMs]) => timeoutMs)).toEqual([
       15_000, 45_000,
     ])
-    expect(extractSignal(fetchSpy, 0)).toBe(signals[0])
-    expect(extractSignal(fetchSpy, 1)).toBe(signals[1])
+    expect(extractSignal(fetchSpy, 0)).toBe(combinedSignals[0])
+    expect(extractSignal(fetchSpy, 1)).toBe(combinedSignals[1])
   })
 
   it("keeps independent timeouts when semantic search is touched first", async () => {
     const fetchSpy = mockSuccessfulFetch()
-    const { signals, timeoutSpy } = mockAbortSignalTimeout()
+    const { combinedSignals, timeoutSpy } = mockAbortSignalTimeout()
 
     const { default: client, semanticSearchAdminClient } =
       await import("./admin-client")
@@ -211,7 +223,33 @@ describe("admin-client timeout budgets", () => {
     expect(timeoutSpy.mock.calls.map(([timeoutMs]) => timeoutMs)).toEqual([
       45_000, 15_000,
     ])
-    expect(extractSignal(fetchSpy, 0)).toBe(signals[0])
-    expect(extractSignal(fetchSpy, 1)).toBe(signals[1])
+    expect(extractSignal(fetchSpy, 0)).toBe(combinedSignals[0])
+    expect(extractSignal(fetchSpy, 1)).toBe(combinedSignals[1])
+  })
+
+  it("composes a caller deadline with the default client timeout", async () => {
+    const fetchSpy = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("aborted", "AbortError")),
+            { once: true },
+          )
+        }),
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+    mockAbortSignalTimeout(false)
+    const caller = new AbortController()
+
+    const { default: client } = await import("./admin-client")
+    const pending = runQuery(client, caller.signal)
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledOnce())
+
+    const composedSignal = extractSignal(fetchSpy)
+    expect(composedSignal?.aborted).toBe(false)
+    caller.abort()
+    expect(composedSignal?.aborted).toBe(true)
+    await expect(pending).rejects.toBeDefined()
   })
 })

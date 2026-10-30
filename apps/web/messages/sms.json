@@ -39,9 +39,8 @@
     "posterAlt": "Videon julistekuva",
     "noDownloads": "Tälle videole ei oo ladattavâi.",
     "fileSizeLabel": "Vali tiedostokåar",
-    "termsAgreementPrefix": "Sääʹmvädda ",
-    "termsOfUse": "Käyttöehdõõk",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "Hyväksyn <link>käyttöehdot</link>",
+    "termsOfUse": "Käyttöehdot",
     "close": "Peitt",
     "download": "Lataa",
     "authRequiredTitle": "Haaʹlâšâk tälle videole lataa?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Jaa Facebookis (ei tässä versioossa saatavilla)",
     "shareOnX": "Jaa X:ssä",
     "shareOnXUnavailable": "Jaa X:ssä (ei tässä versioossa saatavilla)",
+    "opensInNewTab": "{label} (aukeaa uudessa välilehdessä)",
     "shareDisabledHint": "Jako tarvittâa julkaistum sivun — toimii ku tää video on tuotannossa.",
     "shareFormat": "Jakomuoto",
     "shareLinkTab": "Jaa linkki",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Peitt haku",
-    "submitSearch": "Etsi"
+    "submitSearch": "Etsi",
+    "library": "Ǩiiržrââʹjj"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Enâb tulõõk tõlkkmõš ei onnistum.",
     "searching": "Etsimää...",
     "connectionHint": "Tarkista liittõõz ja yritä ođđâsâst.",
+    "rateLimitHint": "Jearõõttmõõžž lij nuʹtt jäänab. Proʹsttee ođđest õhtt minuutt mâŋŋa.",
     "retrySearch": "Yritä hakuu ođđâsâst",
     "retry": "Yritä ođđâsâst",
     "noResults": "Ei tulõkõk hauss \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Etsi kielessä {language}: ”{suggestion}”",
     "inLanguage": "kielessä {language}",
     "browseByRegion": "Selaa alueen perusteella",
+    "allVideosOnSinglePage": "Kõõll videoid",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "{language} havaittu",
     "searchInLanguage": "Etsi kielessä {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Kattso nyt",
     "tapToUnmute": "Napâta ääni päälle",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "audioTranslationCount": "{count, plural, one {# kiel} other {# kielid}}",
+    "subtitleCount": "Tekstitykõk: {count, plural, one {# kiel} other {# kielid}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lätee sisällöõk",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Palautte-lomakk ei puättam lataattâd.",
     "loadingForm": "Lättee palautte-lomakk…",
     "retry": "Koʹlggest ođđâsâst",
-    "openFormShort": "Lääʹdd lomakk",
     "cancel": "Kâʹll",
-    "title": "Beta-palautte",
-    "description": "Jaa mitä toimii ja mitä voib parantaa. Tää lomakk on Google'n.",
-    "openInNewTab": "Lääʹdd lomakk ođđâʹbb välipâʹstâs",
     "closeForm": "Peitt palautte-lomakk",
-    "loadingGoogleForm": "Lättee Google-lomakk…",
-    "iframeTitle": "Läʹdd beta-palautte"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Maksâttum kristtillâš videoid kielessä {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykõk",
+    "backToTop": "Maacc pââʹjjel",
     "newlyAdded": "Uusid lisätty",
     "newVideosTitle": "Uusit kristtillâš videoid kielessä {language}",
     "newestFirst": "Uusimmat ensin",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Lääʹdd kokoelma"
+    "openCollection": "Lääʹdd kokoelma",
+    "filters": "Sillâ",
+    "filterLength": "Kookkadvuõtt",
+    "filterLength_under5": "Occanj ko 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Jäänab ko 30 min",
+    "filterType": "Sorttâ",
+    "clearFilters": "Ciõlkkâd sillâ",
+    "filterResults": "Čuäʹjtet {count} / {total}",
+    "noFilterResults": "Ni õhtt video ij šiõtt tän sillid. Ǩiõčč väʹldded õõut jåura.",
+    "filterAdded": "Lââʹzztum",
+    "filterAdded_60d": "Mââimõs 60 peeiʹv",
+    "filterAdded_6m": "Mââimõs 6 mannu",
+    "filterAdded_12m": "Mââimõs 12 mannu"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project -katselu",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Edellisen videon esikatselu",
     "nextVideoPreview": "Seuraavan videon esikatselu",
     "mediaCollection": "Mediakokoelma",
-    "scrollToVideo": "Vieritä videon {title} kohdalle"
+    "scrollToVideo": "Vieritä videon {title} kohdalle",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
@@ -404,6 +594,29 @@
     "merryChristmas": "Šiõǥǥ jõõl!",
     "daysUntilChristmas": "{count, plural, one {Jõlku räjja # peiʹvv} two {Jõlku räjja # peeiʹv} other {Jõlku räjja # peeiʹv}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Selaa ǩiiržrââʹjj",
+    "title": "Selaa kategoria mieʹldd",
+    "description": "Mõõn veeʹrjjâʹvvsa ǩiiržrââʹjj vuäzzaj, koon taarbšak — Jeesus jieʹllem, ǩeʹrjjkååʹdd eeʹjj äiʹǧǧ, di videoid peäʹrrjid, mättjeeʹjid da uuʹcc joukkid.",
+    "seeAll": "Vueiʹnn kõõll videoid",
+    "previous": "Õuddli kategoriaid",
+    "next": "Puõʹtti kategoriaid",
+    "categories": {
+      "jesus": "JESUS-filmm",
+      "gospels": "Evangeliumid",
+      "shortVideos": "Uuʹcc videoid",
+      "family": "Perhe",
+      "relationships": "Õhttvuõđ",
+      "women": "Neezznid",
+      "students": "Mättjeeʹjid",
+      "sports": "Urheilu",
+      "goodNews": "Šiõǥǥ saǥǥ",
+      "hope": "Tuâivv",
+      "training": "Mättʹtõs",
+      "easter": "Pääʹss",
+      "christmas": "Jõlku"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Kielid",
     "metadataDescription": "Selaa JesusFilm-videoid kielen mukaan.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Sivua ei löydy:",
     "title": "Tää kohtaus ei ole täällä.",
     "description": "Sivu on voinu siirtyä, mutta tarina jatkuu.",
+    "languageDescription": "Jeäʹp käunnam seeidu, koon ooʒʒak, mutta mainnâs juätkkai filmmin da videoin mâʹilm ǩiõlin.",
     "actionsLabel": "Sivua ei löydy -toiminnot",
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Katso lyhytelokuva",
-    "actions": {
-      "joinUs": "Liity mukaan",
-      "shareMission": "Jaa lähetystehtävässämme"
-    },
-    "welcomeStart": {
-      "label": "Usko ja Raamattu",
-      "title": "Tämän päivän videovalinnat",
-      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään pohdintaa."
-    },
-    "welcomeMorning": {
-      "label": "Aamun inspiraatio",
-      "title": "Hyvää huomenta! Tämän päivän Raamattu-hetket odottavat.",
-      "description": "Aloita päiväsi rohkaisevilla Raamattu-hetkillä, jotka on suunniteltu inspiroimaan ja kohottamaan mieltäsi."
-    },
-    "welcomeAfternoon": {
-      "label": "Iltapäivän inspiraatio",
-      "title": "Hyvää iltapäivää! Raamattu-hetkiä päivääsi.",
-      "description": "Rohkaisevaa Raamattu-sisältöä juuri iltapäivän tauollesi tai jatkamaan inspiraatiota."
-    },
-    "welcomeEvening": {
-      "label": "Illan inspiraatio",
-      "title": "Hyvää iltaa! Rauhoitu Raamattu-hetkien parissa.",
-      "description": "Rauhallisia Raamattu-hetkiä, jotka auttavat sinua hiljentymään ja löytämään lohtua päivän päättyessä."
-    },
-    "joinUs": {
-      "label": "Liity mukaan",
-      "title": "Miljardit etsivät",
-      "description": "Sato on täällä. Liity mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kuljetaan yhdessä",
-      "title": "Kerrotaan Jeesuksen tarina yhdessä",
-      "description": "Jotta he voivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään juuri siellä missä ovat."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % såppâmvuõtt",
-    "none": "Tän videose tän ǩiõlâst ij kaunnu ni õhtt suåvtõõzz."
+    "none": "Tän videose tän ǩiõlâst ij kaunnu ni õhtt suåvtõõzz.",
+    "heading": "Suåvtum videoid",
+    "loadingLabel": "Lättee suåvtum videoid",
+    "openingTitle": "Ääʹvast {title}",
+    "openingVideo": "Ääʹvast video",
+    "activityNotRecorded": "Suåvtõõzzi toiminnâs ij vuäittam reǥistrâʹstted. Liiŋkk toimmje ain.",
+    "showingContextual": "Čuäʹjtet kontekstlaž suåvtõõzzid.",
+    "showingSaved": "Čuäʹjtet ruõkkum suåvtõõzzid.",
+    "explanationCurated": "Vaʹlljuum videoid tutkkummša.",
+    "explanationViewingMode": "Suåvtum tän videost da tuʹst ǩiõččâmvueʹjjest.",
+    "explanationCowatch": "Suåvtum tän videost da tuʹst miõlâs.",
+    "explanationHybrid": "Suåvtum tän videost da miõlâs, koid vaʹlljiǩ muʹšttjed.",
+    "explanationContextual": "Suåvtum tõʹst, mâi ǩiõččak ânn.",
+    "explanationSemanticFallback": "Suåvtum tõʹst, mâi ǩiõččak ânn, ko persoonlažšem ij leäkku õõlmâst.",
+    "explanationProfileDurable": "Persoonlažšum miõlâs, koid vaʹlljiǩ muʹšttjed.",
+    "explanationProfileVisit": "Persoonlažšum tän ǩiõčldâʹsse.",
+    "personalizationLabel": "Suåvtõõzzi persoonlažšem",
+    "personalizationPrompt": "Haaʹlååk mottjed, mäʹhtt suåvtõõzz persoonlažšeʹtet?",
+    "openCookieSettings": "Ääʹv Cookie-asetõõzz"
   },
   "BetaTesterModal": {
     "title": "Ryhdiy beta-testaajaks",
@@ -538,16 +732,39 @@
     "retryFailed": "Yritä epäonnistuneid ođđâsâst"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ǩiõllversio ij leäkku vuäǯǯamnalla",
+    "eyebrow": "Ǩiõllversio ij leäkku vuäǯǯamnalla",
+    "title": "<contentTitle>{title}</contentTitle> ij leäkku <languageName>{language}</languageName> ǩiõʹlle",
+    "actionsLabel": "Vuäǯǯamnalla åårrai ǩiõččâmvuäʹpp",
+    "browseInLanguage": "Ǩiõčč videoid {language} ǩiõʹlle",
+    "backToSearch": "Mååust ooccâmma",
+    "audioVersionsTitle": "Jeeʹres jiõnnversiok",
+    "audioVersionsDescription": "Vaʹlljed jiõnnǩiõl, što vueiʹtte juätkked tän video ǩiõččâm.",
+    "languageVersionLabel": "Jiõnnǩiõll",
+    "selectLanguageVersion": "Vaʹlljed ǩiõllversio",
+    "watchSelectedVersion": "Ǩiõčč vaʹlljum versio"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-váljjumh",
+    "bannerTitle": "Tuʹst privattvuõtt-váljjumh",
+    "bannerDescription": "Vuâđđ-cookieh vieʹǩǩe Watch:a ââʹnned siõrǥǥsen da toiʹmmjen. Jieʹllem loʹbbin ohtta vääʹld šeäiʹǩǩe optional first-party cookie vuäit mušteed miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest, što suåvtâs vuâsttažeh leäʹzzed persoonlažžen. Kontekstlaž suåvtâsh lie pääiʹǩest kuõʹbben-ne.",
+    "acceptAll": "Dohkket pukid",
+    "essentialOnly": "Tuʹmm vuâđđ",
+    "manageChoices": "Gâstt váljjumid",
+    "savingChoice": "Cookie-váljjum vuäǯǯad vuâlttem",
+    "settings": "Cookie-asetõõzz",
+    "settingsDescription": "Vaal, vuäit-a Watch mušteed suåvtâs-miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Tääʹzz vuäit mutted mâʹte-ne pääiʹǩ.",
+    "essentialCookies": "Vuâđđ-cookieh",
+    "essentialDescription": "Siõrǥǥvuõtt, čuäjtummuš, privattvuõtt-váljjumh da suåvtâs-ǩiõttʼtõs pieʹllõs.",
+    "alwaysActive": "Âlnn peʹll aktiivlaž",
+    "personalization": "Persoonlažšem",
+    "personalizationDescription": "Mušte bounded miârkteeiʹrâsâid kuäʹss-neǩ käunnlaž vueʹjjest. Jõs tääʹzz pueʹttak pois, kontekstlaž suåvtâsh âânnma še pääiʹǩest.",
+    "erasurePending": "Profiil siõttâm lij vuäǯǯmõššest. Kontekstlaž suåvtâsh lie juʹn aktiivlaž.",
+    "cancel": "Peruiʹtt",
+    "saveChoices": "Vuäǯǯad váljjumid",
+    "saving": "Vuäǯǯad…",
+    "loadError": "Tuʹst váljjum ij puʹhtti luõdded. Vuäit še vaalid vuâlla.",
+    "grantError": "Persoonlažšem ij puʹhtti aktiviirâd. Tuʹmm vuâđđ lij še âânnmõššest.",
+    "saveError": "Tuʹst váljjum ij puʹhtti vuäǯǯad. Vueiʹtǩǩed ođđest."
   }
 }

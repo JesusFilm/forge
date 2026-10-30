@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { type SeekerSource } from "@/lib/conversations"
 
+import { displayUtilities } from "./display-utility-denylist"
 import { SourcesList } from "./sources-list"
 
 function source(overrides: Partial<SeekerSource> = {}): SeekerSource {
@@ -129,24 +130,6 @@ describe("SourcesList", () => {
     const snippet = document.querySelector("[data-source-snippet]")
     expect(snippet).not.toBeNull()
     expect(snippet).toHaveClass("line-clamp-3")
-    // line-clamp-3 works via its own display:-webkit-box — ANY display
-    // utility on the same element silently unclamps it (browser-caught in
-    // feat-269; jsdom can't observe the visual clamp, so pin the class mix).
-    const displayUtilities = [
-      "block",
-      "inline-block",
-      "inline",
-      "flex",
-      "inline-flex",
-      "grid",
-      "inline-grid",
-      "table",
-      "inline-table",
-      "flow-root",
-      "contents",
-      "list-item",
-      "hidden",
-    ]
     for (const cls of displayUtilities) {
       expect(snippet?.classList.contains(cls)).toBe(false)
     }

@@ -43,6 +43,7 @@ type FakePrismaOpts = {
   thread?: "missing" | "found"
   threadOwnerId?: string
   blocks?: unknown[]
+  isHomepage?: boolean
   applyAfter?: {
     title?: string
     metaDescription?: string | null
@@ -62,6 +63,7 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
           id: "locale-1",
           experienceId: "exp-1",
           locale: "en",
+          isHomepage: opts.isHomepage ?? false,
           title: "Old Title",
           metaDescription: "Old description",
           ogImageUrl: null,
@@ -90,7 +92,7 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     experienceId: "exp-1",
     locale: "en",
     slug: "old-slug",
-    isHomepage: false,
+    isHomepage: opts.isHomepage ?? false,
     pathSegment: null,
     title: "Old Title",
     metaDescription: "Old description",
@@ -228,6 +230,55 @@ describe("streamChatTurn — happy path", () => {
     const done = events.at(-1)
     expect(done?.type).toBe("done")
     expect(mastraGenerateMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves an existing category rail and authored tile order during an unrelated AI edit", async () => {
+    const blocks = [
+      { t: "watchHomeHero" },
+      {
+        t: "watchHomeCategoryRail",
+        categoryIds: ["family", "gospels", "jesus"],
+      },
+      { t: "cta", heading: "Keep watching", buttonLabel: "Explore" },
+    ]
+    mastraGenerateMock.mockResolvedValue(
+      mastraEnvelope({ title: "Watch stories" }, { reason: "tighten title" }),
+    )
+    const prisma = makeFakePrisma({
+      blocks,
+      isHomepage: true,
+      applyAfter: { title: "Watch stories", blocks },
+    })
+
+    const events = await collect(
+      streamChatTurn(
+        { threadId: "thread-1", prompt: "Tighten the page title" },
+        { prisma, user: EDITOR },
+      ),
+    )
+
+    expect(events.find((event) => event.type === "error")).toBeUndefined()
+    const [prompt] = mastraGenerateMock.mock.calls[0] as [string]
+    expect(prompt).toContain('"isHomepage": true')
+    expect(prompt).toContain('"categoryIds": [')
+    expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          snapshot: expect.objectContaining({
+            data: expect.objectContaining({
+              blocks: [
+                expect.objectContaining({ t: "watchHomeHero" }),
+                expect.objectContaining({
+                  t: "watchHomeCategoryRail",
+                  categoryIds: ["family", "gospels", "jesus"],
+                }),
+                expect.objectContaining({ t: "cta" }),
+              ],
+            }),
+          }),
+        }),
+      }),
+    )
   })
 
   it("persists the assistant message with providerKind='mastra'", async () => {

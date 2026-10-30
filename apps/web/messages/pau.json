@@ -39,9 +39,8 @@
     "posterAlt": "Poster er a video",
     "noDownloads": "A diak a downloads el ngar a video tia.",
     "fileSizeLabel": "Onged a file size",
-    "termsAgreementPrefix": "Ak meruul a ",
+    "termsAgreement": "Ak meruul a <link>Ongerachel er a Oureor</link>",
     "termsOfUse": "Ongerachel er a Oureor",
-    "termsAgreementSuffix": "",
     "close": "Moes",
     "download": "Mekreos",
     "authRequiredTitle": "Ng kmo ng diak a omekido el download a video tia?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Mekiis er a Facebook (diak el ngar ngii er a build tia)",
     "shareOnX": "Mekiis er a X",
     "shareOnXUnavailable": "Mekiis er a X (diak el ngar ngii er a build tia)",
+    "opensInNewTab": "{label} (locha er a beches el tab)",
     "shareDisabledHint": "A mekiis a omeked a deployed page — a mo meleches er a video tia ng mlo production.",
     "shareFormat": "Klekeradel er a mekiis",
     "shareLinkTab": "Mekiis a Link",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Mesecher a audio language",
     "home": "Blil a JesusFilm",
     "closeSearch": "Moes a search",
-    "submitSearch": "Meses"
+    "submitSearch": "Meses",
+    "library": "Blil a babier"
   },
   "SearchOverlay": {
     "dialogLabel": "Meses mar a browse a videos",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ng diak el mengesei a results el mo dmoel.",
     "searching": "Mengeses...",
     "connectionHint": "Ng omdas er a connection kemiu mar a mengedei.",
+    "rateLimitHint": "A klemerang a sebechel. Onger er ngii er a elolem a minute.",
     "retrySearch": "Onger er a search",
     "retry": "Onger er a medengei",
     "noResults": "Diak a results er \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Meses er a \"{suggestion}\" er a {language}",
     "inLanguage": "er a {language}",
     "browseByRegion": "Browse er a region",
+    "allVideosOnSinglePage": "Videos okedall",
     "clearLanguages": "Mekoreor",
     "queryLanguageDetected": "{language} a mesik",
     "searchInLanguage": "Meses er a {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Omes ngii",
     "tapToUnmute": "Meder er a Unmute",
-    "nextEpisode": "Episode el ngii"
+    "nextEpisode": "Episode el ngii",
+    "audioTranslationCount": "{count, plural, one {# tekoi} other {# tekoi}}",
+    "subtitleCount": "Tekoi el mleches: {count, plural, one {# tekoi} other {# tekoi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mengil a content",
@@ -268,14 +273,183 @@
     "couldNotLoad": "A feedback form a diak el mengesei.",
     "loadingForm": "Mengil a feedback form…",
     "retry": "Onger er a medengei",
-    "openFormShort": "Onged el form",
     "cancel": "Mesek",
-    "title": "A omesik er a Beta",
-    "description": "Omesung a chelsel a ngakl el omesik el klou a cheldol a diak, ke a ngerul a mo ungil. A form ngera Google a obengkel.",
-    "openInNewTab": "Onged a form er a beluu el ngar a ngii a tab mar a tekoi",
     "closeForm": "Moes a feedback form",
-    "loadingGoogleForm": "Mengil a Google Form…",
-    "iframeTitle": "Onged a Beta Feedback"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos el di tia kelungel er a {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Omesulang",
     "collections": "A collections",
     "subtitlesOnly": "Subtitles el diak a dubbed audio",
+    "backToTop": "Mo er a bab",
     "newlyAdded": "Mlo new",
     "newVideosTitle": "Beches el Christian videos er a {language}",
     "newestFirst": "A beches a kot",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Videos el diak er a collection",
     "videosFromCollection": "Videos er a {collection}.",
     "standaloneDescription": "Standalone videos er a language tia.",
-    "openCollection": "Onged a collection"
+    "openCollection": "Onged a collection",
+    "filters": "Omesuub",
+    "filterLength": "Kekemanget",
+    "filterLength_under5": "Kesai er a 5 minute",
+    "filterLength_5to10": "5-10 minute",
+    "filterLength_10to30": "10-30 minute",
+    "filterLength_over30": "Ngar bab er a 30 minute",
+    "filterType": "Teletael",
+    "clearFilters": "Mesulaul a omesuub",
+    "filterResults": "Mochotii a {count} er a {total}",
+    "noFilterResults": "Ng diak a video el mo tabesul er tia el omesuub. Momdasu el nguu a ta.",
+    "filterAdded": "Mla obeu",
+    "filterAdded_60d": "Klsakl 60 sils",
+    "filterAdded_6m": "Klsakl 6 buil",
+    "filterAdded_12m": "Klsakl 12 buil"
   },
   "WatchHome": {
     "pageTitle": "Omes er a Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video preview el medengei",
     "nextVideoPreview": "Video preview el ngii",
     "mediaCollection": "Koleksion er a media",
-    "scrollToVideo": "Meredel er a video er a {title}"
+    "scrollToVideo": "Meredel er a video er a {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Blil a Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Ungil Kismas!",
     "daysUntilChristmas": "{count, plural, one {# el sils el mo er a Kismas} other {# el sils el mo er a Kismas}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse a library",
+    "title": "Browse er a category",
+    "description": "Mo er a bita er a library el kirem – a klengar er a Jesus, a taem er a rak er a church, me a videos el mle meruul kirel a blai, rengalek er a skuul, me a kekerei el ongelungel.",
+    "seeAll": "Videos okedall",
+    "previous": "Categories el medengei",
+    "next": "Categories el ngii",
+    "categories": {
+      "jesus": "A JESUS Film",
+      "gospels": "A Eua el Gospel",
+      "shortVideos": "Kekerei el Videos",
+      "family": "Blai",
+      "relationships": "Klauchad",
+      "women": "Kirel a Redil",
+      "students": "Kirel a Rengalek er a Skuul",
+      "sports": "Sports el Omerellel",
+      "goodNews": "Ungil Chais",
+      "hope": "Ungil Omdasu",
+      "training": "Omesuub",
+      "easter": "Easter el Sils",
+      "christmas": "Kismas"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Tekoi",
     "metadataDescription": "Browse a JesusFilm videos er a language.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "A page a diak el meruul:",
     "title": "A scene tia a diak er tiang.",
     "description": "A page a mo mesek, me a story a mo dmoel.",
+    "languageDescription": "Ng diak lsekum ng mlo er a page el mesisiich, me a story a mo dmoel er a films me a videos er a languages er a beluu rokui.",
     "actionsLabel": "Oureor er a page el diak el meruul",
     "backToWatch": "Mekilel er a Watch",
     "browseVideos": "Browse a videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mesei a short film",
-    "actions": {
-      "joinUs": "Onger kemam",
-      "shareMission": "Mekiis er a mission kemam"
-    },
-    "welcomeStart": {
-      "label": "Faith me a Scripture",
-      "title": "A video picks er a silse tia",
-      "description": "Video content el ngii a faith-centered er a library kemam el mo omeked a reng, omesik, mar a omekedong."
-    },
-    "welcomeMorning": {
-      "label": "Omeked a reng er a tutau",
-      "title": "Ungil beluu! Bible moments er a silse tia a ngar ngii.",
-      "description": "Onged a beluu er a silse kemiu me a Bible moments el mo omeked a reng mar a omeked a spirit kemiu."
-    },
-    "welcomeAfternoon": {
-      "label": "Omeked a reng er a chelsel a sils",
-      "title": "Ungil diak? Bible moments er a silse kemiu.",
-      "description": "Bible content el omeked a reng el ta er a afternoon break kemiu ke omekid a inspiration el dmoel."
-    },
-    "welcomeEvening": {
-      "label": "Omeked a reng er a kebesengei",
-      "title": "Ungil beluu! Mekebeng a reng kemiu er a Bible moments.",
-      "description": "Bible moments el ngel a omeked a reng el mo omekedong me omekid a comfort er a silse kemiu a mo teloi."
-    },
-    "joinUs": {
-      "label": "Onger kemam",
-      "title": "Billions a merengel er a chad el omesik",
-      "description": "A harvest a mlo ngii. Onger kemam el mo omes a gospel er a beluu rokui me a digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mong kemam ke mo mo er a ngii",
-      "title": "Metelei a story er a Jesus, kemam rokui",
-      "description": "Ng mo mengodei ke omes a love er a Jesus er a language kemiu, er a ngii a ngar a ngii."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% el osisiu",
-    "none": "Diak a video el omesik el ngar ngii er a video tia er a language tia."
+    "none": "Diak a video el omesik el ngar ngii er a video tia er a language tia.",
+    "heading": "Videos el omesik",
+    "loadingLabel": "Mengil er a videos el omesik",
+    "openingTitle": "Melecholt er a {title}",
+    "openingVideo": "Melecholt er a video",
+    "activityNotRecorded": "Ng diak lsekum ng mle olekolt a recommendation activity. A links a mekerang.",
+    "showingContextual": "Omeketakl er a recommendations er a context.",
+    "showingSaved": "Omeketakl er a recommendations el mle meruul.",
+    "explanationCurated": "Videos el mle cheltakl el kirel a omesaod.",
+    "explanationViewingMode": "Omesik er a video er tia me a rolel a omes er kau.",
+    "explanationCowatch": "Omesik er a video er tia me a interest er kau.",
+    "explanationHybrid": "Omesik er a video er tia me a interest el mle cheltakl er kau el melemolem.",
+    "explanationContextual": "Omesik er a ngar er ngii el omes er kau er chelechang.",
+    "explanationSemanticFallback": "Omesik er a ngar er ngii el omes er kau er chelechang, e ng diak el sebechel a mesaul a tekoi el kirel kau er chelechang.",
+    "explanationProfileDurable": "Mle kirel kau er a interest el mle cheltakl er kau el melemolem.",
+    "explanationProfileVisit": "Mle kirel kau er a visit er tia.",
+    "personalizationLabel": "Mesaul a tekoi el kirel kau er a recommendation",
+    "personalizationPrompt": "Ng soam el omekesiu er a rolel a recommendation el kirel kau?",
+    "openCookieSettings": "Mengibeai a setting er a cookie"
   },
   "BetaTesterModal": {
     "title": "Mo beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Onger er a downloads el diak"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Diak el ngar ngii a belkul a tekoi",
+    "eyebrow": "Diak el ngar ngii a belkul a tekoi",
+    "title": "A <contentTitle>{title}</contentTitle> a diak el ngar ngii er a <languageName>{language}</languageName>",
+    "actionsLabel": "A rengalek el omes el ngar ngii",
+    "browseInLanguage": "Meses a videos er a {language}",
+    "backToSearch": "Morael er a meses",
+    "audioVersionsTitle": "Aikukl el belkul a reng",
+    "audioVersionsDescription": "Omeked a tekoi er a reng el mo mesisiich el omes er a video tia.",
+    "languageVersionLabel": "Tekoi er a reng",
+    "selectLanguageVersion": "Omeked a belkul a tekoi",
+    "watchSelectedVersion": "Omes er a belkul el omeked"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie el mo omlaut",
+    "bannerTitle": "Ngii a omloi er kau",
+    "bannerDescription": "Cookie el kirel sebechel a melemolem el mo kmal ungil me a sebechel Watch. Ngar er a omesiu, a ta er a optional first-party cookie a sebeched el mo diak a kmo melemolem er a rengul a omesodel a ultutelel el bo mo buil a mesaul a tekoi el kirel kau. A recommendation el omekrael er a context a mo melemalt er a taem el di mle mesaod.",
+    "acceptAll": "Mo ungil er a ongeruul el ullsengel a klechad",
+    "essentialOnly": "A kirel sebechel kekeald",
+    "manageChoices": "Oldecheduch er a omloi",
+    "savingChoice": "Dulech er a omloi er a cookie",
+    "settings": "Setting er a cookie",
+    "settingsDescription": "Melekla el ngdi Watch a mo sebechel el melemolem er a rengul a recommendation el kirel kau el locha mo ngar er a visit el uaisei. Ke sebechem el oldecheduch e a taem er a taem.",
+    "essentialCookies": "Cookie el kirel sebechel",
+    "essentialDescription": "Security, playback, omloi er a privacy, me a attribution er a request el kirel recommendation.",
+    "alwaysActive": "Mengai er a taem el diak",
+    "personalization": "Mesaul a tekoi el kirel kau",
+    "personalizationDescription": "Melemolem er a interest el mla mo kmal mle kirel kau er a visit el uaisei. Ngdi ke mengeseu er a diak, a recommendation el omekrael er a context a mo medengei el melemalt.",
+    "erasurePending": "A ureor er a omekngeltengat el profile a mla mo er ngii. A recommendation el omekrael er a context a mle mengai tial taem.",
+    "cancel": "Mo kltmokl",
+    "saveChoices": "Dulech er a omloi",
+    "saving": "Dulech...",
+    "loadError": "Ngii a omloi er kau a diak lsebeched el losii. Ngdi ke sebechem el omloi er a omengull.",
+    "grantError": "A personalization a diak lsebeched el me ngak. A essential only a mesaod el melemalt.",
+    "saveError": "Ngii a omloi er kau a diak lsebeched el dulech. Ngklel a ungil chimngii mlo sebechem el melekoi se el mla ta er ngak."
   }
 }

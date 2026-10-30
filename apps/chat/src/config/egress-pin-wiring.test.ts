@@ -6,9 +6,10 @@
 // other test green while silently restoring fail-open egress of the ai-chat
 // lane bearer. These are the tests that go red for that revert.
 //
-// Both builders are pinned in ONE file because they share the module-load
-// NODE_ENV dance: env.ts freezes NODE_ENV at parse time, so each case must
-// stub then re-import (the shape env.test.ts already uses).
+// All three builders (send, history read, feat-450 history write) are pinned
+// in ONE file because they share the module-load NODE_ENV dance: env.ts
+// freezes NODE_ENV at parse time, so each case must stub then re-import (the
+// shape env.test.ts already uses).
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -29,38 +30,47 @@ async function buildersUnder(nodeEnv: string) {
   vi.stubEnv("NODE_ENV", nodeEnv)
   const { buildHistoryProxyConfig } =
     await import("@/app/api/history/history-proxy")
+  const { buildHistoryWriteProxyConfig } =
+    await import("@/app/api/history/write-proxy")
   const { buildSeekerProxyConfig } = await import("@/app/api/seeker/route")
-  return { buildHistoryProxyConfig, buildSeekerProxyConfig }
+  return {
+    buildHistoryProxyConfig,
+    buildHistoryWriteProxyConfig,
+    buildSeekerProxyConfig,
+  }
 }
 
-describe("egress pin — env source is threaded at both proxy config builders", () => {
-  it("arms requireAllowlist in a production build (both builders)", async () => {
-    const { buildHistoryProxyConfig, buildSeekerProxyConfig } =
-      await buildersUnder("production")
-    expect(buildHistoryProxyConfig().requireAllowlist).toBe(true)
-    expect(buildSeekerProxyConfig().requireAllowlist).toBe(true)
+describe("egress pin — env source is threaded at every proxy config builder", () => {
+  it("arms requireAllowlist in a production build (all three builders)", async () => {
+    const builders = await buildersUnder("production")
+    expect(builders.buildHistoryProxyConfig().requireAllowlist).toBe(true)
+    expect(builders.buildHistoryWriteProxyConfig().requireAllowlist).toBe(true)
+    expect(builders.buildSeekerProxyConfig().requireAllowlist).toBe(true)
   })
 
   // Anti-vacuous companion: a builder hard-coded to `true` would pass the case
   // above. Only reading the env policy satisfies both directions.
   it.each(["development", "test"])(
-    "leaves requireAllowlist fail-open for NODE_ENV %j (both builders)",
+    "leaves requireAllowlist fail-open for NODE_ENV %j (all three builders)",
     async (nodeEnv) => {
-      const { buildHistoryProxyConfig, buildSeekerProxyConfig } =
-        await buildersUnder(nodeEnv)
-      expect(buildHistoryProxyConfig().requireAllowlist).toBe(false)
-      expect(buildSeekerProxyConfig().requireAllowlist).toBe(false)
+      const builders = await buildersUnder(nodeEnv)
+      expect(builders.buildHistoryProxyConfig().requireAllowlist).toBe(false)
+      expect(builders.buildHistoryWriteProxyConfig().requireAllowlist).toBe(
+        false,
+      )
+      expect(builders.buildSeekerProxyConfig().requireAllowlist).toBe(false)
     },
   )
 
-  // The builders must agree: a pin on one proxy and not the other still leaks
-  // the bearer on the unpinned path.
-  it("keeps both builders on the same policy value", async () => {
+  // The builders must agree: a pin on one proxy and not the others still
+  // leaks the bearer on the unpinned path.
+  it("keeps every builder on the same policy value", async () => {
     for (const nodeEnv of ["production", "development"]) {
-      const { buildHistoryProxyConfig, buildSeekerProxyConfig } =
-        await buildersUnder(nodeEnv)
-      expect(buildSeekerProxyConfig().requireAllowlist).toBe(
-        buildHistoryProxyConfig().requireAllowlist,
+      const builders = await buildersUnder(nodeEnv)
+      const policy = builders.buildSeekerProxyConfig().requireAllowlist
+      expect(builders.buildHistoryProxyConfig().requireAllowlist).toBe(policy)
+      expect(builders.buildHistoryWriteProxyConfig().requireAllowlist).toBe(
+        policy,
       )
     }
   })

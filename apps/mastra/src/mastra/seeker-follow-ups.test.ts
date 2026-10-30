@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -15,7 +18,9 @@ import {
 
 // ===========================================================================
 // projectFollowUps — the KTD4 drop-never-repair projection, one falsifying
-// case per rung. Shared with replay (KTD3) and mirrored client-side in U2.
+// case per rung. Shared with replay (KTD3). NOT mirrored client-side:
+// chat applies a payload bound only (superseded 2026-08-27), so these rungs
+// are enforced here alone.
 // ===========================================================================
 
 describe("projectFollowUps — drop-never-repair rungs (KTD4)", () => {
@@ -100,15 +105,16 @@ describe("projectFollowUps — drop-never-repair rungs (KTD4)", () => {
   // dropping. Pinned because the two rungs' ORDER is the only thing deciding
   // it: move the format check above the collapse and this item starts
   // dropping, which is a real contract change for a field that becomes a SENT
-  // message. U2's mirror must apply the rungs in this same order.
+  // message. No client-side counterpart applies these rungs (superseded
+  // 2026-08-27), so this order is enforced here alone.
   it("collapses BOM/ZWNBSP to a space rather than dropping — the whitespace rung runs before the Cf rung", () => {
     expect(projectFollowUps(["bad\uFEFFone"])).toEqual(["bad one"])
   })
 
-  // The over-blocking falsifier for the two rungs above. A mirror that matched
-  // all of \p{Cf} without the carve-outs would fail exactly here, discarding
-  // real questions — which is why U2's client mirror must copy the carve-outs
-  // and not just the category.
+  // The over-blocking falsifier for the two rungs above. Matching all of
+  // \p{Cf} without the carve-outs would fail exactly here, discarding real
+  // questions — and with no client mirror since 2026-08-27, nothing downstream
+  // would soften that.
   it("KEEPS ZWNJ/ZWJ — legitimate joiners in Persian/Arabic/Indic scripts and emoji sequences must never drop a real question", () => {
     const zwnj = "نمی\u200Cخواهم?"
     expect(projectFollowUps([zwnj])).toEqual([zwnj])
@@ -315,5 +321,47 @@ describe("parsePostHocFollowUps — total extraction", () => {
     ]) {
       expect(parsePostHocFollowUps(junk)).toEqual([])
     }
+  })
+})
+
+// ===========================================================================
+// The ONE surviving cross-app coupling (feat-366, KTD4 superseded 2026-08-27).
+// Chat no longer mirrors this projection — it applies a payload bound whose
+// caps are deliberately unsynced. The relation that still matters is an
+// INEQUALITY, in one direction only: mastra's caps must stay <= chat's, or
+// mastra emits questions chat silently drops (no rejection diagnostic exists
+// by design, so the loss is invisible on both sides).
+//
+// This pin lives HERE, not in chat's suite, because the change that breaks it
+// is a MASTRA-only edit — and `@forge/chat` is not built for a mastra-only
+// PR, so a chat-side test would never run on the PR that needs it. Reading
+// the other app's source is the repo's established cross-app pin (see
+// ai-chat-history-replay-attachments.test.ts, which reads chat's byte cap).
+// Tightening mastra's caps stays free; only a loosening past chat's value
+// goes red.
+// ===========================================================================
+
+describe("cross-app cap relation vs apps/chat's payload bound", () => {
+  const chatSource = readFileSync(
+    resolve(process.cwd(), "../chat/src/lib/chat-stub.ts"),
+    "utf8",
+  )
+
+  function chatCap(name: string): number {
+    const match = chatSource.match(new RegExp(`${name}\\s*=\\s*([0-9_]+)`))
+    expect(match, `${name} not declared in chat's chat-stub.ts`).not.toBeNull()
+    return Number(match![1].replace(/_/g, ""))
+  }
+
+  it("keeps the per-question cap at or below chat's bound", () => {
+    expect(FOLLOW_UPS_QUESTION_MAX_UNITS).toBeLessThanOrEqual(
+      chatCap("FOLLOW_UPS_QUESTION_MAX_UNITS"),
+    )
+  })
+
+  it("keeps the question count at or below chat's bound", () => {
+    expect(FOLLOW_UPS_MAX_QUESTIONS).toBeLessThanOrEqual(
+      chatCap("FOLLOW_UPS_MAX_QUESTIONS"),
+    )
   })
 })

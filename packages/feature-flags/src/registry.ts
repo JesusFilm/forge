@@ -1,4 +1,16 @@
 export const featureFlags = {
+  watchAudience: {
+    key: "forge.watch.audience",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_AUDIENCE_DEFAULT",
+    description: "Release gate for Watch audience tabs and next steps.",
+  },
+  watchHomepageRecommendations: {
+    key: "forge.watch.homepageRecommendations",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT",
+    description: "Release gate for the Homepage Recommendations Block on Web.",
+  },
   watchPlayerMigration: {
     key: "forge.watch.playerMigration",
     defaultValue: false,
@@ -12,12 +24,6 @@ export const featureFlags = {
     localOverrideEnv: "FORGE_WATCH_CTA_TEXT_COPY_DEFAULT",
     description:
       "Temporary production smoke flag for the watch-page CTA text copy.",
-  },
-  watchGlobalBetaTesterCta: {
-    key: "forge.watch.globalBetaTesterCta",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT",
-    description: "Temporary release flag for the global Watch beta tester CTA.",
   },
   watchDownloadAccountGate: {
     key: "forge.watch.downloadAccountGate",

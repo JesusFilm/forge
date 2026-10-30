@@ -5,47 +5,6 @@ export type WatchHomeSourceConfig = {
 
 export type WatchHomePlaylistGroup = readonly string[]
 
-export type WatchHomeMuxInsertConfig = {
-  id: string
-  copyId: WatchHomeMuxInsertCopyId
-  enabled: boolean
-  playbackIds: readonly string[]
-  durationSeconds: number | null
-  action: WatchHomeMuxInsertAction | null
-  logo: boolean
-  posterOverride: string | null
-  trigger: { type: "sequence-start" } | { type: "after-count"; count: number }
-  conditionalOverlays?: readonly WatchHomeConditionalOverlay[]
-}
-
-export type WatchHomeMuxInsertAction = {
-  copyId: WatchHomeMuxInsertActionCopyId
-  url: string
-  icon?: "join" | "share"
-}
-
-export type WatchHomeMuxInsertCopyId =
-  | "welcomeStart"
-  | "welcomeMorning"
-  | "welcomeAfternoon"
-  | "welcomeEvening"
-  | "joinUs"
-  | "tellingTheStoryOfJesus"
-
-export type WatchHomeMuxInsertActionCopyId = "joinUs" | "shareMission"
-
-export type WatchHomeConditionalOverlay = {
-  copyId: WatchHomeMuxInsertCopyId
-  priority: number
-  conditions: readonly {
-    type: "time-range"
-    range: { start: number; end: number }
-  }[]
-  overlay: {
-    action?: WatchHomeMuxInsertAction | null
-  }
-}
-
 export type WatchHomeSectionConfig = {
   id: string
   eyebrow: string
@@ -129,72 +88,6 @@ export const WATCH_HOME_PLAYLIST_SEQUENCE: readonly WatchHomePlaylistGroup[] = [
 ] as const
 
 export const WATCH_HOME_COLLECTION_BLACKLIST = new Set(["7_Origins4Connect"])
-
-// Ported from JesusFilm/core apps/watch/config/video-inserts.mux.json.
-// Keep this as Forge fallback data until admin owns insert editorial metadata.
-export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
-  {
-    id: "welcome-start",
-    copyId: "welcomeStart",
-    enabled: true,
-    playbackIds: ["34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y"],
-    durationSeconds: 9,
-    action: null,
-    logo: true,
-    posterOverride: null,
-    trigger: { type: "sequence-start" },
-    conditionalOverlays: [
-      {
-        copyId: "welcomeMorning",
-        priority: 10,
-        conditions: [{ type: "time-range", range: { start: 5, end: 9 } }],
-        overlay: {},
-      },
-      {
-        copyId: "welcomeAfternoon",
-        priority: 10,
-        conditions: [{ type: "time-range", range: { start: 12, end: 17 } }],
-        overlay: {},
-      },
-      {
-        copyId: "welcomeEvening",
-        priority: 10,
-        conditions: [{ type: "time-range", range: { start: 17, end: 21 } }],
-        overlay: {},
-      },
-    ],
-  },
-  {
-    id: "join-us",
-    copyId: "joinUs",
-    enabled: true,
-    playbackIds: ["VN4b95KOO3JtLg3x019dH2mzMHPL4le65vRmXFONyzZ8"],
-    durationSeconds: null,
-    action: {
-      copyId: "joinUs",
-      url: "https://your.nextstep.is/joinus",
-      icon: "join",
-    },
-    logo: false,
-    posterOverride: null,
-    trigger: { type: "after-count", count: 1 },
-  },
-  {
-    id: "telling-the-story-of-jesus",
-    copyId: "tellingTheStoryOfJesus",
-    enabled: true,
-    playbackIds: ["W00xXnOS4kU8VVMgx4M6AdzZE63OnKk300HdEDeUYZqlQ"],
-    durationSeconds: null,
-    action: {
-      copyId: "shareMission",
-      url: "https://www.jesusfilm.org/partners/",
-      icon: "share",
-    },
-    logo: false,
-    posterOverride: null,
-    trigger: { type: "after-count", count: 3 },
-  },
-] as const
 
 const WATCH_HOME_SECTION_DEFINITIONS = [
   {

@@ -1,0 +1,183 @@
+{
+  "initial_correlated_audio": {
+    "executionMs": 1519.215,
+    "nodes": [
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_transcript_chunk",
+        "Index Name": "video_transcript_chunk_embedding_hnsw_en",
+        "Actual Loops": 4,
+        "Actual Rows": 48.0,
+        "Actual Total Time": 361.867,
+        "Shared Hit Blocks": 1206975
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 4477,
+        "Actual Rows": 76.01,
+        "Actual Total Time": 0.027,
+        "Shared Hit Blocks": 61986
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 340307,
+        "Actual Rows": 0.8,
+        "Actual Total Time": 0.003,
+        "Shared Hit Blocks": 1092864
+      },
+      {
+        "Node Type": "Bitmap Heap Scan",
+        "Relation Name": "video_dub",
+        "Actual Loops": 192,
+        "Actual Rows": 1.0,
+        "Actual Total Time": 0.196,
+        "Shared Hit Blocks": 1530
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 192,
+        "Actual Rows": 1.0,
+        "Actual Total Time": 0.006,
+        "Shared Hit Blocks": 768
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 1,
+        "Actual Rows": 8.0,
+        "Actual Total Time": 0.017,
+        "Shared Hit Blocks": 8
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 8,
+        "Actual Rows": 0.12,
+        "Actual Total Time": 0.002,
+        "Shared Hit Blocks": 4
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 0,
+        "Actual Rows": 0,
+        "Actual Total Time": 0.0,
+        "Shared Hit Blocks": 0
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 0,
+        "Actual Rows": 0,
+        "Actual Total Time": 0.0,
+        "Shared Hit Blocks": 0
+      }
+    ]
+  },
+  "creation-wanca.plan": {
+    "executionMs": 80.392,
+    "nodes": [
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 1,
+        "Actual Rows": 131,
+        "Actual Total Time": 0.159,
+        "Shared Hit Blocks": 18
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 131,
+        "Actual Rows": 0.88,
+        "Actual Total Time": 0.008,
+        "Shared Hit Blocks": 460
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_transcript_chunk",
+        "Index Name": "video_transcript_chunk_embedding_hnsw_en",
+        "Actual Loops": 2,
+        "Actual Rows": 48,
+        "Actual Total Time": 33.516,
+        "Shared Hit Blocks": 12370
+      }
+    ]
+  },
+  "birth-english.plan": {
+    "executionMs": 143.029,
+    "nodes": [
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 1,
+        "Actual Rows": 1173,
+        "Actual Total Time": 1.946,
+        "Shared Hit Blocks": 331
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 1173,
+        "Actual Rows": 0.91,
+        "Actual Total Time": 0.008,
+        "Shared Hit Blocks": 4272
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_transcript_chunk",
+        "Index Name": "video_transcript_chunk_embedding_hnsw_en",
+        "Actual Loops": 4,
+        "Actual Rows": 48,
+        "Actual Total Time": 26.562,
+        "Shared Hit Blocks": 13354
+      }
+    ]
+  },
+  "birth-gbii.plan": {
+    "executionMs": 195.478,
+    "nodes": [
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_dub",
+        "Index Name": "video_dub_language_id_idx",
+        "Actual Loops": 1,
+        "Actual Rows": 79,
+        "Actual Total Time": 0.127,
+        "Shared Hit Blocks": 14
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "mux_video",
+        "Index Name": "mux_video_pkey",
+        "Actual Loops": 79,
+        "Actual Rows": 0.81,
+        "Actual Total Time": 0.011,
+        "Shared Hit Blocks": 256
+      },
+      {
+        "Node Type": "Index Scan",
+        "Relation Name": "video_transcript_chunk",
+        "Index Name": "video_transcript_chunk_embedding_hnsw_en",
+        "Actual Loops": 4,
+        "Actual Rows": 48,
+        "Actual Total Time": 43.257,
+        "Shared Hit Blocks": 38719
+      }
+    ]
+  }
+}

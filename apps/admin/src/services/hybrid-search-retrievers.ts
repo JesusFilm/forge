@@ -31,13 +31,13 @@ import {
 } from "./hybrid-search-sql"
 import type { RankedItem } from "./hybrid-search-fusion"
 import {
+  activeExperienceContentEmbeddingWhere,
+  activeTranscriptContentEmbeddingWhere,
+} from "./content-embedding-contract"
+import {
   recordSearchDbTiming,
   type SearchTimingRecorder,
 } from "./hybrid-search-timing"
-
-const QWEN_CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const QWEN_CONTENT_EMBEDDING_MODEL = "embeddings"
-const QWEN_CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -265,13 +265,10 @@ export function mixVideoSemanticEvidenceRows(
 
 function videoTranscriptProvenanceFilter() {
   return Prisma.sql`
-          AND vt.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-          AND vt.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vt.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_transform_version IS NULL
-          AND vtc.model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-          AND vtc.dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
+          ${activeTranscriptContentEmbeddingWhere({
+            transcriptAlias: "vt",
+            chunkAlias: "vtc",
+          })}
         `
 }
 
@@ -607,11 +604,7 @@ export async function searchExperienceSemantic(
       JOIN experience e ON e.id = el.experience_id
         AND e.archived_at IS NULL
       WHERE el.embedding IS NOT NULL
-        AND el.embedding_provider = ${QWEN_CONTENT_EMBEDDING_PROVIDER}
-        AND el.embedding_model = ${QWEN_CONTENT_EMBEDDING_MODEL}
-        AND el.embedding_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND el.embedding_native_dimensions = ${QWEN_CONTENT_EMBEDDING_DIMENSIONS}
-        AND el.embedding_transform_version IS NULL
+        ${activeExperienceContentEmbeddingWhere("el")}
         AND el.locale = ${locale}
         AND el.status = 'published'
       ORDER BY el.embedding <=> ${queryEmbedding}::vector

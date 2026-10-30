@@ -3,18 +3,16 @@ import { StyleSheet, Switch, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { SheetTitleRow } from "../sheets/SheetTitleRow"
 import { useTypography } from "../../hooks/useTypography"
-import {
-  ACCENT,
-  SURFACE_COLOR,
-  TEXT_PRIMARY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
+import { useT } from "../../i18n/useT"
+import { ACCENT, SURFACE_COLOR, TEXT_SECONDARY } from "../../lib/color"
 import type { WatchSubtitle } from "../../lib/normalizeVideo"
 
 const getSelectionId = (s: WatchSubtitle) => s.languageSlug
 const getKey = (s: WatchSubtitle) => s.documentId
 const getPrimaryLabel = (s: WatchSubtitle) => s.languageName
+const getPrimaryLang = (s: WatchSubtitle) => s.languageNameLang
 const getSearchValues = (s: WatchSubtitle) => [s.languageName]
 
 export type SubtitleSheetProps = {
@@ -30,6 +28,7 @@ export type SubtitleSheetProps = {
     isUserSelection: boolean,
   ) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SubtitleSheetContent({
@@ -38,8 +37,10 @@ export function SubtitleSheetContent({
   activeSubtitleSlug,
   onSubtitleChange,
   onClose,
+  testID,
 }: SubtitleSheetProps) {
   const typography = useTypography()
+  const t = useT("Watch")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -75,46 +76,51 @@ export function SubtitleSheetContent({
 
   if (subtitles.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="chatbubble-ellipses-outline"
           size={48}
           color={TEXT_SECONDARY}
         />
         <Text style={[styles.emptyText, typography.body]}>
-          No subtitles available
+          {t("noSubtitlesAvailable")}
         </Text>
       </View>
     )
   }
 
   const toggleRow = (
-    <View style={styles.toggleRow}>
-      <Text style={[styles.toggleLabel, typography.titleSmall]}>Subtitles</Text>
-      <Switch
-        value={localToggle}
-        onValueChange={handleToggle}
-        trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
-        thumbColor="#ffffff"
-        accessibilityRole="switch"
-        accessibilityLabel="Enable subtitles"
-      />
-    </View>
+    <SheetTitleRow
+      title={t("subtitles")}
+      trailing={
+        <Switch
+          value={localToggle}
+          onValueChange={handleToggle}
+          trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
+          thumbColor="#ffffff"
+          accessibilityRole="switch"
+          accessibilityLabel={t("enableSubtitlesAriaLabel")}
+        />
+      }
+    />
   )
 
   return (
     <SearchableListSheet
+      testID={testID}
       rows={subtitles}
       activeId={activeSubtitleSlug}
       getSelectionId={getSelectionId}
       getKey={getKey}
       getPrimaryLabel={getPrimaryLabel}
+      getPrimaryLang={getPrimaryLang}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
-      searchPlaceholder="Search subtitles..."
-      searchAccessibilityLabel="Search subtitles"
-      emptySearchMessage="No subtitles found"
+      searchPlaceholder={t("searchSubtitlesPlaceholder")}
+      searchAccessibilityLabel={t("searchSubtitlesAriaLabel")}
+      emptySearchMessage={t("noSubtitlesFound")}
       headerTop={toggleRow}
+      actionName="subtitle-sheet"
     />
   )
 }
@@ -129,18 +135,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  toggleLabel: {
-    color: TEXT_PRIMARY,
-    fontWeight: "600",
-    fontFamily: "System",
   },
 })

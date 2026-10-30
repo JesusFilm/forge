@@ -128,3 +128,42 @@ Fill after merge and the first eligible 09:00 UTC scheduler run:
 - PostgreSQL 18 restore duration, row/vector/provenance counts: pending.
 - Semantic-search smoke without `run-embeds`: pending.
 - Measured first-month and month-twelve no-retention cost: pending.
+
+## August 2026 publication recovery
+
+- Production evidence on 29 August showed the last successful `video-core` and
+  `video-search` objects were published on 3 August. Every scheduled profile
+  run from 4 August onward failed before `pg_dump` during the source profile
+  compatibility preflight.
+- The production compatibility predicate itself returned zero excluded
+  social-image references. The failure was the newly introduced `psql`
+  subprocess boundary, not unsafe source data or a stopped scheduler.
+- Recovery replaces the single-host source check with Admin's existing `pg`
+  client, keeps native `psql` only for libpq multi-host authorities, and adds
+  regression coverage for connection cleanup, credential redaction, and the
+  absence of a single-host `psql` spawn.
+- PR #2094 merged as commit
+  `41d397bc671eaa6492d1d4f08c83cd8d1b6e9537` and deployed through the normal
+  main-to-production path. The production worker remained on a descendant of
+  that fix while the recovery run executed.
+- An operator-invoked recovery run on 29 August used the normal scheduler job
+  entry point against production and recorded successful workflow-ledger rows:
+  - `video-core`: ledger `cmtde2ofq0000n27ry89l2x1g`, object
+    `admin-video-db-backups/video-core/video-db-video-core-2026-08-28T20-13-18-752Z.dump`,
+    196,969,653 bytes, 71,265 ms export, and 30,611 ms upload.
+  - `video-search`: ledger `cmtde4vyx0001n27rh05vwnhq`, object
+    `admin-video-db-backups/video-search/video-db-video-search-2026-08-28T20-15-01-146Z.dump`,
+    1,492,068,789 bytes, 488,273 ms export, and 261,714 ms upload.
+- The repository signer selected both exact objects as fresh without
+  `--allow-stale`. Each was restored with PostgreSQL 18 into an isolated target:
+  - Core restored in 56,963 ms with 1,175 videos, 25,522 video locales, 1,612
+    editions, 176,280 Mux videos, 212,112 dubs, 11,717 subtitles, 2,320
+    languages, and zero orphan video locales or excluded social-image
+    references.
+  - Search restored in 634,837 ms with 1,175 videos, 25,522 video locales,
+    1,497 scenes, 701 scene locales, 164,700 transcripts, and 280,107 transcript
+    chunks. All 280,107 chunks had 1,536-dimension vectors, with zero orphan
+    transcripts or chunks.
+- Both downloaded restore archives were removed after verification. The
+  remaining semantic-search smoke and measured cost evidence above still gate
+  moving this broader ticket to `complete`.

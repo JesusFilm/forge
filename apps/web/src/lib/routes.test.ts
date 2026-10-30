@@ -17,6 +17,7 @@ import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   videosIndexPath,
+  whatsNewPath,
   watchEpisodeAbsolute,
   watchEpisodeExplicitLanguagePath,
   watchEpisodePath,
@@ -36,10 +37,24 @@ const spanishCastilian = asLocaleSlug("spanish-castilian")
 const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-liberté-de-l-interieur-freedom-within",
+    "la-búsqueda-the-search",
+    "jätku-leiba",
+  ])("accepts the reported Unicode content slug %s", (slug) => {
+    expect(tryAsContentSlug(slug)).toBe(slug)
+    expect(asContentSlug(slug)).toBe(slug)
+  })
+
   it("returns branded slug on valid input", () => {
     expect(tryAsContentSlug("jesus")).toBe("jesus")
     expect(tryAsContentSlug("soccer_event_collection")).toBe(
       "soccer_event_collection",
+    )
+    expect(tryAsContentSlug("kılıç")).toBe("kılıç")
+    expect(tryAsContentSlug("la-liberté-de-l-interieur-freedom-within")).toBe(
+      "la-liberté-de-l-interieur-freedom-within",
     )
     expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
   })
@@ -52,6 +67,14 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
     expect(tryAsContentSlug("Jesus")).toBeNull()
     expect(tryAsLocaleSlug("English")).toBeNull()
   })
+
+  it.each(["ｊｅｓｕｓ", "ᴀlpha", "ʰome", "ɪesus", "ꜱcript", "ﬁlm"])(
+    "rejects lookalike Unicode content slug %s",
+    (slug) => {
+      expect(tryAsContentSlug(slug)).toBeNull()
+      expect(() => asContentSlug(slug)).toThrow()
+    },
+  )
 
   it("returns null on dot", () => {
     expect(tryAsContentSlug("jesus.html")).toBeNull()
@@ -281,6 +304,12 @@ describe("localized utility paths", () => {
   })
 })
 
+describe("whatsNewPath", () => {
+  it("returns /whats-new (no .html, no language segment)", () => {
+    expect(whatsNewPath()).toBe("/whats-new")
+  })
+})
+
 describe("languageVideosIndexPath", () => {
   it("returns /lang.html/videos", () => {
     expect(languageVideosIndexPath(portugueseBrazil)).toBe(
@@ -359,6 +388,10 @@ describe("parseWatchPath", () => {
       kind: "reserved",
       prefix: "favicon.ico",
     })
+    expect(parseWatchPath("/manifest.webmanifest")).toEqual({
+      kind: "reserved",
+      prefix: "manifest.webmanifest",
+    })
   })
 
   it("parses /languages as languages", () => {
@@ -373,6 +406,20 @@ describe("parseWatchPath", () => {
     expect(parseWatchPath("/spanish-latin-american.html/history")).toEqual({
       kind: "localized-history",
       lang: "spanish-latin-american",
+    })
+  })
+
+  it("parses /whats-new as the product-update page, not a localized home", () => {
+    expect(parseWatchPath("/whats-new")).toEqual({ kind: "whats-new" })
+  })
+
+  it("still parses a neighbouring one-segment slug as a localized home", () => {
+    // Falsifies the case above: without the explicit `whats-new` branch the
+    // route would fall through to this shape and the floating header would
+    // treat the page as an English video surface.
+    expect(parseWatchPath("/whats-old")).toEqual({
+      kind: "localized-home",
+      lang: "whats-old",
     })
   })
 

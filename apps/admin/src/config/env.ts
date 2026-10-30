@@ -98,6 +98,12 @@ export const watchSearchCandidateComparisonEnabledEnvSchema = z
   .default("false")
   .transform((value) => value === "true")
 
+export const watchSearchTranscriptPublicationEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+  .transform((value) => value === "true")
+
 export const watchSearchTranscriptProjectionRevisionEnvSchema = z.coerce
   .bigint()
   .nonnegative()
@@ -149,6 +155,24 @@ function normalizeWatchSearchRuntimeEnv(
   })
 }
 
+export function resolveWatchSearchTranscriptPublicationEnabled(
+  value: unknown = env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
+export function resolveWatchCatalogPublicationEnabled(
+  value: unknown = env.WATCH_CATALOG_PUBLICATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 /**
  * `createEnv` deliberately skips transforms while CI builds. Normalize the
  * search controls again at runtime so Railway's raw strings cannot become
@@ -193,6 +217,13 @@ export const searchTraceRawRetentionDaysEnvSchema = z.coerce
   .default(29)
 
 export const workflowStartupTransientAttemptsEnvSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .default(12)
+
+export const recommendationRecoveryMaxAttemptsEnvSchema = z.coerce
   .number()
   .int()
   .positive()
@@ -265,16 +296,95 @@ export const fleetSearchCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+// KTD7 push write ceilings: one global counter per fleet key per operation.
+// Registration and open fire once per launch and once per tap, so 6000/min is
+// a catastrophic backstop, not a working limit. 0 disables that ceiling.
+const pushCeilingPerMinEnvSchema = () =>
+  z.coerce.number().int().min(0).optional().default(6000)
+export const pushRegistrationCeilingPerMinEnvSchema =
+  pushCeilingPerMinEnvSchema()
+export const pushOpenCeilingPerMinEnvSchema = pushCeilingPerMinEnvSchema()
+
+// One flag covers both push ceilings. "false" logs only; "true" refuses.
+export const pushCeilingEnforceEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+// KTD12 — the campaign kill switch. Off by default so an unprovisioned
+// environment boots with sending impossible rather than accidentally live.
+export const pushCampaignsEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+
+// KTD15 — the send budgets. Each default is the sizing table's value, and each
+// is a positive integer so a mistyped 0 refuses instead of stalling a wave.
+const pushPositiveIntEnvSchema = (fallback: number, max?: number) => {
+  const base = z.coerce.number().int().min(1)
+  return (max === undefined ? base : base.max(max)).optional().default(fallback)
+}
+export const pushBatchPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  5_000,
+  20_000,
+)
+export const pushStepMaxDurationMsEnvSchema = pushPositiveIntEnvSchema(220_000)
+export const pushChunkDeadlineMsEnvSchema = pushPositiveIntEnvSchema(10_000)
+// A concurrency above 10 would overrun the project's per-second limit even
+// with the message bucket in place, so the schema caps it.
+export const pushProviderConcurrencyEnvSchema = pushPositiveIntEnvSchema(3, 10)
+export const pushMessagesPerSecondEnvSchema = pushPositiveIntEnvSchema(500)
+export const pushReceiptPageSizeEnvSchema = pushPositiveIntEnvSchema(
+  10_000,
+  50_000,
+)
+
+// R26 — the countries Google's service does not deliver to. A CSV so an
+// operator can add one without a deploy; the literal `none` clears the list.
+export const pushFcmBlockedCountriesEnvSchema = z
+  .string()
+  .optional()
+  .default("CN")
+
+export function resolvePushFcmBlockedCountries(
+  value: string | undefined,
+): string[] {
+  const raw = value?.trim()
+  if (!raw) return ["CN"]
+  if (raw.toLowerCase() === "none") return []
+  return raw
+    .split(",")
+    .map((country) => country.trim().toUpperCase())
+    .filter((country) => country.length > 0)
+}
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_PRODUCTION_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_PUBLICATION_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: z.string().url().optional(),
+    STUDIO_MUX_SIGNING_KEY: z.string().optional(),
+    STUDIO_MUX_PRIVATE_KEY: z.string().optional(),
+
     // Unit 2 — Prisma / Postgres
     //
     // DATABASE_URL: plain Postgres connection URL. Prisma pool configuration
     // lives in src/db/client.ts via @prisma/adapter-pg so the same URL remains
     // compatible with libpq tools such as pg_dump, psql, and pg_restore.
     DATABASE_URL: z.string().url(),
+    // Opt-in disposable Studio integration database; never falls back to DATABASE_URL.
+    STUDIO_TEST_DATABASE_URL: z.string().url().optional(),
+    // Opt-in disposable exposure reconciliation database; the test enforces loopback and name guards.
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: z
+      .string()
+      .url()
+      .optional(),
     ADMIN_SESSION_SECRET: z.string().min(32),
     // Optional admin OAuth cookie prefix. Use a unique value for local
     // worktree previews sharing localhost so branches do not overwrite each
@@ -291,6 +401,20 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_ID: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_MANAGER_SERVICE_AUDIENCE: z.string().url().optional(),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .optional()
+      .default("local"),
+    // Ed25519 public-key ring used only for fresh, request-bound reviewer
+    // session proofs minted by Manager's server from its HttpOnly session.
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: z.string().min(1).optional(),
+    // The Lab's single operator-facing spend control: a monthly budget in
+    // dollars, e.g. "250" or "250.50". Every other limit is a constant or is
+    // derived from this in subtitle-eval.service.ts.
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: z
+      .string()
+      .regex(/^\d+(\.\d{1,6})?$/)
+      .optional(),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
@@ -322,8 +446,12 @@ export const env = createEnv({
       watchSearchDefaultShadowEnabledEnvSchema,
     WATCH_SEARCH_FLEET_PRIMARY_ENABLED: watchSearchFleetPrimaryEnabledEnvSchema,
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
+    WATCH_CATALOG_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
@@ -382,6 +510,76 @@ export const env = createEnv({
     // Opt-in transactional integration test for DEFAULT and MODERN Watch
     // subtitle/audio selection SQL. Test-only; production never branches on it.
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
+    RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
+    // Opt-in real-database proof for the push campaign claim indexes and the
+    // push retention purge. Test-only; production never branches on it.
+    PUSH_DB_TEST: z.enum(["1"]).optional(),
+    // Required mode selector for the complete delivery database benchmark.
+    // Production release proof must say production_snapshot explicitly; CI
+    // fixtures cannot silently stand in for restored corpus evidence.
+    RECOMMENDATION_DELIVERY_DB_FIXTURE: z
+      .enum(["production_snapshot", "deterministic"])
+      .optional(),
+    // Deterministic pgvector catalog fixture for recommendation profile CI.
+    // Omit to run the same proof against an approved production snapshot.
+    RECOMMENDATION_PROFILE_DB_FIXTURE: z.enum(["deterministic"]).optional(),
+    // Both inline and shared readers must remain in every serving/rollback image.
+    // Explicit false stops new shared writes without rewriting retained rows.
+    RECOMMENDATION_PROFILE_VECTOR_SHARING: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Compatible readers preserve typed empty completion when writes are disabled.
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Opt-in real-Redis proof for feat-368 atomic delivery admission.
+    RECOMMENDATION_REDIS_TEST: z.enum(["1"]).optional(),
+    // Source-free serving is enabled by default; false remains a kill switch.
+    RECOMMENDATION_USER_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Narrow rollback switch for mode-profile projection and sound-off ranking.
+    RECOMMENDATION_VIEWING_MODE_ENABLED: z
+      .enum(["true", "false"])
+      .default("true"),
+    // Fail-closed startup ceiling. The shared Postgres serving-control row is
+    // the replica-wide runtime switch; this flag can only narrow it.
+    RECOMMENDATION_SEMANTIC_SERVING_ENABLED: z
+      .enum(["true", "false"])
+      .optional()
+      .default("false"),
+    // Activate only after every serving replica and rollback image can read
+    // both legacy stage rows and compact run payloads.
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
+      .enum(["legacy", "compact"])
+      .default("legacy"),
+    // Mixed readers and the rollback image must continue to understand packed items.
+    // Explicit legacy stops new packed writes without rewriting retained requests.
+    RECOMMENDATION_SERVED_ITEM_FORMAT: z
+      .enum(["legacy", "packed"])
+      .default("packed"),
+    // Private saved-result Watch preview; never changes the public serving pointer.
+    RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: z.string().url().optional(),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: z.string().min(32).optional(),
+    PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS: z.string().min(1).optional(),
+    // Isolated, opt-in recommendation storage benchmark settings. The script
+    // validates its own safety guards even when CI skips application validation.
+    RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: z.string().min(1).optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: z.string().optional(),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: z.string().optional(),
+    // JSON HMAC keyring parsed only by recommendation token.service so invalid
+    // material disables attributed serving without breaking unrelated Admin
+    // routes. Never log this value or surface it in validation errors.
+    RECOMMENDATION_CAPABILITY_KEYRING: z.string().min(1).optional(),
     // Narrow receiver-side CSV for Mastra -> Admin transcript vector ingest.
     // This is deliberately separate from WORKFLOW_API_KEYS: workflow launchers
     // must not automatically gain direct vector-write capability.
@@ -389,6 +587,8 @@ export const env = createEnv({
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
     // Kept separate from transcript ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Private, default-off producer capability for saved recommendation builds.
+    MASTRA_RECOMMENDATION_INGEST_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
     // callbacks (consolidation U7): search-videos / lookup-bible-verse /
     // fetch-video-image. A DIFFERENT capability than vector ingest or workflow
@@ -418,6 +618,11 @@ export const env = createEnv({
     // This endpoint accepts caller-supplied consumer user ids, so it must stay
     // narrower than the general web SSR consumer bearer.
     WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Server-only LaunchDarkly key for Admin's release gates. Unset or
+    // unavailable falls back to each flag's FORGE_* default, then to false.
+    LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    // Fallback for `forge.watch.audience` when LaunchDarkly has no answer.
+    FORGE_WATCH_AUDIENCE_DEFAULT: z.string().optional(),
     // Admin-owned YouVersion integration for Watch Bible passages. Web
     // reads cached passage data through GraphQL and never receives this key.
     YOUVERSION_APP_KEY: z.string().min(1).optional(),
@@ -432,6 +637,23 @@ export const env = createEnv({
     FLEET_SEARCH_GLOBAL_CEILING_PER_MIN:
       fleetSearchGlobalCeilingPerMinEnvSchema,
     FLEET_SEARCH_CEILING_ENFORCE: fleetSearchCeilingEnforceEnvSchema,
+    PUSH_REGISTRATION_CEILING_PER_MIN: pushRegistrationCeilingPerMinEnvSchema,
+    PUSH_OPEN_CEILING_PER_MIN: pushOpenCeilingPerMinEnvSchema,
+    PUSH_CEILING_ENFORCE: pushCeilingEnforceEnvSchema,
+    // U4 campaign send. Every var is optional with its default beside it, so
+    // an environment that has not been provisioned still boots (KTD12, KTD15).
+    PUSH_CAMPAIGNS_ENABLED: pushCampaignsEnabledEnvSchema,
+    // KTD1 — the Expo project access token. Worker-only; admin web refuses to
+    // boot with it injected, and the transport refuses to construct without it
+    // in production.
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+    PUSH_BATCH_PAGE_SIZE: pushBatchPageSizeEnvSchema,
+    PUSH_STEP_MAX_DURATION_MS: pushStepMaxDurationMsEnvSchema,
+    PUSH_CHUNK_DEADLINE_MS: pushChunkDeadlineMsEnvSchema,
+    PUSH_PROVIDER_CONCURRENCY: pushProviderConcurrencyEnvSchema,
+    PUSH_MESSAGES_PER_SECOND: pushMessagesPerSecondEnvSchema,
+    PUSH_RECEIPT_PAGE_SIZE: pushReceiptPageSizeEnvSchema,
+    PUSH_FCM_BLOCKED_COUNTRIES: pushFcmBlockedCountriesEnvSchema,
     // Admin-owned production search trace sampling. Future Mastra eval jobs
     // call the internal Admin sampling route with a dedicated bearer from
     // this CSV; it must stay disjoint from public search, workflow launch,
@@ -453,6 +675,8 @@ export const env = createEnv({
       .default("false"),
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS:
       workflowStartupTransientAttemptsEnvSchema,
+    RECOMMENDATION_RECOVERY_MAX_ATTEMPTS:
+      recommendationRecoveryMaxAttemptsEnvSchema,
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS:
       workflowStartupTransientDelayMsEnvSchema,
     WORKFLOW_POSTGRES_URL: z.string().url().optional(),
@@ -479,6 +703,24 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .safe()
+      .optional(),
     // Manager artifacts bucket — admin reads manager-produced artifacts such as
     // {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
@@ -531,6 +773,22 @@ export const env = createEnv({
     // docs/solutions/runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md.
     WEB_REVALIDATE_URL: z.string().url().optional(),
     WEB_REVALIDATE_TOKEN: z.string().min(1).optional(),
+
+    // Mobile feedback -> Linear (KTD12). All five optional: a required var with
+    // no default bricks unprovisioned Railway deploys (see docs/solutions/
+    // runtime-errors/required-env-var-without-default-broke-railway-deploy-20260511.md).
+    ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID: z.string().min(1).optional(),
+    // Fleet-wide submissions per UTC day. `0` refuses every submission and is
+    // the operator's kill switch; it never means unlimited.
+    ADMIN_MOBILE_FEEDBACK_DAILY_CAP: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .default(200),
     NEXT_RUNTIME: z.enum(["nodejs", "edge"]).optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).optional(),
     // Optional OpenRouter model override used by the production search trace
@@ -695,7 +953,19 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_PRODUCTION_ENABLED: process.env.STUDIO_PRODUCTION_ENABLED,
+    STUDIO_PUBLICATION_ENABLED: process.env.STUDIO_PUBLICATION_ENABLED,
+    STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+    STUDIO_PUBLIC_PLAYBACK_ORIGIN: process.env.STUDIO_PUBLIC_PLAYBACK_ORIGIN,
+    STUDIO_MUX_SIGNING_KEY: process.env.STUDIO_MUX_SIGNING_KEY,
+    STUDIO_MUX_PRIVATE_KEY: process.env.STUDIO_MUX_PRIVATE_KEY,
+
     DATABASE_URL: process.env.DATABASE_URL,
+    STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+    WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL: emptyToUndefined(
+      process.env.WATCH_EXPOSURE_RECONCILIATION_TEST_DATABASE_URL,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -737,6 +1007,15 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_AUDIENCE: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_AUDIENCE,
     ),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT,
+    ),
+    SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS: emptyToUndefined(
+      process.env.SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS,
+    ),
+    SUBTITLE_EVAL_MONTHLY_BUDGET_USD: emptyToUndefined(
+      process.env.SUBTITLE_EVAL_MONTHLY_BUDGET_USD,
+    ),
     AUTH_MANAGER_SERVICE_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_MANAGER_SERVICE_ENVIRONMENT,
     ),
@@ -769,9 +1048,15 @@ export const env = createEnv({
       "false",
     WATCH_SEARCH_TYPESENSE_PROFILE:
       emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
+    WATCH_CATALOG_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_CATALOG_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) ??
       "false",
+    WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+    ),
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION: emptyToUndefined(
       process.env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION,
     ),
@@ -835,11 +1120,89 @@ export const env = createEnv({
       process.env.VIDEO_MAPPER_CATALOG_DB_TEST,
     ),
     WATCH_SEARCH_DB_TEST: emptyToUndefined(process.env.WATCH_SEARCH_DB_TEST),
+    RECOMMENDATION_DB_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_DB_TEST,
+    ),
+    PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
+    RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
+      process.env.RECOMMENDATION_DELIVERY_DB_FIXTURE,
+    ),
+    RECOMMENDATION_PROFILE_DB_FIXTURE: emptyToUndefined(
+      process.env.RECOMMENDATION_PROFILE_DB_FIXTURE,
+    ),
+    RECOMMENDATION_PROFILE_VECTOR_SHARING:
+      emptyToUndefined(process.env.RECOMMENDATION_PROFILE_VECTOR_SHARING) ??
+      "true",
+    RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP:
+      emptyToUndefined(
+        process.env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP,
+      ) ?? "true",
+    RECOMMENDATION_REDIS_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_REDIS_TEST,
+    ),
+    // CI skips Zod defaults; keep the enabled default in the runtime input too.
+    RECOMMENDATION_USER_SERVING_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_USER_SERVING_ENABLED) ??
+      "true",
+    RECOMMENDATION_SEMANTIC_SERVING_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED,
+    ),
+    RECOMMENDATION_CANDIDATE_TRACE_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) ??
+      "legacy",
+    RECOMMENDATION_SERVED_ITEM_FORMAT:
+      emptyToUndefined(process.env.RECOMMENDATION_SERVED_ITEM_FORMAT) ??
+      "packed",
+    RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
+    ),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED,
+    ),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: emptyToUndefined(
+      process.env.PRECOMPUTED_WATCH_MEASUREMENT_URL,
+    ),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_MEASUREMENT_API_KEY,
+    ),
+    PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS: emptyToUndefined(
+      process.env.PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_DATABASE: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_DATABASE,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_RUNS: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_RUNS,
+    ),
+    RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT: emptyToUndefined(
+      process.env.RECOMMENDATION_STORAGE_BENCHMARK_OUTPUT,
+    ),
+    RECOMMENDATION_VIEWING_MODE_ENABLED:
+      emptyToUndefined(process.env.RECOMMENDATION_VIEWING_MODE_ENABLED) ??
+      "true",
+    RECOMMENDATION_CAPABILITY_KEYRING: emptyToUndefined(
+      process.env.RECOMMENDATION_CAPABILITY_KEYRING,
+    ),
     MASTRA_TRANSCRIPT_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
     ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    MASTRA_RECOMMENDATION_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_RECOMMENDATION_INGEST_API_KEYS,
     ),
     ADMIN_AGENT_TOOLS_API_KEYS: emptyToUndefined(
       process.env.ADMIN_AGENT_TOOLS_API_KEYS,
@@ -855,6 +1218,10 @@ export const env = createEnv({
     WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
       process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
     ),
+    LAUNCHDARKLY_SDK_KEY: emptyToUndefined(process.env.LAUNCHDARKLY_SDK_KEY),
+    FORGE_WATCH_AUDIENCE_DEFAULT: emptyToUndefined(
+      process.env.FORGE_WATCH_AUDIENCE_DEFAULT,
+    ),
     YOUVERSION_APP_KEY: emptyToUndefined(process.env.YOUVERSION_APP_KEY),
     YOUVERSION_PASSAGE_CACHE_TTL_SECONDS: emptyToUndefined(
       process.env.YOUVERSION_PASSAGE_CACHE_TTL_SECONDS,
@@ -867,6 +1234,36 @@ export const env = createEnv({
     ),
     FLEET_SEARCH_CEILING_ENFORCE: emptyToUndefined(
       process.env.FLEET_SEARCH_CEILING_ENFORCE,
+    ),
+    PUSH_REGISTRATION_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_REGISTRATION_CEILING_PER_MIN,
+    ),
+    PUSH_OPEN_CEILING_PER_MIN: emptyToUndefined(
+      process.env.PUSH_OPEN_CEILING_PER_MIN,
+    ),
+    PUSH_CEILING_ENFORCE: emptyToUndefined(process.env.PUSH_CEILING_ENFORCE),
+    PUSH_CAMPAIGNS_ENABLED: emptyToUndefined(
+      process.env.PUSH_CAMPAIGNS_ENABLED,
+    ),
+    EXPO_ACCESS_TOKEN: emptyToUndefined(process.env.EXPO_ACCESS_TOKEN),
+    PUSH_BATCH_PAGE_SIZE: emptyToUndefined(process.env.PUSH_BATCH_PAGE_SIZE),
+    PUSH_STEP_MAX_DURATION_MS: emptyToUndefined(
+      process.env.PUSH_STEP_MAX_DURATION_MS,
+    ),
+    PUSH_CHUNK_DEADLINE_MS: emptyToUndefined(
+      process.env.PUSH_CHUNK_DEADLINE_MS,
+    ),
+    PUSH_PROVIDER_CONCURRENCY: emptyToUndefined(
+      process.env.PUSH_PROVIDER_CONCURRENCY,
+    ),
+    PUSH_MESSAGES_PER_SECOND: emptyToUndefined(
+      process.env.PUSH_MESSAGES_PER_SECOND,
+    ),
+    PUSH_RECEIPT_PAGE_SIZE: emptyToUndefined(
+      process.env.PUSH_RECEIPT_PAGE_SIZE,
+    ),
+    PUSH_FCM_BLOCKED_COUNTRIES: emptyToUndefined(
+      process.env.PUSH_FCM_BLOCKED_COUNTRIES,
     ),
     SEARCH_TRACE_SAMPLING_API_KEYS: emptyToUndefined(
       process.env.SEARCH_TRACE_SAMPLING_API_KEYS,
@@ -890,6 +1287,9 @@ export const env = createEnv({
     ),
     WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS: emptyToUndefined(
       process.env.WORKFLOW_STARTUP_TRANSIENT_ATTEMPTS,
+    ),
+    RECOMMENDATION_RECOVERY_MAX_ATTEMPTS: emptyToUndefined(
+      process.env.RECOMMENDATION_RECOVERY_MAX_ATTEMPTS,
     ),
     WORKFLOW_STARTUP_TRANSIENT_DELAY_MS: emptyToUndefined(
       process.env.WORKFLOW_STARTUP_TRANSIENT_DELAY_MS,
@@ -915,6 +1315,15 @@ export const env = createEnv({
     ),
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+    ),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES,
     ),
     MANAGER_ARTIFACTS_S3_ENDPOINT: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_ENDPOINT,
@@ -953,6 +1362,21 @@ export const env = createEnv({
     ),
     WEB_REVALIDATE_URL: emptyToUndefined(process.env.WEB_REVALIDATE_URL),
     WEB_REVALIDATE_TOKEN: emptyToUndefined(process.env.WEB_REVALIDATE_TOKEN),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY: emptyToUndefined(
+      process.env.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY,
+    ),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID: emptyToUndefined(
+      process.env.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID,
+    ),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID: emptyToUndefined(
+      process.env.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID,
+    ),
+    ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID: emptyToUndefined(
+      process.env.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID,
+    ),
+    ADMIN_MOBILE_FEEDBACK_DAILY_CAP: emptyToUndefined(
+      process.env.ADMIN_MOBILE_FEEDBACK_DAILY_CAP,
+    ),
     NEXT_RUNTIME: emptyToUndefined(process.env.NEXT_RUNTIME),
     OPENROUTER_QUERY_CLASSIFIER_MODEL: emptyToUndefined(
       process.env.OPENROUTER_QUERY_CLASSIFIER_MODEL,
@@ -1068,6 +1492,7 @@ const BEARER_CSV_KEYS = [
   "VIDEO_MAPPER_ADMIN_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "MASTRA_RECOMMENDATION_INGEST_API_KEYS",
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
@@ -1141,13 +1566,19 @@ export function assertBearerCsvsDisjoint(snapshot: BearerCsvSnapshot): void {
 
 export function assertTypesenseCredentialsDisjoint(input: {
   searchKey?: string
+  legacyKey?: string
   operatorKey?: string
 }): void {
-  const searchKey = input.searchKey?.trim()
   const operatorKey = input.operatorKey?.trim()
-  if (searchKey && operatorKey && searchKey === operatorKey) {
+  const readerCredentials = [input.searchKey, input.legacyKey]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+  if (
+    operatorKey &&
+    readerCredentials.some((credential) => credential === operatorKey)
+  ) {
     throw new Error(
-      "TYPESENSE_SEARCH_API_KEY and TYPESENSE_OPERATOR_API_KEY must be disjoint",
+      "Typesense reader credentials and TYPESENSE_OPERATOR_API_KEY must be disjoint",
     )
   }
 }
@@ -1161,6 +1592,8 @@ assertBearerCsvsDisjoint({
   VIDEO_MAPPER_ADMIN_API_KEYS: env.VIDEO_MAPPER_ADMIN_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  MASTRA_RECOMMENDATION_INGEST_API_KEYS:
+    env.MASTRA_RECOMMENDATION_INGEST_API_KEYS,
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
@@ -1172,6 +1605,7 @@ assertBearerCsvsDisjoint({
 })
 assertTypesenseCredentialsDisjoint({
   searchKey: env.TYPESENSE_SEARCH_API_KEY,
+  legacyKey: env.TYPESENSE_API_KEY,
   operatorKey: env.TYPESENSE_OPERATOR_API_KEY,
 })
 

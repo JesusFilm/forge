@@ -73,6 +73,7 @@ export function SearchOverlayInstantShell({
       aria-modal="true"
       aria-label={t("dialogLabel")}
       data-testid="search-overlay-instant-shell"
+      onClick={() => setOpen(false)}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${
         closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"
       }`}
@@ -93,6 +94,7 @@ export function SearchOverlayInstantShell({
         />
         <div
           data-testid="search-overlay-instant-field-shell"
+          onClick={(event) => event.stopPropagation()}
           className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
             headerLanguageControlVisible ? "" : "col-span-2"
           }`}
@@ -132,7 +134,11 @@ export function SearchOverlayInstantShell({
         data-testid="search-overlay-instant-controls"
         className="search-overlay-scroll absolute inset-x-0 bottom-0 top-44 z-1 overflow-hidden px-4 pb-8 sm:px-6 md:top-32"
       >
-        <div className="mx-auto grid max-w-[1400px] gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          data-testid="search-overlay-instant-content"
+          onClick={(event) => event.stopPropagation()}
+          className="mx-auto grid max-w-[1400px] gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {Array.from({ length: 6 }, (_, index) => (
             <div
               key={index}

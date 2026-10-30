@@ -1,6 +1,7 @@
 ---
 title: "Add an OAuth grant by delivering an authorization code, not by translating tokens"
 date: 2026-08-06
+last_updated: 2026-08-24
 category: architecture-patterns
 tags:
   - auth
@@ -10,8 +11,9 @@ tags:
   - device-grant
 related:
   - docs/solutions/auth/auth-owned-agent-login-handles-for-local-preview-oauth-20260611.md
+  - docs/solutions/auth/better-auth-authorization-resource-binding-upgrade.md
   - docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md
-origin: feat-322 · PR #1865 · docs/plans/2026-08-05-001-feat-tv-device-grant-sign-in-plan.md
+origin: "feat-322 · PR #1865 · docs/plans/2026-08-05-001-feat-tv-device-grant-sign-in-plan.md"
 ---
 
 # Add an OAuth grant by delivering an authorization code, not by translating tokens
@@ -88,10 +90,13 @@ the coupling has a single home, and guard it at two layers:
 - **a real-database integration test that performs the whole exchange** — the
   only thing that can prove the provider actually accepts what you wrote.
 
-Both are needed, and neither substitutes for the other. If the integration test
-is opt-in (skipped without a database URL), then **CI proves nothing about the
-coupling** — say so out loud, and consider pinning the dependency exactly and
-excluding it from automated upgrade PRs.
+Both are needed, and neither substitutes for the other. The integration test may
+remain opt-in locally only when CI supplies a database URL and runs it against a
+real migrated and seeded database. Forge now does this in the affected-Auth
+`auth-postgres-integration` job, although fail-closed merge enforcement remains
+a follow-up. Without a CI path that both runs and blocks merging on failure,
+**green CI proves nothing about the coupling** — say so out loud, and consider
+pinning the dependency exactly and excluding it from automated upgrade PRs.
 
 ### The unit trap this shape hides
 
@@ -113,7 +118,7 @@ not to hand-roll, it is to avoid a second issuance path.
 ## Discovered alongside: introspection may be caller-scoped
 
 Verify before you promise a relying app can authorize the new client's tokens.
-In `@better-auth/oauth-provider@1.6.2`, both `validateJwtAccessToken` and
+In `@better-auth/oauth-provider` 1.6.2, both `validateJwtAccessToken` and
 `validateOpaqueAccessToken` end with
 
 ```js

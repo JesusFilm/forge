@@ -3,10 +3,19 @@
 // Focus R7: Play gets one-shot hasTVPreferredFocus + re-arms as restore target on overlay dismiss. R5: Play validates hls (validateStreamingUrl) then playVideo; Share R18 opens the QR LinkModal.
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
@@ -15,12 +24,19 @@ import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { isInMyList, toggleMyList } from "../../lib/myList/myList"
 import { toMyListEntry } from "../../lib/myList/myListEntry"
 import { getResumePosition } from "../../lib/watchEvents/continueWatching"
-import { buildShareUrl, shouldOfferResumeChoice } from "./detailsHelpers"
+import {
+  buildShareUrl,
+  formatDuration,
+  getSavedResumePosition,
+  shouldOfferResumeChoice,
+  type SavedResumePosition,
+} from "./detailsHelpers"
 import { ResumeChoicePanel } from "./ResumeChoicePanel"
 import { WATCH_THEME } from "./watchDetailTheme"
 import type { ActionRowPill } from "./actionRowScrollGlide"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "./AnimatedFocusIcon"
+import { deriveDetailsPlayState, type DetailsPlayState } from "./panelState"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -28,6 +44,8 @@ type DetailsActionRowProps = {
   title: string | null
   onOpenLanguage: () => void
   onOpenSubtitles: () => void
+  onOpenFeedback: () => void
+  metadataReady?: boolean
   // Pill-identified so the consumer can tell "focus left the row" from a
   // within-row hop: tvOS delivers the NEW pill's focus BEFORE the old pill's
   // blur, so a bare blur callback would cancel work the new focus just started
@@ -41,11 +59,21 @@ export function DetailsActionRow({
   title,
   onOpenLanguage,
   onOpenSubtitles,
+  onOpenFeedback,
   onRowFocus,
   onRowBlur,
+  metadataReady = true,
 }: DetailsActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
-  const { video, activeVariant, subtitleEnabled } = useWatchSession()
+  const {
+    video,
+    activeVariant,
+    subtitleEnabled,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
+  const playState = deriveDetailsPlayState(metadataReady, activeVariant?.hls)
+  const { nativePlayerVariant } = useWatchPreferences()
 
   // One-shot preferred focus on Play: armed on mount, and re-armed whenever the
   // overlay closes so focus returns to Play (R7). Cleared the render after it
@@ -68,13 +96,19 @@ export function DetailsActionRow({
 
   // Continue Watching: the saved resume point for this video, refreshed when
   // the overlay closes so a re-press resumes from the JUST-watched position.
-  const [resumeAtSeconds, setResumeAtSeconds] = useState<number | null>(null)
+  const [savedResume, setSavedResume] = useState<SavedResumePosition | null>(
+    null,
+  )
+  const resumeAtSeconds = getSavedResumePosition(video?.documentId, savedResume)
+  const savedPositionLabel = shouldOfferResumeChoice(resumeAtSeconds)
+    ? `Saved at ${formatDuration(resumeAtSeconds) ?? "0:00"}`
+    : null
   useEffect(() => {
     let cancelled = false
     const id = video?.documentId
     if (!id || state.isVisible) return
     void getResumePosition(id).then((position) => {
-      if (!cancelled) setResumeAtSeconds(position)
+      if (!cancelled) setSavedResume({ videoId: id, positionSeconds: position })
     })
     return () => {
       cancelled = true
@@ -105,6 +139,8 @@ export function DetailsActionRow({
             posterUrl: video.upNext.posterUrl,
           }
         : null,
+      recommendationAttribution,
+      playbackEntry,
     )
   }
 
@@ -114,6 +150,14 @@ export function DetailsActionRow({
   // this chooser exists only on the details page's Play pill.
   const [resumeChoiceOpen, setResumeChoiceOpen] = useState(false)
   const handlePlay = () => {
+    if (Platform.OS === "ios" && nativePlayerVariant !== "existing") {
+      startPlayback(
+        shouldOfferResumeChoice(resumeAtSeconds)
+          ? (resumeAtSeconds ?? undefined)
+          : undefined,
+      )
+      return
+    }
     if (shouldOfferResumeChoice(resumeAtSeconds)) {
       setResumeChoiceOpen(true)
       return
@@ -169,11 +213,9 @@ export function DetailsActionRow({
     setModalUrl(url)
   }
 
-  // Secondary-pill sub-labels from real session data. The play button is just the
-  // icon + "Play" (the mockup's "Day 1 · 3:42 left" resume state has no JFP
-  // equivalent — no watch-progress tracking).
-  const langSub = activeVariant?.languageName ?? null
-  const subsSub = subtitleEnabled ? "On" : "Off"
+  // Secondary-pill sub-labels from real session data.
+  const langSub = metadataReady ? (activeVariant?.languageName ?? null) : null
+  const subsSub = metadataReady ? (subtitleEnabled ? "On" : "Off") : null
 
   return (
     <>
@@ -190,6 +232,8 @@ export function DetailsActionRow({
       <TVFocusGuideView autoFocus trapFocusUp style={styles.row}>
         <PlayPill
           onPress={handlePlay}
+          state={playState}
+          savedPositionLabel={savedPositionLabel}
           hasTVPreferredFocus={playPreferredFocus}
           onFocus={() => onRowFocus?.("play")}
           onBlur={() => onRowBlur?.("play")}
@@ -227,6 +271,15 @@ export function DetailsActionRow({
             onPress={() => openModal(shareUrl, "Scan to share on your phone")}
             onFocus={() => onRowFocus?.("share")}
             onBlur={() => onRowBlur?.("share")}
+          />
+        ) : null}
+        {process.env.EXPO_PUBLIC_TV_FEEDBACK_URL ? (
+          <SecondaryPill
+            icon="chatbox-ellipses-outline"
+            label="Send feedback"
+            onPress={onOpenFeedback}
+            onFocus={() => onRowFocus?.("feedback")}
+            onBlur={() => onRowBlur?.("feedback")}
           />
         ) : null}
       </TVFocusGuideView>
@@ -270,11 +323,15 @@ function PlayPill({
   hasTVPreferredFocus,
   onFocus,
   onBlur,
+  state = "ready",
+  savedPositionLabel,
 }: {
   onPress: () => void
   hasTVPreferredFocus: boolean
   onFocus?: () => void
   onBlur?: () => void
+  state?: DetailsPlayState
+  savedPositionLabel?: string | null
 }) {
   const { setFocused, progress, transform } = useFocusVisual("pill", {
     nativeDriver: false,
@@ -291,6 +348,25 @@ function PlayPill({
     }),
     [progress, transform],
   )
+  if (state !== "ready") {
+    return (
+      <View
+        style={[styles.playPill, { opacity: 0.55 }]}
+        accessibilityRole={state === "loading" ? "progressbar" : "button"}
+        accessibilityLabel={
+          state === "loading" ? "Loading video" : "Video unavailable"
+        }
+        accessibilityState={{ disabled: true, busy: state === "loading" }}
+      >
+        {state === "loading" ? (
+          <ActivityIndicator color={WATCH_THEME.accentText} />
+        ) : null}
+        <Text style={styles.playLabel}>
+          {state === "loading" ? "Loading…" : "Unavailable"}
+        </Text>
+      </View>
+    )
+  }
   return (
     <Pressable
       onPress={onPress}
@@ -304,11 +380,21 @@ function PlayPill({
       }}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
-      accessibilityLabel="Play"
+      {...{ "dd-action-name": "Play" }}
+      accessibilityLabel={
+        savedPositionLabel ? `Play, ${savedPositionLabel}` : "Play"
+      }
     >
       <Animated.View style={[styles.playPill, animatedStyle]}>
         <Ionicons name="play" size={ICON_SIZE} color={WATCH_THEME.accentText} />
-        <Text style={styles.playLabel}>Play</Text>
+        <View style={styles.cap}>
+          <Text style={styles.playLabel}>Play</Text>
+          {savedPositionLabel ? (
+            <Text style={styles.playSub} numberOfLines={1}>
+              {savedPositionLabel}
+            </Text>
+          ) : null}
+        </View>
       </Animated.View>
     </Pressable>
   )
@@ -438,6 +524,14 @@ const styles = StyleSheet.create({
     fontSize: Math.round(scale(28)),
     fontWeight: "700",
     color: WATCH_THEME.accentText,
+  },
+
+  playSub: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(15)),
+    fontWeight: "600",
+    color: WATCH_THEME.accentText,
+    marginTop: scale(2),
   },
 
   // Secondary (glass → white-fill on focus). backgroundColor + shadowOpacity are

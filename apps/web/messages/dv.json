@@ -39,9 +39,8 @@
     "posterAlt": "ވީޑިއޯ ޕޯސްޓަރު",
     "noDownloads": "މި ވީޑިއޯއަށް ޑައުންލޯޑް ލިބޭކަށް ނުހުރޭ.",
     "fileSizeLabel": "ފައިލްގެ ސައިޒް ހޮވާ",
-    "termsAgreementPrefix": "މި ",
+    "termsAgreement": "<link>ބޭނުން ކުރުމުގެ ޝަރުތުތަކާ</link> އަހަރެން އެއްބަސްވަން",
     "termsOfUse": "ބޭނުން ކުރުމުގެ ޝަރުތުތައް",
-    "termsAgreementSuffix": "",
     "close": "ބާންދާ",
     "download": "ޑައުންލޯޑް",
     "authRequiredTitle": "މި ވީޑިއޯ ޑައުންލޯޑް ކުރަންވީތަ؟",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook ގައި ހިއްސާ ކުރާ (މި build ގައި ނުލިބޭ)",
     "shareOnX": "X ގައި ހިއްސާ ކުރާ",
     "shareOnXUnavailable": "X ގައި ހިއްސާ ކުރާ (މި build ގައި ނުލިބޭ)",
+    "opensInNewTab": "{label} (އާ ޓެބެއްގައި ހުޅުވޭ)",
     "shareDisabledHint": "ހިއްސާ ކުރެވޭނީ deployed page އެއް އޮންނަން ޖެހޭ. މި ވީޑިއޯ production އަށް އައިމަ އެކަނި ކަމަށް އެކަމީ.",
     "shareFormat": "ހިއްސާ ކުރާ ބާވަތް",
     "shareLinkTab": "Link ހިއްސާ ކުރާ",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "އަޑުގެ ބަސް ބަދަލު ކުރާ",
     "home": "JesusFilm ހޯމް",
     "closeSearch": "ހޯދާން ބާންދާ",
-    "submitSearch": "ހޯދާ"
+    "submitSearch": "ހޯދާ",
+    "library": "ލައިބްރަރީ"
   },
   "SearchOverlay": {
     "dialogLabel": "ވީޑިއޯތައް ހޯދާ އަދި ބްރައުޒް ކުރާ",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "އިތުރު އަދަދެއް ލޯޑް ކުރަން ނުބުނެއް.",
     "searching": "ހޯދަނީ...",
     "connectionHint": "ކޮނެކްޝަން ބަލައި އަލުން ދައްކާ.",
+    "rateLimitHint": "ރިކުއެސްޓް ގިނަވެއްޖެ. އެއް މިނިޓުން ފަހުން އަލުން އުޅުއްވާ.",
     "retrySearch": "ހޯދާކަން އަލުން",
     "retry": "އަލުން",
     "noResults": "\"{query}\" އަށް ފައިންޑް ކުރެވޭ އެއްޗެއް ނެތް",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ބަހުން “{suggestion}” ހޯދާ",
     "inLanguage": "{language} ގައި",
     "browseByRegion": "ރީޖަން ބޭނުން ކޮށް ބްރައުޒް ކުރާ",
+    "allVideosOnSinglePage": "ހުރިހާ ވީޑިއޯ އެއް ޞަފްޙާއެއްގައި",
     "clearLanguages": "ކްލީއާ",
     "queryLanguageDetected": "{language} ދޫކުރިއްޖެ",
     "searchInLanguage": "{language} ބަހުން ހޯދާ",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "މިހާރު ބަލާ",
     "tapToUnmute": "އަޑު ހުޅުވާން tap ކުރާ",
-    "nextEpisode": "ފަހަތަށް އޮތް episode"
+    "nextEpisode": "ފަހަތަށް އޮތް episode",
+    "audioTranslationCount": "{count, plural, one {# ބަސް} other {# ބަސްތައް}}",
+    "subtitleCount": "ސަބްޓައިޓަލްތައް: {count, plural, one {# ބަސް} other {# ބަސްތައް}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ކޮންޓެންޓް ލޯޑް ކުރަނީ",
@@ -268,14 +273,183 @@
     "couldNotLoad": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަން ނުބުނެއް.",
     "loadingForm": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަނީ…",
     "retry": "އަލުން ދައްކާ",
-    "openFormShort": "ފޯމް ހުޅުވާ",
     "cancel": "ކެންސަލް",
-    "title": "ބީޓާ ފީޑްބැක්",
-    "description": "ކޮންކަމެއް ރަނގަޅަށް ހިނގަނީކީ އަދި ކޮންކަމެއް ހެޔޮކޮށްދޭންވީކީ ހިއްސާ ކުރާށެވެ. މި ފޯމް Google އިން ދެވޭ ކަމެކެވެ.",
-    "openInNewTab": "ފޯމް އެކެއް އަލަށް ޓެބް އެއްގައި ހުޅުވާ",
     "closeForm": "ފީޑްބැක් ފޯމް ބާންދާ",
-    "loadingGoogleForm": "Google ފޯމް ލޯޑް ކުރަނީ…",
-    "iframeTitle": "ބීޓާ ފީޑްބැක් ހުށަހެޅުން"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ގައި ނުވާގަތު Christian videos | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "ކުޅިވަރު",
     "collections": "ކޮލެކްޝަންތައް",
     "subtitlesOnly": "ސަބްޓައިޓަލްތައް އެކަނި",
+    "backToTop": "އަނބުރާ މައްޗަށް",
     "newlyAdded": "އައުކޮށް އެޅިއްޖެ",
     "newVideosTitle": "{language} ގައި އައު Christian videos",
     "newestFirst": "އެންމެ އައުކޮށް ފަހުން",
@@ -324,7 +499,21 @@
     "standaloneVideos": "އެކަނި ވީޑިއޯތައް",
     "videosFromCollection": "{collection} އިން ވީޑިއޯތައް.",
     "standaloneDescription": "މި ބަހަށް އެކަނި ވީޑިއޯތައް.",
-    "openCollection": "ކޮލެކްޝަން ހުޅުވާ"
+    "openCollection": "ކޮލެކްޝަން ހުޅުވާ",
+    "filters": "ފިލްޓަރުތައް",
+    "filterLength": "ދިގުމިން",
+    "filterLength_under5": "5 މިނެޓަށްވުރެ ކުރު",
+    "filterLength_5to10": "5-10 މިނެޓު",
+    "filterLength_10to30": "10-30 މިނެޓު",
+    "filterLength_over30": "30 މިނެޓަށްވުރެ ދިގު",
+    "filterType": "ބާވަތް",
+    "clearFilters": "ފިލްޓަރުތައް ސާފުކުރޭ",
+    "filterResults": "{total} ން {count} ދައްކާފައި",
+    "noFilterResults": "މި ފިލްޓަރުތަކާ ގުޅޭ ވީޑިއޯއެއް ނެތް. އެއް ފިލްޓަރު ނަގާލާ.",
+    "filterAdded": "އިތުރުކުރެވުނު",
+    "filterAdded_60d": "ފާއިތުވި 60 ދުވަސް",
+    "filterAdded_6m": "ފާއިތުވި 6 މަސް",
+    "filterAdded_12m": "ފާއިތުވި 12 މަސް"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ބަލާ",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "ކުރިއަށް އޮތް ވީޑިއޯ preview",
     "nextVideoPreview": "ފަހަތަށް އޮތް ވީޑިއޯ preview",
     "mediaCollection": "މީޑިއާ ކޮލެކްޝަން",
-    "scrollToVideo": "{title} ވީޑިއޯއަށް ސްކްރޯލް ކުރާ"
+    "scrollToVideo": "{title} ވީޑިއޯއަށް ސްކްރޯލް ކުރާ",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ހޯމް",
@@ -404,6 +594,29 @@
     "merryChristmas": "ކިރިސްމަސް މުބާރިކް!",
     "daysUntilChristmas": "{count, plural, one {ކިރިސްމަސް އަށް # ދުވަސް} other {ކިރިސްމަސް އަށް # ދުވަސް}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "ލައިބްރަރީ ބަލާ",
+    "title": "ކެޓަގަރީއިން ބަލާ",
+    "description": "ލައިބްރަރީގެ ތިޔަ ބޭނުންވާ ބަޔަކަށް ސީދާ ދާށެވެ — އީސާގެ ޙަޔާތް، ޗާޗުގެ އަހަރުގެ މޫސުންތައް، އަދި އާއިލާތަކަށާއި ދަރިވަރުންނަށާއި ކުދި ގްރޫޕުތަކަށް ހައްދާފައިވާ ވީޑިއޯތައް.",
+    "seeAll": "ހުރިހާ ވީޑިއޯއެއް ބަލާ",
+    "previous": "ކުރީގެ ކެޓަގަރީތައް",
+    "next": "ދެން އޮތް ކެޓަގަރީތައް",
+    "categories": {
+      "jesus": "JESUS ފިލްމު",
+      "gospels": "އިންޖީލުތައް",
+      "shortVideos": "ކުރު ވީޑިއޯތައް",
+      "family": "އާއިލާ",
+      "relationships": "ގުޅުންތައް",
+      "women": "އަންހެނުންނަށް",
+      "students": "ދަރިވަރުންނަށް",
+      "sports": "ކުޅިވަރު",
+      "goodNews": "އުފާވެރި ޚަބަރު",
+      "hope": "އުއްމީދު",
+      "training": "ތަމްރީނު",
+      "easter": "އީސްޓަރ",
+      "christmas": "ކްރިސްމަސް"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ބަސްތައް",
     "metadataDescription": "JesusFilm ވީޑިއޯތައް ބަސްބަސް ބޭނުން ކޮށް ބަލާ.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "ޞަފުހާ ނުފެނޭ:",
     "title": "މި ސީން މިތާ ނެތް.",
     "description": "ޞަފުހާއެއް އެއް ހިސާބަށް ދިޔަންޖެހިއްޖަމަސް, ވާހަކަ ހަމަ ހިނގަނީ.",
+    "languageDescription": "ތިޔަ ހޯއްދަވާ ޞަފްޙާ ނުފެނުނެވެ. ނަމަވެސް، ދުނިޔޭގެ ތަފާތު ބަސްބަހުގެ ފިލްމްތަކާއި ވީޑިއޯތަކުގެ ތެރެއިން ވާހަކަ ކުރިއަށް ދެއެވެ.",
     "actionsLabel": "ޞަފުހާ ނުފެނޭ ކަންތައް",
     "backToWatch": "Watch އަށް އަނބުރާ",
     "browseVideos": "ވީޑިއޯތައް ބްރައުޒް ކުރާ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ކުރު ފިލްމް ބަލާ",
-    "actions": {
-      "joinUs": "ގުޅުއްވާ",
-      "shareMission": "މިޝަން ހިއްސާ ކުރާ"
-    },
-    "welcomeStart": {
-      "label": "އީމާން އަދި ސްކްރިޕްޗަރ",
-      "title": "މިއަދުގެ ވީޑިއޯ ހޮވުންތައް",
-      "description": "އިތުބާރުލަވާ އަދި ހިތްހަމަޖައްސައިދޭ, ފިކުރުކުރުވާ ވަޒުނީ ވީޑިއޯ ކޮންޓެންޓް އަމިއްލަ ލައިބްރަރީއިން."
-    },
-    "welcomeMorning": {
-      "label": "މާދަމާގެ އިލާހީ އިންސްޕައިރޭޝަން",
-      "title": "އައި މޯނިންގް! މިއަދުގެ Bible ހިސާބުތައް ކެތްނެތި ބެހެއްޓިފަ އެވޭ.",
-      "description": "ހިތްބަރާބަރުކުރާ Bible ހިސާބުތަކާއިއެކު ދުވަހުގެ ފުރަތަމަ ހިސާބަށް ފަށާ, އެހެންމަ ހިތާވެސް މަތިވާނެ ގޮތަށް."
-    },
-    "welcomeAfternoon": {
-      "label": "ދެވަނަ ދުވަސް އިންސްޕައިރޭޝަން",
-      "title": "ހެވި ދުވަސް! މިއަދުގެ Bible ހިސާބުތައް.",
-      "description": "ދުވަސްމަތީ ބްރޭކްއަށް ނުވަތަ އިތުރަށް ހިތްހެޔޮ ކުރަން ބޭނުންވާ ހިސާބަށް މާއްދާވާ Bible ކޮންޓެންޓް."
-    },
-    "welcomeEvening": {
-      "label": "ރޭގެ އިންސްޕައިރޭޝަން",
-      "title": "ހެވި ރޭ! Bible ހިސާބުތަކާއިއެކު ދުވަސް ކުރިއަށް އަޅާލާ.",
-      "description": "ދުވަސް ނިމެންދެން ކުރިއަށް އަޅާލައި ހިތްހަމަޖައްސައިދޭ ހިސާބުތަކެއް."
-    },
-    "joinUs": {
-      "label": "ގުޅުއްވާ",
-      "title": "މިލިޔަންތަކެއް ހޯދަނީ",
-      "description": "އަދަދު ދިރޭ ވަގުތު އެއީ. ޑިޖިޓަލް މީޑިއާއާއި އެކު ދުނިޔެއަށް އިންޖީލް ހިއްސާ ކުރުމަށް އަންނާށެވެ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "އެކުގައި ދަމާށެވެ",
-      "title": "އީސައިގެ ވާހަކަ, އެކުގައި ބުނާށެވެ",
-      "description": "އެހެންމަ ތިބާގެ އަމިއްލަ ބަހުން, ތިބާ ހުރި ތަނުގައި އީސައިގެ ލޯބި އޮންނަން އަޑަކާއި ދުރު މައިދާނެއްގައި ނުވެސް ބަލަނީ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ގުޅުން",
-    "none": "މި ބަހުން މި ވީޑިއޯއަށް ހުށަހެޅޭ ވީޑިއޯއެއް ނުފެނުނު."
+    "none": "މި ބަހުން މި ވީޑިއޯއަށް ހުށަހެޅޭ ވީޑިއޯއެއް ނުފެނުނު.",
+    "heading": "ހުށަހަޅާ ވީޑިއޯތައް",
+    "loadingLabel": "ހުށަހަޅާ ވީޑިއޯތައް ލޯޑް ކުރަނީ",
+    "openingTitle": "{title} ހުޅުވަނީ",
+    "openingVideo": "ވީޑިއޯ ހުޅުވަނީ",
+    "activityNotRecorded": "ހުށަހެޅުންތަކާ ގުޅޭ ހަރަކާތް ރެކޯޑް ނުކުރެވުނެވެ. ލިންކުތައް އަދިވެސް މަސައްކަތް ކުރެއެވެ.",
+    "showingContextual": "މިހާރު ބަލަމުންދާ ވީޑިއޯއާ ގުޅޭ ހުށަހެޅުންތައް ދައްކަނީ.",
+    "showingSaved": "ރައްކާކޮށްފައިވާ ހުށަހެޅުންތައް ދައްކަނީ.",
+    "explanationCurated": "ހޯދައި ބަލާލުމަށް ހޮވާފައިވާ ވީޑިއޯތައް.",
+    "explanationViewingMode": "މި ވީޑިއޯއާއި ތިބާ ބަލާ ގޮތަށް ބަލައިގެން ހުށަހަޅާފައި.",
+    "explanationCowatch": "މި ވީޑިއޯއާއި ތިބާގެ ޝައުޤުތަކަށް ބަލައިގެން ހުށަހަޅާފައި.",
+    "explanationHybrid": "މި ވީޑިއޯއާއި ތިބާ ހަނދާންކުރަން އިޚްތިޔާރުކުރި ޝައުޤުތަކަށް ބަލައިގެން ހުށަހަޅާފައި.",
+    "explanationContextual": "މިހާރު ތިބާ ބަލަމުންދާ ވީޑިއޯއަށް ބަލައިގެން ހުށަހަޅާފައި.",
+    "explanationSemanticFallback": "ޕަރސަނަލައިޒޭޝަން މިވަގުތު ނުލިބޭތީ، މިހާރު ތިބާ ބަލަމުންދާ ވީޑިއޯއަށް ބަލައިގެން ހުށަހަޅާފައި.",
+    "explanationProfileDurable": "ތިބާ ހަނދާންކުރަން އިޚްތިޔާރުކުރި ޝައުޤުތަކަށް ބަލައިގެން ޕަރސަނަލައިޒްކޮށްފައި.",
+    "explanationProfileVisit": "މި ޒިޔާރަތަށް ޚާއްޞަކޮށް ޕަރސަނަލައިޒްކޮށްފައި.",
+    "personalizationLabel": "ހުށަހެޅުންތަކުގެ ޕަރސަނަލައިޒޭޝަން",
+    "personalizationPrompt": "ހުށަހެޅުންތައް ޕަރސަނަލައިޒްކުރާ ގޮތް ބަދަލުކުރަން ބޭނުންތަ؟",
+    "openCookieSettings": "ކުކީ ސެޓިންގްސް ހުޅުވާ"
   },
   "BetaTesterModal": {
     "title": "ބީޓާ tester އަކަށްވާ",
@@ -538,16 +732,39 @@
     "retryFailed": "ނުވި ޑައުންލޯޑްތައް އަލުން ދައްކާ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ބަހުގެ ވާޝަން ލިބެން ނެތް",
+    "eyebrow": "ބަހުގެ ވާޝަން ލިބެން ނެތް",
+    "title": "<contentTitle>{title}</contentTitle> އަކީ <languageName>{language}</languageName> އިން ލިބެން ނެތް އެއްޗެއް",
+    "actionsLabel": "ބެލުމަށް ލިބޭ އިޚްތިޔާރުތައް",
+    "browseInLanguage": "{language} ބަހުން ވީޑިއޯތައް ބަލާ",
+    "backToSearch": "ހޯދުމަށް އެނބުރި ދާން",
+    "audioVersionsTitle": "އެހެން އޯޑިއޯ ވާޝަންތައް",
+    "audioVersionsDescription": "މި ވީޑިއޯ ބެލުން ކުރިއަށް ގެންދިއުމަށް އޯޑިއޯ ބަހެއް ހޮވާ.",
+    "languageVersionLabel": "އޯޑިއޯ ބަސް",
+    "selectLanguageVersion": "ބަހުގެ ވާޝަނެއް ހޮވާ",
+    "watchSelectedVersion": "ހޮވާފައިވާ ވާޝަން ބަލާ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ކުކީ އިޚްތިޔާރުތައް",
+    "bannerTitle": "އަޕަށް ބެހޭ ޕްރައިވެސީ އިޚްތިޔާރުތައް",
+    "bannerDescription": "އަސާސީ ކުކީތައް Watch ސަލާމަތްކޮށް އަދި ރަނގަޅަށް މަސައްކަތްކުރަން ބޭނުންވެއެވެ. ތިބާގެ ހުއްދައާއެކު، އިޚްތިޔާރީ ފަރުތަމަ ޕާޓީ ކުކީއެއް މިންވަރުކުރެވޭ ސިފަތައް ފަހުންވެސް ދަތުރުތަކުގައި ހަނދާންކޮށް، ތަފާތު ރެކޮމެންޑޭޝަންތައް ދެވޭނެއެވެ. މި ގޮތް ނަމަވެސް ކޮންޓެކްސްޓުއަލް ރެކޮމެންޑޭޝަންތައް ލިބެން އޮންނާނެއެވެ.",
+    "acceptAll": "ހުރިހާ އެއްޗެއް ޤަބޫލުކުރޭ",
+    "essentialOnly": "އަސާސީ ބައި އެކަނި",
+    "manageChoices": "އިޚްތިޔާރުތައް ބަލަހައްޓާ",
+    "savingChoice": "ކުކީ އިޚްތިޔާރު ސޭވްކުރަނީ",
+    "settings": "ކުކީ ސެޓިންގްސް",
+    "settingsDescription": "ދަތުރުތަކުގެ މެދުގައި ރެކޮމެންޑޭޝަން ސިފަތައް Watch ހަނދާންކުރާނަމަ ނޫނަމަ އިޚްތިޔާރުކުރޭ. މި ބަދަލު ކޮންމެ ވަގުތެއްގައިވެސް ކުރެވޭނެއެވެ.",
+    "essentialCookies": "އަސާސީ ކުކީތައް",
+    "essentialDescription": "ސެކިއުރިޓީ، ޕްލޭބެކް، ޕްރައިވެސީ އިޚްތިޔާރުތައް، އަދި ރެކޮމެންޑޭޝަން ރިކުއެސްޓު އެޓްރިބިއުޝަން.",
+    "alwaysActive": "އަބަދުވެސް އެކްޓިވް",
+    "personalization": "ޕަރސަނަލައިޒޭޝަން",
+    "personalizationDescription": "ދަތުރުތަކުގެ މެދުގައި މަހުދޫދު ސިފަތައް ހަނދާންކުރޭ. މިއެއް ބަންދުކުރުމުން ވެސް ކޮންޓެކްސްޓުއަލް ރެކޮމެންޑޭޝަންތައް ލިބެން ހުރިއެވެ.",
+    "erasurePending": "ޕްރޮފައިލް ފޮހެލުމުގެ އިންތިޒާރުގައި އެބަ އޮތެވެ. ކޮންޓެކްސްޓުއަލް ރެކޮމެންޑޭޝަންތައް މިހާރުވެސް އެކްޓިވް ކުރެވިފައިވެއެވެ.",
+    "cancel": "ބާތިލް",
+    "saveChoices": "އިޚްތިޔާރުތައް ސޭވްކުރޭ",
+    "saving": "ސޭވްކުރަނީ…",
+    "loadError": "ތިބާގެ އިޚްތިޔާރު ލޯޑުކުރެވޭކަށް ނުވުނެ. އަދިވެސް ތިރީގައި އިޚްތިޔާރުކުރެވޭނެއެވެ.",
+    "grantError": "ޕަރސަނަލައިޒޭޝަން އެނޭބަލްކުރެވޭކަށް ނުވުނެ. އަސާސީ ބައި އެކަނި އަދިވެސް ލިބެން ހުރެއެވެ.",
+    "saveError": "ތިބާގެ އިޚްތިޔާރު ސޭވްކުރެވޭކަށް ނުވުނެ. އަލުން މިތަން މަސައްކަތްކުރޭ."
   }
 }

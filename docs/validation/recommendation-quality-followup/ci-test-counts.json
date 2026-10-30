@@ -1,0 +1,13 @@
+{
+  "runId": 35043723921,
+  "testSummaryLines": [
+    "admin-schema-drift\tExercise Watch database integration against PostgreSQL\t2026-09-16T01:24:52.2668688Z ^[[2m      Tests ^[[22m ^[[1m^[[32m28 passed^[[39m^[[22m^[[90m (28)^[[39m",
+    "admin-schema-drift\tExercise recommendation tracer migration against PostgreSQL\t2026-09-16T01:25:15.9215800Z ^[[2m      Tests ^[[22m ^[[1m^[[32m63 passed^[[39m^[[22m^[[90m (63)^[[39m",
+    "admin-schema-drift\tExercise semantic retrieval budget against pgvector\t2026-09-16T01:25:19.4785114Z ^[[2m      Tests ^[[22m ^[[1m^[[32m9 passed^[[39m^[[22m^[[90m (9)^[[39m",
+    "admin-schema-drift\tExercise profile recommendation retrieval against deterministic pgvector\t2026-09-16T01:25:23.1573372Z ^[[2m      Tests ^[[22m ^[[1m^[[32m4 passed^[[39m^[[22m^[[90m (4)^[[39m",
+    "admin-schema-drift\tExercise recommendation admission against Redis\t2026-09-16T01:25:24.6432467Z ^[[2m      Tests ^[[22m ^[[1m^[[32m2 passed^[[39m^[[22m^[[90m (2)^[[39m",
+    "web-redis-integration\tExercise Watch recommendation admission against Redis\t2026-09-16T01:25:01.4203667Z ^[[2m      Tests ^[[22m ^[[1m^[[32m10 passed^[[39m^[[22m^[[90m (10)^[[39m",
+    "test (@forge/admin)\tUNKNOWN STEP\t2026-09-16T01:26:45.7354873Z ^[[2m      Tests ^[[22m ^[[1m^[[32m7258 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m284 skipped^[[39m^[[2m | ^[[22m^[[90m1 todo^[[39m^[[90m (7543)^[[39m",
+    "test (@forge/web)\tUNKNOWN STEP\t2026-09-16T01:25:56.2686048Z ^[[2m      Tests ^[[22m ^[[1m^[[32m4398 passed^[[39m^[[22m^[[2m | ^[[22m^[[33m10 skipped^[[39m^[[2m | ^[[22m^[[90m1 todo^[[39m^[[90m (4409)^[[39m"
+  ]
+}

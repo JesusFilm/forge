@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forge · Consumers</title>
+    <link rel="icon" href="/portal/assets/forge.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/portal/assets/apercu-regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/portal/assets/portal.css" />
+    <script src="/portal/assets/portal.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/portal"
+        ><img
+          class="brand-mark"
+          src="/portal/assets/forge.svg"
+          width="32"
+          height="36"
+          alt=""
+        />Forge</a
+      >
+      <nav aria-label="Portal sections">
+        <button class="nav-item" data-section="rag">RAG</button>
+        <button
+          class="nav-item selected"
+          data-section="consumers"
+          aria-current="page"
+        >
+          Consumers
+        </button>
+        <button class="nav-item" data-section="usage">Usage</button>
+        <button class="nav-item" data-section="sources">Sources</button>
+        <button class="nav-item" data-section="knowledge">Knowledge</button>
+      </nav>
+      <div id="account"></div>
+    </header>
+    <main>
+      <div class="heading">
+        <h1 id="page-title">Consumers</h1>
+        <p id="page-description" class="subtle">
+          Manage API consumers, their members and access keys.
+        </p>
+      </div>
+      <p id="notice" role="status" aria-live="polite"></p>
+      <div id="signed-out" hidden>
+        <a class="button" href="/portal/login">Continue with GitHub</a>
+      </div>
+      <section id="sources" aria-label="Sources" hidden></section>
+      <section id="directory" aria-label="Consumers" hidden>
+        <div class="toolbar">
+          <div class="search-field">
+            <span aria-hidden="true">⌕</span
+            ><input
+              id="search"
+              type="search"
+              aria-label="Search consumers"
+              placeholder="Search consumers by name…"
+            />
+          </div>
+          <div class="filters" role="group" aria-label="Filter by status">
+            <button class="selected" data-filter="all" aria-pressed="true">
+              All
+            </button>
+            <button data-filter="active" aria-pressed="false">Active</button>
+            <button data-filter="suspended" aria-pressed="false">
+              Suspended
+            </button>
+            <button data-filter="revoked" aria-pressed="false">Revoked</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="quiet" id="refresh" hidden>
+              <span aria-hidden="true">↻</span> Refresh
+            </button>
+            <button id="create" hidden>
+              <span class="create-icon" aria-hidden="true">+</span>Create
+              consumer
+            </button>
+          </div>
+        </div>
+        <div
+          class="table-scroll"
+          tabindex="0"
+          role="region"
+          aria-label="Consumer list"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" id="name-column" aria-sort="ascending">
+                  <button id="sort-name">
+                    Name <span id="sort-direction" aria-hidden="true">↑</span>
+                  </button>
+                </th>
+                <th scope="col">Status</th>
+                <th scope="col">Members</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="result-count" class="subtle"></span>
+          <div class="pagination" aria-label="Consumer pages">
+            <button id="previous-page" class="quiet" aria-label="Previous page">
+              ‹</button
+            ><span id="page-number" aria-label="Current page">1</span
+            ><button id="next-page" class="quiet" aria-label="Next page">
+              ›
+            </button>
+          </div>
+        </div>
+      </section>
+      <section id="usage" aria-label="Usage" hidden></section>
+      <section id="construction" hidden aria-label="Under construction">
+        <img
+          src="/portal/assets/under-construction.png"
+          alt="A very relaxed capybara building with a tiny excavator. Under construction."
+          width="1536"
+          height="1024"
+          loading="lazy"
+        />
+      </section>
+    </main>
+    <div id="row-menu" popover="auto" aria-label="Consumer actions"></div>
+    <dialog id="workflow" aria-labelledby="dialog-title">
+      <div id="dialog-content"></div>
+    </dialog>
+    <noscript><p>Enable JavaScript to manage consumers.</p></noscript>
+  </body>
+</html>

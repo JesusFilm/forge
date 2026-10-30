@@ -1,24 +1,16 @@
-import { notFound } from "next/navigation"
-import { ShortsJobDetail } from "@/features/shorts/shorts-job-detail"
-import { getJob } from "@/lib/state"
-
-export const dynamic = "force-dynamic"
-
-export default async function ShortsJobDetailPage({
+import { StudioEditor } from "@/features/video-studio/editor"
+import { parseRenderHandoff } from "@/features/video-studio/render-review-state"
+export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { id } = await params
-  const job = await getJob(id)
-
-  if (!job || !job.options.shorts) {
-    notFound()
-  }
-
   return (
-    <div className="studio-page studio-page--shorts-detail">
-      <ShortsJobDetail initialJob={job} />
-    </div>
+    <StudioEditor
+      projectId={(await params).id}
+      handoff={parseRenderHandoff(await searchParams)}
+    />
   )
 }

@@ -38,11 +38,11 @@ function titleClasses(sizeClass: string): Record<2 | 3, string> {
 }
 
 const TITLE_CLASSES = {
-  compact: titleClasses("text-sm"),
-  "compact-sm": titleClasses("text-sm sm:text-base"),
-  "compact-md": titleClasses("text-sm md:text-base"),
-  regular: titleClasses("text-base"),
-  "regular-sm": titleClasses("text-base sm:text-xl"),
+  compact: titleClasses("text-base sm:text-sm"),
+  "compact-sm": titleClasses("text-base"),
+  "compact-md": titleClasses("text-base sm:text-sm md:text-base"),
+  regular: titleClasses("text-lg sm:text-base"),
+  "regular-sm": titleClasses("text-lg sm:text-xl"),
   prominent: titleClasses("text-lg md:text-xl"),
   large: titleClasses("text-xl"),
   display: titleClasses("text-2xl md:text-3xl"),
@@ -52,14 +52,14 @@ const EYEBROW_BASE_CLASS =
   "block w-full truncate leading-5 font-medium tracking-media-label text-stone-300/80 uppercase [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]"
 
 const EYEBROW_CLASSES = {
-  compact: `${EYEBROW_BASE_CLASS} text-[10px]`,
-  "compact-sm": `${EYEBROW_BASE_CLASS} text-[10px] sm:text-xs`,
-  hero: `${EYEBROW_BASE_CLASS} text-[11px]`,
+  compact: `${EYEBROW_BASE_CLASS} text-xs sm:text-[10px]`,
+  "compact-sm": `${EYEBROW_BASE_CLASS} text-xs`,
+  hero: `${EYEBROW_BASE_CLASS} text-xs sm:text-[11px]`,
   regular: `${EYEBROW_BASE_CLASS} text-xs`,
 } satisfies Record<ThumbnailEyebrowSize, string>
 
 const DESCRIPTION_CLASS =
-  "line-clamp-2 text-xs leading-relaxed font-normal text-stone-300 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]"
+  "line-clamp-2 text-sm leading-relaxed font-normal text-stone-300 sm:text-xs [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]"
 
 function withOptionalClassName(baseClassName: string, className?: string) {
   return className ? cn(baseClassName, className) : baseClassName

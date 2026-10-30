@@ -100,7 +100,7 @@ describe("cachedBoundedTtlValue", () => {
     expect(loader).toHaveBeenCalledTimes(4)
   })
 
-  it("does not let an expired promise overwrite its replacement", async () => {
+  it("coalesces a pending promise even after the resolved-value TTL", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-06T00:00:00.000Z"))
     const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
@@ -117,17 +117,16 @@ describe("cachedBoundedTtlValue", () => {
       loader: async () => oldLoad,
     })
     vi.advanceTimersByTime(1_001)
-    await expect(
-      cacheValue({
-        cacheByOwner,
-        owner,
-        key: "language",
-        loader: async () => "replacement",
-      }),
-    ).resolves.toBe("replacement")
+    const coalescedResult = cacheValue({
+      cacheByOwner,
+      owner,
+      key: "language",
+      loader: async () => "replacement",
+    })
 
     resolveOld("stale")
     await expect(oldResult).resolves.toBe("stale")
+    await expect(coalescedResult).resolves.toBe("stale")
     await expect(
       cacheValue({
         cacheByOwner,
@@ -135,7 +134,31 @@ describe("cachedBoundedTtlValue", () => {
         key: "language",
         loader: async () => "unexpected",
       }),
-    ).resolves.toBe("replacement")
+    ).resolves.toBe("stale")
+  })
+
+  it("does not exceed capacity when distinct loads remain pending", async () => {
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    const resolvers: Array<(value: string) => void> = []
+    const load = (key: string) =>
+      cacheValue({
+        cacheByOwner,
+        owner,
+        key,
+        maxEntries: 2,
+        loader: () =>
+          new Promise<string>((resolve) => {
+            resolvers.push(resolve)
+          }),
+      })
+
+    const pending = [load("one"), load("two"), load("three")]
+    expect(cacheByOwner.get(owner)?.size).toBe(2)
+
+    resolvers.forEach((resolve, index) => resolve(`value:${index}`))
+    await Promise.all(pending)
+    expect(cacheByOwner.get(owner)?.size).toBe(2)
   })
 })
 
@@ -206,6 +229,36 @@ describe("cachedBoundedTtlBatchValues", () => {
     await expect(first).resolves.toEqual(["value:one", "value:two"])
     await expect(second).resolves.toEqual(["value:two", "value:three"])
     expect(loader).toHaveBeenNthCalledWith(2, ["three"])
+  })
+
+  it("does not exceed capacity when one batch has many pending misses", async () => {
+    const cacheByOwner = new WeakMap<object, BoundedTtlCache<string>>()
+    const owner = {}
+    let resolveLoad!: (values: readonly string[]) => void
+    const loader = vi.fn(
+      () =>
+        new Promise<readonly string[]>((resolve) => {
+          resolveLoad = resolve
+        }),
+    )
+
+    const pending = cachedBoundedTtlBatchValues({
+      cacheByOwner,
+      owner,
+      keys: ["one", "two", "three"],
+      ttlMs: 1_000,
+      maxEntries: 2,
+      loader,
+    })
+    expect(cacheByOwner.get(owner)?.size).toBe(2)
+
+    resolveLoad(["value:one", "value:two", "value:three"])
+    await expect(pending).resolves.toEqual([
+      "value:one",
+      "value:two",
+      "value:three",
+    ])
+    expect(cacheByOwner.get(owner)?.size).toBe(2)
   })
 
   it("expires, evicts, and removes every failed batch miss", async () => {

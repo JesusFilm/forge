@@ -5,6 +5,8 @@ import {
   EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS,
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
 } from "../services/embedding-provider"
+// Import-free leaf by contract (see its header) — safe here, no cycle.
+import { DEFAULT_AI_GATEWAY_CHAT_BASE_URL } from "../mastra/gateway-constants"
 import { parseServiceApiKeys } from "../server/service-bearer"
 
 const emptyToUndefined = (value: string | undefined) =>
@@ -16,6 +18,7 @@ const DEFAULT_OPENROUTER_EMBEDDINGS_BASE_URL = "https://openrouter.ai/api/v1"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_BASE_URL =
   "https://ai-gateway.jesusfilm.org/v1"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS = "ai-gateway.jesusfilm.org"
+const DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS = "ai-gateway.jesusfilm.org"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_USER_AGENT =
   "forge-mastra-content-embeddings/1.0"
 const DEFAULT_AI_GATEWAY_EMBEDDINGS_MODEL = "embeddings"
@@ -76,14 +79,15 @@ const DEFAULT_DATADOG_TRIAGE_DEV_SESSION_MARKERS =
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
-const DEFAULT_JESUSFILM_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
-const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
+const DEFAULT_SEEKER_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
+const DEFAULT_SEEKER_RAG_TIMEOUT_MS = 5_000
+const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
 // 2 MiB ceiling on the buffered RAG response body (feat-202). Sized ~8x above a
 // generous legitimate topK=5 payload (≈ max passage text × 5 + citation
 // overhead) so a valid retrieval is never rejected, while bounding the heap a
 // misbehaving upstream can claim before the byte-cap aborts the stream. Override
-// via JESUSFILM_RAG_MAX_RESPONSE_BYTES; never required at boot.
-const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
+// via SEEKER_RAG_MAX_RESPONSE_BYTES; never required at boot.
+const DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES = 2_097_152
 // 2 MiB ceiling on the buffered admin agent-tools response body (feat-327).
 //
 // This is a POLICY ceiling, not a derived contract bound — say so plainly,
@@ -183,7 +187,28 @@ export type LangfuseConfig = {
 }
 
 const envSchema = z.object({
+  STUDIO_TEST_DATABASE_URL: z.string().optional(),
+  STUDIO_ADMIN_URL: z.string().url().optional(),
+  STUDIO_AGENT_ENABLED: z.enum(["true", "false"]).default("false"),
+  STUDIO_ADMISSION_SECRET: z.string().min(32).optional(),
+  STUDIO_AGENT_MODEL: z.string().default("openai/gpt-5.4-mini"),
+  STUDIO_INTERACTIVE_PUBLIC_KEYS: z.string().optional(),
+  STUDIO_ENVIRONMENT: z
+    .enum(["local", "preview", "staging", "production"])
+    .default("local"),
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_CATALOG_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_INGEST_URL: z.string().url().optional(),
+  PRECOMPUTED_GA4_PROPERTY_ID: z
+    .string()
+    .regex(/^\d{1,20}$/u)
+    .optional(),
+  PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL: z
+    .string()
+    .regex(/^[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/u)
+    .optional(),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: z.string().min(1).max(65_536).optional(),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
@@ -200,6 +225,11 @@ const envSchema = z.object({
   // optional: unset → the tool degrades to an empty result, never a boot fail.
   ADMIN_AGENT_TOOLS_URL: z.string().url().optional(),
   ADMIN_AGENT_TOOLS_API_KEY: z.string().min(1).optional(),
+  // Subtitle Quality Lab recovery sweep. Both optional: unconfigured is the
+  // normal state until the Lab is turned on, and the scheduled workflow skips
+  // rather than failing every tick.
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: z.string().url().optional(),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: z.string().min(1).optional(),
   // Single-attempt per-tool timeout. Must fit the 90s chatTurn budget with
   // maxSteps:8 — keep it small so several tool round-trips can complete in one
   // turn. Capped at 30s; default 10s.
@@ -221,7 +251,7 @@ const envSchema = z.object({
   ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: z.string().min(1).optional(),
   // Byte-cap on the buffered agent-tools response body (feat-327). `.optional()`
   // with a runtime fallback in `getAdminAgentToolsConfig()` — mirrors
-  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing` list
+  // SEEKER_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing` list
   // while the 16 MiB `.max()` ceiling fails LOUD (boot-time parse error) on an
   // over-range operator typo rather than silently widening the cap and defeating
   // the OOM guard this var exists to provide.
@@ -263,6 +293,13 @@ const envSchema = z.object({
   // default provider (openrouter) needs none of these. New cross-service
   // scaffolding env vars stay optional so an unprovisioned Railway env boots.
   AI_GATEWAY_CHAT_API_KEY: z.string().min(1).optional(),
+  // CSV host allowlist for the chat-gateway base URL (feat-440), mirroring
+  // AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS. Stays `.optional()` with a RUNTIME
+  // default (DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS covers the default base
+  // URL) so an unprovisioned Railway env boots with zero new vars; the
+  // production boot assert below fires only on a SET-but-disallowed
+  // effective URL while the chat key is present.
+  AI_GATEWAY_CHAT_ALLOWED_HOSTS: z.string().min(1).optional(),
   AI_GATEWAY_CHAT_BASE_URL: z.string().url().optional(),
   AI_GATEWAY_CHAT_ENABLED: z.string().optional(),
   AI_GATEWAY_CHAT_MODEL: z.string().min(1).optional(),
@@ -328,10 +365,16 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false"),
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: z.string().min(1).optional(),
-  // Optional per-surface override for the ai-chat lane's Memory backend
-  // (feat-208). Unset → follows MASTRA_STORAGE_BACKEND. `.optional()` so the
-  // kill-switch adds zero required-at-boot env vars.
-  AI_CHAT_MEMORY_BACKEND: z.enum(["postgres", "memory"]).optional(),
+  // Default-off arming flag for the daily ai-chat title-repair sweep
+  // (feat-405, KTD4): the `title-repair` workflow's scheduled and manual runs
+  // are counted skips unless this is exactly `"true"`. Optional + no default.
+  // Read via the repo's string-boolean convention (`=== "true"`, matching
+  // SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `AI_CHAT_TITLE_REPAIR_ENABLED="false"` stays disabled. The sweep's other
+  // gates (lane kill switch, gateway key, postgres backend, explicit
+  // DATABASE_URL) live in workflows/title-repair.ts. No new required-at-boot
+  // var.
+  AI_CHAT_TITLE_REPAIR_ENABLED: z.string().optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
@@ -341,6 +384,9 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
+  RAILWAY_GIT_COMMIT_SHA: z.string().min(1).optional(),
+  GIT_COMMIT_SHA: z.string().min(1).optional(),
+  RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
   OPENROUTER_EMBEDDINGS_BASE_URL: z
     .string()
     .url()
@@ -439,40 +485,40 @@ const envSchema = z.object({
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // RAG retrieval (feat-199). Fully optional — unset degrades to a runtime
   // `config_missing` result, never a boot failure (ticket "never a boot
-  // failure"). The base URL is gated by `JESUSFILM_RAG_ALLOWED_HOSTS` in
+  // failure"). The base URL is gated by `SEEKER_RAG_ALLOWED_HOSTS` in
   // production (the one RAG-driven boot throw — a security control), but no RAG
   // var is ever pushed into the production `missing` list.
-  JESUSFILM_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
-  JESUSFILM_RAG_API_KEY: z.string().min(1).optional(),
-  JESUSFILM_RAG_BASE_URL: z.string().url().optional(),
+  SEEKER_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
+  SEEKER_RAG_API_KEY: z.string().min(1).optional(),
+  SEEKER_RAG_BASE_URL: z.string().url().optional(),
   // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
   // this single-attempt RAG timeout MUST stay strictly below the upstream
   // ceiling — the Mastra agent tool-call budget, well under Railway's request
   // limit. The 30_000 cap is comfortably under that today. If a future
   // mastra-gateway enforces a tighter per-turn budget (e.g. 10 s), lower this
   // cap to match so a misconfigured override can't outlive the caller.
-  JESUSFILM_RAG_TIMEOUT_MS: z.coerce
+  SEEKER_RAG_TIMEOUT_MS: z.coerce
     .number()
     .int()
     .positive()
     .max(30_000)
-    .default(DEFAULT_JESUSFILM_RAG_TIMEOUT_MS),
-  JESUSFILM_RAG_USER_AGENT: z
+    .default(DEFAULT_SEEKER_RAG_TIMEOUT_MS),
+  SEEKER_RAG_USER_AGENT: z
     .string()
     .min(1)
-    .default(DEFAULT_JESUSFILM_RAG_USER_AGENT),
+    .default(DEFAULT_SEEKER_RAG_USER_AGENT),
   // Byte-cap on the buffered RAG response body (feat-202). `.optional()` with a
   // runtime fallback in `getJesusfilmRagConfig()` — NOT a required-at-boot var
   // (KTD5: stays out of the production `missing` list in assertMastraRuntimeEnv).
-  // Unset → DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES (2 MiB). The 16 MiB `.max()`
+  // Unset → DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES (2 MiB). The 16 MiB `.max()`
   // ceiling fails LOUD (boot-time parse error) on an over-range operator typo
   // like "99999999999" rather than silently widening the cap to ~93 GB and
   // defeating the OOM guard this var exists to provide — a fail-open footgun on a
   // safety control. 16 MiB is 8× the default: ample headroom for a legitimate
   // raise if passages grow, while bounding the ~2× transient peak per in-flight
   // read so even the widest sanctioned config stays survivable on the shared
-  // process. Mirrors the sibling JESUSFILM_RAG_TIMEOUT_MS `.max(30_000)`.
-  JESUSFILM_RAG_MAX_RESPONSE_BYTES: z.coerce
+  // process. Mirrors the sibling SEEKER_RAG_TIMEOUT_MS `.max(30_000)`.
+  SEEKER_RAG_MAX_RESPONSE_BYTES: z.coerce
     .number()
     .int()
     .positive()
@@ -487,7 +533,7 @@ const envSchema = z.object({
   LANGFUSE_ALLOWED_HOSTS: z.string().min(1).optional(),
   // No default base URL: Langfuse cloud keys are region-bound, so a hardcoded
   // region default yields confusing 401s. Unset means unconfigured — the same
-  // posture as JESUSFILM_RAG_BASE_URL.
+  // posture as SEEKER_RAG_BASE_URL.
   LANGFUSE_BASE_URL: z.string().url().optional(),
   // Unlike the Bearer-token siblings in this file, this key pair feeds HTTP
   // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
@@ -524,7 +570,7 @@ const envSchema = z.object({
   LANGFUSE_USER_AGENT: z.string().min(1).default(DEFAULT_LANGFUSE_USER_AGENT),
   // Byte-cap on the buffered Langfuse prompt response body. `.optional()` with
   // a runtime fallback in `getLangfuseConfig()` — mirrors
-  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing`
+  // SEEKER_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing`
   // list while the 5 MiB `.max()` ceiling fails LOUD (boot-time parse error)
   // on an over-range operator typo rather than silently widening the cap and
   // defeating the OOM guard this var exists to provide. 5 MiB is 20× the
@@ -828,8 +874,33 @@ const envSchema = z.object({
 })
 
 export const env = envSchema.parse({
+  STUDIO_TEST_DATABASE_URL: process.env.STUDIO_TEST_DATABASE_URL,
+  STUDIO_ADMIN_URL: process.env.STUDIO_ADMIN_URL,
+  STUDIO_AGENT_ENABLED: process.env.STUDIO_AGENT_ENABLED,
+  STUDIO_ADMISSION_SECRET: process.env.STUDIO_ADMISSION_SECRET,
+  STUDIO_AGENT_MODEL: process.env.STUDIO_AGENT_MODEL,
+  STUDIO_INTERACTIVE_PUBLIC_KEYS: process.env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+  STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
   ADMIN_EXPERIENCE_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_EXPERIENCE_INGEST_URL,
+  ),
+  ADMIN_RECOMMENDATION_CATALOG_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_CATALOG_URL,
+  ),
+  ADMIN_RECOMMENDATION_INGEST_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_INGEST_URL,
+  ),
+  PRECOMPUTED_GA4_PROPERTY_ID: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_PROPERTY_ID,
+  ),
+  PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL,
+  ),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_CREDENTIALS_JSON,
+  ),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: emptyToUndefined(
+    process.env.ADMIN_MASTRA_RECOMMENDATION_API_KEY,
   ),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
@@ -864,6 +935,12 @@ export const env = envSchema.parse({
   ADMIN_AGENT_TOOLS_URL: emptyToUndefined(process.env.ADMIN_AGENT_TOOLS_URL),
   ADMIN_AGENT_TOOLS_API_KEY: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_API_KEY,
+  ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_URL,
+  ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY,
   ),
   ADMIN_AGENT_TOOLS_TIMEOUT_MS: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
@@ -900,6 +977,9 @@ export const env = envSchema.parse({
   ),
   AI_GATEWAY_CHAT_API_KEY: emptyToUndefined(
     process.env.AI_GATEWAY_CHAT_API_KEY,
+  ),
+  AI_GATEWAY_CHAT_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
   ),
   AI_GATEWAY_CHAT_BASE_URL: emptyToUndefined(
     process.env.AI_GATEWAY_CHAT_BASE_URL,
@@ -955,7 +1035,9 @@ export const env = envSchema.parse({
   MASTRA_SEARCH_EVAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.MASTRA_SEARCH_EVAL_ARTIFACT_DIR,
   ),
-  AI_CHAT_MEMORY_BACKEND: emptyToUndefined(process.env.AI_CHAT_MEMORY_BACKEND),
+  AI_CHAT_TITLE_REPAIR_ENABLED: emptyToUndefined(
+    process.env.AI_CHAT_TITLE_REPAIR_ENABLED,
+  ),
   MASTRA_STORAGE_BACKEND: emptyToUndefined(process.env.MASTRA_STORAGE_BACKEND),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
@@ -966,6 +1048,9 @@ export const env = envSchema.parse({
     process.env.OPENROUTER_API_PAID_KEY,
   ),
   OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+  RAILWAY_GIT_COMMIT_SHA: emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA),
+  GIT_COMMIT_SHA: emptyToUndefined(process.env.GIT_COMMIT_SHA),
+  RAILWAY_DEPLOYMENT_ID: emptyToUndefined(process.env.RAILWAY_DEPLOYMENT_ID),
   OPENROUTER_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENROUTER_EMBEDDINGS_BASE_URL,
   ),
@@ -1070,20 +1155,16 @@ export const env = envSchema.parse({
   RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
     process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
   ),
-  JESUSFILM_RAG_ALLOWED_HOSTS: emptyToUndefined(
-    process.env.JESUSFILM_RAG_ALLOWED_HOSTS,
+  SEEKER_RAG_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.SEEKER_RAG_ALLOWED_HOSTS,
   ),
-  JESUSFILM_RAG_API_KEY: emptyToUndefined(process.env.JESUSFILM_RAG_API_KEY),
-  JESUSFILM_RAG_BASE_URL: emptyToUndefined(process.env.JESUSFILM_RAG_BASE_URL),
-  JESUSFILM_RAG_TIMEOUT_MS: emptyToUndefined(
-    process.env.JESUSFILM_RAG_TIMEOUT_MS,
+  SEEKER_RAG_API_KEY: emptyToUndefined(process.env.SEEKER_RAG_API_KEY),
+  SEEKER_RAG_BASE_URL: emptyToUndefined(process.env.SEEKER_RAG_BASE_URL),
+  SEEKER_RAG_TIMEOUT_MS: emptyToUndefined(process.env.SEEKER_RAG_TIMEOUT_MS),
+  SEEKER_RAG_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.SEEKER_RAG_MAX_RESPONSE_BYTES,
   ),
-  JESUSFILM_RAG_MAX_RESPONSE_BYTES: emptyToUndefined(
-    process.env.JESUSFILM_RAG_MAX_RESPONSE_BYTES,
-  ),
-  JESUSFILM_RAG_USER_AGENT: emptyToUndefined(
-    process.env.JESUSFILM_RAG_USER_AGENT,
-  ),
+  SEEKER_RAG_USER_AGENT: emptyToUndefined(process.env.SEEKER_RAG_USER_AGENT),
   LANGFUSE_ALLOWED_HOSTS: emptyToUndefined(process.env.LANGFUSE_ALLOWED_HOSTS),
   LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
   LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
@@ -1323,6 +1404,60 @@ function assertGatewayBaseUrlAllowedForProduction() {
   }
 }
 
+/**
+ * The ONE feat-440 chat-gateway egress rule, pure over its arguments so both
+ * enforcement layers share it verbatim: the production boot assert below
+ * (primary — covers every consumer of the effective base URL:
+ * `createJesusFilmProvider()`/embeddings fallback in `providers.ts`,
+ * `buildSeekerGatewayModelEntry()` in `seeker-model-list.ts`,
+ * `default-chat-agent.ts`, `specialized-agents.ts`, `memory.ts`) and the
+ * runtime defense-in-depth at the seeker choke point + title-repair gate
+ * ladder (which cover entrypoints that never run `assertMastraRuntimeEnv`).
+ * Applies the same runtime defaults every consumer applies, so an
+ * all-defaults configuration passes with zero Railway edits. Fail-closed on
+ * an unparseable URL.
+ */
+export function isAllowedAiGatewayChatBaseUrl(
+  baseUrl: string | undefined,
+  allowedHostsCsv: string | undefined,
+): boolean {
+  let effective: URL
+  try {
+    effective = new URL(baseUrl ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL)
+  } catch {
+    return false
+  }
+  const allowedHosts = csvSet(
+    allowedHostsCsv ?? DEFAULT_AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+  )
+  return effective.protocol === "https:" && allowedHosts.has(effective.hostname)
+}
+
+/**
+ * feat-440 primary enforcement: production boot assert on the chat-gateway
+ * base URL, mirroring `assertJesusfilmRagBaseUrlAllowedForProduction`'s
+ * armed-only posture — it fires only when the gateway chat path holds a
+ * credential to egress (`AI_GATEWAY_CHAT_API_KEY` set), so an unarmed deploy
+ * boots with zero new env vars. Validates the EFFECTIVE URL
+ * (`env.AI_GATEWAY_CHAT_BASE_URL ?? DEFAULT_AI_GATEWAY_CHAT_BASE_URL`) —
+ * the exact expression every consumer constructs its client from — against
+ * https + the effective allowlist, whose runtime default covers the default
+ * base URL's host.
+ */
+function assertAiGatewayChatBaseUrlAllowedForProduction() {
+  if (!env.AI_GATEWAY_CHAT_API_KEY) return
+  if (
+    !isAllowedAiGatewayChatBaseUrl(
+      env.AI_GATEWAY_CHAT_BASE_URL,
+      env.AI_GATEWAY_CHAT_ALLOWED_HOSTS,
+    )
+  ) {
+    throw new Error(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
 function assertFirecrawlApiUrlAllowedForProduction() {
   const apiUrl = new URL(env.FIRECRAWL_API_URL)
   const allowedHosts = csvSet(env.FIRECRAWL_ALLOWED_HOSTS)
@@ -1345,19 +1480,27 @@ function assertYouTubeBaseUrlAllowedForProduction() {
 
 function assertJesusfilmRagBaseUrlAllowedForProduction() {
   // Conditional on the base URL being set: unconfigured RAG is valid by design
-  // (the feature degrades at runtime). When the URL IS set, fail-closed — https
-  // AND a non-empty allowlist containing the hostname, else throw. The allowlist
-  // has no default (the RAG's deployed hostname is not recorded in its repo), so
-  // a base-URL-set-but-allowlist-unset production config throws here. Mirrors
-  // `assertFirecrawlApiUrlAllowedForProduction` but guarded on the URL being set.
-  if (!env.JESUSFILM_RAG_BASE_URL) return
-  const baseUrl = new URL(env.JESUSFILM_RAG_BASE_URL)
-  const allowedHosts = env.JESUSFILM_RAG_ALLOWED_HOSTS
-    ? csvSet(env.JESUSFILM_RAG_ALLOWED_HOSTS)
+  // (the feature degrades at runtime). When the URL IS set, fail-closed — use
+  // https, or plain HTTP only for Railway's WireGuard-encrypted private network,
+  // AND require a non-empty allowlist containing the hostname. A label-boundary
+  // check keeps lookalike and empty-label hosts out of the HTTP carve-out.
+  if (!env.SEEKER_RAG_BASE_URL) return
+  const baseUrl = new URL(env.SEEKER_RAG_BASE_URL)
+  const host = baseUrl.hostname.toLowerCase()
+  const allowedHosts = env.SEEKER_RAG_ALLOWED_HOSTS
+    ? csvSet(env.SEEKER_RAG_ALLOWED_HOSTS)
     : new Set<string>()
-  if (baseUrl.protocol !== "https:" || !allowedHosts.has(baseUrl.hostname)) {
+  const railwayPrivateHttp =
+    baseUrl.protocol === "http:" &&
+    host.endsWith(RAILWAY_INTERNAL_SUFFIX) &&
+    !host.startsWith(".") &&
+    !host.includes("..")
+  if (
+    (baseUrl.protocol !== "https:" && !railwayPrivateHttp) ||
+    !allowedHosts.has(host)
+  ) {
     throw new Error(
-      "JESUSFILM_RAG_BASE_URL must use https and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -1525,11 +1668,14 @@ export function assertMastraRuntimeEnv() {
   assertFirecrawlApiUrlAllowedForProduction()
   if (env.YOUTUBE_API_KEY) assertYouTubeBaseUrlAllowedForProduction()
   // The only RAG-driven boot throw (a security control). A missing
-  // JESUSFILM_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
+  // SEEKER_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
   // state degrades at runtime via the client's `config_missing` short-circuit,
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
   assertAdminAgentToolsBaseUrlAllowedForProduction()
+  // feat-440: the one chat-gateway egress boot throw (armed-only — see the
+  // assert's doc comment). Unconditional call; the arming check lives inside.
+  assertAiGatewayChatBaseUrlAllowedForProduction()
   // Same posture for Langfuse (U1, R9): the host guard is the only
   // Langfuse-driven boot throw. Missing keys are deliberately NOT in `missing`
   // above — an unconfigured helper degrades to the caller-supplied fallback
@@ -2053,13 +2199,30 @@ export function isSeekerVideoEnabled(): boolean {
  * mirrors the settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling): flipping this
  * off stops NEW chips; already-stored questions keep replaying on reopened
  * threads. Retraction levers, in order: this flag off → `SEEKER_ROUTE_ENABLED`
- * off (darkens the whole lane) → thread purge. Default-off: uses the repo's
- * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * off (darkens the custom Forge routes) → thread purge. The native Mastra
+ * `/api/agents/seekerAgent` surface is contained separately by the gateway and
+ * network boundary. Default-off: uses the repo's string-boolean convention
+ * (matching `SEEKER_ROUTE_ENABLED`), NOT JS
  * truthiness — `"false"` (or any other value, including the retired prototype
  * mode literals) keeps generation off.
  */
 export function isSeekerFollowUpsEnabled(): boolean {
   return env.SEEKER_FOLLOWUPS_ENABLED === "true"
+}
+
+/**
+ * Whether the daily ai-chat title-repair sweep is armed (feat-405, KTD4).
+ * Default-off: the scheduled `title-repair` workflow reports a counted skip
+ * unless this is explicitly set to the string `"true"`. Uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value) keeps the sweep skipping.
+ * This is the fine-grained lever; `SEEKER_ROUTE_ENABLED=false` darkens the
+ * custom Forge routes and skips this sweep (the sweep gates on both). It does
+ * not govern the native Mastra `/api/agents/seekerAgent` surface, which is
+ * contained by the gateway and network boundary.
+ */
+export function isTitleRepairEnabled(): boolean {
+  return env.AI_CHAT_TITLE_REPAIR_ENABLED === "true"
 }
 
 /**
@@ -2089,28 +2252,12 @@ export function isLangfuseTracingEnabled(): boolean {
 }
 
 /**
- * Backend for the ai-chat lane's Memory (feat-208): the per-surface override
- * when set, else the runtime storage backend. `memory` is the local/test path;
- * `postgres` (the production default) persists to the `ai_chat` schema. Unlike
- * MASTRA_STORAGE_BACKEND, `memory` here is allowed in production — it is the
- * documented kill-switch to revert seeker persistence without a code deploy.
- */
-export function resolveAiChatMemoryBackend(): "postgres" | "memory" {
-  return env.AI_CHAT_MEMORY_BACKEND ?? env.MASTRA_STORAGE_BACKEND
-}
-
-/**
- * Whether persisted ai-chat rows can exist in Postgres: true when EITHER the
- * runtime storage backend or the ai-chat override is postgres. Gates the
- * retention purge — deliberately NOT `resolveAiChatMemoryBackend()`: the
- * kill-switch (`AI_CHAT_MEMORY_BACKEND=memory`) reverts WRITES only and must
- * never pause retention on conversations already stored in `ai_chat`.
+ * Whether the shared backend can persist ai-chat rows in Postgres. Kept as a
+ * named predicate for lifecycle consumers that must avoid durable-store
+ * construction during local and CI memory runs.
  */
 export function canAiChatDataPersist(): boolean {
-  return (
-    env.MASTRA_STORAGE_BACKEND === "postgres" ||
-    env.AI_CHAT_MEMORY_BACKEND === "postgres"
-  )
+  return env.MASTRA_STORAGE_BACKEND === "postgres"
 }
 
 export function getFirecrawlConfig(): FirecrawlConfig {
@@ -2236,15 +2383,15 @@ export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null
 
 export function getJesusfilmRagConfig(): JesusfilmRagConfig {
   return {
-    baseUrl: env.JESUSFILM_RAG_BASE_URL,
-    apiKey: env.JESUSFILM_RAG_API_KEY,
-    timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
-    userAgent: env.JESUSFILM_RAG_USER_AGENT,
+    baseUrl: env.SEEKER_RAG_BASE_URL,
+    apiKey: env.SEEKER_RAG_API_KEY,
+    timeoutMs: env.SEEKER_RAG_TIMEOUT_MS,
+    userAgent: env.SEEKER_RAG_USER_AGENT,
     // `.optional()` schema + runtime fallback: keeps the knob out of the
     // boot-time `missing` list while always handing the client a concrete cap.
     maxResponseBytes:
-      env.JESUSFILM_RAG_MAX_RESPONSE_BYTES ??
-      DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES,
+      env.SEEKER_RAG_MAX_RESPONSE_BYTES ??
+      DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES,
   }
 }
 

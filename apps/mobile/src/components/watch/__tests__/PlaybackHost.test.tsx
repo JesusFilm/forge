@@ -12,6 +12,13 @@
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+// OFFLINE_ROOT derives from documentDirectory at module load, and jest-expo
+// leaves that null — which makes every file:// path fail validateLocalMediaUrl
+// and so hides the offline-swap resume entirely. Give it a real root.
+jest.mock("expo-file-system/legacy", () => ({
+  ...jest.requireActual("expo-file-system/legacy"),
+  documentDirectory: "file:///docs/",
+}))
 jest.mock("react", () => {
   const r = require as unknown as NodeRequireLike
   const path = r("path") as NodePath
@@ -62,25 +69,61 @@ jest.mock("expo", () => {
   }
 })
 
+// The transport reads connectivity to tell a paused video from a broken one.
+jest.mock("expo-network", () => ({
+  useNetworkState: () => ({ isInternetReachable: true }),
+}))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
-jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// Glass off: each shared glass surface keeps today's look in this suite.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 // The host renders the screen's back affordance, which is the app's existing
 // router-owning component. expo-router is never imported unmocked in this repo.
 // `push` is captured so the expand wiring is assertable end to end.
 const mockRouterPush = jest.fn()
+const mockRouterBack = jest.fn()
 // Default: a route none of the presentation tables name, so a published
 // session floats. Reassigned + re-rendered by the expand-hold suite.
 let mockSegments: readonly string[] = []
+// The root stack's navigation object, as PlayerSlot reads it through
+// `getParent()`; its listeners let a case fire the pop's transitionEnd.
+const mockParentListeners = new Map<string, Set<(event: unknown) => void>>()
 jest.mock("expo-router", () => ({
   useRouter: () => ({
-    back: jest.fn(),
+    back: mockRouterBack,
     canGoBack: () => true,
     replace: jest.fn(),
     push: mockRouterPush,
   }),
   useSegments: () => mockSegments,
+  useNavigation: () => ({
+    getParent: () => ({
+      addListener: (name: string, listener: (event: unknown) => void) => {
+        const set = mockParentListeners.get(name) ?? new Set()
+        set.add(listener)
+        mockParentListeners.set(name, set)
+        return () => set.delete(listener)
+      },
+    }),
+  }),
 }))
+// Passes through to the real factory (null: the feature is off in jest) until
+// a case installs a counting fake.
+jest.mock("../../../lib/recommendations/playbackRecorderClient", () => {
+  const actual = jest.requireActual(
+    "../../../lib/recommendations/playbackRecorderClient",
+  )
+  return {
+    ...actual,
+    createPlaybackRecorderForMedia: jest.fn(
+      actual.createPlaybackRecorderForMedia,
+    ),
+  }
+})
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -91,6 +134,11 @@ jest.mock("../../ui/PlatformBlur", () => ({ PlatformBlur: () => null }))
 let mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
+}))
+// The Explore gate, open as in a development bundle unless a case closes it.
+const mockExploreGate = { open: true }
+jest.mock("../../../lib/explore/availability", () => ({
+  isExploreAvailable: () => mockExploreGate.open,
 }))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
@@ -146,8 +194,15 @@ jest.mock("../../../lib/authSession", () => {
   }
 })
 
-import { StrictMode, act } from "react"
-import { Animated, Dimensions, StyleSheet } from "react-native"
+import { StrictMode, act, useEffect, type ReactElement } from "react"
+import {
+  Animated,
+  AppState,
+  Dimensions,
+  I18nManager,
+  Platform,
+  StyleSheet,
+} from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
@@ -155,32 +210,66 @@ import {
   EXPAND_DURATION_MS,
   EXPAND_HOLD_TIMEOUT_MS,
   PlaybackHost,
+  QUALITY_SWAP_TIMEOUT_MS,
   REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
+  holdProgressIdentity,
+  readerTabBarReservation,
   shouldDrawSurface,
 } from "../PlaybackHost"
 import {
+  TAB_BAR_SCREEN_EXTENT_IOS,
+  tabBarOccupiedHeightFor,
+} from "../../../lib/tabBar"
+import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
+import { resetPlayerSettings } from "../../../test-utils/resetPlayerSettings"
+import {
+  DEFAULT_CORNER,
+  WINDOW_EDGE_MARGIN,
   frameGeometry,
   miniPlayerCornerFrame,
+  readerCornerPolicy,
+  type MiniPlayerCorner,
 } from "../../../lib/miniPlayer/layout"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
 } from "../../../lib/miniPlayer/playbackRequest"
+import type { SlotPage } from "../../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
 } from "../../../lib/miniPlayer/store"
+import {
+  resetPlaybackTransportForTests,
+  seekPlayback,
+} from "../../../lib/playbackInterruption"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import { FloatingBackButton } from "../../ui/FloatingBackButton"
+import { PlayerSlot } from "../PlayerSlot"
+import { VideoPlayer, type VideoPlayerCast } from "../VideoPlayer"
+import {
+  useFloatingWindowFrame,
+  usePlaybackFrameVisible,
+} from "../../../hooks/usePlaybackFrame"
+import {
+  publishReaderMovementBand,
+  readerBottomInset,
+  readerChromeBand,
+  resetReaderMovementBandForTests,
+} from "../../../lib/bible/reader/chrome"
+import { verseBoxes } from "../../../lib/bible/fit/verseBox"
+import { BACK_BUTTON_PROPS } from "../../../lib/playerLayout"
 import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 jest.setTimeout(20_000)
 
@@ -198,12 +287,16 @@ const sessionStore = getMiniPlayerStore()
 
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 const URL_B = "https://stream.mux.com/assetBBB222.m3u8"
+// A completed download of the SAME video as URL_A, under the offline root
+// the host validates against.
+const OFFLINE_A = "file:///docs/offline-downloads/video-a-slug/a.mp4"
 const RECT = { x: 0, y: 47, width: 390, height: 219 }
 
 const SESSION_A: PlaybackSessionDescriptor = {
   videoId: "video-a",
   videoSlug: "video-a-slug",
   title: "Video A",
+  titleFromRecord: true,
   posterUrl: null,
   languageSlug: "english",
   originPattern: "watch/[slug]",
@@ -231,13 +324,25 @@ function makeRequest(
   }
 }
 
+/** The same video on another audio track: same slug, a named different
+ *  language, a different Mux asset. */
+function frenchDubRequest(): PlaybackRequest {
+  return makeRequest({
+    autostart: false,
+    streamingUrl: URL_B,
+    progressLanguageSlug: "french",
+    session: { ...SESSION_A, languageSlug: "french" },
+  })
+}
+
 let mounted: TestInstance | null = null
 
 function attachSlot(
   overrides: Partial<PlaybackRequest> = {},
   rect: typeof RECT | null = RECT,
+  page: SlotPage | null = null,
 ) {
-  const id = requestStore.attachSlot(makeRequest(overrides))
+  const id = requestStore.attachSlot(makeRequest(overrides), page)
   if (rect != null) requestStore.setSlotRect(id, rect)
   return id
 }
@@ -452,8 +557,12 @@ beforeEach(() => {
   requestStore.reset()
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
+  resetPlayerSettings()
   mockRouterPush.mockClear()
+  mockRouterBack.mockClear()
+  mockParentListeners.clear()
   mockSegments = []
+  mockExploreGate.open = true
   mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 })
 
@@ -610,6 +719,41 @@ describe("the hoisted player drives the full view", () => {
   })
 })
 
+// KD8: the host hands the player door the video a report names. The prop is
+// optional and defaults to null, so a dropped wire compiles and every report
+// silently loses its video; these read the prop the real host passes.
+describe("the player-door feedback context (KD8)", () => {
+  function feedbackContextOf(renderer: TestInstance) {
+    const players = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === VideoPlayer,
+    )
+    expect(players).toHaveLength(1)
+    return players[0].props.feedbackContext
+  }
+
+  it("names the video when the title came from the resolved record", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toEqual({
+      title: "Video A",
+      slug: "video-a-slug",
+      languageSlug: "english",
+    })
+  })
+
+  // A seed title is deep-link input: a crafted link can play a seed-only page
+  // whose title no record ever replaces, so it must not reach a staff ticket.
+  it("names no video when the title came only from a deep-link seed", async () => {
+    attachSlot({
+      session: { ...SESSION_A, title: "Seeded text", titleFromRecord: false },
+    })
+    const renderer = await renderHost()
+
+    expect(feedbackContextOf(renderer)).toBeNull()
+  })
+})
+
 describe("admission (R1, R20)", () => {
   it("publishes no session when the viewer backs out before playback starts", async () => {
     const id = attachSlot()
@@ -693,6 +837,7 @@ describe("admission (R1, R20)", () => {
         videoId: null,
         videoSlug: "downloaded-slug",
         title: "A downloaded video",
+        titleFromRecord: true,
         posterUrl: null,
         languageSlug: null,
         originPattern: "watch/[slug]",
@@ -916,6 +1061,7 @@ describe("expanding back onto the floating video (R4)", () => {
         videoId: "video-a",
         videoSlug: "life-of-jesus-gospel-of-john",
         title: "Life of Jesus",
+        titleFromRecord: true,
         posterUrl: null,
         languageSlug: "english",
         originPattern: "watch/[slug]",
@@ -968,6 +1114,81 @@ describe("expanding back onto the floating video (R4)", () => {
       expect.anything(),
     )
     // And the session it expanded onto is still the one playing.
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  // What the fresh screen ACTUALLY publishes first: its group-scoped session
+  // provider holds no record yet, so the descriptor carries the slug alone and
+  // the progress identity is null; the record follows a commit later.
+  it("keeps the session and the player when the expanded screen has not resolved its record yet", async () => {
+    await floatOneVideo()
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+    datadog.datadogLog.info.mockClear()
+
+    const id = await attachSlotInAct(
+      watchRequest({
+        streamingUrl: null,
+        progressVideoId: null,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          videoId: null,
+          languageSlug: null,
+        },
+      }),
+    )
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
+
+    // The record lands: same video, the URL the player already holds.
+    await act(async () => {
+      requestStore.updateSlot(id, makeRequest(watchRequest()))
+    })
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(replacesBefore)
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
+    expect(datadog.datadogLog.info).not.toHaveBeenCalledWith(
+      "video.qoe",
+      expect.anything(),
+    )
+  })
+
+  // A download that completes while the expanded screen adopts the floating
+  // video is the same video in a new container. The pin that keeps a remount's
+  // other URL out of the player must let a local/remote flip through.
+  it("lets a completed download through the adoption pin", async () => {
+    await floatOneVideo()
+    const id = await attachSlotInAct(
+      watchRequest({
+        streamingUrl: null,
+        progressVideoId: null,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          videoId: null,
+          languageSlug: null,
+        },
+      }),
+    )
+    await act(async () => {
+      requestStore.updateSlot(id, makeRequest(watchRequest()))
+    })
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest(watchRequest({ streamingUrl: OFFLINE_A })),
+      )
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(
+      replacesBefore + 1,
+    )
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(OFFLINE_A)
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
   })
 
@@ -1831,6 +2052,258 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
   })
 })
 
+describe("holdProgressIdentity (the remount's id-less render)", () => {
+  const known = { videoId: "video-a", languageSlug: "english" }
+
+  it("trusts the published identity when nothing is known", () => {
+    expect(holdProgressIdentity(null, null)).toBeNull()
+    expect(holdProgressIdentity(known, null)).toBe(known)
+  })
+
+  it("holds the known identity over a null or slug-only publish", () => {
+    expect(holdProgressIdentity(null, known)).toBe(known)
+    expect(
+      holdProgressIdentity(
+        { videoSlug: "video-a-slug", languageSlug: null },
+        known,
+      ),
+    ).toBe(known)
+  })
+
+  it("fills a null dub from the known one for the same video", () => {
+    expect(
+      holdProgressIdentity({ videoId: "video-a", languageSlug: null }, known),
+    ).toEqual({ videoId: "video-a", languageSlug: "english" })
+  })
+
+  it("lets a resolved identity and a different video through unchanged", () => {
+    const french = { videoId: "video-a", languageSlug: "french" }
+    expect(holdProgressIdentity(french, known)).toBe(french)
+    const other = { videoId: "video-b", languageSlug: null }
+    expect(holdProgressIdentity(other, known)).toBe(other)
+  })
+})
+
+// KTD12 / AE6, end to end through the real host, adapter and recorder. Admin
+// keeps the newest write, so one write at the tap point would replace a saved
+// 1:10:00 — including the dismiss flush when the viewer goes back to Explore.
+describe("the progress hold (KTD12)", () => {
+  const HOLD = { id: "keep-watching-1", durationMs: 8_000 }
+  const progressStore = jest.requireMock(
+    "../../../lib/watchProgress/store",
+  ) as {
+    bufferProgressIntent: jest.Mock
+    applyLocalProgress: jest.Mock
+  }
+
+  function clearWrites() {
+    progressStore.bufferProgressIntent.mockClear()
+    progressStore.applyLocalProgress.mockClear()
+  }
+
+  function writtenVideoIds(): unknown[] {
+    return progressStore.bufferProgressIntent.mock.calls.map(
+      ([intent]) => (intent as { videoId?: string }).videoId,
+    )
+  }
+
+  function localEchoes(): number {
+    return progressStore.applyLocalProgress.mock.calls.length
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  /** The tap point of AE6, on a long video. */
+  async function playFromTapPoint() {
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+  }
+
+  beforeEach(() => {
+    clearWrites()
+  })
+
+  // The host substitutes the identity it last knew for this slug, so a hold
+  // expressed as a null identity would be undone here. It must be its own
+  // channel.
+  it("holds every write while the host already knows the slug's identity", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    await renderHost()
+    await playFromTapPoint()
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The id-less render of the same slug, now carrying the hold.
+    const idLess = {
+      progressVideoId: null,
+      progressLanguageSlug: null,
+      session: { ...SESSION_A, videoId: null, languageSlug: null },
+    }
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: HOLD }),
+      )
+    })
+    clearWrites()
+    await advance(5_100)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+
+    // Released, it writes under the KNOWN id: the identity never went null.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ ...idLess, progressHold: null }),
+      )
+    })
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+
+  it("covers AE6: back to Explore while the offer shows writes nothing at all", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    const renderer = await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // Back: the page unmounts and the video floats, then Explore dismisses it
+    // and the host releases the player once the exit completes.
+    await detach(id)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    await advance(1_100)
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    await advance(EXIT_DURATION_MS + 1000)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(writtenVideoIds()).toEqual([])
+    expect(localEchoes()).toBe(0)
+  })
+
+  it("leaves no hold on the retained request after the deadline", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot({ progressHold: HOLD })
+    await renderHost()
+    await playFromTapPoint()
+    await advance(3_100)
+
+    // The page goes mid-hold; its request lives on as the retained one and
+    // nothing will ever republish it without the hold.
+    await detach(id)
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+    await advance(4_000)
+    expect(writtenVideoIds()).toEqual([])
+
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("video-a")
+
+    // The dismiss flush, plus the pause flush from the host's own pause.
+    clearWrites()
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(writtenVideoIds()).toContain("video-a")
+  })
+})
+
+/**
+ * The R17 offer seeks the one player from the route tree (KTD12). The host
+ * serves the seek, so a swap still loading must land where the viewer chose.
+ */
+describe("the transport seek (KTD12)", () => {
+  it("seeks the one player", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    let took = false
+    await act(async () => {
+      took = seekPlayback(4200)
+    })
+
+    expect(took).toBe(true)
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("is refused with no host, and after the host leaves", async () => {
+    resetPlaybackTransportForTests()
+    expect(seekPlayback(4200)).toBe(false)
+
+    attachSlot({ autostart: false })
+    const renderer = await renderHost()
+    await act(async () => {
+      renderer.unmount()
+    })
+    mounted = null
+    expect(seekPlayback(4200)).toBe(false)
+  })
+
+  it("a seek while a dub swap loads lands where the viewer chose, not at the swap's capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    video.__player.duration = 7200
+    video.__player.currentTime = 740
+    await startPlayback()
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    await act(async () => {
+      seekPlayback(4200)
+    })
+    await act(async () => {
+      video.__settleReplace(undefined, { withholdLoad: true })
+    })
+    // SYNTHETIC: the fresh item's zeroed clock (the withheld load skips it).
+    video.__player.currentTime = 0
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.currentTime).toBe(4200)
+  })
+
+  it("a seek mid-swap keeps the swap's timeout release", async () => {
+    jest.useFakeTimers()
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      getPlayerSettingsStore().setQualityTier("high")
+    })
+    await act(async () => {
+      seekPlayback(120)
+    })
+
+    await act(async () => {
+      jest.advanceTimersByTime(QUALITY_SWAP_TIMEOUT_MS)
+    })
+
+    // The timer checks the latch by identity: a replaced latch never releases.
+    expect(getPlayerSettingsStore().getSnapshot().qualityTier).toBe("auto")
+    expect(
+      datadog.datadogLog.warn.mock.calls.filter(
+        ([event]) => event === "player_settings.quality_swap_released",
+      ),
+    ).toHaveLength(1)
+  })
+})
+
 describe("shouldDrawSurface (R21, R27)", () => {
   it("redraws in the same render a replay clears the ended cause", () => {
     // The window hides its thumbnail imperatively in a child effect; waiting
@@ -1898,6 +2371,103 @@ describe("the expand wiring (R4)", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       `/watch/${encodeURIComponent("día-1")}`,
     )
+  })
+})
+
+describe("a player page popped onto Explore (owner, 2026-09-28)", () => {
+  function shrinkCall(spy: jest.SpyInstance) {
+    return spy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === SHRINK_DURATION_MS,
+    )
+  }
+
+  function framePointerEvents(renderer: TestInstance) {
+    return renderer.root.findAll(
+      (node) => node.props.testID === "playback-frame",
+    )[0].props.pointerEvents
+  }
+
+  /** The pop and the slot's unmount land in one commit, as a committed back
+   *  press does: the route changes, then the slot detaches. */
+  async function popOnto(segments: readonly string[]) {
+    jest.useFakeTimers()
+    const timingSpy = jest.spyOn(Animated, "timing")
+    mockSegments = ["watch", "[slug]"]
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      mockSegments = segments
+      renderer.update(<PlaybackHost />)
+      requestStore.detachSlot(id)
+    })
+    return { renderer, timingSpy }
+  }
+
+  it("skips the shrink and draws no window, through the takeover's exit", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
+
+    expect(shrinkCall(timingSpy)).toBeUndefined()
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(frameStyle(renderer).opacity).toBe(0)
+    expect(framePointerEvents(renderer)).toBe("none")
+
+    // Explore's takeover ends the session. The exit must not bring it back.
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    expect(frameStyle(renderer).opacity).toBe(0)
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("still shrinks a pop onto any other tab", async () => {
+    const { renderer, timingSpy } = await popOnto(["(tabs)"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("still shrinks a pop onto a closed Explore, where no takeover ends the session", async () => {
+    // The route stays reachable by URL but renders nothing (KTD16). A hidden
+    // window there would keep the sound on with no control to stop it.
+    mockExploreGate.open = false
+    const { renderer, timingSpy } = await popOnto(["(tabs)", "explore"])
+
+    expect(shrinkCall(timingSpy)).toBeDefined()
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
+  })
+
+  it("keeps showing a window that was already floating when Explore opens", async () => {
+    const { renderer } = await popOnto(["(tabs)"])
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    // A tab switch is not a pop: the takeover's own exit is what ends it.
+    mockSegments = ["(tabs)", "explore"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+  })
+
+  it("shows the window again if the viewer leaves Explore before the takeover", async () => {
+    const { renderer } = await popOnto(["(tabs)", "explore"])
+
+    mockSegments = ["(tabs)"]
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+
+    expect(frameStyle(renderer).opacity).not.toBe(0)
+    expect(framePointerEvents(renderer)).toBe("box-none")
   })
 })
 
@@ -2227,6 +2797,7 @@ describe("the dismissal exit (R6)", () => {
   })
 
   it("fades a top-corner dismissal rather than dragging it down the screen", async () => {
+    jest.useFakeTimers()
     const id = attachSlot()
     const renderer = await renderHost()
     await startPlayback()
@@ -2254,6 +2825,14 @@ describe("the dismissal exit (R6)", () => {
     expect((exitCall?.[1] as { toValue: number }).toValue).toBe(0)
     // And it does not travel: the translation stays home.
     expect(exitTranslation(renderer).__getValue()).toBe(0)
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(
+      renderer.root.findAll((node) => node.props.testID === "playback-exit"),
+    ).toHaveLength(0)
   })
 
   it("slides a bottom-corner dismissal from the corner it occupies", async () => {
@@ -2382,5 +2961,2870 @@ describe("replacement (R12)", () => {
     for (const call of video.useVideoPlayer.mock.calls)
       expect(call[0]).toBe(URL_A)
     unsubscribe()
+  })
+
+  it("never pauses the taken-over player: a pause would stall the arriving video", async () => {
+    const first = attachSlot()
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 90
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    const endings: MiniPlayerEndEvent[] = []
+    const unsubscribe = sessionStore.onEnd((event) => endings.push(event))
+    video.__player.pause.mockClear()
+    await attachSlotInAct({
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: {
+        ...SESSION_A,
+        videoId: "video-b",
+        videoSlug: "video-b-slug",
+        title: "Video B",
+      },
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // The "replaced" ending really fired — the no-pause claim is about it.
+    expect(endings.map((e) => e.reason)).toEqual(["replaced"])
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+})
+
+/**
+ * U2: a quality-tier pick swaps the stream under the Mux constraint and
+ * resumes in place (R7/R8), the seek riding `sourceLoad` — never the
+ * `replaceAsync` promise, which resolves before the item applies. All requests
+ * run `autostart: false` so VideoPlayer's own sourceLoad autostart listener
+ * cannot confound the latch's play/seek assertions.
+ */
+describe("quality tier swaps (U2)", () => {
+  // R7's wire shape, pinned as literals rather than recomputed through
+  // applyQualityConstraint — a tautology would miss a broken mapping.
+  const CAPPED_HIGH_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=720p"
+  const CAPPED_LOW_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=480p"
+  const FLOORED_HIGHEST_A =
+    "https://stream.mux.com/assetAAA111.m3u8?min_resolution=1080p"
+  const CAPPED_HIGH_B =
+    "https://stream.mux.com/assetBBB222.m3u8?max_resolution=720p"
+  // The key the host itself establishes at mount for SESSION_A requests (U3's
+  // resetFor wiring); only the pre-mount case below still sets it by hand.
+  const CONTENT_KEY = "video-a-slug"
+
+  function settings() {
+    return getPlayerSettingsStore()
+  }
+
+  function releaseLogs() {
+    return datadog.datadogLog.warn.mock.calls.filter(
+      ([event]) => event === "player_settings.quality_swap_released",
+    )
+  }
+
+  // The background veto's axis. Jest's default is null, not "active", so a
+  // foreground is stood up — else every case passes the veto for the wrong
+  // reason and the cast case discriminates nothing. Restored against leaks.
+  const realAppState = AppState.currentState
+  beforeEach(() => {
+    ;(AppState as { currentState: string }).currentState = "active"
+  })
+  afterEach(() => {
+    ;(AppState as { currentState: string }).currentState = realAppState
+  })
+
+  it("AE1: a tier pick mid-play reloads capped, then resumes at the captured position and speed", async () => {
+    attachSlot({ autostart: false })
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 754
+    video.__player.duration = 1800
+
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // Seek-before-play ordering probe: the position playback resumes AT.
+    const positionsAtPlay: number[] = []
+    video.__player.addListener("playingChange", (payload) => {
+      if ((payload as { isPlaying: boolean }).isPlaying)
+        positionsAtPlay.push(video.__player.currentTime)
+    })
+
+    // Settling loads the incoming item, which emits sourceLoad — the resume
+    // point. A seek at promise time would land on the outgoing item.
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    expect(video.__player.currentTime).toBe(754)
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    expect(positionsAtPlay).toEqual([754])
+    expect(video.__player.playing).toBe(true)
+
+    // One-shot: a later load of the same source must not re-seek.
+    video.__player.currentTime = 900
+    await act(async () => {
+      video.__player.__emit("sourceLoad", { videoSource: CAPPED_HIGH_A })
+    })
+    expect(video.__player.currentTime).toBe(900)
+    expect(renderer.root).toBeTruthy()
+  })
+
+  it("AE2: a pick while paused reloads capped and remains paused at the captured position", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      video.__player.pause()
+    })
+    video.__player.currentTime = 300
+    video.__player.duration = 600
+
+    await act(async () => {
+      settings().setQualityTier("low")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_LOW_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.currentTime).toBe(300)
+    expect(video.__player.playing).toBe(false)
+    // Only the test's own initial play — the latch restored "paused".
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("constrains every swap: a dub change under an active tier loads the new dub capped", async () => {
+    // Pre-mount keying models a key a PREVIOUS mount of this video
+    // established; the mount's resetFor preserves an equal key (U3).
+    settings().setContentKey(CONTENT_KEY)
+    settings().setQualityTier("high")
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    // The seam sits ahead of the player: the creation source is already capped.
+    expect(video.useVideoPlayer.mock.calls[0][0]).toBe(CAPPED_HIGH_A)
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_B)
+  })
+
+  it("a re-pick mid-swap wins: the last tier's URL loads and exactly one seek lands", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 500
+    video.__player.duration = 1800
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      settings().setQualityTier("highest")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(
+      FLOORED_HIGHEST_A,
+    )
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(500)
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+
+    // One-shot: a second load event must not re-seek the consumed latch.
+    video.__player.currentTime = 42
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(42)
+  })
+
+  /**
+   * A completed download replaces the stream mid-play. Same video, new
+   * container — the viewer keeps their place. It used to restart at 0:00,
+   * because a file:// URL can never satisfy isSameMuxAsset and so took the
+   * cross-asset branch that CLEARS the latch.
+   */
+  it("a completed download resumes where the stream was, and keeps playing", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: OFFLINE_A }),
+      )
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(OFFLINE_A)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(305)
+    expect(video.__player.play).toHaveBeenCalled()
+  })
+
+  it("the same swap in reverse resumes too — a download deleted mid-play", async () => {
+    const id = attachSlot({ autostart: false, streamingUrl: OFFLINE_A })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 120
+    video.__player.duration = 1800
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: URL_A }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(120)
+  })
+
+  it("a paused viewer resumes paused — the swap restores position, not playback", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 77
+    video.__player.duration = 1800
+    video.__player.playing = false
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, streamingUrl: OFFLINE_A }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(77)
+    expect(video.__player.play).not.toHaveBeenCalled()
+  })
+
+  it("a dub change resumes where the previous dub was, and keeps playing", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+    video.__player.play.mockClear()
+
+    // Same slug, a named different language, a different Mux asset: the
+    // viewer picked another audio track, not another video.
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+
+    // Settle WITHOUT the load, so the promise-time window is observable on
+    // its own: the host owns the resume, and a play here would land at 0:00.
+    await act(async () => {
+      video.__settleReplace(undefined, { withholdLoad: true })
+    })
+    expect(video.__player.play).not.toHaveBeenCalled()
+    // SYNTHETIC: the fresh item's zeroed clock, stood up by hand because the
+    // withheld load skips the mock's own reset.
+    video.__player.currentTime = 0
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(305)
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("a paused viewer's dub change resumes paused, at the same place (the host latch alone; the route's autostart may still play)", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 77
+    video.__player.duration = 1800
+    video.__player.playing = false
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(77)
+    expect(video.__player.play).not.toHaveBeenCalled()
+  })
+
+  it("a different video is not a dub change: it starts from its own beginning", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 305
+    video.__player.duration = 1800
+    video.__player.play.mockClear()
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressVideoId: "video-b",
+          session: {
+            ...SESSION_A,
+            videoId: "video-b",
+            videoSlug: "video-b-slug",
+          },
+        }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(0)
+  })
+
+  it("a cross-asset swap mid-pick invalidates the latch: no seek to the stale capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 500
+    video.__player.duration = 1800
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // A dub change lands mid-swap: a DIFFERENT asset, same slug. The quality
+    // capture belongs to the old stream; the dub change takes its own capture
+    // from the live clock, so the arriving dub still resumes in place.
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: the fresh item's rate-1 state, stood up by hand (see U3).
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // The new dub resumes at the viewer's place. The rate still rides.
+    expect(video.__player.currentTime).toBe(500)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("tier then dub: the dub load's error still writes the tier back", async () => {
+    datadog.datadogLog.warn.mockClear()
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The dub change takes over the one latch; the tier's revert leg rides it.
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    const dubReleases = datadog.datadogLog.warn.mock.calls.filter(
+      ([name]) => name === "player.dub_swap_resume_released",
+    )
+    expect(dubReleases).toHaveLength(1)
+    expect(releaseLogs()).toHaveLength(0)
+  })
+
+  it("dub then tier: the capped dub's error writes the tier back", async () => {
+    datadog.datadogLog.warn.mockClear()
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+
+    // A tier pick while the dub latch is armed takes its own capture.
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({
+      release_reason: "load_error",
+      reverted_tier: "auto",
+    })
+  })
+
+  it("the latch defers to a cast session that starts mid-swap: seek and rate land, play does not", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The swap window spans seconds on-device; a receiver takes over inside it.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, castActive: true }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // KTD4: never local audio over the receiver. Only the test's own play.
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the latch never starts audio in the background: seek and rate land, play does not", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The app backgrounds inside the swap window; the adapter's 'active'
+    // handler owns the eventual resume, not this latch.
+    ;(AppState as { currentState: string }).currentState = "background"
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("releases on a load error: tier reverted, one log, and the revert leg resumes in place", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    // The store revert swings the URL seam back to the unconstrained stream.
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({
+      release_reason: "load_error",
+      reverted_tier: "auto",
+    })
+
+    // The revert leg still resumes in place — the capture survives the release.
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playing).toBe(true)
+  })
+
+  it("a failing revert releases once more and stops: no oscillation", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    // The revert leg carries no further revert: no third swap, no ping-pong.
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(releaseLogs()).toHaveLength(2)
+
+    // And the latch is gone: a later load event seeks nothing.
+    video.__player.currentTime = 7
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(7)
+  })
+
+  it("a no-op revert (the viewer already re-picked the revert tier) clears the latch outright", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    // The viewer re-picks the original tier mid-swap: the effective URL is
+    // already back where the revert would put it.
+    await act(async () => {
+      settings().setQualityTier("auto")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(releaseLogs()).toHaveLength(1)
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    // The revert write no-ops, so no swap re-keys the timer: a re-armed latch
+    // here would be timer-less and stale. It must clear instead.
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    video.__player.currentTime = 7
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(7)
+  })
+
+  it("releases on timeout when no sourceLoad ever arrives, respecting the budget", async () => {
+    jest.useFakeTimers()
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(QUALITY_SWAP_TIMEOUT_MS - 1)
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("high")
+    expect(releaseLogs()).toHaveLength(0)
+
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({ release_reason: "timeout" })
+  })
+})
+
+/**
+ * U3: a speed pick lands on the live player at once (R5), and both settings
+ * are session-scoped (R13): the host keys the store to its slug-stable
+ * videoKey at mount, preserves across minimize/restore and dub changes, and
+ * resets on takeover ("replaced") and on the real session endings.
+ */
+describe("playback speed (U3)", () => {
+  const CAPPED_HIGH_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=720p"
+  const SESSION_B: PlaybackSessionDescriptor = {
+    ...SESSION_A,
+    videoId: "video-b",
+    videoSlug: "video-b-slug",
+    title: "Video B",
+  }
+
+  function settings() {
+    return getPlayerSettingsStore()
+  }
+
+  it("R5: a speed pick writes the live rate — no pause, no seek, no reload", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 200
+
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    expect(video.__player.currentTime).toBe(200)
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+    expect(video.__player.playing).toBe(true)
+  })
+
+  it("keys the store to the mounted video, so a pick needs no explicit keying", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+
+    expect(settings().getSnapshot().contentKey).toBe("video-a-slug")
+
+    // The mount-established key is what activates U2's constraint seam.
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+  })
+
+  it("AE5: a different video taking the player resets to defaults and rate 1", async () => {
+    const first = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(2)
+    })
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.playbackRate).toBe(2)
+
+    video.__player.currentTime = 90
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    await attachSlotInAct({
+      autostart: false,
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: SESSION_B,
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: "video-b-slug",
+    })
+    expect(video.__player.playbackRate).toBe(1)
+    // The takeover load is unconstrained: the old tier died with its video.
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+  })
+
+  it("AE6: minimize and restore keeps the picked speed — no reset on the same video", async () => {
+    const first = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.25)
+    })
+    expect(video.__player.playbackRate).toBe(1.25)
+
+    video.__player.currentTime = 30
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(settings().getSnapshot().speed).toBe(1.25)
+    expect(video.__player.playbackRate).toBe(1.25)
+
+    // Restore: the expanded screen names the same video and adopts the player.
+    await attachSlotInAct({ autostart: false })
+
+    expect(settings().getSnapshot()).toMatchObject({
+      speed: 1.25,
+      contentKey: "video-a-slug",
+    })
+    expect(video.__player.playbackRate).toBe(1.25)
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+  })
+
+  it("a dub change (same slug) keeps the speed and reapplies it on the new load", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+
+    await act(async () => {
+      requestStore.updateSlot(id, frenchDubRequest())
+    })
+
+    expect(settings().getSnapshot()).toMatchObject({
+      speed: 1.5,
+      contentKey: "video-a-slug",
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: expo-video loads a fresh item at rate 1; the shared mock
+    // keeps the property, so the pre-load native reset is stood up by hand.
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the picked rate rides a quality swap's reload (U2's shared scenario, store side)", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 500
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: the same by-hand stand-in for the fresh item's rate-1 state.
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.currentTime).toBe(500)
+  })
+
+  it("a dismissal resets the settings to defaults with no key", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.75)
+    })
+    video.__player.currentTime = 60
+    await detach(id)
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: null,
+    })
+    expect(video.__player.playbackRate).toBe(1)
+  })
+
+  it("a subject change (abandoned) resets the settings too", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.75)
+    })
+    video.__player.currentTime = 60
+    await detach(id)
+
+    await act(async () => {
+      auth.__setSnapshot({ status: "signedOut" })
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: null,
+    })
+  })
+})
+
+// ── feat-553 U13: characterization of today's paths, before the reader cover ──
+
+/** Counts every `onEnd` subscription as it is made and released, and records
+ *  each end event. The host and the adapter are the only two subscribers; the
+ *  reader cover must add none and fire none. */
+function trackEnds() {
+  const original = sessionStore.onEnd
+  let subscribed = 0
+  let released = 0
+  jest.spyOn(sessionStore, "onEnd").mockImplementation((listener) => {
+    subscribed += 1
+    const off = original(listener)
+    return () => {
+      released += 1
+      off()
+    }
+  })
+  const events: MiniPlayerEndEvent[] = []
+  const offRecorder = original((event) => events.push(event))
+  trackedEndCleanups.push(offRecorder)
+  return {
+    events,
+    subscribed: () => subscribed,
+    live: () => subscribed - released,
+  }
+}
+const trackedEndCleanups: Array<() => void> = []
+afterEach(() => {
+  trackedEndCleanups.splice(0).forEach((off) => off())
+})
+
+describe("today's detach, expand and dismiss paths (feat-553 U13 characterization)", () => {
+  it("holds two end listeners: the host's and the adapter's", async () => {
+    const ends = trackEnds()
+    attachSlot()
+    await renderHost()
+    await startPlayback()
+
+    expect(ends.subscribed()).toBe(2)
+    expect(ends.live()).toBe(2)
+    expect(ends.events).toHaveLength(0)
+  })
+
+  it("detach: floats the video with no end report and no listener churn", async () => {
+    const ends = trackEnds()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 42
+
+    await detach(id)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      videoId: "video-a",
+      positionSeconds: 42,
+      phase: "playing",
+    })
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(video.__player.playing).toBe(true)
+    expect(ends.events).toHaveLength(0)
+    expect(ends.subscribed()).toBe(2)
+    expect(ends.live()).toBe(2)
+  })
+
+  it("expand: pushes a watch screen that adopts the player, with no end report", async () => {
+    const ends = trackEnds()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 42
+    await detach(id)
+
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+    expect(mockRouterPush).toHaveBeenCalledTimes(1)
+    expect(mockRouterBack).not.toHaveBeenCalled()
+    await attachSlotInAct()
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(video.__player.currentTime).toBe(42)
+    expect(video.__player.playing).toBe(true)
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(ends.events).toHaveLength(0)
+    expect(ends.live()).toBe(2)
+  })
+
+  it("dismiss: one dismissed report, a pause, and the settings reset", async () => {
+    const ends = trackEnds()
+    const id = attachSlot()
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      getPlayerSettingsStore().setSpeed(1.5)
+    })
+    await detach(id)
+
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+
+    expect(ends.events.map((e) => e.reason)).toEqual(["dismissed"])
+    expect(video.__player.playing).toBe(false)
+    expect(getPlayerSettingsStore().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: null,
+    })
+    expect(ends.live()).toBe(2)
+  })
+})
+
+// ── feat-553 U13: the reader cover (KTD10) and the reader corners (KTD11) ──
+
+const PHONE_WINDOW = { width: 440, height: 956, scale: 3, fontScale: 1 }
+const IPAD_WINDOW = { width: 820, height: 1180, scale: 2, fontScale: 1 }
+const IPAD_LANDSCAPE = { width: 1180, height: 820, scale: 2, fontScale: 1 }
+const READER_INSETS = { top: 62, bottom: 34, left: 0, right: 0 }
+// An iPhone SE (3rd generation): no home indicator, so the root inset is 0.
+const SE_WINDOW = { width: 375, height: 667, scale: 2, fontScale: 1 }
+const SE_INSETS = { top: 20, bottom: 0, left: 0, right: 0 }
+const WATCH_ROUTE = ["watch", "[slug]"] as const
+const READER_ROUTE = ["reader"] as const
+const BIBLE_TAB = ["(tabs)", "bible"] as const
+const HOME_TAB = ["(tabs)"] as const
+const POSTER = "https://images.example/a.jpg"
+const URL_C = "https://stream.mux.com/assetCCC333.m3u8"
+const CORNERS: MiniPlayerCorner[] = [
+  "topLeft",
+  "topRight",
+  "bottomLeft",
+  "bottomRight",
+]
+
+type Box = { x: number; y: number; width: number; height: number }
+
+/** Mounts and unmounts of the one video view, across a whole case. */
+const viewLife = { mounts: 0, unmounts: 0 }
+function CountingVideoView() {
+  useEffect(() => {
+    viewLife.mounts += 1
+    return () => {
+      viewLife.unmounts += 1
+    }
+  }, [])
+  return null
+}
+
+/** What the watch screen and the reader route read from the host. */
+const screenReads: Array<{ visible: boolean; band: Box | null }> = []
+function ScreenProbe() {
+  const visible = usePlaybackFrameVisible()
+  const band = useFloatingWindowFrame()
+  screenReads.push({ visible, band })
+  // The watch screen's own back button: drawn only when the host is not.
+  return visible ? null : (
+    <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
+  )
+}
+
+/** The watch screen's real slot, the reads a route makes, and the host. */
+function Scene() {
+  return (
+    <>
+      <PlayerSlot
+        page="watch"
+        streamingUrl={URL_A}
+        posterUrl={POSTER}
+        autostart
+        progressIdentity={{ videoId: "video-a", languageSlug: "english" }}
+        session={SESSION_A}
+      />
+      <ScreenProbe />
+      <PlaybackHost />
+    </>
+  )
+}
+
+function lastRead() {
+  return screenReads[screenReads.length - 1]
+}
+
+/** The window's on-screen box: the frame's geometry plus the drag offset. */
+function frameVisual(renderer: TestInstance): Box {
+  const style = frameStyle(renderer) as unknown as Box & {
+    left: number
+    top: number
+    transform?: Array<Record<string, { __getValue: () => number }>>
+  }
+  const read = (key: string) =>
+    style.transform?.find((entry) => entry[key] != null)?.[key]?.__getValue() ??
+    0
+  return {
+    x: style.left + read("translateX"),
+    y: style.top + read("translateY"),
+    width: style.width,
+    height: style.height,
+  }
+}
+
+function box(frame: Box): Box {
+  return { x: frame.x, y: frame.y, width: frame.width, height: frame.height }
+}
+
+function windowSize() {
+  const { width, height } = Dimensions.get("window")
+  return { width, height }
+}
+
+/** The corner layout the host must use on a reader route (KTD11). */
+function readerLayout(host: "tab" | "pushed", band = 0) {
+  return {
+    screen: windowSize(),
+    insets: mockInsets,
+    chrome: readerCornerPolicy({
+      layout: "phone",
+      host,
+      movementBand: band,
+      tabBar: readerTabBarReservation({
+        platform: "ios",
+        layout: "phone",
+        rootBottomInset: mockInsets.bottom,
+      }),
+    }).chrome,
+  }
+}
+
+/** The app's corner layout everywhere else. */
+function appLayout() {
+  return {
+    screen: windowSize(),
+    insets: mockInsets,
+    chrome: { top: 0, bottom: TAB_BAR_CONTENT_HEIGHT },
+  }
+}
+
+function cornerBox(
+  config: ReturnType<typeof appLayout>,
+  corner: MiniPlayerCorner,
+): Box {
+  return box(miniPlayerCornerFrame(config, corner))
+}
+
+function cornerOf(
+  config: ReturnType<typeof appLayout>,
+  visual: Box,
+): MiniPlayerCorner | undefined {
+  return CORNERS.find(
+    (corner) =>
+      JSON.stringify(cornerBox(config, corner)) === JSON.stringify(visual),
+  )
+}
+
+function labelled(renderer: TestInstance, label: string): boolean {
+  return (
+    renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === label &&
+        typeof node.props.onPress === "function",
+    ).length > 0
+  )
+}
+
+function slotPosters(renderer: TestInstance) {
+  return renderer.root.findAll(
+    (node) => node.props.recyclingKey === "player-slot-poster",
+  )
+}
+
+function watchPosters(renderer: TestInstance) {
+  return renderer.root.findAll(
+    (node) => node.props.recyclingKey === "watch-poster",
+  )
+}
+
+function qoeLogs() {
+  return datadog.datadogLog.info.mock.calls.filter(
+    ([event]) => event === "video.qoe",
+  )
+}
+
+function durationCall(spy: jest.SpyInstance, duration: number) {
+  return spy.mock.calls.find(
+    ([, config]) => (config as { duration?: number }).duration === duration,
+  )
+}
+
+async function setRoute(
+  renderer: TestInstance,
+  segments: readonly string[],
+  element: ReactElement = <PlaybackHost />,
+) {
+  mockSegments = segments
+  await act(async () => {
+    renderer.update(element)
+  })
+}
+
+async function advance(ms: number) {
+  await act(async () => {
+    jest.advanceTimersByTime(ms)
+  })
+}
+
+async function windowAction(renderer: TestInstance, action: string) {
+  await act(async () => {
+    fireWindowAction(renderer, action)
+  })
+}
+
+/** A watch screen playing Video A at 0:42, then the reader pushed over it. */
+async function coverPlaying(overrides: Partial<PlaybackRequest> = {}) {
+  jest.useFakeTimers()
+  mockSegments = WATCH_ROUTE
+  const id = attachSlot({ posterUrl: POSTER, ...overrides })
+  const renderer = await renderHost()
+  await startPlayback()
+  video.__player.currentTime = 42
+  video.__player.duration = 600
+  await setRoute(renderer, READER_ROUTE)
+  return { renderer, id }
+}
+
+/** The same, for a video whose autostart has not played yet (AE13). */
+async function coverBeforePlayback() {
+  jest.useFakeTimers()
+  mockSegments = WATCH_ROUTE
+  const id = attachSlot({ posterUrl: POSTER })
+  const renderer = await renderHost()
+  // play() still pending: the call lands, no playing edge follows.
+  video.__player.play.mockImplementation(() => {})
+  await act(async () => {
+    video.__player.__emit("sourceLoad", { videoSource: URL_A })
+  })
+  // Anti-vacuous: the autostart asked, and the veil is still up.
+  expect(video.__player.play).toHaveBeenCalledTimes(1)
+  expect(hasVeil(renderer)).toBe(true)
+  await setRoute(renderer, READER_ROUTE)
+  return { renderer, id }
+}
+
+function makeCast(load: jest.Mock): VideoPlayerCast {
+  return {
+    playback: {
+      state: { phase: "active", deviceName: "Living room" },
+      deviceName: "Living room",
+      devicesAvailable: true,
+      remotePlayerState: "playing",
+      position: 30,
+      duration: 600,
+      load,
+      play: jest.fn(),
+      pause: jest.fn(),
+      seekTo: jest.fn(),
+      end: jest.fn(),
+      reset: jest.fn(),
+    },
+    onCastPress: jest.fn(),
+    resolveMediaAt: (start) => ({
+      contentUrl: URL_A,
+      contentType: "application/x-mpegURL",
+      title: "Video A",
+      posterUrl: null,
+      startPositionSeconds: start ?? 0,
+      playbackRate: 1,
+    }),
+    recovery: null,
+  }
+}
+
+/** Any method the adapter calls answers; each is a counted jest.fn. */
+function fakeRecorder(): Record<string, jest.Mock> {
+  const methods: Record<string, jest.Mock> = {}
+  return new Proxy(methods, {
+    get: (target, key: string) => (target[key] ??= jest.fn()),
+  })
+}
+
+// The plan's stop condition: off the reader routes, U13 changes nothing. Each
+// case below passes on the pre-U13 host (e2d24e741) and pins that behavior.
+describe("off the reader routes, the window behaves as before U13", () => {
+  it("pushes again for a second window tap within the expand hold", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await advance(SHRINK_DURATION_MS + 300)
+    mockRouterPush.mockClear()
+
+    await windowAction(renderer, "activate")
+    await windowAction(renderer, "activate")
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(2)
+    expect(mockRouterBack).not.toHaveBeenCalled()
+  })
+
+  it("grows from the live corner frame when no tap pinned one", async () => {
+    jest.useFakeTimers()
+    // A header route lifts a top corner; the watch route has no header.
+    mockSegments = ["video", "[sectionKey]"]
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await advance(SHRINK_DURATION_MS + 300)
+    await windowAction(renderer, "moveToCorner")
+    await windowAction(renderer, "moveToCorner")
+    await advance(400)
+    // A silent driver holds the grow at its first frame.
+    jest.spyOn(Animated, "timing").mockReturnValue({
+      start: () => {},
+      stop: () => {},
+      reset: () => {},
+    } as never)
+
+    // The same video opens with no window tap (a deep link).
+    await act(async () => {
+      mockSegments = WATCH_ROUTE
+      renderer.update(<PlaybackHost />)
+      attachSlot()
+    })
+
+    const motion = renderer.root.findAll(
+      (n) => n.props.testID === "playback-motion",
+    )[0]
+    const style = StyleSheet.flatten(motion.props.style) as {
+      transform?: Array<Record<string, { __getValue?: () => number }>>
+    }
+    const lift = style.transform
+      ?.find((entry) => entry.translateY != null)
+      ?.translateY?.__getValue?.()
+    const from = cornerBox(appLayout(), "topRight")
+    expect(RECT.y + RECT.height / 2 + (lift ?? 0)).toBe(
+      from.y + from.height / 2,
+    )
+  })
+
+  it("arms the autostart veil for a new video opened over a paused window", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      video.__player.pause()
+    })
+    await detach(id)
+
+    await attachSlotInAct({
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: {
+        ...SESSION_A,
+        videoId: "video-b",
+        videoSlug: "video-b-slug",
+        title: "Video B",
+      },
+    })
+
+    expect(hasVeil(renderer)).toBe(true)
+  })
+})
+
+// The iOS bar ends 83pt above the SCREEN bottom at any inset (apps/mobile
+// CLAUDE.md, "Tab bar"). Inset 34 is the one device where 49 was also right.
+describe("readerTabBarReservation", () => {
+  it("adds the root inset up to the 83pt bar on an iPhone", () => {
+    const phone = { platform: "ios", layout: "phone" as const }
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 0 })).toBe(83)
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 34 })).toBe(49)
+    // Inset 34 keeps the value it had before this rule.
+    expect(readerTabBarReservation({ ...phone, rootBottomInset: 34 })).toBe(
+      tabBarOccupiedHeightFor("ios"),
+    )
+  })
+
+  it.each([0, 20])(
+    "keeps the occupied height on an iPad layout (root inset %i)",
+    (rootBottomInset) => {
+      expect(
+        readerTabBarReservation({
+          platform: "ios",
+          layout: "tablet",
+          rootBottomInset,
+        }),
+      ).toBe(tabBarOccupiedHeightFor("ios"))
+    },
+  )
+
+  it.each([
+    ["phone", 0],
+    ["phone", 24],
+    ["tablet", 0],
+    ["tablet", 24],
+  ] as const)(
+    "keeps the occupied height on Android (%s, root inset %i)",
+    (layout, rootBottomInset) => {
+      expect(
+        readerTabBarReservation({
+          platform: "android",
+          layout,
+          rootBottomInset,
+        }),
+      ).toBe(tabBarOccupiedHeightFor("android"))
+    },
+  )
+})
+
+describe("the reader cover and the reader corners (feat-553 U13)", () => {
+  const originalWindow = Dimensions.get("window")
+  const realAppState = AppState.currentState
+  const recorderClient = jest.requireMock(
+    "../../../lib/recommendations/playbackRecorderClient",
+  ) as { createPlaybackRecorderForMedia: jest.Mock }
+  const realRecorderFactory = jest.requireActual(
+    "../../../lib/recommendations/playbackRecorderClient",
+  ).createPlaybackRecorderForMedia
+
+  function setWindow(window: typeof PHONE_WINDOW) {
+    act(() => {
+      Dimensions.set({ window, screen: window })
+    })
+  }
+
+  beforeEach(() => {
+    setWindow(PHONE_WINDOW)
+    // Jest's default is null; the autostart and the resume latch need a
+    // foreground, or every play assertion passes for the wrong reason.
+    ;(AppState as { currentState: string }).currentState = "active"
+    mockInsets = READER_INSETS
+    resetReaderMovementBandForTests()
+    viewLife.mounts = 0
+    viewLife.unmounts = 0
+    screenReads.length = 0
+    video.VideoView.mockImplementation(CountingVideoView)
+  })
+
+  afterEach(() => {
+    setWindow(originalWindow as typeof PHONE_WINDOW)
+    ;(AppState as { currentState: string | null }).currentState = realAppState
+    resetReaderMovementBandForTests()
+    video.VideoView.mockImplementation(() => null)
+    recorderClient.createPlaybackRecorderForMedia.mockImplementation(
+      realRecorderFactory,
+    )
+  })
+
+  describe("a playing video floats over the reader (AE1, R5)", () => {
+    it("floats at the top right on a phone, and back returns the full view still playing", async () => {
+      const { renderer, id } = await coverPlaying()
+
+      // The slot stays attached with its rect; the same screen owns the player.
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        rect: RECT,
+        cover: "admitted",
+      })
+      expect(sessionStore.getSnapshot().session).toMatchObject({
+        videoId: "video-a",
+        positionSeconds: 42,
+        phase: "playing",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      const window = frameVisual(renderer)
+      expect(window).toEqual(cornerBox(readerLayout("pushed"), "topRight"))
+      // Under the top bar, by the reader's OWN band, not by the policy.
+      const band = readerChromeBand({
+        safeAreaTop: READER_INSETS.top,
+        bottomInset: READER_INSETS.bottom,
+        containerHeight: windowSize().height,
+      })
+      expect(window.y).toBeGreaterThanOrEqual(band.top)
+      expect(window.x + window.width).toBeGreaterThan(windowSize().width / 2)
+      expect(video.__player.playing).toBe(true)
+
+      video.__player.currentTime = 57
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(frameStyle(renderer)).toMatchObject({
+        left: RECT.x,
+        top: RECT.y,
+        width: RECT.width,
+        height: RECT.height,
+      })
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(hasWindowChrome(renderer)).toBe(false)
+      expect(hasVeil(renderer)).toBe(false)
+      expect(video.__player.playing).toBe(true)
+      expect(video.__player.currentTime).toBe(57)
+      expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    // Off the reader nothing changes: a surface that takes the player once a
+    // dismissed window has gone never grows out of the corner the window left.
+    it("grows nothing into the trailer that takes the player after a dismissal", async () => {
+      jest.useFakeTimers()
+      attachSlot({ session: null, streamingUrl: URL_B })
+      const watch = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await detach(watch)
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      const timingSpy = jest.spyOn(Animated, "timing")
+
+      await act(async () => {
+        sessionStore.requestDismiss()
+      })
+      await advance(EXIT_DURATION_MS + 1000)
+
+      expect(requestStore.getSnapshot().request?.streamingUrl).toBe(URL_B)
+      expect(requestStore.getSnapshot().rect).toEqual(RECT)
+      expect(durationCall(timingSpy, EXPAND_DURATION_MS)).toBeUndefined()
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+    })
+
+    // A back swipe that lands mid-shrink: the phone's start corner is not the
+    // base frame, so this shrink rides the drag offset. It must turn around
+    // where it is, not jump to the corner and grow from there.
+    it("turns a half-run shrink to the reader's corner around without a jump", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      const started: Array<{
+        node: Animated.Value
+        config: { toValue: number; duration: number }
+      }> = []
+      jest.spyOn(Animated, "timing").mockImplementation(((
+        node: Animated.Value,
+        config: { toValue: number; duration: number },
+      ) => {
+        started.push({ node, config })
+        return { start: () => {}, stop: () => {}, reset: () => {} }
+      }) as never)
+      /** Frame, drag and ramp together: where the viewer sees the video. */
+      const seen = () => {
+        const frame = frameVisual(renderer)
+        const motion = renderer.root.findAll(
+          (n) => n.props.testID === "playback-motion",
+        )[0]
+        const style = StyleSheet.flatten(motion.props.style) as {
+          transform?: Array<Record<string, { __getValue?: () => number }>>
+        }
+        const read = (key: string, fallback: number) =>
+          style.transform
+            ?.find((entry) => entry[key] != null)
+            ?.[key]?.__getValue?.() ?? fallback
+        return {
+          centerX: frame.x + frame.width / 2 + read("translateX", 0),
+          centerY: frame.y + frame.height / 2 + read("translateY", 0),
+          width: frame.width * read("scale", 1),
+        }
+      }
+
+      await setRoute(renderer, READER_ROUTE)
+      const ramp = started.find((s) => s.config.duration === SHRINK_DURATION_MS)
+      expect(ramp).toBeDefined()
+      // Anti-vacuous: this shrink really rides a drag offset.
+      const frameOnly = frameStyle(renderer) as unknown as { top: number }
+      expect(frameVisual(renderer).y).not.toBe(frameOnly.top)
+      await act(async () => {
+        ramp!.node.setValue(0.5)
+      })
+      const midFlight = seen()
+      started.length = 0
+
+      await setRoute(renderer, WATCH_ROUTE)
+
+      expect(started[0]?.node).toBe(ramp!.node)
+      expect(started[0]?.config).toMatchObject({
+        toValue: 0,
+        duration: EXPAND_DURATION_MS,
+      })
+      expect(seen()).toEqual(midFlight)
+    })
+
+    it("grows the video out of the window onto the kept rect at the pop", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const timingSpy = jest.spyOn(Animated, "timing")
+
+      await setRoute(renderer, WATCH_ROUTE)
+
+      // In flight: the frame is the rect, the motion carries the window's box.
+      expect(durationCall(timingSpy, EXPAND_DURATION_MS)).toBeDefined()
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+    })
+
+    it("sends no end report, and keeps one recorder, one quality session and the speed", async () => {
+      const created: Array<Record<string, jest.Mock>> = []
+      recorderClient.createPlaybackRecorderForMedia.mockImplementation(() => {
+        const recorder = fakeRecorder()
+        created.push(recorder)
+        return recorder
+      })
+      const ends = trackEnds()
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await act(async () => {
+        getPlayerSettingsStore().setSpeed(1.5)
+      })
+      datadog.datadogLog.info.mockClear()
+
+      await setRoute(renderer, READER_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+      // Anti-vacuous: the window really floated over the reader.
+      expect(hasWindowChrome(renderer)).toBe(true)
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(ends.events).toHaveLength(0)
+      expect(ends.subscribed()).toBe(2)
+      expect(ends.live()).toBe(2)
+      expect(created).toHaveLength(1)
+      expect(created[0].dispose).not.toHaveBeenCalled()
+      expect(created[0].onEnd).not.toHaveBeenCalled()
+      expect(qoeLogs()).toHaveLength(0)
+      expect(getPlayerSettingsStore().getSnapshot()).toMatchObject({
+        speed: 1.5,
+        contentKey: "video-a-slug",
+      })
+      expect(video.__player.playbackRate).toBe(1.5)
+    })
+
+    it("floats a paused video paused, and back returns it paused (R40)", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await act(async () => {
+        video.__player.pause()
+      })
+      video.__player.currentTime = 42
+      video.__player.play.mockClear()
+
+      await setRoute(renderer, READER_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(video.__player.playing).toBe(false)
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(hasVeil(renderer)).toBe(false)
+      expect(hasTransportControls(renderer)).toBe(true)
+      expect(video.__player.play).not.toHaveBeenCalled()
+      expect(video.__player.playing).toBe(false)
+      expect(video.__player.currentTime).toBe(42)
+    })
+  })
+
+  // The owner (2026-09-30): the window stays under a reader sheet, and the
+  // sheet's dimming darkens it. iOS presents the sheet as a native modal over
+  // this host; Android draws this host over a sheet, so the window hides there.
+  describe("a reader sheet over the window", () => {
+    const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
+    afterEach(() => {
+      Object.defineProperty(Platform, "OS", platformOs)
+    })
+
+    it("keeps the window drawn, in its corner, under the sheet on iOS", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const resting = frameVisual(renderer)
+      expect(Platform.OS).toBe("ios")
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameStyle(renderer).opacity).not.toBe(0)
+      expect(frameVisual(renderer)).toEqual(resting)
+      expect(video.__player.playing).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(frameVisual(renderer)).toEqual(resting)
+    })
+
+    it("hides the window under the sheet on Android, and brings it back after", async () => {
+      Object.defineProperty(Platform, "OS", {
+        value: "android",
+        configurable: true,
+      })
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+
+      await setRoute(renderer, ["reader-settings"])
+      expect(hasWindowChrome(renderer)).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(frames(renderer)[0].props.pointerEvents).toBe("none")
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(hasWindowChrome(renderer)).toBe(true)
+    })
+  })
+
+  describe("a refused cover (AE13, R40)", () => {
+    it("AE13: pauses a video whose play() is still pending, plays nothing later, and starts no session", async () => {
+      const { renderer } = await coverBeforePlayback()
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(video.__player.pause).toHaveBeenCalled()
+      expect(hasWindowChrome(renderer)).toBe(false)
+      // Hidden by opacity, and it takes no touch meant for the reader.
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(frames(renderer)[0].props.pointerEvents).toBe("none")
+
+      video.__player.play.mockClear()
+      await act(async () => {
+        video.__player.__emit("sourceLoad", { videoSource: URL_A })
+      })
+      await advance(15_000)
+
+      expect(video.__player.play).not.toHaveBeenCalled()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    // The autostart latch alone holds this one: no play() was issued yet, so
+    // the chrome's own one-shot latch is still open when the load lands.
+    it("starts nothing when the stream loads after the cover", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot({ posterUrl: POSTER })
+      const renderer = await renderHost()
+      expect(hasVeil(renderer)).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      video.__player.play.mockClear()
+      await act(async () => {
+        video.__player.__emit("sourceLoad", { videoSource: URL_A })
+      })
+
+      expect(video.__player.play).not.toHaveBeenCalled()
+      expect(video.__player.playing).toBe(false)
+      expect(sessionStore.getSnapshot().session).toBeNull()
+    })
+
+    it("returns to the controls with no veil", async () => {
+      const { renderer } = await coverBeforePlayback()
+
+      await setRoute(renderer, WATCH_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(frameStyle(renderer).opacity).toBeUndefined()
+      expect(hasVeil(renderer)).toBe(false)
+      expect(hasTransportControls(renderer)).toBe(true)
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("keeps the Replay poster of a finished video through the cover", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot({ posterUrl: POSTER })
+      const renderer = await renderHost()
+      await startPlayback()
+      await act(async () => {
+        video.__player.pause()
+      })
+      video.__player.currentTime = 600
+      video.__player.duration = 600
+      // The poster's fade is native-driven, and this renderer has no native
+      // node to attach it to. The poster's presence is what this case pins.
+      jest.spyOn(Animated, "timing").mockReturnValue({
+        start: () => {},
+        stop: () => {},
+        reset: () => {},
+      } as never)
+      await act(async () => {
+        video.__player.__emit("playToEnd")
+      })
+      expect(watchPosters(renderer)).toHaveLength(1)
+      expect(labelled(renderer, "Replay")).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      await setRoute(renderer, WATCH_ROUTE)
+
+      expect(watchPosters(renderer)).toHaveLength(1)
+      expect(labelled(renderer, "Replay")).toBe(true)
+    })
+
+    it("loads the cast media once in total across a cover and its return", async () => {
+      jest.useFakeTimers()
+      const load = jest.fn()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      // The video played, then the viewer cast it: only the cast refuses.
+      await startPlayback()
+      await act(async () => {
+        requestStore.updateSlot(
+          id,
+          makeRequest({ castActive: true, cast: makeCast(load) }),
+        )
+      })
+      expect(load).toHaveBeenCalledTimes(1)
+      video.__player.pause.mockClear()
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      // The receiver plays; a pause here would do nothing useful.
+      expect(video.__player.pause).not.toHaveBeenCalled()
+      await setRoute(renderer, WATCH_ROUTE)
+
+      expect(load).toHaveBeenCalledTimes(1)
+      expect(viewLife.unmounts).toBe(0)
+    })
+  })
+
+  describe("a tap and a close on the window over the reader (AE14)", () => {
+    it("pops to the covered screen once, even for a double tap", async () => {
+      const { renderer, id } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+
+      await windowAction(renderer, "activate")
+      await windowAction(renderer, "activate")
+
+      expect(mockRouterBack).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
+
+      // The pop lands on the one watch screen that was always there.
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+      expect(requestStore.getSnapshot().slotId).toBe(id)
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    it("pushes the watch route from the Bible tab, where no slot is covered", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await setRoute(renderer, BIBLE_TAB)
+      await detach(id)
+      await advance(SHRINK_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+
+      await windowAction(renderer, "activate")
+
+      expect(mockRouterPush).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+      expect(mockRouterBack).not.toHaveBeenCalled()
+    })
+
+    // The top route is the reader, but no watch screen is under it (a deep
+    // link over a window from elsewhere): a pop would leave the reader's stack.
+    it("pushes from a reader that covers no watch screen", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await setRoute(renderer, HOME_TAB)
+      await detach(id)
+      await setRoute(renderer, READER_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(hasWindowChrome(renderer)).toBe(true)
+      mockRouterPush.mockClear()
+
+      await windowAction(renderer, "activate")
+
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+      expect(mockRouterBack).not.toHaveBeenCalled()
+    })
+
+    it("leaves the return paused where the window closed, with no veil, and later picks still apply", async () => {
+      const { renderer } = await coverPlaying()
+      const ends = trackEnds()
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await windowAction(renderer, "dismiss")
+      expect(video.__player.playing).toBe(false)
+      expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+      await advance(EXIT_DURATION_MS + 1000)
+
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+      // Hidden under the reader but mounted, so the return reloads nothing.
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(viewLife.unmounts).toBe(0)
+
+      await setRoute(renderer, WATCH_ROUTE)
+
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+      expect(frameStyle(renderer).opacity).toBeUndefined()
+      expect(hasVeil(renderer)).toBe(false)
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(video.__player.currentTime).toBe(42)
+      expect(video.__player.playing).toBe(false)
+
+      await act(async () => {
+        getPlayerSettingsStore().setSpeed(1.25)
+      })
+      expect(video.__player.playbackRate).toBe(1.25)
+      await act(async () => {
+        getPlayerSettingsStore().setQualityTier("high")
+      })
+      expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(
+        `${URL_A}?max_resolution=720p`,
+      )
+    })
+  })
+
+  describe("every layer follows one cover (the occluding-layers law)", () => {
+    function layers(renderer: TestInstance) {
+      return {
+        frameShown:
+          frames(renderer).length > 0 && frameStyle(renderer).opacity !== 0,
+        windowChrome: hasWindowChrome(renderer),
+        fullView: hasFullViewChrome(renderer),
+        slotPoster: slotPosters(renderer).length,
+        backButtons: backButtons(renderer).length,
+        screenDrawsBack: !lastRead().visible,
+        band: lastRead().band,
+      }
+    }
+
+    async function renderScene() {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      let renderer!: TestInstance
+      await act(async () => {
+        renderer = TestRenderer.create(<Scene />)
+      })
+      mounted = renderer
+      await act(async () => {
+        requestStore.setSlotRect(
+          requestStore.getSnapshot().slotId as number,
+          RECT,
+        )
+      })
+      return renderer
+    }
+
+    it("uncovered: the host draws the full view and its back button", async () => {
+      const renderer = await renderScene()
+
+      expect(layers(renderer)).toEqual({
+        frameShown: true,
+        windowChrome: false,
+        fullView: true,
+        slotPoster: 0,
+        backButtons: 1,
+        screenDrawsBack: false,
+        band: null,
+      })
+    })
+
+    it("admitted: the window floats, the slot paints its poster, the screen draws its back button", async () => {
+      const renderer = await renderScene()
+      await startPlayback()
+
+      await setRoute(renderer, READER_ROUTE, <Scene />)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      const now = layers(renderer)
+      expect(now).toEqual({
+        frameShown: true,
+        windowChrome: true,
+        fullView: false,
+        slotPoster: 1,
+        backButtons: 1,
+        screenDrawsBack: true,
+        band: frameVisual(renderer),
+      })
+    })
+
+    it("refused: the frame hides, the slot paints its poster, the screen draws its back button", async () => {
+      const renderer = await renderScene()
+
+      await setRoute(renderer, READER_ROUTE, <Scene />)
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(layers(renderer)).toEqual({
+        frameShown: false,
+        windowChrome: false,
+        fullView: true,
+        slotPoster: 1,
+        backButtons: 1,
+        screenDrawsBack: true,
+        band: null,
+      })
+    })
+
+    it("closed: the window's close leaves the refused state, not a gap", async () => {
+      const renderer = await renderScene()
+      await startPlayback()
+      await setRoute(renderer, READER_ROUTE, <Scene />)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await windowAction(renderer, "dismiss")
+      await advance(EXIT_DURATION_MS + 1000)
+
+      expect(layers(renderer)).toEqual({
+        frameShown: false,
+        windowChrome: false,
+        fullView: true,
+        slotPoster: 1,
+        backButtons: 1,
+        screenDrawsBack: true,
+        band: null,
+      })
+      expect(viewLife.unmounts).toBe(0)
+    })
+  })
+
+  describe("stacks, sources and endings under the cover", () => {
+    const SESSION_B: PlaybackSessionDescriptor = {
+      ...SESSION_A,
+      videoId: "video-b",
+      videoSlug: "video-b-slug",
+      title: "Video B",
+    }
+    const SESSION_C: PlaybackSessionDescriptor = {
+      ...SESSION_A,
+      videoId: "video-c",
+      videoSlug: "video-c-slug",
+      title: "Video C",
+    }
+
+    it("covers only the top watch screen, and decides again for one opened over the reader", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const a = attachSlot()
+      const b = attachSlot({
+        streamingUrl: URL_B,
+        progressVideoId: "video-b",
+        session: SESSION_B,
+      })
+      const renderer = await renderHost()
+      await startPlayback()
+
+      await setRoute(renderer, READER_ROUTE)
+      expect(a).toBeLessThan(b)
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: b,
+        cover: "admitted",
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-b")
+
+      // A deep link opens watch C over the reader.
+      let c = 0
+      await act(async () => {
+        mockSegments = WATCH_ROUTE
+        renderer.update(<PlaybackHost />)
+        c = attachSlot({
+          streamingUrl: URL_C,
+          progressVideoId: "video-c",
+          session: SESSION_C,
+        })
+      })
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: c,
+        cover: null,
+      })
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      await act(async () => {
+        video.__settleReplace()
+      })
+      expect(video.__player.playing).toBe(true)
+
+      await setRoute(renderer, READER_ROUTE)
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: c,
+        cover: "admitted",
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-c")
+    })
+
+    it("swaps a completed download in under the window with no restart", async () => {
+      const { renderer, id } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await act(async () => {
+        requestStore.updateSlot(
+          id,
+          makeRequest({ posterUrl: POSTER, streamingUrl: OFFLINE_A }),
+        )
+      })
+      expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(OFFLINE_A)
+      await act(async () => {
+        video.__settleReplace()
+      })
+
+      expect(video.__player.currentTime).toBe(42)
+      expect(video.__player.playing).toBe(true)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("shows the ended state on the return when the video ends in the window", async () => {
+      const { renderer } = await coverPlaying()
+      const ends = trackEnds()
+      await advance(SHRINK_DURATION_MS + 300)
+      await act(async () => {
+        video.__player.pause()
+      })
+      video.__player.currentTime = 600
+      await act(async () => {
+        video.__player.__emit("playToEnd")
+      })
+      expect(sessionStore.getSnapshot().session?.endedCause).toBe("playToEnd")
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      // The video's own ending reported once; the return reported nothing.
+      expect(ends.events.map((event) => event.reason)).toEqual(["ended"])
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasVeil(renderer)).toBe(false)
+      expect(labelled(renderer, "Replay")).toBe(true)
+    })
+
+    it("shows the failed state on the return when the stream fails in the window", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      await act(async () => {
+        video.__player.__emit("statusChange", { status: "error" })
+      })
+      expect(sessionStore.getSnapshot().session?.endedCause).toBe("failure")
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().loadFailed).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(hasVeil(renderer)).toBe(false)
+      expect(hasTransportControls(renderer)).toBe(true)
+    })
+
+    it("keeps the cover through picture-in-picture, and unmounts no view under the latch", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await act(async () => {
+        videoViewProps(renderer).onPictureInPictureStart()
+      })
+      expect(sessionStore.getSnapshot().pipHold).toBe(true)
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+      expect(hasWindowChrome(renderer)).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(videoViews(renderer)).toHaveLength(1)
+
+      await act(async () => {
+        videoViewProps(renderer).onPictureInPictureStop()
+      })
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("lands the return on the rect the slot measured while covered (an iPad rotation)", async () => {
+      setWindow(IPAD_WINDOW)
+      const { renderer, id } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const ROTATED = { x: 0, y: 24, width: 1180, height: 664 }
+
+      await act(async () => {
+        Dimensions.set({ window: IPAD_LANDSCAPE, screen: IPAD_LANDSCAPE })
+        requestStore.setSlotRect(id, ROTATED)
+      })
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(frameStyle(renderer)).toMatchObject({
+        left: ROTATED.x,
+        top: ROTATED.y,
+        width: ROTATED.width,
+        height: ROTATED.height,
+      })
+    })
+  })
+
+  describe("the reader corners (KTD11, AE18, R10)", () => {
+    it("AE18: a move to the bottom left rests above the footer, and the next reader visit starts there", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const layout = readerLayout("pushed")
+      expect(frameVisual(renderer)).toEqual(cornerBox(layout, "topRight"))
+
+      for (let i = 0; i < 3; i++) await windowAction(renderer, "moveToCorner")
+      await advance(400)
+
+      const rested = frameVisual(renderer)
+      expect(rested).toEqual(cornerBox(layout, "bottomLeft"))
+      // The reader's OWN footer edge, from the band its verse box uses.
+      const band = readerChromeBand({
+        safeAreaTop: READER_INSETS.top,
+        bottomInset: READER_INSETS.bottom,
+        containerHeight: windowSize().height,
+      })
+      expect(rested.y + rested.height).toBeLessThanOrEqual(band.bottom)
+      expect(rested.y).toBeGreaterThan(band.top)
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(EXPAND_DURATION_MS + 300)
+      await setRoute(renderer, READER_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      expect(frameVisual(renderer)).toEqual(cornerBox(layout, "bottomLeft"))
+    })
+
+    it("cycles all four corners on the reader", async () => {
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+      const layout = readerLayout("pushed")
+      const seen: Array<MiniPlayerCorner | undefined> = []
+
+      for (let i = 0; i < 4; i++) {
+        seen.push(cornerOf(layout, frameVisual(renderer)))
+        await windowAction(renderer, "moveToCorner")
+        await advance(400)
+      }
+
+      expect(new Set(seen).size).toBe(4)
+      expect(seen).not.toContain(undefined)
+      expect(cornerOf(layout, frameVisual(renderer))).toBe(seen[0])
+    })
+
+    it("keeps the reader's corner apart from the app's, and glides between them", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await setRoute(renderer, HOME_TAB)
+      await detach(id)
+      await advance(SHRINK_DURATION_MS + 300)
+      const appCorner = cornerBox(appLayout(), "bottomRight")
+      expect(frameVisual(renderer)).toEqual(appCorner)
+      const timingSpy = jest.spyOn(Animated, "timing")
+
+      await setRoute(renderer, BIBLE_TAB)
+      // A glide, starting where the window already is.
+      expect(durationCall(timingSpy, REPOSITION_DURATION_MS)).toBeDefined()
+      expect(frameVisual(renderer)).toEqual(appCorner)
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(readerLayout("tab"), "topRight"),
+      )
+
+      for (let i = 0; i < 3; i++) await windowAction(renderer, "moveToCorner")
+      await advance(400)
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(readerLayout("tab"), "bottomLeft"),
+      )
+
+      timingSpy.mockClear()
+      await setRoute(renderer, HOME_TAB)
+      expect(durationCall(timingSpy, REPOSITION_DURATION_MS)).toBeDefined()
+      await advance(REPOSITION_DURATION_MS + 300)
+      // The app's corner never moved.
+      expect(frameVisual(renderer)).toEqual(appCorner)
+
+      await setRoute(renderer, BIBLE_TAB)
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(readerLayout("tab"), "bottomLeft"),
+      )
+    })
+
+    it("rests a Bible tab bottom corner above the footer on a phone with no home indicator", async () => {
+      setWindow(SE_WINDOW)
+      mockInsets = SE_INSETS
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      await setRoute(renderer, HOME_TAB)
+      await detach(id)
+      await advance(SHRINK_DURATION_MS + 300)
+      await setRoute(renderer, BIBLE_TAB)
+      await advance(REPOSITION_DURATION_MS + 300)
+
+      for (let i = 0; i < 3; i++) await windowAction(renderer, "moveToCorner")
+      await advance(400)
+
+      const rested = frameVisual(renderer)
+      // The tab screen's inset holds the whole 83pt bar, even at root inset 0.
+      const band = readerChromeBand({
+        safeAreaTop: SE_INSETS.top,
+        bottomInset: readerBottomInset("tab", "ios", TAB_BAR_SCREEN_EXTENT_IOS),
+        containerHeight: SE_WINDOW.height,
+      })
+      expect(band.bottom - (rested.y + rested.height)).toBe(WINDOW_EDGE_MARGIN)
+      expect(rested.y - band.top).toBeGreaterThanOrEqual(WINDOW_EDGE_MARGIN)
+    })
+
+    it("rests a bottom corner above the band the reader shows over its footer", async () => {
+      jest.useFakeTimers()
+      publishReaderMovementBand(84)
+      const { renderer } = await coverPlaying()
+      await advance(SHRINK_DURATION_MS + 300)
+
+      for (let i = 0; i < 2; i++) await windowAction(renderer, "moveToCorner")
+      await advance(400)
+
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(readerLayout("pushed", 84), "bottomRight"),
+      )
+    })
+
+    // A first reader open reads its saved settings after the cover starts, so
+    // its band can arrive mid-shrink. The shrink must still run to its end.
+    it("holds a band that arrives mid-shrink until the shrink settles", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      const renderer = await renderHost()
+      await startPlayback()
+      // A silent driver holds the shrink in flight.
+      jest.spyOn(Animated, "timing").mockReturnValue({
+        start: () => {},
+        stop: () => {},
+        reset: () => {},
+      } as never)
+      await setRoute(renderer, READER_ROUTE)
+      expect(frameStyle(renderer).backgroundColor).toBe("transparent")
+
+      await act(async () => {
+        publishReaderMovementBand(84)
+      })
+
+      // Still in flight: the band did not cut the shrink short.
+      expect(frameStyle(renderer).backgroundColor).toBe("transparent")
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(readerLayout("pushed", 84), "topRight"),
+      )
+    })
+
+    it("feeds the reader's verse box the window's frame in every corner (R10)", async () => {
+      function ReaderRoute() {
+        return (
+          <>
+            <ScreenProbe />
+            <PlaybackHost />
+          </>
+        )
+      }
+      const probe = () => <ReaderRoute />
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      let renderer!: TestInstance
+      await act(async () => {
+        renderer = TestRenderer.create(probe())
+      })
+      mounted = renderer
+      await startPlayback()
+      expect(lastRead().band).toBeNull()
+
+      await setRoute(renderer, READER_ROUTE, probe())
+      await advance(SHRINK_DURATION_MS + 300)
+
+      const height = windowSize().height
+      const band = readerChromeBand({
+        safeAreaTop: READER_INSETS.top,
+        bottomInset: READER_INSETS.bottom,
+        containerHeight: height,
+      })
+      for (let i = 0; i < 4; i++) {
+        const frame = lastRead().band
+        expect(frame).toEqual(frameVisual(renderer))
+        const boxes = verseBoxes({
+          containerHeight: height,
+          topChromeBottom: band.top,
+          bottomChromeTop: band.bottom,
+          floating: frame ? [frame] : [],
+        })
+        const window = frame as Box
+        // The verse may use either box (KD27), so both keep clear.
+        for (const verse of [boxes.centered, boxes.free]) {
+          const clear =
+            verse.top + verse.height <= window.y ||
+            verse.top >= window.y + window.height
+          expect(clear).toBe(true)
+        }
+        await windowAction(renderer, "moveToCorner")
+        await advance(400)
+      }
+
+      await setRoute(renderer, WATCH_ROUTE, probe())
+      await advance(EXPAND_DURATION_MS + 300)
+      expect(lastRead().band).toBeNull()
+    })
+  })
+
+  // 2026-10-20: a screen pushed over the watch screen (a deep link, a push
+  // tap to an experience) keeps it mounted, so its slot never detaches.
+  describe("a screen pushed over the watch screen", () => {
+    const DOWNLOADS_ROUTE = ["downloads"] as const
+    const EXPERIENCE_ROUTE = ["experience", "[slug]"] as const
+
+    /** The router's order: the watch screen loses focus, THEN the segments
+     *  change. A pop never sets the fact, because `beforeRemove` comes first. */
+    async function pushOver(
+      renderer: TestInstance,
+      id: number,
+      segments: readonly string[],
+    ) {
+      await act(async () => {
+        requestStore.setSlotUnderScreen(id, true)
+      })
+      await setRoute(renderer, segments)
+    }
+
+    async function popBackTo(renderer: TestInstance, id: number) {
+      await act(async () => {
+        requestStore.setSlotUnderScreen(id, false)
+      })
+      await setRoute(renderer, WATCH_ROUTE)
+    }
+
+    const SESSION_B: PlaybackSessionDescriptor = {
+      ...SESSION_A,
+      videoId: "video-b",
+      videoSlug: "video-b-slug",
+      title: "Video B",
+    }
+
+    async function playing() {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot({ posterUrl: POSTER }, RECT, "watch")
+      const renderer = await renderHost()
+      await startPlayback()
+      video.__player.currentTime = 42
+      video.__player.duration = 600
+      return { renderer, id }
+    }
+
+    it("floats a playing video in the app's corner, and the return grows it back still playing", async () => {
+      const { renderer, id } = await playing()
+      const ends = trackEnds()
+
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        rect: RECT,
+        cover: "admitted",
+        coverSource: "screen",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      expect(backButtons(renderer)).toHaveLength(0)
+      // Not the reader's layout: the app's own corner and chrome.
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+      expect(video.__player.playing).toBe(true)
+
+      video.__player.currentTime = 57
+      await popBackTo(renderer, id)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(frameStyle(renderer)).toMatchObject({
+        left: RECT.x,
+        top: RECT.y,
+        width: RECT.width,
+        height: RECT.height,
+      })
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(backButtons(renderer)).toHaveLength(1)
+      expect(video.__player.playing).toBe(true)
+      expect(video.__player.currentTime).toBe(57)
+      expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(ends.events).toHaveLength(0)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("hides a finished video under the experience page instead of drawing it there", async () => {
+      const { renderer, id } = await playing()
+      await act(async () => {
+        video.__player.pause()
+      })
+      video.__player.currentTime = 600
+      // The poster's fade is native-driven, and this renderer has no native
+      // node to attach it to.
+      jest.spyOn(Animated, "timing").mockReturnValue({
+        start: () => {},
+        stop: () => {},
+        reset: () => {},
+      } as never)
+      await act(async () => {
+        video.__player.__emit("playToEnd")
+      })
+
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(backButtons(renderer)).toHaveLength(0)
+      expect(hasWindowChrome(renderer)).toBe(false)
+    })
+
+    it("pauses a series trailer under a pushed screen", async () => {
+      jest.useFakeTimers()
+      mockSegments = ["series", "[slug]"]
+      const id = attachSlot(
+        { session: null, streamingUrl: URL_B },
+        RECT,
+        "series",
+      )
+      const renderer = await renderHost()
+      await startPlayback()
+
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(video.__player.playing).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+    })
+
+    // The watch screen's own sheet blurs it too. The page is still in view.
+    it("covers nothing under the screen's own sheet", async () => {
+      const { renderer, id } = await playing()
+
+      await pushOver(renderer, id, ["watch", "language"])
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // A back press shows the route BELOW the watch screen. Today's path owns
+    // that: the full view holds until the screen unmounts, then it floats.
+    it("leaves a pop alone, even onto a route that is not a tab", async () => {
+      const { renderer, id } = await playing()
+
+      await setRoute(renderer, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      await detach(id)
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    })
+
+    // A pop closes one route; the watch screen may be several below. The
+    // pushed screen takes the session, so the video plays on with no reload.
+    it("pushes a watch screen on a tap, which takes the video with no reload", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+      mockRouterBack.mockClear()
+
+      await windowAction(renderer, "activate")
+
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+      expect(mockRouterBack).not.toHaveBeenCalled()
+      // The route changes a commit before the new screen's slot attaches. The
+      // old screen is still under it, so its cover holds, in the app's layout.
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        cover: "admitted",
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+      // The new screen's first stream is another url of the same video.
+      let upper = 0
+      await act(async () => {
+        upper = attachSlot(
+          {
+            posterUrl: POSTER,
+            streamingUrl: `${URL_A}?redundant_streams=true`,
+          },
+          RECT,
+          "watch",
+        )
+      })
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: upper,
+        cover: null,
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+      expect(video.__player.playing).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(true)
+    })
+
+    // A deep link opens the watch route with no tap, so no expand hold pins
+    // the window. A reader layout here would glide it to the reader's corner.
+    it("keeps the app's layout while a watch route opens over the screen cover", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+    })
+
+    // A push or lapse-reminder tap opens a series with no trailer, so no newer
+    // slot takes the player: the watch slot is the one under the series page.
+    it("floats a playing video under a series page that mounts no slot", async () => {
+      const { renderer, id } = await playing()
+
+      await pushOver(renderer, id, ["series", "[slug]"])
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        cover: "admitted",
+        coverSource: "screen",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // A screen opened from the page's own sheet closes back onto that sheet.
+    // The page is in view under it, though its screen still has no focus.
+    it("ends the cover when the pushed screen closes back onto the page's sheet", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, ["watch", "download"])
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      await setRoute(renderer, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+
+      await setRoute(renderer, ["watch", "download"])
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // Watch A never plays, a screen opens over it, watch B opens and plays,
+    // then back from B: A's cover starts in the commit that changes the video.
+    it("refuses the cover for a video that never played, after another one played", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const a = attachSlot({ posterUrl: POSTER }, RECT, "watch")
+      const renderer = await renderHost()
+      // A's autostart asks, and never lands.
+      video.__player.play.mockImplementation(() => {})
+      await pushOver(renderer, a, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      let b = 0
+      await act(async () => {
+        mockSegments = WATCH_ROUTE
+        renderer.update(<PlaybackHost />)
+        b = attachSlot(
+          {
+            streamingUrl: URL_B,
+            progressVideoId: "video-b",
+            session: SESSION_B,
+          },
+          RECT,
+          "watch",
+        )
+      })
+      await act(async () => {
+        video.__settleReplace()
+      })
+      await act(async () => {
+        video.__player.playing = true
+        video.__player.__emit("playingChange", { isPlaying: true })
+      })
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: b,
+        cover: null,
+      })
+
+      await act(async () => {
+        mockSegments = DOWNLOADS_ROUTE
+        renderer.update(<PlaybackHost />)
+        requestStore.detachSlot(b)
+      })
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: a,
+        cover: "refused",
+      })
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasWindowChrome(renderer)).toBe(false)
+    })
+
+    it("closes the window over a screen cover with no report, and the return shows the page paused", async () => {
+      const { renderer, id } = await playing()
+      const ends = trackEnds()
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await windowAction(renderer, "dismiss")
+      expect(video.__player.playing).toBe(false)
+      await advance(EXIT_DURATION_MS + 1000)
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+
+      await popBackTo(renderer, id)
+
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(video.__player.currentTime).toBe(42)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("stays a screen cover under a reader opened over that screen", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await setRoute(renderer, READER_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+      mockRouterBack.mockClear()
+
+      expect(requestStore.getSnapshot().coverSource).toBe("screen")
+      await windowAction(renderer, "activate")
+      // A pop would land on the experience page, not on the watch screen.
+      expect(mockRouterBack).not.toHaveBeenCalled()
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+    })
+  })
+
+  describe("StrictMode (the cover effect restores what its cleanup undoes)", () => {
+    it("mounts onto a covered slot once: one refused cover, no session, no report", async () => {
+      jest.useFakeTimers()
+      const ends = trackEnds()
+      mockSegments = READER_ROUTE
+      attachSlot()
+      await act(async () => {
+        mounted = TestRenderer.create(
+          <StrictMode>
+            <PlaybackHost />
+          </StrictMode>,
+        )
+      })
+      const renderer = mounted as TestInstance
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+      expect(viewLife.mounts - viewLife.unmounts).toBe(1)
+
+      mockSegments = WATCH_ROUTE
+      await act(async () => {
+        renderer.update(
+          <StrictMode>
+            <PlaybackHost />
+          </StrictMode>,
+        )
+      })
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(hasVeil(renderer)).toBe(false)
+      expect(frameStyle(renderer).opacity).toBeUndefined()
+    })
+
+    it("covers and returns a playing video with no report under StrictMode", async () => {
+      jest.useFakeTimers()
+      const ends = trackEnds()
+      mockSegments = WATCH_ROUTE
+      attachSlot()
+      // A fresh element per update: React skips an identical one.
+      const tree = () => (
+        <StrictMode>
+          <PlaybackHost />
+        </StrictMode>
+      )
+      await act(async () => {
+        mounted = TestRenderer.create(tree())
+      })
+      const renderer = mounted as TestInstance
+      await startPlayback()
+
+      await setRoute(renderer, READER_ROUTE, tree())
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+
+      await setRoute(renderer, WATCH_ROUTE, tree())
+      await advance(EXPAND_DURATION_MS + 300)
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+      expect(hasFullViewChrome(renderer)).toBe(true)
+    })
+  })
+})
+
+describe("physical coordinates in a right-to-left layout (feat-695 KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  function hostByTestId(renderer: TestInstance, id: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.testID === id && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node with testID ${id}`)
+    return node
+  }
+
+  it("draws the frame at the measured x 0 inside a left-to-right layer, and leaves the back affordance to the app", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    const frame = hostByTestId(renderer, "playback-frame")
+    expect(RECT.x).toBe(0)
+    expect(StyleSheet.flatten(frame.props.style as never)).toMatchObject({
+      left: 0,
+    })
+    expect(directionAbove(frame)).toBe("ltr")
+
+    // The back affordance mirrors with the app (R11), so it stays outside.
+    const [back] = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === FloatingBackButton,
+    )
+    expect(directionAbove(back)).toBeUndefined()
+  })
+
+  it("keeps the mini player window inside that layer", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(directionAbove(hostByTestId(renderer, "mini-player-window"))).toBe(
+      "ltr",
+    )
   })
 })

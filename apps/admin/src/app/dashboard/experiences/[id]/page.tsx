@@ -2,6 +2,7 @@ import type { RevisionStatus } from "@prisma/client"
 import { notFound } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { ExperienceEditorWithChat } from "@/app/dashboard/experiences/experience-editor-with-chat"
+import { duplicateExperienceForEditor } from "@/app/dashboard/experiences/duplicate-experience-action"
 import {
   archiveThreadAction as archiveChatThreadCore,
   createThreadAction as createChatThreadCore,
@@ -11,13 +12,11 @@ import {
 import { runGenerateDraftAction } from "@/app/dashboard/experiences/generate-draft-action"
 import { runGenerateSectionAction } from "@/app/dashboard/experiences/generate-section-action"
 import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-variant-action"
+import { mediaAssetIdsFromExperienceBlocks } from "@/app/dashboard/experiences/experience-editor/block-helpers"
 import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
 import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
-import {
-  loadVideoCollectionChildren,
-  loadVideoRows,
-  videoIdsFromExperienceBlocks,
-} from "@/app/dashboard/live-data"
+import { loadExperienceEditorVideoRows } from "@/app/dashboard/live-data"
+import { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
 import {
   matchesVideoLibraryCategory,
   parseVideoLibraryCategory,
@@ -29,7 +28,20 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+import { findDefaultWatchTemplateId } from "@/services/watch-default-template"
 import { ForbiddenError } from "@/services/errors"
+import {
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
+  validateExperienceEditorDubSelections,
+  boundedExperienceEditorActionSelectors,
+  boundedExperienceEditorActionVideoIds,
+  type ExperienceEditorAuthoredDubSelector,
+  type ExperienceEditorCollectionChildPageActionInput,
+  type ExperienceEditorDubPageActionInput,
+  type ExperienceEditorDubSelectionValidationActionInput,
+} from "@/services/experience-editor-video.service"
 import {
   recordAdminVideoLibrarySearchTraceSafely,
   type AdminVideoLibrarySearchTraceClient,
@@ -152,33 +164,46 @@ async function languageIdForLocale(locale: string): Promise<string | null> {
   return language?.id ?? null
 }
 
-async function loadMediaLibrary() {
+async function loadMediaLibrary({
+  assetIds,
+}: {
+  assetIds?: readonly string[]
+} = {}) {
+  const fullCatalog = assetIds === undefined
   const [folders, assets] = await Promise.all([
-    prisma.mediaFolder.findMany({
-      select: { id: true, name: true, parentId: true },
-      orderBy: [{ parentId: "asc" }, { name: "asc" }],
-    }),
-    prisma.mediaAsset.findMany({
-      where: { kind: "IMAGE", status: "READY" },
-      select: {
-        id: true,
-        backend: true,
-        originalFilename: true,
-        mimeType: true,
-        byteSize: true,
-        objectKey: true,
-        previewObjectKey: true,
-        muxPlaybackId: true,
-        folderId: true,
-        updatedAt: true,
-        locales: {
-          where: { locale: "en" },
-          select: { displayName: true, altText: true },
-          take: 1,
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    }),
+    fullCatalog
+      ? prisma.mediaFolder.findMany({
+          select: { id: true, name: true, parentId: true },
+          orderBy: [{ parentId: "asc" }, { name: "asc" }],
+        })
+      : [],
+    assetIds?.length === 0
+      ? []
+      : prisma.mediaAsset.findMany({
+          where: {
+            kind: "IMAGE",
+            status: "READY",
+            ...(assetIds ? { id: { in: [...assetIds] } } : {}),
+          },
+          select: {
+            id: true,
+            backend: true,
+            originalFilename: true,
+            mimeType: true,
+            byteSize: true,
+            objectKey: true,
+            previewObjectKey: true,
+            muxPlaybackId: true,
+            folderId: true,
+            updatedAt: true,
+            locales: {
+              where: { locale: "en" },
+              select: { displayName: true, altText: true },
+              take: 1,
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
   ])
 
   return buildMediaLibraryBrowserData({ folders, images: assets })
@@ -240,8 +265,6 @@ export default async function ExperienceEditorPage({
       requireSession(),
       getAdminLocale(),
     ])
-  const mediaLibraryPromise = loadMediaLibrary()
-
   const services = createServices(prisma)
   const experienceSummary = await services.experience.getById({
     id,
@@ -281,18 +304,18 @@ export default async function ExperienceEditorPage({
     user: principal,
   })
   const editableLocale = draftState.effective
-
   const [
-    videoLibrary,
     mediaLibrary,
     selectedLocaleLanguageId,
     activeLocaleDrafts,
+    defaultTemplateId,
+    watchAudienceAuthoringEnabled,
   ] = await Promise.all([
-    loadVideoRows(principal, {
-      includeVideoIds: videoIdsFromExperienceBlocks(editableLocale.blocks),
-      preferredLocale: selectedLocale.locale,
+    loadMediaLibrary({
+      assetIds: mediaAssetIdsFromExperienceBlocks(
+        Array.isArray(editableLocale.blocks) ? editableLocale.blocks : [],
+      ),
     }),
-    mediaLibraryPromise,
     languageIdForLocale(selectedLocale.locale),
     prisma.contentRevision.findMany({
       where: {
@@ -302,6 +325,8 @@ export default async function ExperienceEditorPage({
       },
       select: { entityId: true, revisedAt: true },
     }),
+    experience.isTemplate ? findDefaultWatchTemplateId(prisma) : null,
+    isWatchAudienceEnabled(),
   ])
   const activeDraftByLocaleId = new Map(
     activeLocaleDrafts.map((draft) => [draft.entityId, draft]),
@@ -309,6 +334,21 @@ export default async function ExperienceEditorPage({
 
   const currentExperienceId = experience.id
   const canUploadImages = hasPermission(principal, "write:media-assets")
+
+  async function duplicateExperienceAction() {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    return duplicateExperienceForEditor({
+      duplicate: (args) => services.experience.duplicate(args),
+      user,
+      sourceExperienceId: currentExperienceId,
+      selectedLocale: selectedLocale.locale,
+      revalidate: () => revalidatePath("/dashboard/experiences"),
+    })
+  }
 
   async function uploadImageAssetAction(formData: FormData) {
     "use server"
@@ -432,6 +472,9 @@ export default async function ExperienceEditorPage({
     const user = await requireSession()
     const services = createServices(prisma)
     const localeId = String(formData.get("id") ?? "")
+    if (localeId !== selectedLocale.id) {
+      return { ok: false, error: "Locale does not match this editor." }
+    }
     const blocksValue = String(formData.get("blocks") ?? "[]").trim() || "[]"
 
     let blocks: unknown
@@ -542,6 +585,7 @@ export default async function ExperienceEditorPage({
           ogImageUrl: canonical.ogImageUrl ?? "",
           pathSegment: canonical.pathSegment ?? "",
           isHomepage: canonical.isHomepage,
+          homepageLayout: canonical.homepageLayout,
           blocksJson: JSON.stringify(canonical.blocks ?? [], null, 2),
         },
       }
@@ -680,22 +724,70 @@ export default async function ExperienceEditorPage({
     return getChatMessagesCore({ prisma, user }, { threadId })
   }
 
-  async function loadVideosByIdsAction(videoIds: readonly string[]) {
+  async function loadVideosByIdsAction(input: {
+    videoIds: readonly string[]
+    authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[]
+  }) {
     "use server"
     const user = await requireSession()
+    const videoIds = boundedExperienceEditorActionVideoIds(input?.videoIds)
     if (videoIds.length === 0) return []
-    return loadVideoRows(user, {
-      includeVideoIds: videoIds,
+    return loadExperienceEditorVideoRows(user, {
+      authoredSelectors: boundedExperienceEditorActionSelectors(
+        input?.authoredSelectors,
+      ),
+      exactVideoIds: videoIds,
       preferredLocale: selectedLocale.locale,
     })
   }
 
-  async function loadVideoCollectionChildrenAction(parentVideoId: string) {
+  async function loadVideoDubPageAction(
+    input: ExperienceEditorDubPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorDubPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+    })
+  }
+
+  async function loadVideoCollectionChildrenPageAction(
+    input: ExperienceEditorCollectionChildPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorCollectionChildPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+    })
+  }
+
+  async function validateVideoDubSelectionsAction(
+    input: ExperienceEditorDubSelectionValidationActionInput,
+  ) {
     "use server"
     const user = await requireSession()
-    return loadVideoCollectionChildren(user, parentVideoId, {
-      preferredLocale: selectedLocale.locale,
+    const selectors = boundedExperienceEditorActionSelectors(input?.selectors)
+    const services = createServices(prisma)
+    const previousDraftState = await services.experience.getLocaleDraftState({
+      id: selectedLocale.id,
+      user,
     })
+    return validateExperienceEditorDubSelections(prisma, {
+      ...input,
+      selectors,
+      locale: selectedLocale.locale,
+      previousSelectors: extractAuthoredVideoDubSelectors(
+        previousDraftState.effective.blocks,
+      ),
+    })
+  }
+
+  async function loadMediaLibraryAction() {
+    "use server"
+    await requireSession()
+    return loadMediaLibrary()
   }
 
   async function searchVideoLibraryAction(
@@ -710,7 +802,7 @@ export default async function ExperienceEditorPage({
     const normalizedQuery = query.trim()
     const category = parseVideoLibraryCategory(context?.category)
     if (!normalizedQuery) {
-      return loadVideoRows(user, {
+      return loadExperienceEditorVideoRows(user, {
         category,
         preferredLocale: selectedLocale.locale,
       })
@@ -736,8 +828,8 @@ export default async function ExperienceEditorPage({
       const videoIds = response.results
         .filter((result) => result.type === "video")
         .map((result) => result.id)
-      const rows = await loadVideoRows(user, {
-        includeVideoIds: videoIds,
+      const rows = await loadExperienceEditorVideoRows(user, {
+        exactVideoIds: videoIds,
         preferredLocale: selectedLocale.locale,
       })
       const filteredRows = rows.filter((row) =>
@@ -860,7 +952,10 @@ export default async function ExperienceEditorPage({
         ogImageUrl: editableLocale.ogImageUrl ?? "",
         pathSegment: editableLocale.pathSegment ?? "",
         isHomepage: editableLocale.isHomepage,
+        homepageLayout: editableLocale.homepageLayout,
         isTemplate: experience.isTemplate,
+        isDefaultTemplate: experience.id === defaultTemplateId,
+        watchAudienceAuthoringEnabled,
         blocksJson: JSON.stringify(editableLocale.blocks ?? [], null, 2),
       }}
       localeEntries={experience.locales.map((locale) => ({
@@ -877,13 +972,22 @@ export default async function ExperienceEditorPage({
         active: locale.id === selectedLocale.id,
       }))}
       revisionEntries={revisionEntries}
-      videoLibrary={videoLibrary}
       loadVideosByIdsAction={loadVideosByIdsAction}
-      loadVideoCollectionChildrenAction={loadVideoCollectionChildrenAction}
+      loadVideoDubPageAction={loadVideoDubPageAction}
+      loadVideoCollectionChildrenPageAction={
+        loadVideoCollectionChildrenPageAction
+      }
+      validateVideoDubSelectionsAction={validateVideoDubSelectionsAction}
       searchVideoLibraryAction={searchVideoLibraryAction}
       mediaLibrary={mediaLibrary}
+      loadMediaLibraryAction={loadMediaLibraryAction}
       canUploadImages={canUploadImages}
       saveAction={saveLocaleAction}
+      duplicateAction={
+        hasPermission(principal, "write:experiences")
+          ? duplicateExperienceAction
+          : undefined
+      }
       publishAction={publishLocaleAction}
       discardAction={discardLocaleDraftAction}
       createLocaleAction={createLocaleAction}

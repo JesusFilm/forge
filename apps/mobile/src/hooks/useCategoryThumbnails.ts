@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 
+import { currentAdminForms } from "../i18n/adminLanguage"
 import { getApolloClient } from "../lib/apolloClient"
 import { WATCH_SEARCH } from "../lib/queries"
 import { BROWSE_TOPICS } from "../lib/browseTopics"
@@ -7,6 +8,7 @@ import { pickThumbnailUrl } from "../lib/categoryThumbnail"
 import {
   buildWatchSearchInput,
   mapWatchSearchResponse,
+  searchLanguageFor,
 } from "../lib/watchSearch"
 
 /** Scanned for the first result with artwork; the top hit can be imageless. */
@@ -41,7 +43,15 @@ const subscribers = new Set<Publish>()
  * gradient cards as a real-frame context cue. Reuses the public watchSearch
  * operation — no new admin surface.
  */
-export function useCategoryThumbnails(): Record<string, string | null> {
+/**
+ * `enabled` is REQUIRED, not defaulted. Since feat-500 iOS runs a real
+ * UITabBarController, which mounts every tab at cold launch — so an unguarded
+ * mount fires six WATCH_SEARCH queries before the viewer has opened Search.
+ * A default of `true` would let a new call site reintroduce that silently.
+ */
+export function useCategoryThumbnails(
+  enabled: boolean,
+): Record<string, string | null> {
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>(
     () => Object.fromEntries(thumbnailCache),
   )
@@ -58,6 +68,14 @@ export function useCategoryThumbnails(): Record<string, string | null> {
         ...prev,
       }))
     }
+
+    return () => {
+      subscribers.delete(publish)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!enabled) return
 
     const now = Date.now()
     for (const topic of BROWSE_TOPICS) {
@@ -77,6 +95,8 @@ export function useCategoryThumbnails(): Record<string, string | null> {
                 query: term,
                 limit: THUMBNAIL_SCAN_LIMIT,
                 offset: 0,
+                // A topic term: English query words, the UI's display slug.
+                language: searchLanguageFor(currentAdminForms(), term),
               }),
             },
             fetchPolicy: "cache-first",
@@ -104,11 +124,7 @@ export function useCategoryThumbnails(): Record<string, string | null> {
           inFlight.delete(term)
         })
     }
-
-    return () => {
-      subscribers.delete(publish)
-    }
-  }, [])
+  }, [enabled])
 
   return thumbnails
 }

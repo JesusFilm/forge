@@ -23,9 +23,15 @@ import {
 import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
+  WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS,
 } from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
+  WatchCollectionFeed,
+  WatchCollectionFeedItem,
+  WatchCollectionFeedNode,
+  WatchCollectionFeedPageInfo,
+  WatchCollectionLanguageCounts,
   WatchLanguageInventory,
   WatchLanguageInventoryCounts,
   WatchLanguageInventoryItem,
@@ -275,6 +281,9 @@ builder.prismaObject("BibleBook", {
 
 /** @classification public-shape */
 builder.prismaObject("VideoSubtitle", {
+  // Homepage dub hydration can include thousands of subtitles. Let Pothos
+  // select the requested fields instead of copying every scalar per subtitle.
+  select: { id: true },
   fields: (t) => ({
     id: t.exposeID("id"),
     value: t.exposeString("value", { nullable: true }),
@@ -404,6 +413,11 @@ PassageRef.implement({
   description:
     "Cached Bible passage text for a video citation, fetched server-side from an approved provider.",
   fields: (t) => ({
+    languageSlug: t.exposeString("languageSlug", {
+      nullable: true,
+      description:
+        "Content language of the selected Bible version, including English fallback; absent in older snapshots.",
+    }),
     content: t.exposeString("content"),
     copyright: t.exposeString("copyright"),
     humanReference: t.exposeString("humanReference"),
@@ -695,7 +709,7 @@ builder.prismaObject("Video", {
         languageSlug: t.arg.string({ required: false }),
       },
       resolve: (query, video, args, ctx) =>
-        ctx.services.video.getPreferredPlayableDub({
+        ctx.loaders.preferredPlayableDub.load({
           videoId: video.id,
           languageSlug: args.languageSlug ?? null,
           query,
@@ -790,6 +804,82 @@ builder.prismaObject("Video", {
           videoId: video.id,
           visibleOnly: !isEditorOrAdmin(ctx.user),
         }),
+    }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedItemRef = builder.objectRef<WatchCollectionFeedItem>(
+  "WatchCollectionFeedItem",
+)
+
+WatchCollectionFeedItemRef.implement({
+  description:
+    "A localized, playback-resolved Watch card in a bounded collection feed page.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    coreId: t.exposeString("coreId", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    videoSlug: t.exposeString("videoSlug", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    label: t.exposeString("label", { nullable: true }),
+    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedNodeRef = builder.objectRef<WatchCollectionFeedNode>(
+  "WatchCollectionFeedNode",
+)
+
+WatchCollectionFeedNodeRef.implement({
+  description:
+    "A visible localized collection parent and its bounded card-ready items.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    description: t.exposeString("description", { nullable: true }),
+    items: t.field({
+      type: [WatchCollectionFeedItemRef],
+      nullable: false,
+      resolve: (row) => row.items,
+    }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedPageInfoRef =
+  builder.objectRef<WatchCollectionFeedPageInfo>("WatchCollectionFeedPageInfo")
+
+WatchCollectionFeedPageInfoRef.implement({
+  fields: (t) => ({
+    endCursor: t.exposeString("endCursor", { nullable: true }),
+    hasNextPage: t.exposeBoolean("hasNextPage", { nullable: false }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedRef = builder.objectRef<WatchCollectionFeed>(
+  "WatchCollectionFeed",
+)
+
+WatchCollectionFeedRef.implement({
+  description:
+    "Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.",
+  fields: (t) => ({
+    nodes: t.field({
+      type: [WatchCollectionFeedNodeRef],
+      nullable: false,
+      resolve: (row) => row.nodes,
+    }),
+    pageInfo: t.field({
+      type: WatchCollectionFeedPageInfoRef,
+      nullable: false,
+      resolve: (row) => row.pageInfo,
     }),
   }),
 })
@@ -1018,6 +1108,11 @@ WatchLanguageInventoryItemRef.implement({
     description: t.exposeString("description", { nullable: true }),
     imageUrl: t.exposeString("imageUrl", { nullable: true }),
     imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", {
+      nullable: true,
+      description:
+        "Mux playback id of the row's best published dub. Lets consumers synthesize a frame thumbnail when `imageUrl` is null because the video carries no authored artwork.",
+    }),
     label: t.exposeString("label", {
       nullable: true,
       description:
@@ -1062,6 +1157,29 @@ WatchLanguageInventoryCountsRef.implement({
       nullable: false,
     }),
     total: t.exposeInt("total", { nullable: false }),
+  }),
+})
+
+const WatchCollectionLanguageCountsRef =
+  builder.objectRef<WatchCollectionLanguageCounts>(
+    "WatchCollectionLanguageCounts",
+  )
+
+WatchCollectionLanguageCountsRef.implement({
+  description:
+    "Distinct audio and subtitle language counts aggregated across a collection's visible children. Powers the Watch /videos sidebar availability indicator.",
+  fields: (t) => ({
+    slug: t.exposeString("slug", { nullable: false }),
+    audioLanguageCount: t.exposeInt("audioLanguageCount", {
+      nullable: false,
+      description:
+        "Distinct playable audio languages across the collection's visible children. Uses the same predicate as `Video.childDubLanguages`, so the two never disagree for the same collection.",
+    }),
+    subtitleLanguageCount: t.exposeInt("subtitleLanguageCount", {
+      nullable: false,
+      description:
+        "Distinct subtitle languages across the collection's visible children.",
+    }),
   }),
 })
 
@@ -1473,6 +1591,13 @@ WatchRouteSnapshotRef.implement({
     playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
       nullable: false,
     }),
+    requestedLanguage: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      description:
+        "Active catalog language whose slug exactly matches the requested languageSlug, independent of whether this video has a playable dub in it. Null when no languageSlug was requested or no active language has that slug. Never taken from preferredVariant, which may be a fallback dub.",
+      resolve: (row) => row.requestedLanguage ?? null,
+    }),
     preferredVariant: t.field({
       type: WatchRouteSnapshotPreferredVariantRef,
       nullable: true,
@@ -1614,6 +1739,42 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  watchCollectionFeed: t.field({
+    type: WatchCollectionFeedRef,
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Bounded collection-parent feed for Watch homepage discovery. Ordered by stable Admin Video id; callers page with after and may exclude already-featured parent ids or slugs.",
+    args: {
+      first: t.arg.int({ required: false }),
+      cardsPerParent: t.arg.int({ required: true }),
+      locale: t.arg.string({ required: true }),
+      languageSlug: t.arg.string({ required: true }),
+      after: t.arg.string({ required: false }),
+      excludedIds: t.arg.stringList({ required: false }),
+      excludedSlugs: t.arg.stringList({ required: false }),
+    },
+    resolve: async (_root, args, ctx) => {
+      try {
+        return await ctx.services.video.getWatchCollectionFeed({
+          first: args.first,
+          cardsPerParent: args.cardsPerParent,
+          locale: args.locale,
+          languageSlug: args.languageSlug,
+          after: args.after,
+          excludedIds: args.excludedIds ?? [],
+          excludedSlugs: args.excludedSlugs ?? [],
+        })
+      } catch (error) {
+        if (error instanceof VideoLookupValidationErrorClass) {
+          throw new GraphQLError(error.message, {
+            extensions: { code: "BAD_USER_INPUT" },
+          })
+        }
+        throw error
+      }
+    },
+  }),
   watchLanguageInventory: t.field({
     type: WatchLanguageInventoryRef,
     nullable: false,
@@ -1636,6 +1797,23 @@ builder.queryFields((t) => ({
       ctx.services.video.getWatchLanguageInventory({
         languageSlug: args.languageSlug,
         limit: args.limit,
+      }),
+  }),
+  watchCollectionLanguageCounts: t.field({
+    type: [WatchCollectionLanguageCountsRef],
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Batched audio/subtitle language counts for collection slugs. Deliberately separate from `watchLanguageInventory`: the counts are not language-scoped, and a slow aggregate must degrade the /videos availability indicator rather than blank the page. Unknown slugs are omitted from the result; callers must tolerate a short array.",
+    args: {
+      slugs: t.arg.stringList({
+        required: true,
+        description: `Collection slugs. Deduplicated; capped at ${WATCH_COLLECTION_LANGUAGE_COUNTS_MAX_SLUGS} entries.`,
+      }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.video.getWatchCollectionLanguageCounts({
+        slugs: args.slugs,
       }),
   }),
   videosByCoreIds: t.field({

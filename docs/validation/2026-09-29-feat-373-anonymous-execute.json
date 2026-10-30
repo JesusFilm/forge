@@ -1,0 +1,13 @@
+{
+  "mode": "anonymous-execute",
+  "startedAt": "2026-09-28T21:02:16.714746+00:00",
+  "endedAt": "2026-09-28T21:02:23.312195+00:00",
+  "transportElapsedMs": 6597,
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "exitCode": 1,
+  "sqlstates": ["57014"],
+  "statementTimeout": true,
+  "returnedAggregateGroups": 0
+}

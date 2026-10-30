@@ -109,6 +109,7 @@ const MEDIA: CastMedia = {
   title: "JESUS",
   posterUrl: null,
   startPositionSeconds: 30,
+  playbackRate: 1,
 }
 
 let mockCastState: string | null = null

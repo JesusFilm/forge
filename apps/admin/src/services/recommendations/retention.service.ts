@@ -1,0 +1,1214 @@
+import {
+  Prisma,
+  RecommendationRetentionRunStatus,
+  type PrismaClient,
+} from "@prisma/client"
+import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
+import type { RetentionExecutionContext } from "./retention-operation-diagnostics"
+import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
+import { purgeExpiredCompositionEvidence } from "./composition/service"
+import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
+import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
+import {
+  PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE,
+  purgeExpiredPrecomputedGenerationProofs,
+  purgeExpiredPrecomputedGenerations,
+  purgeRetiredGaCaptureArtifacts,
+} from "./precomputed/generation-retention"
+import { RecommendationConflictError, RecommendationInputError } from "./errors"
+import { lockRetentionRoots } from "./retention-locks"
+import {
+  createRetentionPhaseRecorder,
+  formatRetentionPhaseFailureLog,
+  retentionDiagnosticLogLimiter,
+  type RetentionPhaseLabel,
+  type RetentionPhaseTiming,
+} from "./retention-phase-diagnostics"
+
+export const RECOMMENDATION_RETENTION_BATCH_SIZE = 100
+// Exposures are independent, flat rows with no request/episode descendants.
+// Keep their page bounded separately so one daily exposure cohort does not
+// require one complete multi-phase retention attempt per 100 card facts.
+export const WATCH_EXPOSURE_RETENTION_PAGE_SIZE = 1_000
+export const RECOMMENDATION_RETENTION_MAX_BATCH_SIZE = 5_000
+export const RECOMMENDATION_RETENTION_RUN_DAYS = 90
+export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
+export type RecommendationRetentionMode = "scheduled" | "stored-expiry-only"
+const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
+const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
+// An admitted phase may still exhaust the deadline; that remains a failure.
+const RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS = 750
+// Only the ledger can be finalized after a pre-work yield. No cleanup runs here.
+const RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS = 1_000
+const RECOMMENDATION_RETENTION_YIELD_LEDGER_MAX_WAIT_MS = 500
+const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 25
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS = 5
+const RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS = 3_000
+class RetentionPhaseBusy extends RecommendationConflictError {}
+class RetentionBudgetYield extends Error {}
+
+export type RecommendationPurgeResult = Readonly<{
+  status: "succeeded" | "skipped" | "yielded"
+  runId: string
+  rootsDeleted: number
+  rowCounts: Record<string, number>
+  oldestExpiredAtAfter: string | null
+  overdueAfterRun: boolean | null
+  batchLimitReached: boolean
+  continuationRequired?: boolean
+}>
+
+function hoursBefore(now: Date, hours: number): Date {
+  return new Date(now.getTime() - hours * 60 * 60 * 1000)
+}
+
+function daysAfter(now: Date, days: number): Date {
+  return new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+}
+
+async function countRequestChildren(
+  tx: Prisma.TransactionClient,
+  requestIds: string[],
+): Promise<Record<string, number>> {
+  if (requestIds.length === 0) return {}
+  const where = { requestId: { in: requestIds } }
+  const [
+    items,
+    rendered,
+    impressions,
+    selections,
+    episodes,
+    playbackFacts,
+    outcomes,
+    contentActions,
+    eligibilityDecisions,
+    audits,
+    conflicts,
+    submissionBudgets,
+    candidateRuns,
+    candidateStageEvidence,
+    promotionSlateFences,
+    traceAccessLinksCleared,
+  ] = await Promise.all([
+    tx.recommendationServedItem.count({ where }),
+    tx.recommendationRenderedFact.count({ where }),
+    tx.recommendationImpression.count({ where }),
+    tx.recommendationSelection.count({ where }),
+    tx.recommendationPlaybackEpisode.count({ where }),
+    tx.recommendationPlaybackFact.count({ where }),
+    tx.recommendationOutcomeRevision.count({ where }),
+    tx.recommendationContentAction.count({ where }),
+    // Split the relation OR into request-led branches to give PostgreSQL a
+    // bounded count path. UNION keeps once-per-decision accounting.
+    tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+      SELECT count(*) AS count FROM (
+        SELECT decision.id FROM recommendation_outcome_revision outcome
+        JOIN recommendation_eligibility_decision decision
+          ON decision.outcome_id = outcome.id
+        WHERE outcome.request_id = ANY(${requestIds}::text[])
+        UNION
+        SELECT decision.id FROM recommendation_content_action action
+        JOIN recommendation_eligibility_decision decision
+          ON decision.content_action_id = action.id
+        WHERE action.request_id = ANY(${requestIds}::text[])
+      ) counted
+    `),
+    tx.recommendationEvidenceAudit.count({ where }),
+    tx.recommendationConflict.count({ where }),
+    tx.recommendationCapabilitySubmissionBudget.count({ where }),
+    tx.recommendationCandidateRun.count({ where }),
+    tx.recommendationCandidateStageEvidence.count({
+      where: { run: { is: { requestId: { in: requestIds } } } },
+    }),
+    tx.recommendationPromotionSlateFence.count({ where }),
+    tx.recommendationTraceAccessAudit.count({ where }),
+  ])
+  return {
+    requests: requestIds.length,
+    items,
+    rendered,
+    impressions,
+    selections,
+    episodes,
+    playbackFacts,
+    outcomes,
+    contentActions,
+    eligibilityDecisions: Number(eligibilityDecisions[0]?.count ?? 0),
+    audits,
+    conflicts,
+    submissionBudgets,
+    candidateRuns,
+    candidateStageEvidence,
+    promotionSlateFences,
+    traceAccessLinksCleared,
+  }
+}
+
+/**
+ * Resumable bounded phases reacquire the same advisory transaction lock on one
+ * connection. No lock survives a phase commit. Individual request
+ * deletion stays atomic; partial failure retains counts without a success watermark.
+ */
+export async function purgeExpiredRecommendationRequests(
+  prisma: PrismaClient,
+  now: Date = new Date(),
+  batchSize = RECOMMENDATION_RETENTION_BATCH_SIZE,
+  mode: RecommendationRetentionMode = "scheduled",
+  _executionContext: RetentionExecutionContext = "unspecified",
+): Promise<RecommendationPurgeResult> {
+  if (
+    !Number.isInteger(batchSize) ||
+    batchSize < 1 ||
+    batchSize > RECOMMENDATION_RETENTION_MAX_BATCH_SIZE
+  ) {
+    throw new RecommendationInputError(
+      "Recommendation retention batch size is invalid",
+    )
+  }
+  const run = await prisma.recommendationRetentionRun.create({
+    data: {
+      status: RecommendationRetentionRunStatus.RUNNING,
+      batchSize,
+      expiresAt: daysAfter(now, RECOMMENDATION_RETENTION_RUN_DAYS),
+    },
+  })
+
+  const rowCounts: Record<string, number> = {}
+  const deadline = Date.now() + RECOMMENDATION_RETENTION_TIMEOUT_MS
+  const diagnostics = createRetentionPhaseRecorder()
+  let phaseOrdinal = 0
+  let lastCompletedRootPhaseMs = 0
+  const phase = async <T>(
+    label: RetentionPhaseLabel,
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { terminal?: boolean } = {},
+  ): Promise<T> => {
+    // Only acknowledged root work informs the next root chunk. This is a
+    // lower bound from the previous observation, not a prediction that a
+    // different (possibly more expensive) chunk will fit.
+    const minimumAdmissionMs = Math.max(
+      RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS,
+      label === "delete_request_roots" ? lastCompletedRootPhaseMs : 0,
+    )
+    const remaining = deadline - Date.now()
+    const started = performance.now()
+    const timing: RetentionPhaseTiming = {
+      label,
+      ordinal: ++phaseOrdinal,
+      stage: "admission",
+      remainingBudgetMs: remaining,
+      admittedBudgetMs: null,
+      acquisitionMs: null,
+      advisoryLockMs: null,
+      configurationMs: null,
+      operationMs: null,
+      counterUpdateMs: null,
+      commitAcknowledgementMs: null,
+      incompleteStageElapsedMs: null,
+      totalMs: null,
+    }
+    if (!options.terminal && remaining <= minimumAdmissionMs) {
+      diagnostics.failed(timing)
+      throw new RetentionBudgetYield()
+    }
+    if (remaining <= 0) {
+      diagnostics.failed(timing, options.terminal)
+      throw new RecommendationConflictError(
+        "Recommendation retention batch deadline exceeded",
+      )
+    }
+    const before = { ...rowCounts }
+    timing.stage = "acquire"
+    let stageStarted = performance.now()
+    try {
+      const result = await prisma.$transaction(
+        async (tx) => {
+          timing.acquisitionMs = performance.now() - stageStarted
+          timing.stage = "post_acquisition_admission"
+          stageStarted = performance.now()
+          // Acquisition can consume the budget before even the lock query.
+          if (!options.terminal && deadline - Date.now() <= minimumAdmissionMs)
+            throw new RetentionBudgetYield()
+          timing.stage = "advisory_lock"
+          stageStarted = performance.now()
+          const [lock] = await tx.$queryRaw<
+            Array<{ locked: boolean }>
+          >(Prisma.sql`
+          SELECT pg_try_advisory_xact_lock(${RECOMMENDATION_RETENTION_LOCK_ID}) AS locked
+        `)
+          timing.advisoryLockMs = performance.now() - stageStarted
+          timing.stage = "post_lock_admission"
+          stageStarted = performance.now()
+          if (!lock?.locked)
+            throw new RetentionPhaseBusy(
+              "Recommendation retention phase lock not acquired",
+            )
+          const admittedRemaining = deadline - Date.now()
+          timing.admittedBudgetMs = admittedRemaining
+          if (!options.terminal && admittedRemaining <= minimumAdmissionMs)
+            throw new RetentionBudgetYield()
+          if (admittedRemaining <= 0)
+            throw new RecommendationConflictError(
+              "Recommendation retention batch deadline exceeded",
+            )
+          timing.stage = "configure_timeout"
+          stageStarted = performance.now()
+          await tx.$queryRaw(
+            Prisma.sql`SELECT set_config('statement_timeout', ${String(admittedRemaining)}, true), set_config('transaction_timeout', ${String(admittedRemaining)}, true)`,
+          )
+          timing.configurationMs = performance.now() - stageStarted
+
+          timing.stage = "post_configuration_admission"
+          stageStarted = performance.now()
+          if (!options.terminal && deadline - Date.now() <= minimumAdmissionMs)
+            throw new RetentionBudgetYield()
+
+          timing.stage = "operation"
+          stageStarted = performance.now()
+          const result = await operation(tx)
+          timing.operationMs = performance.now() - stageStarted
+          timing.stage = "counter_update"
+          stageStarted = performance.now()
+          await tx.recommendationRetentionRun.update({
+            where: { id: run.id },
+            data: {
+              rootsDeleted: rowCounts.requests ?? 0,
+              rowCounts,
+            },
+          })
+          timing.counterUpdateMs = performance.now() - stageStarted
+          timing.stage = "commit_acknowledgement"
+          stageStarted = performance.now()
+          return result
+        },
+        { timeout: remaining, maxWait: remaining },
+      )
+      timing.commitAcknowledgementMs = performance.now() - stageStarted
+      timing.stage = "complete"
+      timing.totalMs = performance.now() - started
+      diagnostics.completed(timing, options.terminal)
+      if (label === "delete_request_roots")
+        lastCompletedRootPhaseMs = timing.totalMs
+      return result
+    } catch (error) {
+      timing.incompleteStageElapsedMs = performance.now() - stageStarted
+      timing.totalMs = performance.now() - started
+      diagnostics.failed(timing, options.terminal)
+      for (const key of Object.keys(rowCounts)) delete rowCounts[key]
+      Object.assign(rowCounts, before)
+      throw error
+    }
+  }
+  const countPhase = (
+    key: RetentionPhaseLabel,
+    operation: (tx: Prisma.TransactionClient) => Promise<{ count: number }>,
+  ) =>
+    phase(key, async (tx) => {
+      rowCounts[key] = (await operation(tx)).count
+    })
+  try {
+    const roots = await phase("select_request_roots", (tx) =>
+      tx.recommendationRequest.findMany({
+        where: { expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      }),
+    )
+    const requestIds = roots.map((root) => root.id)
+    // Private Watch test visits are independent roots: empty deliveries have
+    // no recommendation_request to carry them through ordinary request purge.
+    const precomputedPurge = await phase(
+      "precomputed_visit_roots",
+      async (tx) => {
+        const result = await purgeExpiredPrecomputedVisitRoots(
+          tx,
+          now,
+          batchSize,
+          requestIds,
+          mode === "stored-expiry-only",
+        )
+        rowCounts.expiredPrecomputedVisits = result.visitsDeleted
+        rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
+        rowCounts.expiredPrecomputedControlEvents = result.controlEventsDeleted
+        rowCounts.expiredPrecomputedBaselineVisits =
+          result.baselineVisitsDeleted
+        rowCounts.expiredPrecomputedBaselineRuns = result.baselineRunsDeleted
+        rowCounts.expiredPrecomputedLaunchCapacityReceipts =
+          result.launchCapacityReceiptsDeleted
+        return result
+      },
+    )
+    // One generation at a time; a large terminal graph enters the non-servable
+    // retiring state and drains bounded child pages on subsequent passes.
+    const precomputedGenerationPurge =
+      mode === "stored-expiry-only"
+        ? await phase("precomputed_generation_proofs", async (tx) => {
+            const proofsDeleted = await purgeExpiredPrecomputedGenerationProofs(
+              tx,
+              now,
+            )
+            rowCounts.precomputedGenerationProofsExpired = proofsDeleted
+            return {
+              pageFull: proofsDeleted === PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE,
+            }
+          })
+        : await phase("precomputed_generations", async (tx) => {
+            const result = await purgeExpiredPrecomputedGenerations(tx, now, 1)
+            rowCounts.expiredPrecomputedGenerations = result.generationsDeleted
+            rowCounts.abandonedPrecomputedGenerations =
+              result.generationsAbandoned
+            rowCounts.retiringPrecomputedGenerations =
+              result.generationsRetiring
+            rowCounts.precomputedGenerationFinalSources =
+              result.finalSourcesDeleted
+            rowCounts.precomputedGenerationBuildSources =
+              result.buildSourcesDeleted
+            rowCounts.precomputedGenerationChoices =
+              result.provisionalChoicesDeleted + result.provisionalChoicesPruned
+            rowCounts.precomputedGenerationModelCalls = result.modelCallsDeleted
+            rowCounts.precomputedGenerationHistoryCalls =
+              result.historyCallsDeleted
+            rowCounts.precomputedGenerationCheckpointsCleared =
+              result.checkpointsCleared
+            rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
+            return result
+          })
+    // Object-store cleanup is post-commit and retryable. An S3 outage must
+    // never stall the ordinary request/visit retention phases below.
+    if (mode === "scheduled") {
+      try {
+        const gaCapturePurge = await purgeRetiredGaCaptureArtifacts(
+          prisma,
+          now,
+          Math.min(batchSize, 10),
+        )
+        rowCounts.expiredPrecomputedGaCaptureArtifacts = gaCapturePurge.deleted
+        rowCounts.deferredPrecomputedGaCaptureCleanup = 0
+      } catch {
+        rowCounts.expiredPrecomputedGaCaptureArtifacts = 0
+        rowCounts.deferredPrecomputedGaCaptureCleanup = 1
+      }
+    }
+    await phase("composition_evidence", async (tx) => {
+      const removed = await purgeExpiredCompositionEvidence(tx, now)
+      rowCounts.expiredCompositionObservations = removed.observations
+      rowCounts.expiredCompositionProtocols = removed.protocols
+    })
+    await phase("owner_releases", async (tx) => {
+      rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
+    })
+    const expiredWatchExposurePageSize = await phase(
+      "watch_exposure_page",
+      async (tx) => {
+        const exposures = await tx.watchSurfaceExposure.findMany({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
+          select: { id: true },
+        })
+        const deleted = await tx.watchSurfaceExposure.deleteMany({
+          where: { id: { in: exposures.map(({ id }) => id) } },
+        })
+        rowCounts.expiredWatchSurfaceExposures = deleted.count
+        return exposures.length
+      },
+    )
+    const directActions = await phase("select_direct_actions", (tx) =>
+      tx.recommendationContentAction.findMany({
+        where: { requestId: null, expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      }),
+    )
+    const directActionIds = directActions.map((action) => action.id)
+    // Preserve per-episode dependency admission and atomic deletion, but cap
+    // this pre-root phase independently. Process the original five-episode
+    // floor, then reserve time for requests/tail before admitting more work.
+    const standaloneEpisodePageSize = Math.min(
+      batchSize,
+      RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE,
+    )
+    const standaloneEpisodes = await phase("select_standalone_episodes", (tx) =>
+      tx.recommendationPlaybackEpisode.findMany({
+        where: { requestId: null, expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: standaloneEpisodePageSize,
+        select: { id: true },
+      }),
+    )
+    const standaloneEpisodeIds = standaloneEpisodes.map(({ id }) => id)
+    rowCounts.expiredStandalonePlaybackFacts = 0
+    rowCounts.expiredStandaloneOutcomes = 0
+    rowCounts.expiredStandaloneEpisodes = 0
+    let standaloneEpisodesProcessed = 0
+    for (const episodeId of standaloneEpisodeIds) {
+      if (
+        standaloneEpisodesProcessed >=
+          RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS &&
+        deadline - Date.now() <=
+          RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS
+      )
+        break
+      await phase("delete_standalone_episode", async (tx) => {
+        await lockRetentionRoots(tx, { episodeIds: [episodeId] })
+        const current = await tx.recommendationPlaybackEpisode.findFirst({
+          where: { id: episodeId, requestId: null, expiresAt: { lte: now } },
+          select: { id: true },
+        })
+        if (!current) return
+        rowCounts.expiredStandalonePlaybackFacts +=
+          await tx.recommendationPlaybackFact.count({ where: { episodeId } })
+        rowCounts.expiredStandaloneOutcomes +=
+          await tx.recommendationOutcomeRevision.count({ where: { episodeId } })
+        rowCounts.expiredStandaloneEpisodes += (
+          await tx.recommendationPlaybackEpisode.deleteMany({
+            where: { id: episodeId },
+          })
+        ).count
+      })
+      standaloneEpisodesProcessed += 1
+    }
+    await phase("delete_direct_actions", async (tx) => {
+      const actions = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id FROM recommendation_content_action WHERE id = ANY(${directActionIds}::text[])
+          AND request_id IS NULL AND expires_at <= ${now} ORDER BY id FOR UPDATE
+      `)
+      const admittedIds = actions.map(({ id }) => id)
+      rowCounts.expiredEligibilityDecisions =
+        admittedIds.length === 0
+          ? 0
+          : await tx.recommendationEligibilityDecision.count({
+              where: { contentActionId: { in: admittedIds } },
+            })
+      rowCounts.expiredContentActions = (
+        await tx.recommendationContentAction.deleteMany({
+          where: { id: { in: admittedIds } },
+        })
+      ).count
+    })
+    for (
+      let start = 0;
+      start < requestIds.length;
+      start += RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE
+    ) {
+      const selected = requestIds.slice(
+        start,
+        start + RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE,
+      )
+      await phase("delete_request_roots", async (tx) => {
+        await lockRetentionRoots(tx, { requestIds: selected })
+        const current = await tx.recommendationRequest.findMany({
+          where: { id: { in: selected }, expiresAt: { lte: now } },
+          select: { id: true },
+        })
+        const currentIds = current.map(({ id }) => id)
+        if (currentIds.length === 0) return
+        const unarchivedLinks =
+          await tx.recommendationPrecomputedVisitRequest.count({
+            where: { requestId: { in: currentIds } },
+          })
+        if (unarchivedLinks > 0)
+          throw new RecommendationConflictError(
+            "Expired request still has unarchived private visit evidence",
+          )
+        const children = await countRequestChildren(tx, currentIds)
+        await tx.recommendationContentAction.deleteMany({
+          where: { requestId: { in: currentIds }, expiresAt: { lte: now } },
+        })
+        const removed = await tx.recommendationRequest.deleteMany({
+          where: { id: { in: currentIds } },
+        })
+        if (removed.count > 0)
+          for (const [key, count] of Object.entries(children))
+            rowCounts[key] = (rowCounts[key] ?? 0) + count
+      })
+    }
+    await phase("trace_access_audit", (tx) =>
+      tx.recommendationTraceAccessAudit.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    const expiredViewers = await phase("select_viewers", (tx) =>
+      tx.recommendationViewer.findMany({
+        where: { expiresAt: { lte: now } },
+        take: batchSize,
+        orderBy: { expiresAt: "asc" },
+        select: { tokenDigest: true },
+      }),
+    )
+    await phase("delete_viewers", async (tx) => {
+      // A viewer expiry ends the push link in the same transaction. The
+      // registration keeps the phone's push address; only the digest goes.
+      const pushUnlink = await unlinkPushViewerIdentities(
+        tx,
+        expiredViewers.map((viewer) => viewer.tokenDigest),
+      )
+      rowCounts.pushRegistrationsUnlinked = pushUnlink.registrationsUnlinked
+      rowCounts.pushOpensDeleted = pushUnlink.opensDeleted
+      rowCounts.pushAttributionsDeleted = pushUnlink.attributionsDeleted
+      rowCounts.expiredViewers = (
+        await tx.recommendationViewer.deleteMany({
+          where: {
+            tokenDigest: {
+              in: expiredViewers.map((viewer) => viewer.tokenDigest),
+            },
+          },
+        })
+      ).count
+    })
+    await countPhase("expiredControlEvaluations", (tx) =>
+      tx.recommendationControlEvaluation.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    const expiredShadowEvaluations = await phase(
+      "select_shadow_evaluations",
+      (tx) =>
+        tx.recommendationShadowEvaluation.findMany({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        }),
+    )
+    rowCounts.expiredShadowEvaluations = 0
+    for (const evaluation of expiredShadowEvaluations) {
+      await phase("delete_shadow_evaluation", async (tx) => {
+        // Completion owns graph/protocol before its terminal evaluation write.
+        // Block publication at profile/request roots, then take that same order.
+        await lockRetentionRoots(tx, { evaluationIds: [evaluation.id] })
+        rowCounts.expiredShadowEvaluations += (
+          await tx.recommendationShadowEvaluation.deleteMany({
+            where: { id: evaluation.id, expiresAt: { lte: now } },
+          })
+        ).count
+      })
+    }
+    await countPhase("expiredPromotionEvents", (tx) =>
+      tx.recommendationPromotionEvent.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    await countPhase("expiredPromotionRuns", (tx) =>
+      tx.recommendationPromotionRun.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    await countPhase("expiredPromotionApprovals", (tx) =>
+      tx.recommendationPromotionApproval.deleteMany({
+        where: {
+          expiresAt: { lte: now },
+          pointers: { none: {} },
+          runs: { none: {} },
+        },
+      }),
+    )
+    await countPhase("expiredExperimentEvaluations", (tx) =>
+      tx.recommendationExperimentEvaluation.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    await countPhase("expiredExperimentEvaluationRuns", (tx) =>
+      tx.recommendationExperimentEvaluationRun.deleteMany({
+        where: { expiresAt: { lte: now } },
+      }),
+    )
+    const expiredAssignments = await phase(
+      "select_experiment_assignments",
+      (tx) =>
+        tx.recommendationExperimentAssignment.findMany({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          take: batchSize,
+          select: { id: true },
+        }),
+    )
+    await phase("delete_experiment_assignments", async (tx) => {
+      await lockRetentionRoots(tx, {
+        assignmentIds: expiredAssignments.map(({ id }) => id),
+      })
+      rowCounts.expiredExperimentAssignments = (
+        await tx.recommendationExperimentAssignment.deleteMany({
+          where: {
+            id: { in: expiredAssignments.map(({ id }) => id) },
+            expiresAt: { lte: now },
+          },
+        })
+      ).count
+    })
+    const expiredExperiments = await phase("select_experiments", (tx) =>
+      tx.recommendationExperiment.findMany({
+        where: { expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+        take: batchSize,
+        select: { id: true },
+      }),
+    )
+    rowCounts.expiredExperiments = 0
+    for (const experiment of expiredExperiments) {
+      await phase("delete_experiment", async (tx) => {
+        await lockRetentionRoots(tx, { experimentIds: [experiment.id] })
+        rowCounts.expiredExperiments += (
+          await tx.recommendationExperiment.deleteMany({
+            where: { id: experiment.id, expiresAt: { lte: now } },
+          })
+        ).count
+      })
+    }
+    await phase("retention_run_expiry", (tx) =>
+      tx.recommendationRetentionRun.deleteMany({
+        where: { id: { not: run.id }, expiresAt: { lte: now } },
+      }),
+    )
+    const [
+      oldestExpiredRoot,
+      oldestExpiredPrecomputedVisit,
+      oldestExpiredPrecomputedBaselineVisit,
+      oldestExpiredPrecomputedExperiment,
+      oldestExpiredPrecomputedBaselineRun,
+      oldestExpiredWatchExposure,
+      oldestExpiredAction,
+      oldestExpiredDecision,
+      oldestExpiredControlEvaluation,
+      oldestExpiredShadowEvaluation,
+      oldestExpiredPromotionEvent,
+      oldestExpiredPromotionRun,
+      oldestExpiredPromotionApproval,
+      oldestExpiredExperimentEvaluation,
+      oldestExpiredExperimentEvaluationRun,
+      oldestExpiredExperimentAssignment,
+      oldestExpiredExperiment,
+      oldestExpiredStandaloneEpisode,
+      oldestExpiredCompositionObservation,
+      oldestExpiredCompositionProtocol,
+      oldestExpiredOwnerRelease,
+    ] = await phase("oldest_expired_scan", (tx) =>
+      Promise.all([
+        tx.recommendationRequest.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedBaselineVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedExperiment.findFirst({
+          where: { expiresAt: { lte: now }, visits: { none: {} } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedBaselineRun.findFirst({
+          where: {
+            expiresAt: { lte: now },
+            enabled: false,
+            visits: { none: {} },
+          },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.watchSurfaceExposure.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationContentAction.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationEligibilityDecision.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationControlEvaluation.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationShadowEvaluation.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPromotionEvent.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPromotionRun.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPromotionApproval.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationExperimentEvaluation.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationExperimentEvaluationRun.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationExperimentAssignment.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationExperiment.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPlaybackEpisode.findFirst({
+          where: { requestId: null, expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationCompositionObservation.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: { expiresAt: "asc" },
+          select: { expiresAt: true },
+        }),
+        tx.recommendationCompositionProtocol.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: { expiresAt: "asc" },
+          select: { expiresAt: true },
+        }),
+        tx.recommendationOwnerRelease.findFirst({
+          where: {
+            expiresAt: { lte: now },
+            pointers: { none: {} },
+          },
+          orderBy: { expiresAt: "asc" },
+          select: { expiresAt: true },
+        }),
+      ]),
+    )
+    const oldestExpiredAt = earliestDate([
+      oldestExpiredRoot?.expiresAt,
+      oldestExpiredPrecomputedVisit?.expiresAt,
+      oldestExpiredPrecomputedBaselineVisit?.expiresAt,
+      oldestExpiredPrecomputedExperiment?.expiresAt,
+      oldestExpiredPrecomputedBaselineRun?.expiresAt,
+      oldestExpiredWatchExposure?.expiresAt,
+      oldestExpiredAction?.expiresAt,
+      oldestExpiredDecision?.expiresAt,
+      oldestExpiredControlEvaluation?.expiresAt,
+      oldestExpiredShadowEvaluation?.expiresAt,
+      oldestExpiredPromotionEvent?.expiresAt,
+      oldestExpiredPromotionRun?.expiresAt,
+      oldestExpiredPromotionApproval?.expiresAt,
+      oldestExpiredExperimentEvaluation?.expiresAt,
+      oldestExpiredExperimentEvaluationRun?.expiresAt,
+      oldestExpiredExperimentAssignment?.expiresAt,
+      oldestExpiredExperiment?.expiresAt,
+      oldestExpiredStandaloneEpisode?.expiresAt,
+      oldestExpiredCompositionObservation?.expiresAt,
+      oldestExpiredCompositionProtocol?.expiresAt,
+      oldestExpiredOwnerRelease?.expiresAt,
+    ])
+    const overdueAfterRun =
+      oldestExpiredAt != null &&
+      oldestExpiredAt <=
+        hoursBefore(now, RECOMMENDATION_RETENTION_PROPAGATION_HOURS)
+    // A full selection may leave more expired roots. An exact-size batch
+    // causes one harmless empty follow-up; no additional database scan is
+    // needed to keep younger expired backlog moving before it is overdue.
+    const batchLimitReached =
+      oldestExpiredCompositionObservation != null ||
+      oldestExpiredCompositionProtocol != null ||
+      oldestExpiredOwnerRelease != null ||
+      requestIds.length === batchSize ||
+      precomputedPurge.visitPageFull ||
+      precomputedPurge.experimentPageFull ||
+      precomputedPurge.controlEventPageFull ||
+      precomputedPurge.launchCapacityReceiptPageFull ||
+      precomputedPurge.baselineVisitPageFull ||
+      precomputedPurge.baselineFinalizationPageFull ||
+      precomputedPurge.baselineRunPageFull ||
+      precomputedGenerationPurge.pageFull ||
+      expiredWatchExposurePageSize === WATCH_EXPOSURE_RETENTION_PAGE_SIZE ||
+      directActionIds.length === batchSize ||
+      standaloneEpisodesProcessed < standaloneEpisodeIds.length ||
+      standaloneEpisodeIds.length === standaloneEpisodePageSize ||
+      expiredViewers.length === batchSize ||
+      expiredShadowEvaluations.length === batchSize ||
+      expiredAssignments.length === batchSize ||
+      expiredExperiments.length === batchSize
+    await phase(
+      "terminal_success",
+      (tx) =>
+        tx.recommendationRetentionRun.update({
+          where: { id: run.id },
+          data: {
+            status: RecommendationRetentionRunStatus.SUCCEEDED,
+            rootsDeleted: rowCounts.requests ?? 0,
+            rowCounts: rowCounts satisfies Prisma.InputJsonValue,
+            oldestExpiredAtAfter: oldestExpiredAt,
+            reasonCode: overdueAfterRun ? "overdue_roots_remain" : null,
+            completedAt: now,
+          },
+        }),
+      { terminal: true },
+    )
+    return {
+      status: "succeeded",
+      runId: run.id,
+      rootsDeleted: rowCounts.requests ?? 0,
+      rowCounts,
+      oldestExpiredAtAfter: oldestExpiredAt?.toISOString() ?? null,
+      overdueAfterRun,
+      batchLimitReached,
+    }
+  } catch (error) {
+    let failure = error
+    let terminalFailure: unknown
+    if (failure instanceof RetentionBudgetYield) {
+      try {
+        // Every earlier phase committed its counters with its own mutations.
+        // The cleanup deadline may already have passed. A fresh, bounded
+        // ledger-only transaction confirms SKIPPED without starting work,
+        // taking the cleanup lock, or rewriting committed counters.
+        const terminalStarted = performance.now()
+        const terminalTiming: RetentionPhaseTiming = {
+          label: "terminal_budget_yield",
+          ordinal: ++phaseOrdinal,
+          stage: "acquire",
+          remainingBudgetMs: deadline - Date.now(),
+          admittedBudgetMs: RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS,
+          acquisitionMs: null,
+          advisoryLockMs: null,
+          configurationMs: null,
+          operationMs: null,
+          counterUpdateMs: null,
+          commitAcknowledgementMs: null,
+          incompleteStageElapsedMs: null,
+          totalMs: null,
+        }
+        let stageStarted = terminalStarted
+        let durable: {
+          status: RecommendationRetentionRunStatus
+          rootsDeleted: number
+          rowCounts: Record<string, number>
+        }
+        try {
+          durable = await prisma.$transaction(
+            async (tx) => {
+              terminalTiming.acquisitionMs = performance.now() - stageStarted
+              terminalTiming.stage = "configure_timeout"
+              stageStarted = performance.now()
+              await tx.$queryRaw(
+                Prisma.sql`SELECT set_config('statement_timeout', ${String(RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS)}, true), set_config('transaction_timeout', ${String(RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS)}, true)`,
+              )
+              terminalTiming.configurationMs = performance.now() - stageStarted
+              terminalTiming.stage = "operation"
+              stageStarted = performance.now()
+              const changed = await tx.recommendationRetentionRun.updateMany({
+                where: {
+                  id: run.id,
+                  status: RecommendationRetentionRunStatus.RUNNING,
+                },
+                data: {
+                  status: RecommendationRetentionRunStatus.SKIPPED,
+                  oldestExpiredAtAfter: null,
+                  reasonCode: "budget_yield",
+                  completedAt: now,
+                },
+              })
+              if (changed.count !== 1)
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield ledger was not running",
+                )
+              const result =
+                await tx.recommendationRetentionRun.findUniqueOrThrow({
+                  where: { id: run.id },
+                  select: {
+                    status: true,
+                    rootsDeleted: true,
+                    rowCounts: true,
+                  },
+                })
+              if (
+                result.status !== RecommendationRetentionRunStatus.SKIPPED ||
+                !Number.isSafeInteger(result.rootsDeleted) ||
+                result.rootsDeleted < 0 ||
+                result.rowCounts == null ||
+                typeof result.rowCounts !== "object" ||
+                Array.isArray(result.rowCounts) ||
+                Object.values(result.rowCounts).some(
+                  (value) =>
+                    typeof value !== "number" ||
+                    !Number.isSafeInteger(value) ||
+                    value < 0,
+                )
+              )
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield ledger was not confirmed",
+                )
+              const committedCounts = Object.fromEntries(
+                Object.entries(result.rowCounts) as Array<[string, number]>,
+              )
+              if ((committedCounts.requests ?? 0) !== result.rootsDeleted)
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield counters were not confirmed",
+                )
+              terminalTiming.operationMs = performance.now() - stageStarted
+              terminalTiming.stage = "commit_acknowledgement"
+              stageStarted = performance.now()
+              return { ...result, rowCounts: committedCounts }
+            },
+            {
+              timeout: RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS,
+              maxWait: RECOMMENDATION_RETENTION_YIELD_LEDGER_MAX_WAIT_MS,
+            },
+          )
+          terminalTiming.commitAcknowledgementMs =
+            performance.now() - stageStarted
+          terminalTiming.stage = "complete"
+          terminalTiming.totalMs = performance.now() - terminalStarted
+          diagnostics.completed(terminalTiming, true)
+        } catch (terminalError) {
+          terminalTiming.incompleteStageElapsedMs =
+            performance.now() - stageStarted
+          terminalTiming.totalMs = performance.now() - terminalStarted
+          diagnostics.failed(terminalTiming, true)
+          throw terminalError
+        }
+        // The remaining backlog is deliberately unknown; continuation is
+        // required even if no page-selection cap was reached.
+        return {
+          status: "yielded",
+          runId: run.id,
+          rootsDeleted: durable.rootsDeleted,
+          rowCounts: durable.rowCounts,
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: null,
+          batchLimitReached: true,
+          continuationRequired: true,
+        }
+      } catch (terminalError) {
+        failure = terminalError
+        terminalFailure = terminalError
+      }
+    }
+    const lockBusy = failure instanceof RetentionPhaseBusy
+    const fallbackStarted = performance.now()
+    const emitFailure = (
+      fallbackError: unknown | undefined,
+      outcome: "succeeded" | "failed" | "not_attempted",
+    ) => {
+      if (lockBusy && outcome === "succeeded") return
+      try {
+        const permit = retentionDiagnosticLogLimiter.allow()
+        if (!permit.emit) return
+        console.error(
+          formatRetentionPhaseFailureLog({
+            ...diagnostics.diagnostic(
+              mode,
+              {
+                phase: error,
+                terminal: terminalFailure,
+                fallbackLedger: fallbackError,
+              },
+              {
+                outcome,
+                elapsedMs: performance.now() - fallbackStarted,
+              },
+            ),
+            suppressedPriorMinute: permit.suppressedPriorMinute,
+          }),
+        )
+      } catch {
+        // Diagnostics cannot replace the original failure or affect cleanup.
+      }
+    }
+    let changed
+    try {
+      changed = await prisma.recommendationRetentionRun.updateMany({
+        where: {
+          id: run.id,
+          status: RecommendationRetentionRunStatus.RUNNING,
+        },
+        data: {
+          status: lockBusy
+            ? RecommendationRetentionRunStatus.SKIPPED
+            : RecommendationRetentionRunStatus.FAILED,
+          // Counts are committed with each mutation phase. An uncertain COMMIT
+          // acknowledgement must never overwrite them with a local snapshot.
+          reasonCode: lockBusy
+            ? "lock_not_acquired"
+            : failure instanceof Error
+              ? failure.constructor.name.slice(0, 64)
+              : "UnknownError",
+          completedAt: now,
+        },
+      })
+    } catch (terminalError) {
+      emitFailure(terminalError, "failed")
+      throw terminalError
+    }
+    if (changed.count !== 1) {
+      // A terminal write may have committed before its acknowledgement was
+      // lost. Observe the durable state, but never overwrite or claim it here.
+      try {
+        await prisma.recommendationRetentionRun.findUnique({
+          where: { id: run.id },
+          select: { status: true, rootsDeleted: true, rowCounts: true },
+        })
+      } catch (readError) {
+        emitFailure(readError, "failed")
+        throw readError
+      }
+      emitFailure(undefined, "not_attempted")
+      throw failure
+    }
+    if (lockBusy) {
+      let durable
+      try {
+        durable = await prisma.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: run.id },
+          select: { rootsDeleted: true, rowCounts: true },
+        })
+      } catch (readError) {
+        emitFailure(readError, "failed")
+        throw readError
+      }
+      const counts = durable.rowCounts
+      if (counts == null || typeof counts !== "object" || Array.isArray(counts))
+        throw new RecommendationConflictError(
+          "Recommendation retention skip counters were not confirmed",
+        )
+      const committedCounts = Object.fromEntries(
+        Object.entries(counts).filter(
+          (entry): entry is [string, number] => typeof entry[1] === "number",
+        ),
+      )
+      return {
+        status: "skipped",
+        runId: run.id,
+        rootsDeleted: durable.rootsDeleted,
+        rowCounts: committedCounts,
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: false,
+        batchLimitReached: Object.keys(committedCounts).length > 0,
+      }
+    }
+    emitFailure(undefined, "succeeded")
+    throw failure
+  }
+}
+
+export type RecommendationRetentionHealth = Readonly<{
+  healthy: boolean
+  reason: "healthy" | "retention_overdue" | "missing_success_watermark"
+  latestSuccessAt: Date | null
+  oldestOverdueAt: Date | null
+}>
+
+export async function readRecommendationRetentionHealth(
+  prisma: PrismaClient,
+  now: Date = new Date(),
+): Promise<RecommendationRetentionHealth> {
+  const propagationCutoff = hoursBefore(
+    now,
+    RECOMMENDATION_RETENTION_PROPAGATION_HOURS,
+  )
+  const freshnessCutoff = hoursBefore(
+    now,
+    RECOMMENDATION_RETENTION_HEALTH_HOURS,
+  )
+  const [snapshot] = await prisma.$queryRaw<
+    Array<{
+      latestSuccessAt: Date | null
+      oldestOverdueAt: Date | null
+    }>
+  >(Prisma.sql`
+    SELECT
+      (
+        SELECT max(completed_at)
+        FROM recommendation_retention_run
+        WHERE status = 'succeeded'
+      ) AS "latestSuccessAt",
+      LEAST(
+        (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM watch_surface_exposure WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_run
+          WHERE expires_at <= ${propagationCutoff} AND enabled = false
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_baseline_visit AS visit
+              WHERE visit.run_id = recommendation_precomputed_baseline_run.id
+            )),
+        (SELECT min(expires_at) FROM recommendation_precomputed_experiment AS experiment
+          WHERE expires_at <= ${propagationCutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_visit AS visit
+              WHERE visit.experiment_id = experiment.id
+            )),
+        (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_control_evaluation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_shadow_evaluation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_composition_observation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_composition_protocol WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_promotion_event WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_promotion_run WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_promotion_approval WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_experiment_evaluation WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_experiment_evaluation_run WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_experiment_assignment WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_experiment WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_playback_episode WHERE request_id IS NULL AND expires_at <= ${propagationCutoff})
+      ) AS "oldestOverdueAt"
+  `)
+  const latestSuccessAt = snapshot?.latestSuccessAt ?? null
+  const oldestOverdueAt = snapshot?.oldestOverdueAt ?? null
+  if (oldestOverdueAt) {
+    return {
+      healthy: false,
+      reason: "retention_overdue",
+      latestSuccessAt,
+      oldestOverdueAt,
+    }
+  }
+  if (latestSuccessAt == null || latestSuccessAt < freshnessCutoff) {
+    return {
+      healthy: false,
+      reason: "missing_success_watermark",
+      latestSuccessAt,
+      oldestOverdueAt: null,
+    }
+  }
+  return {
+    healthy: true,
+    reason: "healthy",
+    latestSuccessAt,
+    oldestOverdueAt: null,
+  }
+}
+
+function earliestDate(values: Array<Date | null | undefined>): Date | null {
+  return values.reduce<Date | null>((oldest, candidate) => {
+    if (!candidate) return oldest
+    return !oldest || candidate < oldest ? candidate : oldest
+  }, null)
+}

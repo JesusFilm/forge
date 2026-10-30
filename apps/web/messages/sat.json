@@ -39,9 +39,8 @@
     "posterAlt": "वीडियो पोस्टर",
     "noDownloads": "ए वीडियो ला़गित् कुनु डाउनलोड बाय ना़वाबेना़।",
     "fileSizeLabel": "फाइल आकार चुन मे",
-    "termsAgreementPrefix": "मिन मान गोदिक् मे ",
+    "termsAgreement": "इञ <link>बेभार नियम</link> रे राजी काना",
     "termsOfUse": "बेभार नियम",
-    "termsAgreementSuffix": "",
     "close": "बोंद मे",
     "download": "डाउनलोड मे",
     "authRequiredTitle": "ए वीडियो डाउनलोड करावेना?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook रे साझा मे (ए बिल्ड रे बाय होकाना)",
     "shareOnX": "X रे साझा मे",
     "shareOnXUnavailable": "X रे साझा मे (ए बिल्ड रे बाय होकाना)",
+    "opensInNewTab": "{label} (नावा टैब रे झिज़ोक् आ)",
     "shareDisabledHint": "साझा ला़गित् प्रकाशित पेज ला़कती आना — ए वीडियो प्रोडक्शन रे आनीत् खन काज होतोना।",
     "shareFormat": "साझा ढांचा",
     "shareLinkTab": "लिंक साझा मे",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडियो ञेरेन बदल मे",
     "home": "JesusFilm होम",
     "closeSearch": "खोज बोंद मे",
-    "submitSearch": "खोज मे"
+    "submitSearch": "खोज मे",
+    "library": "ᱞᱟᱭᱵᱨᱮᱨᱤ"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोज आर ब्राउज़ मे",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "आरो परिणाम लोड बाय होका।",
     "searching": "खोजतोना...",
     "connectionHint": "कृपया आमाक् कनेक्शन जाँच मे आओर फिर कुस्टी मे।",
+    "rateLimitHint": "ᱟᱹᱰᱤ ᱰᱷᱮᱨ ᱱᱮᱦᱚᱨ᱾ ᱢᱤᱫ ᱴᱤᱯᱤᱡ ᱛᱟᱭᱚᱢ ᱫᱚᱦᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ᱾",
     "retrySearch": "खोज फिर कुस्टी मे",
     "retry": "फिर कुस्टी मे",
     "noResults": "\"{query}\" ला़गित् कुनु परिणाम बाय मिला़क्",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” {language} रे खोज मे",
     "inLanguage": "{language} रे",
     "browseByRegion": "प्रदेश अनुसार ब्राउज़ मे",
+    "allVideosOnSinglePage": "जोतो वीडियो मित् पृष्ठ रे",
     "clearLanguages": "साफ मे",
     "queryLanguageDetected": "{language} चिन्हित होकाना",
     "searchInLanguage": "{language} रे खोज मे",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "एक्हन देख मे",
     "tapToUnmute": "आवाज खोले ला़गित् टैप मे",
-    "nextEpisode": "आगेय एपिसोड"
+    "nextEpisode": "आगेय एपिसोड",
+    "audioTranslationCount": "{count, plural, one {# ञेरेन} other {# ञेरेनमाला}}",
+    "subtitleCount": "उपशीर्षक: {count, plural, one {# ञेरेन} other {# ञेरेनमाला}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड होतोना",
@@ -268,14 +273,183 @@
     "couldNotLoad": "प्रतिक्रिया फॉर्म लोड बाय होका।",
     "loadingForm": "प्रतिक्रिया फॉर्म लोड होतोना…",
     "retry": "फिर कुस्टी मे",
-    "openFormShort": "फॉर्म खोल मे",
     "cancel": "बोंद मे",
-    "title": "बीटा प्रतिक्रिया",
-    "description": "कुन काज होकाना आर किछु बेसी भाला होराक् मा हस, हांदा साझा मे। ए फॉर्म Google सांव दा़ंदा़याक्।",
-    "openInNewTab": "नावा टैब रे फॉर्म खोल मे",
     "closeForm": "प्रतिक्रिया फॉर्म बोंद मे",
-    "loadingGoogleForm": "Google Form लोड होतोना…",
-    "iframeTitle": "बीटा प्रतिक्रिया भेज मे"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language} रे नि:शुल्क मसीही वीडियो | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "खेल",
     "collections": "संग्रह",
     "subtitlesOnly": "सिर्फ उपशीर्षक",
+    "backToTop": "ᱛᱩᱭᱩᱡ ᱨᱮ ᱨᱩᱲᱟᱹ",
     "newlyAdded": "नावा जोड़ल",
     "newVideosTitle": "{language} रे नावा मसीही वीडियो",
     "newestFirst": "सबसे नावा पहिले",
@@ -324,7 +499,21 @@
     "standaloneVideos": "अकेला वीडियो",
     "videosFromCollection": "{collection} खोन वीडियो।",
     "standaloneDescription": "ए भाषा रे अकेला वीडियो।",
-    "openCollection": "संग्रह खोल मे"
+    "openCollection": "संग्रह खोल मे",
+    "filters": "ᱯᱷᱤᱞᱴᱟᱨ",
+    "filterLength": "ᱡᱷᱟᱞ",
+    "filterLength_under5": "5 ᱴᱤᱯᱤᱡ ᱠᱷᱚᱱ ᱠᱟᱹᱴᱤᱡ",
+    "filterLength_5to10": "5-10 ᱴᱤᱯᱤᱡ",
+    "filterLength_10to30": "10-30 ᱴᱤᱯᱤᱡ",
+    "filterLength_over30": "30 ᱴᱤᱯᱤᱡ ᱠᱷᱚᱱ ᱟᱰᱤ",
+    "filterType": "ᱨᱚᱠᱚᱢ",
+    "clearFilters": "ᱯᱷᱤᱞᱴᱟᱨ ᱥᱟᱯᱷᱟ ᱢᱮ",
+    "filterResults": "{total} ᱠᱷᱚᱱ {count} ᱩᱫᱩᱜ",
+    "noFilterResults": "ᱱᱚᱶᱟ ᱯᱷᱤᱞᱴᱟᱨ ᱥᱟᱶ ᱡᱟᱦᱟᱸ ᱣᱤᱰᱤᱭᱳ ᱵᱟᱝ ᱢᱮᱞᱟᱣ ᱠᱟᱱᱟ᱾ ᱢᱤᱫ ᱚᱠᱚᱭ ᱢᱮ᱾",
+    "filterAdded": "ᱥᱮᱞᱮᱫ ᱦᱩᱭᱮᱱᱟ",
+    "filterAdded_60d": "ᱢᱩᱬᱩᱛ 60 ᱢᱟᱦᱟᱸ",
+    "filterAdded_6m": "ᱢᱩᱬᱩᱛ 6 ᱢᱟᱦᱤᱸᱱᱟ",
+    "filterAdded_12m": "ᱢᱩᱬᱩᱛ 12 ᱢᱟᱦᱤᱸᱱᱟ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project वाच",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "पाछिल वीडियो पेशगी",
     "nextVideoPreview": "आगेय वीडियो पेशगी",
     "mediaCollection": "मीडिया संग्रह",
-    "scrollToVideo": "{title} वीडियो हिच्/सरकाव मे"
+    "scrollToVideo": "{title} वीडियो हिच्/सरकाव मे",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project होम",
@@ -404,6 +594,29 @@
     "merryChristmas": "क्रिसमस रेयाक् रा़सका़ जोहार!",
     "daysUntilChristmas": "{count, plural, one {क्रिसमस हा़बिच् # दिन} other {क्रिसमस हा़बिच् # दिन}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "लाइब्रेरी ब्राउज़ मे",
+    "title": "श्रेणी लेकाते ब्राउज़ मे",
+    "description": "लाइब्रेरी रेयाक् ओना हिंसा रे सोझे चालाक् मे जाहाँ आम लाहाँ लागाक् आ — यीशु रेयाक् जीवोन, गिरजा सेरमा रेयाक् पोरोब ओकत् को, आर परिवार, पाड़हाउ गिदरी आर हुडिञ दोल को ला़गित् बेनाव वीडियो को।",
+    "seeAll": "जोतो वीडियो ञेल मे",
+    "previous": "पाछिल श्रेणी को",
+    "next": "आगेय श्रेणी को",
+    "categories": {
+      "jesus": "JESUS फिल्म",
+      "gospels": "सुसमाचार को",
+      "shortVideos": "हुडिञ वीडियो को",
+      "family": "परिवार",
+      "relationships": "सागाई को",
+      "women": "माइ को ला़गित्",
+      "students": "पाड़हाउ गिदरी को ला़गित्",
+      "sports": "खेल",
+      "goodNews": "बेस खबोर",
+      "hope": "आशा",
+      "training": "सेखाव",
+      "easter": "ईस्टर",
+      "christmas": "क्रिसमस"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ञेरेन",
     "metadataDescription": "JesusFilm वीडियो ञेरेन अनुसार ब्राउज़ मे।",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "पृष्ठ बाय मिला़क्:",
     "title": "ए दृश्य एतका बाय ताहेन।",
     "description": "पृष्ठ सरकाव होका, मुदा कथा आगेय चलतोना।",
+    "languageDescription": "आम जाहाँ पृष्ठ ञाम एदा उनी बाले ञाम दाड़ेयादा, मेन कथा दो सानाम दिसोम रेयाक् ञेरेन को रेयाक् फिल्म आर वीडियो को रे आगेय चलतोना।",
     "actionsLabel": "पृष्ठ ना़वाबेना़ क्रिया",
     "backToWatch": "वाच रे फिन जाव मे",
     "browseVideos": "वीडियो ब्राउज़ मे"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "लघु फिल्म देख मे",
-    "actions": {
-      "joinUs": "हमार सांव जुड़ मे",
-      "shareMission": "हमार मिशन रे साझा मे"
-    },
-    "welcomeStart": {
-      "label": "विश्वास आओर धर्मग्रंथ",
-      "title": "आजाक् वीडियो चुनवा",
-      "description": "हमाक् लाइब्रेरी खोन विश्वास-केंद्रित वीडियो सामग्री — जे प्रेरित करे, चुनौती दे, आओर विचार जगा।"
-    },
-    "welcomeMorning": {
-      "label": "बिहानाक् प्रेरणा",
-      "title": "सुबह जोहार! आजाक् बाइबिल पल इंतजार करेना।",
-      "description": "प्रोत्साहित करेयाक् बाइबिल पल सांव अपन दिन सुरू मे, जे आपनाके प्रेरित आओर उत्साहित कर ला़गित् बनावल हाना।"
-    },
-    "welcomeAfternoon": {
-      "label": "दोपहराक् प्रेरणा",
-      "title": "दोपहर जोहार! आपन दिन ला़गित् बाइबिल पल।",
-      "description": "प्रोत्साहक बाइबिल सामग्री, आपन दोपहराक् आराम वा आगेय प्रेरणा ला़गित् एकदम ठीक।"
-    },
-    "welcomeEvening": {
-      "label": "सांझाक् प्रेरणा",
-      "title": "सांझ जोहार! बाइबिल पल सांव आराम मे।",
-      "description": "शांत बाइबिल पल, जे आपनाके चिंतन करे आओर आराम ना़वाय रे सहारा दे, जखन आपन दिन सामाप्त होताना।"
-    },
-    "joinUs": {
-      "label": "हमार सांव जुड़ मे",
-      "title": "करोड़ों लोग खोजतोना",
-      "description": "कटनी एखनाहों हाना। डिजिटल मीडिया सांव संसार रे सुसमाचार साझा करेय रे हमार सांव जुड़ मे।"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "आओ हम सॉगाइ",
-      "title": "मिलजुल Jesus हाक् कहानी सुनाव मे",
-      "description": "जाने ओना इना तिनकाक् निज भाषा रे, जेत्‌ता ते तिनी ताहा तिनाक्, Jesus हाक् प्रेम सुन आओर देख सकायें।"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% मेल",
-    "none": "ए ञेरेन रे ए वीडियो ला़गित् कुनु सुझाव बाय मिला़क्।"
+    "none": "ए ञेरेन रे ए वीडियो ला़गित् कुनु सुझाव बाय मिला़क्।",
+    "heading": "सुझावल वीडियो को",
+    "loadingLabel": "सुझावल वीडियो को लोड होतोना",
+    "openingTitle": "{title} झिज होयोक् कान",
+    "openingVideo": "वीडियो झिज होयोक् कान",
+    "activityNotRecorded": "सुझाव कामी दो बाय रिकॉर्ड दाड़ेयाक् लेना। लिंक को एखोन हों कामी कान।",
+    "showingContextual": "प्रसंग लेकाते सुझाव को उदुक् होयोक् कान।",
+    "showingSaved": "दोहो आकान सुझाव को उदुक् होयोक् कान।",
+    "explanationCurated": "पानते ला़गित् बाछाव आकान वीडियो को।",
+    "explanationViewingMode": "नोवा वीडियो आर आम चेद् लेका ञेलेत् मे ओना लेकाते सुझाव।",
+    "explanationCowatch": "नोवा वीडियो आर आमाक् सावहेत् लेकाते सुझाव।",
+    "explanationHybrid": "नोवा वीडियो आर आम मोने दोहो ला़गित् बाछाव आकान सावहेत् लेकाते सुझाव।",
+    "explanationContextual": "आम नितोग जाहां ञेल कान मे ओना लेकाते सुझाव।",
+    "explanationSemanticFallback": "आम नितोग जाहां ञेल कान मे ओना लेकाते सुझाव, नितोग निजेर मोतो साजाव बानुक्।",
+    "explanationProfileDurable": "आम मोने दोहो ला़गित् बाछाव आकान सावहेत् लेकाते निजेर मोतो साजाव।",
+    "explanationProfileVisit": "नोवा हेच् ला़गित् निजेर मोतो साजाव।",
+    "personalizationLabel": "सुझाव निजेर मोतो साजाव",
+    "personalizationPrompt": "सुझाव को चेद् लेका निजेर मोतो साजाव होयोक् आ ओना बोदोल सानाम काना?",
+    "openCookieSettings": "कुकी सेटिंग झिच् मे"
   },
   "BetaTesterModal": {
     "title": "बीटा परीक्षक बन मे",
@@ -538,16 +732,39 @@
     "retryFailed": "बाय होकाक् डाउनलोड फिन कुस्टी मे"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "eyebrow": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "title": "<contentTitle>{title}</contentTitle> ᱫᱚ <languageName>{language}</languageName> ᱨᱮ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "actionsLabel": "ᱧᱮᱞ ᱫᱟᱲᱮᱭᱟᱜ ᱵᱟᱪᱷᱟᱣ",
+    "browseInLanguage": "{language} ᱨᱮ ᱣᱤᱰᱤᱭᱚ ᱧᱮᱞ ᱢᱮ",
+    "backToSearch": "ᱥᱮᱸᱫᱽᱨᱟ ᱨᱮ ᱨᱩᱣᱟᱹᱲ ᱢᱮ",
+    "audioVersionsTitle": "ᱮᱴᱟᱜ ᱥᱟᱰᱮ ᱵᱷᱟᱨᱥᱚᱱ",
+    "audioVersionsDescription": "ᱱᱚᱣᱟ ᱣᱤᱰᱤᱭᱚ ᱧᱮᱞ ᱪᱟᱹᱞᱩ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱰᱮ ᱯᱟᱹᱨᱥᱤ ᱵᱟᱪᱷᱟᱣ ᱢᱮ᱾",
+    "languageVersionLabel": "ᱥᱟᱰᱮ ᱯᱟᱹᱨᱥᱤ",
+    "selectLanguageVersion": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ",
+    "watchSelectedVersion": "ᱵᱟᱪᱷᱟᱣ ᱵᱷᱟᱨᱥᱚᱱ ᱧᱮᱞ ᱢᱮ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ᱠᱩᱠᱤ ᱵᱟᱪᱷᱟ",
+    "bannerTitle": "ᱟᱢᱟᱜ ᱜᱩᱯᱛ ᱵᱟᱪᱷᱟ",
+    "bannerDescription": "ᱡᱟᱹᱨᱩᱲᱤ ᱠᱩᱠᱤ ᱫᱚ Watch ᱠᱚ ᱱᱤᱨᱟᱯᱚᱫ ᱟᱨ ᱪᱟᱹᱞᱩ ᱨᱮᱭᱟᱜ ᱢᱮᱱᱟᱜᱼᱟ। ᱟᱢᱟᱜ ᱟᱱᱩᱢᱚᱫ ᱥᱟᱶ, ᱢᱤᱫ ᱮᱪᱪᱷᱟᱢᱩᱞᱚᱠ first-party cookie ᱫᱚ ᱵᱷᱮᱴᱟ ᱵᱷᱮᱴᱟ ᱢᱟᱡᱷᱤᱨᱮ ᱟᱨᱥᱤ ᱠᱚ ᱡᱟᱦᱟᱸ ᱛᱮ ᱵᱮᱥ ᱥᱟᱡᱟᱣ ᱥᱩᱡᱷᱟᱹᱣ ᱮᱢᱚᱜᱼᱟ। ᱥᱟᱶᱛᱟ ᱟᱫᱷᱟᱨ ᱨᱮ ᱥᱩᱡᱷᱟᱹᱣ ᱫᱚ ᱡᱮᱠᱚᱱᱟᱜ ᱦᱚᱸ ᱢᱮᱱᱟᱜᱼᱟ।",
+    "acceptAll": "ᱡᱚᱛᱚ ᱢᱟᱱᱭᱟ",
+    "essentialOnly": "ᱠᱮᱵᱚᱞ ᱡᱟᱹᱨᱩᱲᱤ",
+    "manageChoices": "ᱵᱟᱪᱷᱟ ᱥᱟᱢᱵᱷᱟᱞ",
+    "savingChoice": "ᱠᱩᱠᱤ ᱵᱟᱪᱷᱟ ᱥᱟᱸᱪᱟᱣ ᱮᱫᱟ",
+    "settings": "ᱠᱩᱠᱤ ᱥᱮᱴᱤᱝ",
+    "settingsDescription": "Watch ᱠᱚ ᱵᱷᱮᱴᱟ ᱵᱷᱮᱴᱟ ᱢᱟᱡᱷᱤᱨᱮ ᱥᱩᱡᱷᱟᱹᱣ ᱨᱮᱭᱟᱜ ᱟᱨᱥᱤ ᱢᱚᱱᱮ ᱨᱟᱠᱟᱵ ᱠᱷᱟᱛᱤᱨ ᱪᱮᱫ Watch ᱠᱚ ᱟᱢᱟᱜ ᱟᱱᱩᱢᱚᱫ ᱧᱟᱢᱟ᱾ ᱱᱚᱶᱟ ᱟᱢ ᱡᱟᱦᱟᱸ ᱛᱮ ᱦᱚᱸ ᱵᱚᱫᱚᱞ ᱫᱟᱲᱮᱭᱟᱢ।",
+    "essentialCookies": "ᱡᱟᱹᱨᱩᱲᱤ ᱠᱩᱠᱤ",
+    "essentialDescription": "ᱱᱤᱨᱟᱯᱚᱫᱛᱟ, ᱯᱞᱮᱵᱮᱠ, ᱜᱩᱯᱛ ᱵᱟᱪᱷᱟ, ᱟᱨ ᱥᱩᱡᱷᱟᱹᱣ ᱱᱮᱦᱚᱨ ᱨᱮᱭᱟᱜ attribution.",
+    "alwaysActive": "ᱥᱟᱨᱟ ᱚᱠᱛᱚ ᱪᱟᱹᱞᱩ",
+    "personalization": "ᱱᱤᱡᱮᱨ ᱢᱚᱛᱚ ᱥᱟᱡᱟᱣ",
+    "personalizationDescription": "ᱵᱷᱮᱴᱟ ᱵᱷᱮᱴᱟ ᱢᱟᱡᱷᱤᱨᱮ ᱥᱤᱢᱟᱹ ᱥᱟᱦᱟᱣ ᱟᱨᱥᱤ ᱠᱚ ᱢᱚᱱᱮ ᱨᱟᱠᱟᱵ ᱢᱮ। ᱱᱚᱶᱟ ᱵᱚᱸᱫ ᱠᱟᱛᱮ ᱦᱚᱸ ᱥᱟᱶᱛᱟ ᱟᱫᱷᱟᱨ ᱨᱮ ᱥᱩᱡᱷᱟᱹᱣ ᱢᱮᱱᱟᱜᱼᱟ।",
+    "erasurePending": "ᱯᱨᱚᱯᱷᱟᱭᱤᱞ ᱢᱮᱴᱟᱣ ᱠᱟᱹᱢᱤ ᱦᱟᱹᱞᱤ ᱪᱟᱞᱩ ᱟᱨᱮ᱾ ᱥᱟᱶᱛᱟ ᱟᱫᱷᱟᱨ ᱨᱮ ᱥᱩᱡᱷᱟᱹᱣ ᱫᱚ ᱢᱟᱨᱟᱝ ᱛᱮ ᱪᱟᱹᱞᱩ ᱢᱮᱱᱟᱜᱼᱟ।",
+    "cancel": "ᱵᱟᱹᱰᱨᱟ",
+    "saveChoices": "ᱵᱟᱪᱷᱟ ᱥᱟᱸᱪᱟᱣ",
+    "saving": "ᱥᱟᱸᱪᱟᱣ ᱮᱫᱟ…",
+    "loadError": "ᱟᱢᱟᱜ ᱵᱟᱪᱷᱟ ᱞᱚᱰ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱟᱢ ᱱᱤᱪᱮ ᱛᱮ ᱦᱚᱸ ᱵᱟᱪᱷᱟ ᱠᱚ ᱠᱟᱛᱮ ᱢᱮᱫᱟᱢ।",
+    "grantError": "ᱱᱤᱡᱮᱨ ᱢᱚᱛᱚ ᱥᱟᱡᱟᱣ ᱪᱟᱹᱞᱩ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱠᱮᱵᱚᱞ ᱡᱟᱹᱨᱩᱲᱤ ᱫᱚ ᱢᱮᱱᱟᱜ ᱨᱮᱦᱚᱸᱜᱼᱟ।",
+    "saveError": "ᱟᱢᱟᱜ ᱵᱟᱪᱷᱟ ᱥᱟᱸᱪᱟᱣ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱫᱚᱦᱲᱟ ᱠᱟᱛᱮ ᱪᱮᱥᱴᱟ ᱢᱮ।"
   }
 }

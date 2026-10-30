@@ -39,9 +39,8 @@
     "posterAlt": "Video-Plakat",
     "noDownloads": "Für das Video sind kei Downloads verfügbar.",
     "fileSizeLabel": "Wähle e Dateigrössi",
-    "termsAgreementPrefix": "Ich bi einverstanden mit de ",
+    "termsAgreement": "Ich bi einverstanden mit de <link>Nutzigsbedingige</link>",
     "termsOfUse": "Nutzigsbedingige",
-    "termsAgreementSuffix": "",
     "close": "Schliesse",
     "download": "Herunterlade",
     "authRequiredTitle": "Wotsch das Video herunterladen?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Uf Facebook teile (uf däre Version nöd verfügbar)",
     "shareOnX": "Uf X teile",
     "shareOnXUnavailable": "Uf X teile (uf däre Version nöd verfügbar)",
+    "opensInNewTab": "{label} (gaht in ere neue Tab uf)",
     "shareDisabledHint": "Teile bruucht e veröffentlichti Syte — funktioniert, sobald das Video im Produktivbetrieb isch.",
     "shareFormat": "Teile-Format",
     "shareLinkTab": "Link teile",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprach wechsle",
     "home": "JesusFilm-Startsyte",
     "closeSearch": "Suechi schliesse",
-    "submitSearch": "Sueche"
+    "submitSearch": "Sueche",
+    "library": "Mediathek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos sueche und durstöbere",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Witeri Resultat chönd nöd glade werde.",
     "searching": "Wird gsuecht...",
     "connectionHint": "Bitte prüef dini Verbindig und probier's no einisch.",
+    "rateLimitHint": "Z vill Aafrage. Probier's in ere Minute nomol.",
     "retrySearch": "Suechi nomal starte",
     "retry": "Nochmal versueche",
     "noResults": "Kei Resultat für \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Uf {language} nach «{suggestion}» sueche",
     "inLanguage": "uf {language}",
     "browseByRegion": "Nach Region durstöbere",
+    "allVideosOnSinglePage": "Alli Videos uf einere Siite",
     "clearLanguages": "Lösche",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Uf {language} sueche",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Jetzt luege",
     "tapToUnmute": "Aatippe zum Ton iischalte",
-    "nextEpisode": "Nächsti Folg"
+    "nextEpisode": "Nächsti Folg",
+    "audioTranslationCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "subtitleCount": "Untertitel: {count, plural, one {# Sprach} other {# Sprachen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt wird glade",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Feedback-Formular chonnte nöd glade werde.",
     "loadingForm": "Feedback-Formular wird glade…",
     "retry": "Nochmal versueche",
-    "openFormShort": "Formular öffne",
     "cancel": "Abbreche",
-    "title": "Beta-Feedback",
-    "description": "Teile, was funktioniert und was mer verbessere chönd. Das Formular wird vo Google bereitgstellt.",
-    "openInNewTab": "Formular i neui Tab öffne",
     "closeForm": "Feedback-Formular schliesse",
-    "loadingGoogleForm": "Google-Formular wird glade…",
-    "iframeTitle": "Beta-Feedback einsende"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis christlichi Videos uf {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sammlige",
     "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Zrugg uf",
     "newlyAdded": "Neu hizuegfüegt",
     "newVideosTitle": "Neui christlichi Videos uf {language}",
     "newestFirst": "Neuscht zerscht",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Einzelvideos",
     "videosFromCollection": "Videos us {collection}.",
     "standaloneDescription": "Einzelvideos i däre Sprach.",
-    "openCollection": "Sammlig öppne"
+    "openCollection": "Sammlig öppne",
+    "filters": "Filter",
+    "filterLength": "Längi",
+    "filterLength_under5": "Under 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter lösche",
+    "filterResults": "{count} vo {total} zeigt",
+    "noFilterResults": "Kei Video passt zu dene Filter. Probier eine z'entfärne.",
+    "filterAdded": "Zuegfüegt",
+    "filterAdded_60d": "Letschti 60 Täg",
+    "filterAdded_6m": "Letschti 6 Mönet",
+    "filterAdded_12m": "Letschti 12 Mönet"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Luege",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Vorschau vom vorige Video",
     "nextVideoPreview": "Vorschau vom nächste Video",
     "mediaCollection": "Mediakollektion",
-    "scrollToVideo": "Zum Video {title} scrollen"
+    "scrollToVideo": "Zum Video {title} scrollen",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-Startsyte",
@@ -404,6 +594,29 @@
     "merryChristmas": "Frohi Wienachte!",
     "daysUntilChristmas": "{count, plural, one {No # Tag bis Wienachte} other {No # Täg bis Wienachte}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "D’Bibliothek durstöbere",
+    "title": "Nach Kategorie durstöbere",
+    "description": "Spring diräkt zum Teil vo de Bibliothek, wo du bruchsch – s’Läbe vo Jesus, d’Ziite vom Chilejahr und Videos für Familie, Studänte und Chliigruppe.",
+    "seeAll": "Alli Videos aaluege",
+    "previous": "Vorhärigi Kategorie",
+    "next": "Nächschti Kategorie",
+    "categories": {
+      "jesus": "De JESUS-Film",
+      "gospels": "Evangelie",
+      "shortVideos": "Churzi Videos",
+      "family": "Familie",
+      "relationships": "Beziehige",
+      "women": "Für Fraue",
+      "students": "Für Studänte",
+      "sports": "Sport",
+      "goodNews": "Gueti Nachricht",
+      "hope": "Hoffnig",
+      "training": "Schuelig",
+      "easter": "Oschtere",
+      "christmas": "Wienachte"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Sprachen",
     "metadataDescription": "Durchstöber JesusFilm-Videos nach Sprach.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Syte nöd gfunde:",
     "title": "Die Szene isch da nöd.",
     "description": "D'Syte het sich villech verschobe, aber d'Gschicht geit witer.",
+    "languageDescription": "Mir händ d’Syte, wo du suechsch, nöd chöne finde, aber d’Gschicht geit witer i Film und Videos i Sprache us de ganze Wält.",
     "actionsLabel": "Aktionen bi nöd gfunder Syte",
     "backToWatch": "Zurück zu Watch",
     "browseVideos": "Videos durstöbere"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurze Film luege",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile an unserer Mission"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Heutigi Video-Empfehlig",
-      "description": "Glaube-zentrierte Videoinhalte us ourere Bibliothek, wo inspiriert, herausforderet und zum Nachdenke aaregt."
-    },
-    "welcomeMorning": {
-      "label": "Morge-Inspiration",
-      "title": "Guete Morge! Heutigi Bibelmomänt warted uf dich.",
-      "description": "Starte dini Tag mit ermuetigende Bibelmomänt, wo inspiriere und dini Geischt uftriebe."
-    },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guete Namittag! Bibelmomänt für din Tag.",
-      "description": "Ermuetigendi Bibelinhalte für dini Nachmittags-Pause oder zum Witerinspirierig."
-    },
-    "welcomeEvening": {
-      "label": "Abig-Inspiration",
-      "title": "Guete Abig! Chumm mit Bibelmomänt zrugg zur Ru.",
-      "description": "Ruhigi Bibelmomänt, wo dir helfed z'reflektiere und Trost z'finge, wenn dini Tag z'End goht."
-    },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarde sueched",
-      "description": "D'Ernt isch da. Mach mit, wenn mir s'Evangelium mit digitale Medie i d'Wält träge."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lah uns zäme go",
-      "title": "D'Gschicht vo Jesus zäme erzähle",
-      "description": "Damit sie d'Liebi vo Jesus i ihrer eigene Sprach chönd ghöre und gseh, grad dort wo sie sind."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmig",
-    "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde."
+    "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde.",
+    "heading": "Empfohlni Videos",
+    "loadingLabel": "Empfohlni Videos wärded glade",
+    "openingTitle": "{title} wird göffnet",
+    "openingVideo": "Video wird göffnet",
+    "activityNotRecorded": "D’Empfehligsaktivität het nöd chöne gspeicheret wärde. D’Links funktioniered trotzdem.",
+    "showingContextual": "Es wärded passendi Empfehlige zum Video aazeigt.",
+    "showingSaved": "Es wärded gspeicherti Empfehlige aazeigt.",
+    "explanationCurated": "Uusgwählti Videos zum Entdecke.",
+    "explanationViewingMode": "Empfohle uf Grund vo dem Video und wie du luegsch.",
+    "explanationCowatch": "Empfohle uf Grund vo dem Video und dine Interesse.",
+    "explanationHybrid": "Empfohle uf Grund vo dem Video und Interesse, wo du hesch welle speichere.",
+    "explanationContextual": "Empfohle uf Grund vo dem, was du grad luegsch.",
+    "explanationSemanticFallback": "Empfohle uf Grund vo dem, was du grad luegsch, solang d Personalisierig nöd verfüegbar isch.",
+    "explanationProfileDurable": "Personalisiert uf Grund vo Interesse, wo du hesch welle speichere.",
+    "explanationProfileVisit": "Personalisiert für dä Bsuech.",
+    "personalizationLabel": "Personalisierig vo de Empfehlige",
+    "personalizationPrompt": "Wotsch ändere, wie d Empfehlige personalisiert wärded?",
+    "openCookieSettings": "Cookie-Iistellige öffne"
   },
   "BetaTesterModal": {
     "title": "Werde Beta-Tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Fehlgschlagni nomal versueche"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sprachversion nöd verfügbar",
+    "eyebrow": "Sprachversion nöd verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> isch uf <languageName>{language}</languageName> nöd verfügbar",
+    "actionsLabel": "Verfügbari Aaluegoptione",
+    "browseInLanguage": "Videos uf {language} dureblättere",
+    "backToSearch": "Zurück zur Suechi",
+    "audioVersionsTitle": "Anderi Audioversione",
+    "audioVersionsDescription": "Wähl e Audiosprach, zum das Video wiiterz'luege.",
+    "languageVersionLabel": "Audiosprach",
+    "selectLanguageVersion": "Sprachversion uswähle",
+    "watchSelectedVersion": "Usgwählti Version aaluege"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Uuswahl",
+    "bannerTitle": "Dini Date-Schutz-Uuswahl",
+    "bannerDescription": "Notwändigi Cookies halte Watch sicher und am Loufe. Mit dinere Erlaubnis cha es optionals Cookie vo de Website dini Interesse über mehri Bsuech hinweg speichere, zum Empfehlige persönlicher z mache. Kontextbezogeni Empfehlige git’s so oder so.",
+    "acceptAll": "Alli akzeptiere",
+    "essentialOnly": "Nur notwändigi",
+    "manageChoices": "Uuswahl verwalte",
+    "savingChoice": "Cookie-Uuswahl wird gspeicheret",
+    "settings": "Cookie-Iistellige",
+    "settingsDescription": "Wähl us, öb Watch dini Empfehligs-Interesse über mehri Bsuech hinweg dörf speichere. Du chasch das jederzeit ändere.",
+    "essentialCookies": "Notwändigi Cookies",
+    "essentialDescription": "Sicherheit, Wiedergab, Date-Schutz-Uuswahl und Zueornig vo Empfehligs-Aafragene.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierig",
+    "personalizationDescription": "Begrenzti Interesse über mehri Bsuech hinweg speichere. Wenn das usgschaltet isch, blibe kontextbezogeni Empfehlige wiiter verfüegbar.",
+    "erasurePending": "D Löschig vom Profil isch no uusstehend. Kontextbezogeni Empfehlige si scho aktiv.",
+    "cancel": "Abbräche",
+    "saveChoices": "Uuswahl speichere",
+    "saving": "Wird gspeicheret…",
+    "loadError": "Dini Uuswahl het nöd chöne glade werde. Du chasch wiiter unde trotzdem uswürde.",
+    "grantError": "Personalisierig het nöd chöne aktiviert werde. Nur notwändigi bliibt verfüegbar.",
+    "saveError": "Dini Uuswahl het nöd chöne gspeicheret werde. Bitte probier's nomal."
   }
 }

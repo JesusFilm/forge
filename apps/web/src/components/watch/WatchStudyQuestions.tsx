@@ -201,11 +201,14 @@ function StudyQuestionRow({
         aria-expanded={isOpen}
         aria-controls={panelId}
         data-testid={`${testId}-trigger`}
-        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-left text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-0 py-4 text-left text-base sm:text-sm font-medium transition-all outline-none hover:no-underline focus-visible:ring-[3px] focus-visible:ring-white/40"
       >
         <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left md:grid-cols-[1.75rem_minmax(0,1fr)]">
           <WatchQuestionIcon />
-          <h3 className="text-base leading-[1.6] font-normal text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
+          {/* `overflow-wrap: anywhere` so a bare URL used as a "question"
+              wraps inside its row instead of running under the chevron or
+              off the viewport. */}
+          <h3 className="text-base leading-[1.6] font-normal [overflow-wrap:anywhere] text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
             {question}
           </h3>
         </div>

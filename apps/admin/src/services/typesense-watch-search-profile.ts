@@ -29,7 +29,9 @@ export type TypesenseWatchSearchProfile = Readonly<{
   kind: "CURRENT" | "CANDIDATE"
   binding: TypesenseWatchSearchCollectionBinding
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   transcriptProjectionRevision: bigint | null
   qrelsRevision?: string | null
   fieldManifests: TypesenseWatchSearchFieldManifests | null
@@ -38,7 +40,9 @@ export type TypesenseWatchSearchProfile = Readonly<{
 
 export type ResolvedCandidateWatchSearchGeneration = {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
   collections: TypesenseWatchSearchCollectionBinding
   fieldManifests: TypesenseWatchSearchFieldManifests
@@ -46,8 +50,10 @@ export type ResolvedCandidateWatchSearchGeneration = {
 
 export type TypesenseWatchSearchQualificationLeaseIdentity = {
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
   transcriptProjectionRevision: bigint
   currentBindings: readonly string[]
   expiresAt: Date
@@ -57,9 +63,11 @@ type AliasReader = Pick<TypesenseClient, "getAlias">
 type CandidateGenerationResolver = {
   resolveGeneration(input: {
     generationId: string
-    applicationRevision: string
+    indexContractRevision: string
     transcriptCollection: string
-    transcriptProjectionRevision: bigint
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
     requireQualified?: boolean
     currentBindings?: readonly string[]
     qrelsRevision?: string
@@ -115,7 +123,9 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
     kind: "CURRENT",
     binding: CURRENT_ALIASES,
     generationId: null,
-    applicationRevision: null,
+    indexContractRevision: null,
+    contentEmbeddingContractId: null,
+    transcriptChunkingVersion: null,
     transcriptProjectionRevision: null,
     qrelsRevision: null,
     fieldManifests: null,
@@ -128,9 +138,17 @@ export function createCandidateWatchSearchProfile(
   qrelsRevision: string | null = null,
 ): TypesenseWatchSearchProfile {
   const generationId = required(generation.generationId, "generation id")
-  const applicationRevision = required(
-    generation.applicationRevision,
-    "application revision",
+  const indexContractRevision = required(
+    generation.indexContractRevision,
+    "index contract revision",
+  )
+  const contentEmbeddingContractId = required(
+    generation.contentEmbeddingContractId,
+    "content embedding contract id",
+  )
+  const transcriptChunkingVersion = required(
+    generation.transcriptChunkingVersion,
+    "transcript chunking version",
   )
   if (generation.transcriptProjectionRevision < 0n) {
     throw new TypesenseWatchSearchProfileError(
@@ -177,7 +195,9 @@ export function createCandidateWatchSearchProfile(
     kind: "CANDIDATE",
     binding,
     generationId,
-    applicationRevision,
+    indexContractRevision,
+    contentEmbeddingContractId,
+    transcriptChunkingVersion,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     qrelsRevision,
     fieldManifests: generation.fieldManifests,
@@ -188,9 +208,11 @@ export function createCandidateWatchSearchProfile(
 export async function resolveCandidateWatchSearchProfile(input: {
   generations: CandidateGenerationResolver
   generationId: string
-  applicationRevision: string
+  indexContractRevision: string
   transcriptCollection: string
-  transcriptProjectionRevision: bigint
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  transcriptProjectionRevision?: bigint
   requireQualified?: boolean
   currentBindings?: readonly string[]
   qrelsRevision?: string
@@ -198,8 +220,10 @@ export async function resolveCandidateWatchSearchProfile(input: {
 }): Promise<TypesenseWatchSearchProfile> {
   const generation = await input.generations.resolveGeneration({
     generationId: input.generationId,
-    applicationRevision: input.applicationRevision,
+    indexContractRevision: input.indexContractRevision,
     transcriptCollection: input.transcriptCollection,
+    contentEmbeddingContractId: input.contentEmbeddingContractId,
+    transcriptChunkingVersion: input.transcriptChunkingVersion,
     transcriptProjectionRevision: input.transcriptProjectionRevision,
     requireQualified: input.requireQualified,
     currentBindings: input.currentBindings,
@@ -233,7 +257,9 @@ export async function freezeCurrentWatchSearchProfile(
     kind: "CURRENT",
     binding,
     generationId: null,
-    applicationRevision: null,
+    indexContractRevision: null,
+    contentEmbeddingContractId: null,
+    transcriptChunkingVersion: null,
     transcriptProjectionRevision: null,
     qrelsRevision: null,
     fieldManifests: null,
@@ -301,8 +327,13 @@ export function assertQualificationProfilesMatchLease(input: {
   }
   if (
     input.candidate.generationId !== input.lease.generationId ||
-    input.candidate.applicationRevision !== input.lease.applicationRevision ||
+    input.candidate.indexContractRevision !==
+      input.lease.indexContractRevision ||
     input.candidate.binding.transcript !== input.lease.transcriptCollection ||
+    input.candidate.contentEmbeddingContractId !==
+      input.lease.contentEmbeddingContractId ||
+    input.candidate.transcriptChunkingVersion !==
+      input.lease.transcriptChunkingVersion ||
     input.candidate.transcriptProjectionRevision !==
       input.lease.transcriptProjectionRevision
   ) {

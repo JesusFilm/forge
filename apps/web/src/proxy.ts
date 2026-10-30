@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+import { WATCH_REFERRER_POLICY } from "../watch-security-headers.mjs"
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -33,8 +34,10 @@ import {
   isUnsafeRedirectPath,
   stripHtmlSuffix,
 } from "@/lib/url-shape"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
@@ -60,14 +63,33 @@ export type ProxyRequest = {
 
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
-const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
-const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+const SAFE_PUBLIC_PATH = /^\/[\p{Ll}\p{Nd}A-Za-z0-9._\-/]+$/u
+const DEMO_PREFIXES = new Set([
+  "demo-search",
+  "demo-recommendations",
+  "language-globe",
+])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
+/**
+ * The error sentinels render copy from the `locale` message catalog, so their
+ * document language must be the CHROME language — not the requested content
+ * language. A regional refinement of the same language is still honest
+ * (`es-419` Spanish copy really is Spanish), so keep it; a different language
+ * is not (`aiw` on English recovery copy is the FGE-170 mis-declaration
+ * pointed the other way).
+ */
+function chromeDocumentLang(locale: string, htmlLang: string): string {
+  return resolveUiLocale(htmlLang) === locale ? htmlLang : locale
+}
+
+// Mirrors buildNotFound exactly. Keep the two in lockstep — an entry shape that
+// does not match what buildNotFound emits would make every ordinary 404 fail
+// the admitted-internal-rewrite check.
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
   [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
     const { locale, htmlLang } = resolveWatchLocaleIdentity(languageSlug)
-    return `/${locale}/${htmlLang}/404`
+    return `/${locale}/${chromeDocumentLang(locale, htmlLang)}/404`
   }),
 )
 
@@ -147,9 +169,25 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   return buildRedirect(url, 307)
 }
 
+/**
+ * The baseline security-header set lives in next.config.mjs `headers()` (see
+ * watch-security-headers.mjs), which covers every route including the basePath
+ * root this function never sees.
+ *
+ * Only `Referrer-Policy` is re-applied here, and deliberately NOT
+ * `Content-Security-Policy`. Next evaluates config `headers()` BEFORE
+ * middleware and merges middleware's headers over them with a plain
+ * last-write-wins assignment, so anything middleware sets clobbers the config
+ * value for the same key. That is harmless for Referrer-Policy, whose value is
+ * identical here and whose middleware-wins behaviour is what lets
+ * `applyExperiencePreviewHeaders` override it with `no-referrer`. It would be
+ * actively harmful for CSP: once an operator promotes the full policy with
+ * `WATCH_CSP_ENFORCE=true`, a static `frame-ancestors 'self'` written here
+ * would silently overwrite it on every rewritten content route, and the
+ * promotion would look done while doing nothing.
+ */
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
-  response.headers.set("Referrer-Policy", "strict-origin")
+  response.headers.set("Referrer-Policy", WATCH_REFERRER_POLICY)
   return response
 }
 
@@ -174,14 +212,33 @@ function shouldBypassLocaleRewrite(pathname: string): boolean {
 function isSafeCanonicalPath(pathname: string): boolean {
   if (pathname === "/") return true
   if (pathname.length > MAX_PATH_LEN) return false
-  if (UNSAFE_PATH_PATTERN.test(pathname)) return false
-  if (pathname.split("/").some((segment) => segment === "..")) return false
-  return SAFE_PUBLIC_PATH.test(pathname)
+  let decodedPathname: string
+  try {
+    // decodeURI preserves encoded separators and reserved URL characters.
+    decodedPathname = decodeURI(pathname)
+  } catch {
+    return false
+  }
+  // Admit one spelling per path so caches and canonical URL checks agree.
+  if (encodeURI(decodedPathname) !== pathname) return false
+  if (UNSAFE_PATH_PATTERN.test(decodedPathname)) return false
+  if (decodedPathname.split("/").some((segment) => segment === "..")) {
+    return false
+  }
+  return SAFE_PUBLIC_PATH.test(decodedPathname)
 }
 
 function stripSafeSlug(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function internalPrefixDecision(pathname: string): InternalPrefixDecision {
@@ -221,9 +278,11 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchVideoPath(
-        asContentSlug(contentSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchVideoPath(
+          asContentSlug(contentSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -237,10 +296,12 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchEpisodePath(
-        asContentSlug(parentSlug),
-        asContentSlug(childSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchEpisodePath(
+          asContentSlug(parentSlug),
+          asContentSlug(childSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -253,7 +314,17 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
   return { kind: "redirect", pathname: canonicalPublicPath }
 }
 
-function classifyRewrite(pathname: string): RewriteDecision {
+/**
+ * Classify a canonical public path into an internal rewrite target. The
+ * manifest only influences one decision: whether an ambiguous `.html`
+ * segment is an audio-language slug (`isWatchAudioLanguageSlug`). Admission
+ * of the classified route against the manifest happens afterwards in
+ * `classifyManifestAdmission`.
+ */
+function classifyRewrite(
+  pathname: string,
+  manifest: WatchRouteManifest | null,
+): RewriteDecision {
   if (shouldBypassLocaleRewrite(pathname)) return { kind: "pass" }
   if (pathname === "/" || pathname === "") {
     return {
@@ -268,7 +339,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "history" || segment === "languages") {
+    if (
+      segment === "history" ||
+      segment === "languages" ||
+      segment === "whats-new"
+    ) {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -298,22 +373,33 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (
       localeSegment === "videos" ||
       localeSegment === "languages" ||
-      localeSegment === "history"
+      localeSegment === "history" ||
+      localeSegment === "whats-new"
     ) {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
       if (!rawLanguageSlug) return { kind: "not-found" }
-      if (!isPublicWatchLanguageSlug(rawLanguageSlug)) {
+      if (!isWatchAudioLanguageSlug(rawLanguageSlug, manifest)) {
         return { kind: "not-found" }
       }
+      const identity = resolveWatchLocaleIdentity(rawLanguageSlug)
+      // `/videos` renders the language's own inventory — video titles and
+      // `languageNativeName` in that language's script — so it declares the
+      // content language. `/languages` and `/history` render only chrome from
+      // the `locale` catalog and never read `htmlLang`, so declaring the
+      // requested audio language there would label English words as Najdi
+      // Arabic. Same rule as the error sentinels above.
+      const isContentLanguagePage = localeSegment === "videos"
       return {
         kind: "rewrite",
-        ...resolveWatchLocaleIdentity(rawLanguageSlug),
+        locale: identity.locale,
+        htmlLang: isContentLanguagePage
+          ? identity.htmlLang
+          : chromeDocumentLang(identity.locale, identity.htmlLang),
         pathname,
-        internalPathname:
-          localeSegment === "videos"
-            ? `/videos/${rawLanguageSlug}`
-            : `/${localeSegment}`,
+        internalPathname: isContentLanguagePage
+          ? `/videos/${rawLanguageSlug}`
+          : `/${localeSegment}`,
       }
     }
     if (!hasHtmlSuffix(slugSegment) || !hasHtmlSuffix(localeSegment)) {
@@ -323,7 +409,9 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!slug) return { kind: "not-found" }
     const rawAudioSlug = stripSafeSlug(localeSegment)
     if (!rawAudioSlug) return { kind: "not-found" }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) {
+    // Not a known audio language (compiled corpus OR live manifest): read the
+    // second segment as an implicit-English episode slug instead.
+    if (!isWatchAudioLanguageSlug(rawAudioSlug, manifest)) {
       const defaultAudioLanguageSlug =
         publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
       if (!defaultAudioLanguageSlug) return { kind: "not-found" }
@@ -375,7 +463,9 @@ function classifyRewrite(pathname: string): RewriteDecision {
     if (!seriesSlug || !episodeSlug || !rawAudioSlug) {
       return { kind: "not-found" }
     }
-    if (!isPublicWatchLanguageSlug(rawAudioSlug)) return { kind: "not-found" }
+    if (!isWatchAudioLanguageSlug(rawAudioSlug, manifest)) {
+      return { kind: "not-found" }
+    }
     const identity = resolveWatchLocaleIdentity(rawAudioSlug)
     const internalEpisodeSlug =
       resolveLegacyWatchEpisodeAlias(seriesSlug, episodeSlug) ?? episodeSlug
@@ -403,6 +493,7 @@ function classifyRewrite(pathname: string): RewriteDecision {
 function rewriteToInternal(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null = null,
 ): NextResponse {
   const url = request.nextUrl.clone()
   // HTTPS reverse proxies (including Tailscale Serve) can leave Next's dev
@@ -414,7 +505,11 @@ function rewriteToInternal(
   ) {
     url.protocol = "http:"
   }
-  const subtitleLanguageSlug = subtitleIntentForRewrite(request, decision)
+  const subtitleLanguageSlug = subtitleIntentForRewrite(
+    request,
+    decision,
+    manifest,
+  )
   url.pathname = internalRewritePathname(decision, subtitleLanguageSlug)
   const requestHeaders = new Headers(request.headers)
   // This is an admission claim, not a trusted boolean. If the rewritten URL
@@ -444,15 +539,21 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  return `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  // Keep one URL encoding across direct rewrites and re-entry admission. Some
+  // routes use a decoded manifest slug for their internal target while the
+  // public path arrived percent-encoded.
+  return encodeURI(decodeURI(internalPathname))
 }
 
 function subtitleIntentForRewrite(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): ReturnType<typeof tryAsLocaleSlug> {
   const finalRoute = classifyRewrite(
     decision.internalPathname ?? decision.pathname,
+    manifest,
   )
   if (
     finalRoute.kind !== "rewrite" ||
@@ -469,11 +570,30 @@ function subtitleIntentForRewrite(
   const subtitleLanguageSlug = tryAsLocaleSlug(values[0] ?? "")
   if (
     !subtitleLanguageSlug ||
-    !isPublicWatchLanguageSlug(subtitleLanguageSlug)
+    !isWatchAudioLanguageSlug(subtitleLanguageSlug, manifest)
   ) {
     return null
   }
   return subtitleLanguageSlug
+}
+
+/**
+ * The two-segment grammar has no delimiter, so an unknown second segment is
+ * read as an implicit-English episode. When that episode is then rejected,
+ * the URL may really have carried a language slug the compiled corpus and
+ * the manifest both lack — surface that as a distinguishable signal instead
+ * of a bare 404 (FGE-81 was invisible in logs for three months).
+ */
+function logImplicitEnglishEpisodeRejected(
+  route: Extract<WatchRouteManifestRoute, { kind: "episode" }>,
+  manifestAvailable: boolean,
+): void {
+  logWatchServerEvent("watch_route.implicit_english_episode.rejected", {
+    parentSlug: route.parentSlug,
+    childSlug: route.childSlug,
+    manifestAvailable,
+    hint: "second_segment_is_neither_a_known_audio_language_nor_an_admitted_english_episode",
+  })
 }
 
 function buildNotFound(
@@ -483,10 +603,15 @@ function buildNotFound(
     "locale" | "htmlLang"
   >,
 ): NextResponse {
+  const locale = identity?.locale ?? DEFAULT_LOCALE
   return rewriteToInternal(request, {
     kind: "rewrite",
-    locale: identity?.locale ?? DEFAULT_LOCALE,
-    htmlLang: identity?.htmlLang ?? DEFAULT_LOCALE,
+    locale,
+    // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
+    // so its document is in the CHROME language. Carrying the raw content tag
+    // would declare English recovery copy as Aari — the FGE-170
+    // mis-declaration pointed the other way.
+    htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
     pathname: "/404",
   })
 }
@@ -497,16 +622,18 @@ function buildUnavailableLanguageNotFound(
 ): NextResponse {
   return rewriteToInternal(request, {
     ...decision,
+    // Same reason as buildNotFound: the unavailable-language sentinel renders
+    // chrome-language copy, so it must not declare the content language.
+    htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
     internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
   })
 }
 
 async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): Promise<ManifestAdmissionDecision> {
-  let manifest: WatchRouteManifest | null = null
   if (decision.languageHomeSlug) {
-    manifest = await getWatchRouteManifest()
     const manifestAvailability = manifest?.homepageLocales
       ? manifest.homepageLocales.includes(decision.locale)
       : null
@@ -529,9 +656,11 @@ async function classifyManifestAdmission(
 
   if (!decision.manifestRoute) return { kind: "admit" }
 
-  manifest ??= await getWatchRouteManifest()
   if (!manifest) {
     if (decision.requiresExactEpisodeAdmission) {
+      if (decision.manifestRoute.kind === "episode") {
+        logImplicitEnglishEpisodeRejected(decision.manifestRoute, false)
+      }
       return { kind: "not-found" }
     }
     if (
@@ -593,8 +722,12 @@ async function classifyManifestAdmission(
     if (
       decision.manifestRoute.parentSlug === decision.manifestRoute.childSlug
     ) {
+      logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
       return { kind: "not-found" }
     }
+    // Otherwise fall through: the child may still be an admitted standalone
+    // video (301 below), which is a rescue, not a rejection — log only at
+    // the terminal not-found.
   } else if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
     return { kind: "admit" }
   }
@@ -638,6 +771,12 @@ async function classifyManifestAdmission(
     return { kind: "known-content-language-gap" }
   }
 
+  if (
+    decision.requiresExactEpisodeAdmission &&
+    decision.manifestRoute.kind === "episode"
+  ) {
+    logImplicitEnglishEpisodeRejected(decision.manifestRoute, true)
+  }
   return { kind: "not-found" }
 }
 
@@ -662,9 +801,10 @@ async function isAdmittedInternalRewrite(
     return false
   }
 
-  const rewrite = classifyRewrite(claimedPublicPathname)
+  const manifest = await getWatchRouteManifest()
+  const rewrite = classifyRewrite(claimedPublicPathname, manifest)
   if (rewrite.kind !== "rewrite") return false
-  const admission = await classifyManifestAdmission(rewrite)
+  const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "known-content-language-gap") {
     if (request.headers.get(WATCH_SUBTITLE_INTENT_REWRITE_HEADER) != null) {
       return false
@@ -673,7 +813,9 @@ async function isAdmittedInternalRewrite(
       ...rewrite,
       internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
     }
-    if (subtitleIntentForRewrite(request, unavailableRewrite) != null) {
+    if (
+      subtitleIntentForRewrite(request, unavailableRewrite, manifest) != null
+    ) {
       return false
     }
     return internalRewritePathname(unavailableRewrite) === pathname
@@ -687,6 +829,7 @@ async function isAdmittedInternalRewrite(
   const subtitleLanguageSlug = subtitleIntentForRewrite(
     request,
     admittedRewrite,
+    manifest,
   )
   const claimedSubtitleLanguageSlug = request.headers.get(
     WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
@@ -699,7 +842,15 @@ async function isAdmittedInternalRewrite(
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
-  const { pathname } = request.nextUrl
+  // The production reverse proxy lowercases percent escapes before forwarding.
+  // Hex case does not change their bytes; restore the
+  // canonical spelling before the existing exact decoding/admission checks.
+  // Do not decode here: separators, malformed escapes and ASCII aliases must
+  // still fail the strict round-trip check below.
+  const pathname = request.nextUrl.pathname.replace(
+    /%[0-9a-f]{2}/gi,
+    (escape) => escape.toUpperCase(),
+  )
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())
@@ -728,7 +879,16 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
-  if (pathname === "/history") {
+  const canonical = canonicalizeWatchPath({ rawPathname: pathname })
+  if (canonical.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = canonical.pathname
+    return buildRedirect(url, canonical.status)
+  }
+
+  // Default root rendering has no manifest admission requirement. Keep it
+  // independent of Admin latency, as the config-level root rewrite was.
+  if (pathname === "/" || pathname === "/history") {
     return rewriteToInternal(request, {
       kind: "rewrite",
       locale: DEFAULT_LOCALE,
@@ -737,19 +897,15 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     })
   }
 
-  const canonical = canonicalizeWatchPath({ rawPathname: pathname })
-  if (canonical.kind === "redirect") {
-    const url = request.nextUrl.clone()
-    url.pathname = canonical.pathname
-    return buildRedirect(url, canonical.status)
-  }
-
   if (pathname === "/search") return redirectDeprecatedSearch(request)
 
-  const rewrite = classifyRewrite(pathname)
+  // Fetch once (60s in-process cache) and share it between shape
+  // classification and admission so both read the same snapshot.
+  const manifest = await getWatchRouteManifest()
+  const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") return buildNotFound(request)
-  const admission = await classifyManifestAdmission(rewrite)
+  const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
     return buildNotFound(request, rewrite)
   }
@@ -761,10 +917,14 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(request, {
-    ...rewrite,
-    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-  })
+  return rewriteToInternal(
+    request,
+    {
+      ...rewrite,
+      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+    },
+    manifest,
+  )
 }
 
 export const config = {
@@ -772,6 +932,6 @@ export const config = {
     // Reserved framework + asset subtrees that must never enter the
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
-    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|language-globe|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

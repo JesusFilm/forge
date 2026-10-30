@@ -1,0 +1,27 @@
+{
+  "measuredAt": "2026-09-29T22:42:03.027237+00:00",
+  "method": "POST",
+  "url": "https://admin.jesusfilm.org/api/recommendations/promotion",
+  "transport": "curl",
+  "cookiesSent": false,
+  "body": {},
+  "results": [
+    {
+      "origin": "https://admin.jesusfilm.org",
+      "status": 401,
+      "body": {
+        "ok": false,
+        "error": "authentication_required"
+      }
+    },
+    {
+      "origin": "https://attacker.invalid",
+      "status": 403,
+      "body": {
+        "ok": false,
+        "error": "csrf_failed"
+      }
+    }
+  ],
+  "limitation": "Unauthenticated origin/authentication ordering only; no mutation attempted. Python urllib preliminary response was not JSON and was not treated as application evidence."
+}

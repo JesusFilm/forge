@@ -9,7 +9,7 @@
 
 const mockAuthClient = {
   deleteUser: jest.fn(),
-  signIn: { oauth2: jest.fn() },
+  signIn: { social: jest.fn() },
 }
 
 const mockSessionStore = {
@@ -34,12 +34,18 @@ jest.mock("../authSession", () => ({
 jest.mock("../datadog", () => ({ reportDatadogAction: jest.fn() }))
 
 import { clearNewAccountNotice, getNewAccountNotice } from "../newAccountNotice"
+import {
+  clearAccountDeletedNotice,
+  getAccountDeletedNotice,
+  noteAccountDeleted,
+} from "../accountDeletedNotice"
 import { reportDatadogAction } from "../datadog"
 import { deleteAccount, signInWithHostedPage, signOut } from "../authActions"
 
 beforeEach(() => {
   jest.clearAllMocks()
   clearNewAccountNotice()
+  clearAccountDeletedNotice()
   mockSessionStore.getSnapshot.mockReturnValue({
     status: "signedOut",
     user: null,
@@ -60,7 +66,7 @@ describe("signInWithHostedPage", () => {
 
   it("joins a concurrent second call — only one browser session opens (AE2)", async () => {
     let release: (value: typeof OAUTH_OK) => void = () => {}
-    mockAuthClient.signIn.oauth2.mockImplementation(
+    mockAuthClient.signIn.social.mockImplementation(
       () =>
         new Promise((resolve) => {
           release = resolve
@@ -71,24 +77,24 @@ describe("signInWithHostedPage", () => {
     const first = signInWithHostedPage()
     const second = signInWithHostedPage()
 
-    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledTimes(1)
+    expect(mockAuthClient.signIn.social).toHaveBeenCalledTimes(1)
     release(OAUTH_OK)
     await expect(first).resolves.toEqual({ status: "success" })
     await expect(second).resolves.toEqual({ status: "success" })
   })
 
   it("launches a fresh browser session once the previous attempt settled", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockResolvedValue(null)
 
     await signInWithHostedPage()
     await signInWithHostedPage()
 
-    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledTimes(2)
+    expect(mockAuthClient.signIn.social).toHaveBeenCalledTimes(2)
   })
 
   it("classifies a signed-out session read as a quiet cancel (AE2)", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     // The pre-flight snapshot now feeds the unchanged-session classifier;
     // a null read is still a cancel regardless of what it holds.
     mockSessionStore.getSnapshot.mockReturnValue({
@@ -107,7 +113,7 @@ describe("signInWithHostedPage", () => {
   it("classifies an unchanged session read-back as a cancel — deletion re-auth sheet dismissed", async () => {
     // The stale-but-valid session survives a dismissed sheet in SecureStore;
     // reading it back must NOT count as a completed re-auth.
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.getSnapshot.mockReturnValue({
       status: "signedIn",
       user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
@@ -129,7 +135,7 @@ describe("signInWithHostedPage", () => {
     // would misread every real re-auth as a cancel and loop deletion forever.
     // The presence guard makes an absent pre-flight stamp fall through to
     // success — deleting either OR-clause of that guard fails this test.
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.getSnapshot.mockReturnValue({
       status: "signedIn",
       user: { id: "user-1" },
@@ -143,7 +149,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("classifies a NEW session stamp for the same user as a completed re-auth", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.getSnapshot.mockReturnValue({
       status: "signedIn",
       user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
@@ -160,7 +166,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("classifies a different user signing in as success — the caller handles wrong-account", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.getSnapshot.mockReturnValue({
       status: "signedIn",
       user: { id: "user-1", sessionCreatedAt: STALE_STAMP },
@@ -177,7 +183,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("bounds the pre-browser authorize-URL fetch with the shared auth timeout", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
 
     await signInWithHostedPage()
@@ -185,15 +191,15 @@ describe("signInWithHostedPage", () => {
     const { authFetchOptions } =
       jest.requireActual<typeof import("../authSession")>("../authSession")
     expect(authFetchOptions().fetchOptions.timeout).toBeGreaterThan(0)
-    expect(mockAuthClient.signIn.oauth2).toHaveBeenCalledWith({
-      providerId: "jfp",
+    expect(mockAuthClient.signIn.social).toHaveBeenCalledWith({
+      provider: "jfp",
       callbackURL: "/",
       ...authFetchOptions(),
     })
   })
 
   it("retries a thrown session read once — a network fault is not a cancel", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession
       .mockRejectedValueOnce(new Error("network down"))
       .mockResolvedValueOnce({ id: "user-1" })
@@ -206,7 +212,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("reports a retryable error — never a cancel — when the read fails twice (AE6)", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockRejectedValue(new Error("network down"))
 
     await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
@@ -220,18 +226,18 @@ describe("signInWithHostedPage", () => {
   it("classifies any thrown browser open as a retryable error, never a cancel", async () => {
     // A real user cancel settles session-less instead of throwing, so even
     // a cancel-shaped provider code is a failure the user must see.
-    mockAuthClient.signIn.oauth2.mockRejectedValueOnce({
+    mockAuthClient.signIn.social.mockRejectedValueOnce({
       code: "ERR_REQUEST_CANCELED",
     })
     await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
 
-    mockAuthClient.signIn.oauth2.mockRejectedValueOnce(new TypeError("network"))
+    mockAuthClient.signIn.social.mockRejectedValueOnce(new TypeError("network"))
     await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
     expect(mockSessionStore.readSession).not.toHaveBeenCalled()
   })
 
   it("reports an error when the sign-in request itself is rejected", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue({
+    mockAuthClient.signIn.social.mockResolvedValue({
       data: null,
       error: { message: "provider misconfigured" },
     })
@@ -241,7 +247,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("marks the R15 notice for an account this sign-in created (server clocks only)", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockResolvedValue({
       id: "user-hosted",
       createdAt: new Date(SERVER_NOW - 2_000).toISOString(),
@@ -256,7 +262,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("does not mark the notice for an established account", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockResolvedValue({
       id: "user-old",
       createdAt: new Date(SERVER_NOW - 400 * 24 * 3600 * 1000).toISOString(),
@@ -270,7 +276,7 @@ describe("signInWithHostedPage", () => {
   })
 
   it("does not mark the notice when the timestamps are absent — and does not crash", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
 
     await expect(signInWithHostedPage()).resolves.toEqual({
@@ -279,8 +285,30 @@ describe("signInWithHostedPage", () => {
     expect(getNewAccountNotice()).toBeNull()
   })
 
+  it("clears the account-deleted notice when a sign-in completes (R20)", async () => {
+    noteAccountDeleted()
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-new" })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getAccountDeletedNotice()).toBe(false)
+  })
+
+  it("keeps the account-deleted notice when the sign-in is cancelled", async () => {
+    noteAccountDeleted()
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue(null)
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "cancelled",
+    })
+    expect(getAccountDeletedNotice()).toBe(true)
+  })
+
   it("does not substitute the device clock when the session stamp is missing", async () => {
-    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     // createdAt is fresh relative to the DEVICE clock; without a session
     // stamp the check must stay silent, not fall back to Date.now().
     mockSessionStore.readSession.mockResolvedValue({
@@ -398,6 +426,81 @@ describe("deleteAccount", () => {
 
     await expect(deleteAccount()).resolves.toEqual({ status: "error" })
     expect(mockSessionStore.signOut).not.toHaveBeenCalled()
+  })
+
+  describe("the account-deleted notice (KTD8, R20)", () => {
+    it("raises the notice before the sign-out commits on the success path (AE8)", async () => {
+      mockAuthClient.deleteUser.mockResolvedValue({})
+      let noticeAtSignOut: boolean | null = null
+      mockSessionStore.signOut.mockImplementationOnce(async () => {
+        noticeAtSignOut = getAccountDeletedNotice()
+      })
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(noticeAtSignOut).toBe(true)
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it("still raises the notice when the post-delete signOut throws", async () => {
+      mockAuthClient.deleteUser.mockResolvedValue({})
+      mockSessionStore.signOut.mockRejectedValueOnce(
+        new Error("subscriber threw"),
+      )
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it("raises the notice once the timeout-path probe finds no session", async () => {
+      mockAuthClient.deleteUser.mockRejectedValue(
+        Object.assign(new Error("aborted"), { name: "AbortError" }),
+      )
+      mockSessionStore.readSession.mockResolvedValue(null)
+      let noticeAtSignOut: boolean | null = null
+      mockSessionStore.signOut.mockImplementationOnce(async () => {
+        noticeAtSignOut = getAccountDeletedNotice()
+      })
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(noticeAtSignOut).toBe(true)
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it.each([
+      [
+        "fresh-session-required",
+        () =>
+          mockAuthClient.deleteUser.mockResolvedValue({
+            error: { code: "SESSION_EXPIRED" },
+          }),
+      ],
+      [
+        "error",
+        () =>
+          mockAuthClient.deleteUser.mockResolvedValue({
+            error: { code: "INTERNAL_SERVER_ERROR" },
+          }),
+      ],
+      [
+        "error",
+        () => {
+          mockAuthClient.deleteUser.mockRejectedValue(new Error("timeout"))
+          mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+        },
+      ],
+      [
+        "unconfirmed",
+        () => {
+          mockAuthClient.deleteUser.mockRejectedValue(new Error("timeout"))
+          mockSessionStore.readSession.mockRejectedValue(new Error("offline"))
+        },
+      ],
+    ])("raises no notice on a %s outcome", async (status, arrange) => {
+      arrange()
+
+      await expect(deleteAccount()).resolves.toEqual({ status })
+      expect(getAccountDeletedNotice()).toBe(false)
+    })
   })
 })
 

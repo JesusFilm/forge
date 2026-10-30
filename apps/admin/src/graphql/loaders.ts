@@ -25,11 +25,85 @@ import {
 } from "@/services/mux-image-derivative.service"
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
+import { loadVideoPrimaryDubDurations } from "@/services/video-primary-dub-duration"
+import { loadVideoMuxPlaybackFallbacks } from "@/services/video-mux-playback"
+import {
+  getPreferredPlayableDubs,
+  PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
+} from "@/services/preferred-playable-dub.service"
+import {
+  getSelectedBlockVideoDubs,
+  SELECTED_BLOCK_VIDEO_DUB_BATCH_SIZE,
+  type SelectedBlockVideoDubIdentity,
+} from "@/services/selected-block-video-dub.service"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
 export function createLoaders(prisma: PrismaClient) {
   return {
+    selectedBlockVideoDub: new DataLoader<
+      SelectedBlockVideoDubIdentity & { query: object },
+      VideoDubRow | null,
+      string
+    >(
+      async (keys) => {
+        const groups = new Map<string, Array<(typeof keys)[number]>>()
+        for (const key of keys) {
+          const selection = JSON.stringify(key.query)
+          const group = groups.get(selection) ?? []
+          group.push(key)
+          groups.set(selection, group)
+        }
+        const results = new Map<(typeof keys)[number], VideoDubRow | null>()
+        await Promise.all(
+          Array.from(groups.values()).map(async (group) => {
+            const rows = await getSelectedBlockVideoDubs(
+              prisma,
+              group,
+              group[0]!.query,
+            )
+            group.forEach((key, index) => results.set(key, rows[index] ?? null))
+          }),
+        )
+        return keys.map((key) => results.get(key) ?? null)
+      },
+      {
+        cacheKeyFn: (key) =>
+          JSON.stringify([key.videoId, key.languageId, key.query]),
+        maxBatchSize: SELECTED_BLOCK_VIDEO_DUB_BATCH_SIZE,
+      },
+    ),
+    /** Preserve nested Pothos selections while batching sibling dub lookups. */
+    preferredPlayableDub: new DataLoader<
+      PreferredPlayableDubKey,
+      VideoDubRow | null,
+      string
+    >(
+      async (keys) => {
+        const groups = new Map<string, PreferredPlayableDubKey[]>()
+        for (const key of keys) {
+          const groupKey = JSON.stringify([key.languageSlug || null, key.query])
+          groups.set(groupKey, [...(groups.get(groupKey) ?? []), key])
+        }
+        const results = new Map<PreferredPlayableDubKey, VideoDubRow | null>()
+        await Promise.all(
+          Array.from(groups.values()).map(async (group) => {
+            const rows = await getPreferredPlayableDubs(prisma, {
+              videoIds: group.map((key) => key.videoId),
+              languageSlug: group[0]!.languageSlug,
+              query: group[0]!.query,
+            })
+            group.forEach((key, index) => results.set(key, rows[index] ?? null))
+          }),
+        )
+        return keys.map((key) => results.get(key) ?? null)
+      },
+      {
+        cacheKeyFn: (key) =>
+          JSON.stringify([key.videoId, key.languageSlug || null, key.query]),
+        maxBatchSize: PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
+      },
+    ),
     /** Hydrate Experience rows by id. Used by search / parity test paths. */
     experienceById: new DataLoader<string, ExperienceRow | null>(
       async (ids) => {
@@ -246,32 +320,8 @@ export function createLoaders(prisma: PrismaClient) {
      */
     videoPrimaryDubDurationById: new DataLoader<string, number | null>(
       async (ids) => {
-        const rows = await prisma.video.findMany({
-          where: { id: { in: ids as string[] }, deletedAt: null },
-          select: {
-            id: true,
-            primaryLanguageId: true,
-            dubs: {
-              where: {
-                published: true,
-                hls: { not: null },
-                deletedAt: null,
-                duration: { gt: 0 },
-              },
-              orderBy: [{ duration: "desc" }],
-              take: PRIMARY_DUB_DURATION_SCAN_LIMIT,
-              select: { languageId: true, duration: true },
-            },
-          },
-        })
-        const byId = new Map<string, number | null>()
-        for (const row of rows) {
-          const primaryDub = row.primaryLanguageId
-            ? row.dubs.find((d) => d.languageId === row.primaryLanguageId)
-            : undefined
-          const dub = primaryDub ?? row.dubs[0] ?? null
-          byId.set(row.id, dub?.duration ?? null)
-        }
+        const rows = await loadVideoPrimaryDubDurations(prisma, ids)
+        const byId = new Map(rows.map((row) => [row.id, row.duration]))
         return ids.map((id) => byId.get(id) ?? null)
       },
     ),
@@ -329,35 +379,13 @@ export function createLoaders(prisma: PrismaClient) {
           }
         }
 
-        const fallbackRows = await prisma.video.findMany({
-          where: { id: { in: videoIds }, deletedAt: null },
-          select: {
-            id: true,
-            primaryLanguageId: true,
-            dubs: {
-              where: {
-                published: true,
-                hls: { not: null },
-                deletedAt: null,
-                muxVideo: { playbackId: { not: null }, deletedAt: null },
-              },
-              orderBy: [{ duration: "desc" }, { id: "asc" }],
-              take: PRIMARY_DUB_PLAYBACK_SCAN_LIMIT,
-              select: {
-                languageId: true,
-                muxVideo: { select: { playbackId: true } },
-              },
-            },
-          },
-        })
-        const fallbackByVideoId = new Map<string, string | null>()
-        for (const row of fallbackRows) {
-          const primaryDub = row.primaryLanguageId
-            ? row.dubs.find((dub) => dub.languageId === row.primaryLanguageId)
-            : undefined
-          const dub = primaryDub ?? row.dubs[0] ?? null
-          fallbackByVideoId.set(row.id, dub?.muxVideo?.playbackId ?? null)
-        }
+        const fallbackRows = await loadVideoMuxPlaybackFallbacks(
+          prisma,
+          videoIds,
+        )
+        const fallbackByVideoId = new Map(
+          fallbackRows.map((row) => [row.id, row.playbackId]),
+        )
 
         return normalizedKeys.map(
           (key) =>
@@ -679,12 +707,9 @@ function createVideoMuxDerivativeLoader(
   )
 }
 
-// Bounds the per-video dubs scan in `videoPrimaryDubDurationById`. Matches
-// `HYDRATION_DUBS_PER_VIDEO` in hybrid-search: order by duration desc and
-// take the top N, then prefer the primary-language dub among them. On a
-// heavily-dubbed video the primary may rank below N by duration — accept
-// the longest-dub fallback rather than widen the scan.
-const PRIMARY_DUB_DURATION_SCAN_LIMIT = 5
+// Preserve the Mux fallback's primary-language preference within the five
+// longest dubs. Prisma's nested take caps the relation returned to these
+// callers; it does not bound rows fetched from PostgreSQL.
 const PRIMARY_DUB_PLAYBACK_SCAN_LIMIT = 5
 
 export type VideoMuxPlaybackKey = {
@@ -704,6 +729,12 @@ type MuxVideoChoice = {
 
 export type VideoByIdWithQueryKey = {
   id: string
+  query: object
+}
+
+export type PreferredPlayableDubKey = {
+  videoId: string
+  languageSlug: string | null
   query: object
 }
 
@@ -974,6 +1005,9 @@ type ExperienceLocaleRow = Awaited<
   ReturnType<PrismaClient["experienceLocale"]["findMany"]>
 >[number]
 type VideoRow = Awaited<ReturnType<PrismaClient["video"]["findMany"]>>[number]
+type VideoDubRow = Awaited<
+  ReturnType<PrismaClient["videoDub"]["findMany"]>
+>[number]
 type VideoRelationRow = Awaited<
   ReturnType<PrismaClient["videoRelation"]["findMany"]>
 >[number]

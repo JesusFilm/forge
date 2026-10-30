@@ -19,13 +19,17 @@ const starterPrompts = [
   "Validate the Spanish locale drafts and list anything that needs review.",
   "Check whether target-language videos exist before creating drafts.",
   "Generate a new draft Experience about hope, then translate it into French.",
+  "Duplicate the Easter Experience as an unpublished draft.",
+  "Use the forge-push-campaign-drafts skill to draft a push campaign for a new video.",
+  "Draft a push campaign for Mexico in English and Spanish, then give me the review link.",
+  "Fix only the Spanish copy of a draft push campaign. I will paste its dashboard link.",
 ]
 
 export default async function AdminMcpPage() {
   await requireAdminSession()
   const metadata = getAdminMcpProtectedResourceMetadata()
   const mcpCommand = `codex mcp add jfp-admin --url ${metadata.resource}`
-  const claudeMcpCommand = `claude mcp add --transport http jfp-admin ${metadata.resource}`
+  const claudeMcpCommand = `claude mcp add --scope user --transport http jfp-admin ${metadata.resource}`
   const genericMcpConfig = `{
   "name": "jfp-admin",
   "type": "http",

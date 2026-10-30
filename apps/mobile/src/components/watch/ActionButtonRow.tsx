@@ -23,9 +23,15 @@ import {
   iconInnerSlop,
 } from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { useT } from "../../i18n/useT"
+import {
+  subtitleLabelText,
+  type SubtitleActionLabel,
+} from "../../lib/subtitleSelection"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import type { OfflineDownloadState } from "../../lib/offlineManifest"
+import type { ExportSessionEntry } from "../../lib/exportSession"
 import { downloadGlyphInfo } from "../../lib/downloadGlyph"
 import { DownloadProgressRing } from "./DownloadProgressRing"
 
@@ -78,10 +84,13 @@ export interface ActionButtonRowProps {
   downloadState?: OfflineDownloadState | null
   /** Download progress (0..1) for the in-progress ring; null when unknown. */
   downloadProgress?: number | null
+  /** This video's raw export while one runs; it outranks every offline state
+   *  and makes the control inert (R16, R24). */
+  exportEntry?: ExportSessionEntry | null
   /** Selected dub language name shown on the Language row. */
   languageLabel?: string | null
-  /** Selected subtitle name (or "Off") shown on the Subtitles row. */
-  subtitleLabel?: string | null
+  /** Selected subtitle name, or the off state, shown on the Subtitles row. */
+  subtitleLabel?: SubtitleActionLabel
   /** Subtitles on → bright row; off → muted, matching the "Off" state. */
   subtitleActive?: boolean
 }
@@ -93,11 +102,16 @@ export function ActionButtonRow({
   onShare,
   downloadState,
   downloadProgress,
+  exportEntry,
   languageLabel,
   subtitleLabel,
   subtitleActive,
 }: ActionButtonRowProps) {
   const typography = useTypography()
+  const tSubtitles = useT("Subtitles")
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const tDownload = useT("DownloadButton")
 
   // Measured inputs for the spacing mode: the row's inner width plus each
   // pill's NATURAL width (the real pills clamp at the column, so only the
@@ -116,27 +130,20 @@ export function ActionButtonRow({
   const downloadSlop = { left: ICON_HIT_SLOP_MAX, right: inner }
   const shareSlop = { left: inner, right: ICON_HIT_SLOP_MAX }
 
-  const language = languageLabel?.trim() || "Language"
-  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  const language = languageLabel?.trim() || t("language")
+  const subtitle =
+    subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
+    t("subtitles")
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
-  const dl = downloadGlyphInfo(downloadState, downloadProgress)
-  // The in-progress ring IS the control (mirrors the series button): pause while
-  // transferring (tap→pause), play while paused (tap→resume/remove), neutral
-  // download glyph while queued (no live transfer to pause yet).
-  const inProgressIcon =
-    downloadState === "paused"
-      ? "play"
-      : downloadState === "queued"
-        ? "arrow-down"
-        : "pause"
-  const downloadA11y = !dl.inProgress
-    ? dl.a11yLabel
-    : downloadState === "paused"
-      ? "Download paused. Tap to resume or remove"
-      : downloadState === "queued"
-        ? "Download queued. Tap to remove"
-        : "Pause download"
+  // The ring IS the control, so its glyph, its label and whether it accepts a
+  // tap are ONE decision — downloadGlyphInfo owns all three (KTD6).
+  const dl = downloadGlyphInfo(
+    downloadState,
+    downloadProgress,
+    exportEntry,
+    tDownload,
+  )
   // The completed tick reads a touch larger than the idle/failed glyphs.
   const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
@@ -189,7 +196,8 @@ export function ActionButtonRow({
           onPress={onLanguage}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Language, ${language}`}
+          accessibilityLabel={t("languageAriaLabel", { language })}
+          {...{ "dd-action-name": "watch-language" }}
         >
           <PillContent
             kind="language"
@@ -206,7 +214,9 @@ export function ActionButtonRow({
           onPress={onSubtitles}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Subtitles, ${subtitle}`}
+          accessibilityLabel={t("subtitlesAriaLabel", { subtitle })}
+          // The label carries catalog text, so the RUM name is fixed (KTD15).
+          {...{ "dd-action-name": "watch-subtitles" }}
         >
           <PillContent
             kind="subtitle"
@@ -224,25 +234,27 @@ export function ActionButtonRow({
           the roomy column (actionRowSpacing). */}
       <View style={{ width: spacers.dividerIcon }} />
       <Pressable
-        onPress={onDownload}
+        onPress={dl.interactive ? onDownload : undefined}
+        disabled={!dl.interactive}
         style={({ pressed }) => [
           styles.iconButton,
           pressed && feedback.pressed,
         ]}
         hitSlop={downloadSlop}
         accessibilityRole="button"
-        accessibilityLabel={downloadA11y}
+        accessibilityLabel={dl.a11yLabel}
+        {...{ "dd-action-name": "watch-download" }}
       >
         {dl.inProgress ? (
           <DownloadProgressRing
             size={26}
             strokeWidth={2.5}
-            progress={downloadProgress ?? 0}
+            progress={dl.ringProgress}
             color={dl.color}
             trackColor="rgba(255, 255, 255, 0.18)"
             cutoutColor={BG_COLOR}
           >
-            <Ionicons name={inProgressIcon} size={12} color={dl.color} />
+            <Ionicons name={dl.ringIcon} size={12} color={dl.color} />
           </DownloadProgressRing>
         ) : (
           <Ionicons name={dl.icon} size={staticIconSize} color={dl.color} />
@@ -257,7 +269,8 @@ export function ActionButtonRow({
         ]}
         hitSlop={shareSlop}
         accessibilityRole="button"
-        accessibilityLabel="Share"
+        accessibilityLabel={tCommon("shareAriaLabel")}
+        {...{ "dd-action-name": "watch-share" }}
       >
         <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
       </Pressable>
@@ -305,7 +318,6 @@ const styles = StyleSheet.create({
     // Shrink + ellipsize only when the pill hits its max width.
     flexShrink: 1,
     minWidth: 0,
-    fontFamily: "System",
   },
   divider: {
     width: DIVIDER_WIDTH,

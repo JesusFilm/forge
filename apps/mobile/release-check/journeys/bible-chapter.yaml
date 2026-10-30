@@ -1,0 +1,99 @@
+# Open a passage on the Bible tab and in the pushed reader, and change the
+# chapter with a sideways swipe (R19 starter journey). BSB is inside the app,
+# so the reader needs no network for these chapters.
+appId: org.jesusfilm.forgewatch
+name: bible-chapter
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Bible
+    label: Open the Bible tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-bible
+    timeout: 20000
+    label: The Bible tab shows
+# The first open plays a swipe demonstration over the verse. A tap skips it.
+- extendedWaitUntil:
+    visible:
+      id: bible-swipe-demo
+    timeout: 15000
+    label: The swipe demonstration shows
+- tapOn:
+    id: bible-swipe-demo
+    label: Skip the swipe demonstration
+- extendedWaitUntil:
+    notVisible:
+      id: bible-swipe-demo
+    timeout: 10000
+    label: The swipe demonstration closes
+- assertVisible:
+    id: bible-verse
+    label: A verse shows on the Bible tab
+- assertVisible:
+    text: "John 3:16. Choose a passage"
+    label: The Bible tab opens at John 3:16
+# The middle of the screen is in the verse area on every test device.
+- swipe:
+    start: 80%,50%
+    end: 20%,50%
+    label: Swipe to the next chapter on the Bible tab
+- extendedWaitUntil:
+    visible:
+      text: "John 4:1. Choose a passage"
+    timeout: 10000
+    label: The Bible tab shows John 4
+- openLink:
+    link: forgemobile://reader?book=GEN&chapter=1&verse=1
+    label: Open Genesis 1 in the pushed reader
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-reader
+    timeout: 20000
+    label: The pushed reader shows
+- extendedWaitUntil:
+    visible:
+      text: "Genesis 1:1. Choose a passage"
+    timeout: 10000
+    label: The pushed reader opens at Genesis 1:1
+- swipe:
+    start: 80%,50%
+    end: 20%,50%
+    label: Swipe to the next chapter in the pushed reader
+- extendedWaitUntil:
+    visible:
+      text: "Genesis 2:1. Choose a passage"
+    timeout: 10000
+    label: The pushed reader shows Genesis 2
+- tapOn:
+    text: Go back
+    label: Close the pushed reader
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-bible
+    timeout: 10000
+    label: The Bible tab shows again
+# The tab and the pushed reader share one reading position (KD2).
+- extendedWaitUntil:
+    visible:
+      text: "Genesis 2:1. Choose a passage"
+    timeout: 10000
+    label: The Bible tab keeps the pushed reader's place

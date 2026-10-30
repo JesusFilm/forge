@@ -31,6 +31,7 @@ function makeCtx(opts: {
     user: opts.user,
     request: opts.request ?? makeRequest(),
     prisma: {} as ContextShape["prisma"],
+    watchHomeCategoryRailRolloutCompleted: false,
     loaders: {} as ContextShape["loaders"],
     services: {} as ContextShape["services"],
   }

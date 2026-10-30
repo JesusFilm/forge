@@ -343,7 +343,7 @@ function MuxBackedCarouselVideoPlayer({
 
           <span
             ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
           >
             0:00 / 0:00
           </span>
@@ -461,7 +461,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
       {(subtitle || title || carouselDescription) && (
         <div className="flex flex-col gap-1" data-testid="carousel-copy">
           {subtitle && (
-            <h4 className="mb-0 text-sm font-semibold tracking-eyebrow text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <h4 className="mb-0 text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </h4>
           )}

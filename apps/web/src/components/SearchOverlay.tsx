@@ -13,14 +13,17 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { createPortal } from "react-dom"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import {
+  ArrowRight,
   BookOpen,
   ChevronDown,
   CornerDownLeft,
   Folder,
   Languages,
+  ListVideo,
   PlaySquare,
   Search,
 } from "lucide-react"
@@ -35,6 +38,7 @@ import {
 } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import {
@@ -66,6 +70,7 @@ import {
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
 import { localizedSearchLanguageName } from "@/lib/search-language-display-name"
+import { splitSearchLanguageTemplate } from "@/lib/search-language-template"
 import {
   parseWatchPath,
   tryAsContentSlug,
@@ -221,13 +226,14 @@ export function SearchOverlay() {
     query,
     submittedQuery,
     displayResults,
+    displayResultPages,
     exiting,
-    resultsKey,
     hasMore,
     loading,
     showSkeleton,
     loadingMore,
     error,
+    errorKind,
     searched,
     languageOptions,
     languageOptionsLoading,
@@ -238,6 +244,7 @@ export function SearchOverlay() {
     headerLanguageSwitcherVisible,
     headerLanguageCode,
     headerPinned,
+    languageVideosHref,
     setOpen,
     setQuery,
     search,
@@ -663,10 +670,18 @@ export function SearchOverlay() {
     (e: ChangeEvent<HTMLInputElement>) => {
       setSuggestionPanelVisible(true)
       setSuppressedSuggestionValue(null)
-      invalidateSuggestionRequest()
+      // The debounced fetch effect is keyed on the normalized query, so a
+      // normalization-neutral keystroke (e.g. removing a trailing space)
+      // must not bump the generation — that would orphan the pending
+      // request without the effect ever rescheduling a replacement.
+      if (
+        normalizeWatchSearchQuery(e.target.value) !== normalizedSuggestionQuery
+      ) {
+        invalidateSuggestionRequest()
+      }
       setQuery(e.target.value)
     },
-    [invalidateSuggestionRequest, setQuery],
+    [invalidateSuggestionRequest, normalizedSuggestionQuery, setQuery],
   )
 
   const dismissSuggestions = useCallback(() => {
@@ -885,7 +900,7 @@ export function SearchOverlay() {
       ? "top-56 md:top-44"
       : "top-44 md:top-32"
   const semanticLanguageTriggerClassName =
-    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
+    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-base sm:!text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
   const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
       languageOptions.flatMap((language) =>
@@ -896,6 +911,7 @@ export function SearchOverlay() {
                 searchAliasSlug: language.aliasOwnerSlug ?? null,
                 name: language.englishName,
                 nativeName: language.nativeName,
+                nativeNameLang: language.nativeNameLang,
                 bcp47: language.bcp47,
               },
             ]
@@ -973,8 +989,13 @@ export function SearchOverlay() {
   )
   const renderSemanticLanguageCombobox = (
     takeoverRect?: SuggestionListPosition,
+    attached?: { start: boolean; end: boolean },
   ) => (
-    <span className="pointer-events-auto relative mx-1 inline-flex shrink-0">
+    <span
+      className={`pointer-events-auto relative inline-flex shrink-0 ${
+        attached?.start ? "" : "ms-1"
+      } ${attached?.end ? "" : "me-1"}`}
+    >
       <LanguageCombobox
         options={semanticLanguageComboboxOptions}
         value={semanticLanguageComboboxValue}
@@ -998,44 +1019,51 @@ export function SearchOverlay() {
     hasUnsubmittedSearchIntent ? (
       <>
         <span className="min-w-0 flex-1 truncate">
-          {(t.raw("searchSuggestionWithLanguage") as string)
-            .split(/(\{language\}|\{suggestion\})/u)
-            .map((part, index) => {
-              if (part === "{language}") {
-                return (
-                  <span key={`language-${index}`}>
-                    {renderSemanticLanguageCombobox(takeoverRect)}
-                  </span>
-                )
-              }
-              if (part === "{suggestion}") {
-                return (
-                  <strong
-                    key={`suggestion-${index}`}
-                    className="font-semibold text-white"
-                  >
-                    <bdi dir="auto">{query.trim()}</bdi>
-                  </strong>
-                )
-              }
-              return <span key={`copy-${index}`}>{part}</span>
-            })}
+          {splitSearchLanguageTemplate(
+            t.raw("searchSuggestionWithLanguage") as string,
+            ["{language}", "{suggestion}"],
+          ).map((segment, index) => {
+            if (segment.kind === "text") {
+              return <span key={`copy-${index}`}>{segment.text}</span>
+            }
+            if (segment.token === "{language}") {
+              return (
+                <span key={`language-${index}`}>
+                  {renderSemanticLanguageCombobox(takeoverRect, {
+                    start: segment.attachedStart,
+                    end: segment.attachedEnd,
+                  })}
+                </span>
+              )
+            }
+            return (
+              <strong
+                key={`suggestion-${index}`}
+                className="font-semibold text-white"
+              >
+                <bdi dir="auto">{query.trim()}</bdi>
+              </strong>
+            )
+          })}
         </span>
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
-      <span className="min-w-0 flex-1 truncate text-[13px] sm:text-sm">
-        {languageContextMessage
-          .split(/(\{language\})/u)
-          .map((part, index) =>
-            part === "{language}" ? (
-              <span key={`language-${index}`}>
-                {renderSemanticLanguageCombobox(takeoverRect)}
-              </span>
-            ) : (
-              <span key={`copy-${index}`}>{part}</span>
-            ),
-          )}
+      <span className="min-w-0 flex-1 truncate text-base sm:text-sm">
+        {splitSearchLanguageTemplate(languageContextMessage, [
+          "{language}",
+        ]).map((segment, index) =>
+          segment.kind === "placeholder" ? (
+            <span key={`language-${index}`}>
+              {renderSemanticLanguageCombobox(takeoverRect, {
+                start: segment.attachedStart,
+                end: segment.attachedEnd,
+              })}
+            </span>
+          ) : (
+            <span key={`copy-${index}`}>{segment.text}</span>
+          ),
+        )}
       </span>
     )
   const headerTopClass = headerPinned
@@ -1048,6 +1076,7 @@ export function SearchOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
+      onClick={() => setOpen(false)}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 45,
@@ -1117,7 +1146,7 @@ export function SearchOverlay() {
           {searchLanguageControlVisible && !suggestionPanelActive && (
             <div
               data-testid="search-language-context"
-              className="relative mt-2 min-h-11 w-full min-w-0 overflow-hidden rounded-lg text-sm text-stone-400"
+              className="relative mt-2 min-h-11 w-full min-w-0 overflow-hidden rounded-lg text-base sm:text-sm text-stone-400"
             >
               {hasUnsubmittedSearchIntent && (
                 <button
@@ -1168,6 +1197,7 @@ export function SearchOverlay() {
           <div
             ref={suggestionPanelRef}
             data-testid="search-suggestions-panel"
+            onClick={(event) => event.stopPropagation()}
             className="fixed z-[1000] m-0 flex origin-top-left flex-col overflow-hidden rounded-2xl border border-white/10 bg-stone-950/92 text-stone-100 shadow-2xl shadow-black/40 backdrop-blur-xl duration-150 animate-in fade-in-0 zoom-in-95"
             style={{
               height: suggestionListPosition.height,
@@ -1179,7 +1209,7 @@ export function SearchOverlay() {
             {searchLanguageControlVisible && (
               <div
                 data-testid="search-suggestions-language-context"
-                className="relative min-h-14 shrink-0 min-w-0 overflow-hidden border-b border-white/[0.08] text-sm text-stone-400"
+                className="relative min-h-14 shrink-0 min-w-0 overflow-hidden border-b border-white/[0.08] text-base sm:text-sm text-stone-400"
               >
                 {hasUnsubmittedSearchIntent && (
                   <button
@@ -1219,7 +1249,7 @@ export function SearchOverlay() {
                   >
                     <div
                       id={`${suggestionListId}-${group.id}-heading`}
-                      className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-400"
+                      className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-400 sm:text-[0.6875rem]"
                     >
                       {group.label}
                     </div>
@@ -1250,7 +1280,7 @@ export function SearchOverlay() {
                           {group.id === "direct-matches" && (
                             <div
                               id={sectionHeadingId}
-                              className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-stone-600"
+                              className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.12em] text-stone-600 sm:text-[0.625rem]"
                             >
                               {section.label}
                             </div>
@@ -1334,11 +1364,11 @@ export function SearchOverlay() {
                                   }`}
                                 />
                                 <span className="min-w-0 flex-1">
-                                  <bdi className="block truncate text-sm font-medium leading-5">
+                                  <bdi className="block truncate text-base sm:text-sm font-medium leading-5">
                                     {suggestion.title}
                                   </bdi>
                                   {suggestion.kind === "content" && (
-                                    <span className="block truncate text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500">
+                                    <span className="block truncate text-xs font-medium uppercase tracking-[0.08em] text-stone-500 sm:text-[0.6875rem]">
                                       {videoLabels(
                                         videoLabelMessageKey(suggestion.label),
                                       )}
@@ -1346,7 +1376,7 @@ export function SearchOverlay() {
                                   )}
                                   {descriptionParts && (
                                     <bdi
-                                      className={`line-clamp-1 text-xs leading-4 ${
+                                      className={`line-clamp-1 text-sm sm:text-xs leading-4 ${
                                         active
                                           ? "text-stone-300"
                                           : "text-stone-500"
@@ -1387,6 +1417,26 @@ export function SearchOverlay() {
           onClick={(e) => e.stopPropagation()}
           className="mx-auto max-w-[1400px]"
         >
+          {showCategoryGrid && languageVideosHref ? (
+            // The search-open surface's own language-inventory entry point,
+            // at every width: the header control is suppressed while the modal
+            // is open, so this row is the only one in the browse state.
+            <Link
+              href={languageVideosHref}
+              prefetch={false}
+              data-testid="search-overlay-language-videos-link"
+              className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-stone-100 transition-colors duration-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ListVideo aria-hidden className="size-5 shrink-0" />
+                <span className="truncate text-base font-semibold">
+                  {t("allVideosOnSinglePage")}
+                </span>
+              </span>
+              <ArrowRight aria-hidden className="size-4 shrink-0" />
+            </Link>
+          ) : null}
+
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {CATEGORIES.map((cat) => {
@@ -1455,13 +1505,19 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {t("connectionHint")}
-              </p>
+              {errorKind === "rate_limited" ? (
+                <p className="mt-2 text-base sm:text-sm text-stone-500">
+                  {t("rateLimitHint")}
+                </p>
+              ) : errorKind === "network_error" ? (
+                <p className="mt-2 text-base sm:text-sm text-stone-500">
+                  {t("connectionHint")}
+                </p>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void search(submittedQuery ?? query)}
-                className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+                className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-base sm:text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
               >
                 {t("retrySearch")}
               </button>
@@ -1473,7 +1529,7 @@ export function SearchOverlay() {
               <h2 className="text-lg font-semibold text-stone-200">
                 {t("noResults", { query: submittedQuery ?? query.trim() })}
               </h2>
-              <p className="mt-2 text-sm text-stone-500">
+              <p className="mt-2 text-base sm:text-sm text-stone-500">
                 {t("tryDifferentKeywordsOrLanguage")}
               </p>
             </div>
@@ -1482,69 +1538,98 @@ export function SearchOverlay() {
           {displayResults.length > 0 && (
             <>
               <div
-                key={resultsKey}
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
-                {displayResults.map((result, index) => (
-                  <VideoCard
-                    key={`${result.id}-${index}`}
-                    result={result}
-                    index={exiting ? 0 : index}
-                    requestedLanguageSlug={completedSearchLanguageSlug}
-                    requestedLanguageName={completedSearchLanguageName}
-                    onResultClick={
-                      searchResultAnalytics
-                        ? (clickedResult) => {
-                            closeAfterResultNavigation()
-                            const clickKey = [
-                              searchResultAnalytics.searchRequestId,
-                              clickedResult.id,
-                              index + 1,
-                            ].join(":")
-                            if (
-                              recordedResultClickKeysRef.current.has(clickKey)
-                            ) {
-                              return
-                            }
-                            recordedResultClickKeysRef.current.add(clickKey)
-                            reportDatadogRumAction(
-                              WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-                              buildWatchSearchResultClickRumContext(
-                                clickedResult,
-                                {
-                                  ...searchResultAnalytics,
-                                  position: index + 1,
-                                },
-                              ),
-                            )
-                            void recordWatchSearchResultClick({
-                              requestId: searchResultAnalytics.searchRequestId,
-                              resultId: clickedResult.id,
-                              resultType: clickedResult.type,
-                              position: index + 1,
-                              visibleResultIds,
-                              routeLanguageSlug:
-                                searchResultAnalytics.routeLanguageSlug,
-                              searchLanguageSlug:
-                                searchResultAnalytics.searchLanguageSlug,
-                            })
+                {displayResultPages.map((page) => (
+                  <WatchExposureBoundary
+                    key={page.key}
+                    config={{
+                      surface: "watch-search",
+                      block: "results",
+                      presentation: "result-list",
+                      placement: "search-results",
+                    }}
+                    manifest={page.surfaceManifest}
+                  >
+                    {page.results.map((result, pageIndex) => {
+                      const index = page.startIndex + pageIndex
+                      return (
+                        <VideoCard
+                          key={`${result.id}-${index}`}
+                          result={result}
+                          index={exiting ? 0 : index}
+                          requestedLanguageSlug={completedSearchLanguageSlug}
+                          requestedLanguageName={completedSearchLanguageName}
+                          onResultClick={
+                            searchResultAnalytics
+                              ? (clickedResult) => {
+                                  closeAfterResultNavigation()
+                                  const clickKey = [
+                                    searchResultAnalytics.searchRequestId,
+                                    clickedResult.id,
+                                    index + 1,
+                                  ].join(":")
+                                  if (
+                                    recordedResultClickKeysRef.current.has(
+                                      clickKey,
+                                    )
+                                  ) {
+                                    return
+                                  }
+                                  recordedResultClickKeysRef.current.add(
+                                    clickKey,
+                                  )
+                                  reportDatadogRumAction(
+                                    WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                                    buildWatchSearchResultClickRumContext(
+                                      clickedResult,
+                                      {
+                                        ...searchResultAnalytics,
+                                        position: index + 1,
+                                      },
+                                    ),
+                                  )
+                                  void recordWatchSearchResultClick({
+                                    requestId:
+                                      searchResultAnalytics.searchRequestId,
+                                    resultId: clickedResult.id,
+                                    resultType: clickedResult.type,
+                                    position: index + 1,
+                                    visibleResultIds,
+                                    routeLanguageSlug:
+                                      searchResultAnalytics.routeLanguageSlug,
+                                    searchLanguageSlug:
+                                      searchResultAnalytics.searchLanguageSlug,
+                                  })
+                                }
+                              : () => {
+                                  closeAfterResultNavigation()
+                                }
                           }
-                        : () => {
-                            closeAfterResultNavigation()
-                          }
-                    }
-                  />
+                        />
+                      )
+                    })}
+                  </WatchExposureBoundary>
                 ))}
               </div>
 
               {error && (
                 <div className="mt-6 text-center">
-                  <p className="text-sm text-brand-red">{error}</p>
+                  <p className="text-base sm:text-sm text-brand-red">{error}</p>
+                  {errorKind === "rate_limited" ? (
+                    <p className="mt-2 text-base sm:text-sm text-stone-500">
+                      {t("rateLimitHint")}
+                    </p>
+                  ) : errorKind === "network_error" ? (
+                    <p className="mt-2 text-base sm:text-sm text-stone-500">
+                      {t("connectionHint")}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => void loadMore()}
                     disabled={loadingMore}
-                    className="mt-2 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-2 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-base sm:text-sm text-stone-200 transition hover:bg-stone-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {t("retry")}
                   </button>
@@ -1557,7 +1642,7 @@ export function SearchOverlay() {
                     type="button"
                     onClick={() => void loadMore()}
                     disabled={loadingMore}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/10 px-6 py-3 text-base sm:text-sm font-medium text-stone-300 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
                   >
                     {loadingMore && (
                       <SpinnerIcon className="h-4 w-4 animate-spin" />

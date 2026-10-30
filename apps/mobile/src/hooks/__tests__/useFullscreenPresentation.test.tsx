@@ -1,15 +1,16 @@
 /**
- * Cross-layer orientation agreement for the custom fullscreen (watch/series).
+ * ONE orientation writer for the custom fullscreen (watch/series).
  *
- * TWO layers request the fullscreen orientation: the react-native-screens
- * screen option set here, and expo-screen-orientation's lock inside
- * `enterFullscreenLandscape`. They MUST name the SAME single orientation
- * (landscape_right ↔ LANDSCAPE_RIGHT). When they disagree — e.g. a dual
- * "landscape" option against a LANDSCAPE_RIGHT lock — each layer's geometry
- * request falls outside the other's supported mask, iOS rejects the rotation,
- * and fullscreen stays portrait. The expo side is pinned by
- * `src/lib/__tests__/orientation.test.ts`; this suite pins the screen-option
- * side and the enter/exit call pairing.
+ * expo-screen-orientation's lock (`enterFullscreenLandscape` / `exitToPortrait`)
+ * is the only layer allowed to name the orientation. A react-native-screens
+ * `orientation` screen option must NEVER be set: the moment any screen carries
+ * one, `ScreenOrientationViewController` stops answering from its own registry
+ * mask and defers to the react-native-screens view-controller chain — which the
+ * dev client's `DevLauncherViewController` sits in the middle of and breaks, so
+ * UIKit refuses the geometry request ("None of the requested orientations are
+ * supported by the view controller") and fullscreen stays portrait. The expo
+ * side is pinned by `src/lib/__tests__/orientation.test.ts`; this suite pins
+ * the enter/exit pairing and the no-screen-option invariant.
  *
  * Back-swipe gating: the pop gesture that dismisses the watch/series page
  * belongs to the PARENT stack (the routes are nested), and react-native-screens
@@ -97,23 +98,20 @@ beforeEach(() => {
 })
 
 describe("useFullscreenPresentation orientation wiring", () => {
-  it("names the SAME single landscape orientation on both layers on enter", async () => {
+  it("locks landscape on enter", async () => {
     const renderer = await renderHarness()
 
     await act(async () => {
       api?.toggleFullscreen()
     })
 
-    expect(mockSetOptions).toHaveBeenCalledWith({
-      orientation: "landscape_right",
-    })
     expect(enterFullscreenLandscape).toHaveBeenCalled()
     await act(async () => {
       renderer.unmount()
     })
   })
 
-  it("returns both layers to portrait on exit", async () => {
+  it("returns to portrait on exit", async () => {
     const renderer = await renderHarness()
 
     await act(async () => {
@@ -123,8 +121,31 @@ describe("useFullscreenPresentation orientation wiring", () => {
       api?.toggleFullscreen()
     })
 
-    expect(mockSetOptions).toHaveBeenCalledWith({ orientation: "portrait" })
     expect(exitToPortrait).toHaveBeenCalled()
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("never sets a react-native-screens orientation screen option", async () => {
+    // The one-line revert this fix exists to block. Reintroducing the option
+    // hands the mask back to the VC chain the dev client breaks, and no
+    // behavioural test can see that — jest never drives UIKit.
+    const renderer = await renderHarness()
+
+    await act(async () => {
+      api?.toggleFullscreen()
+    })
+    await act(async () => {
+      api?.toggleFullscreen()
+    })
+
+    const written = [
+      ...mockSetOptions.mock.calls,
+      ...mockParentSetOptions.mock.calls,
+    ].flatMap((call: unknown[]) => Object.keys(call[0] as object))
+    expect(written.length).toBeGreaterThan(0)
+    expect(written).not.toContain("orientation")
     await act(async () => {
       renderer.unmount()
     })

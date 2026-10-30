@@ -1,9 +1,6 @@
-// Shared local types for the Shorts Studio worker wire contracts.
-// Source of truth: docs/plans/2026-06-11-002-feat-manager-shorts-studio-plan.md.
-// Literals here are cross-app contracts with apps/manager — do not rename
-// without updating the plan and the manager client.
+// Retained devotional worker wire contracts; legacy Shorts jobs are retired.
 
-export type JobKind = "prepare" | "render" | "devotional-render"
+export type JobKind = "devotional-render"
 
 export type WorkerJobStatus =
   | "queued"
@@ -27,24 +24,6 @@ export type JobErrorBody = {
   retryable: boolean
 }
 
-// Phase annotations recorded in the captions artifact + prepare report.
-export type TranscriptionAnnotation =
-  | "transcription_skipped_no_audio"
-  | "transcription_unsupported_language"
-
-export type PrepareReport = {
-  hasAudio: boolean
-  clipDurationSec: number
-  captionsCount: number
-  annotation: TranscriptionAnnotation | null
-}
-
-export type RenderReport = {
-  outputDurationSec: number
-  width: number
-  height: number
-}
-
 export type DevotionalRenderOutput = {
   artifact: ArtifactRef
   outputDurationSec: number
@@ -59,7 +38,7 @@ export type DevotionalRenderReport = {
 
 export type JobResult = {
   artifacts: ArtifactRef[]
-  report: PrepareReport | RenderReport | DevotionalRenderReport
+  report: DevotionalRenderReport
 }
 
 export type JobStatusBody = {
@@ -70,50 +49,6 @@ export type JobStatusBody = {
   message: string | null
   error: JobErrorBody | null
   result: JobResult | null
-}
-
-// ---------------------------------------------------------------------------
-// Artifact JSON shapes ({assetId}/{artifactType}.json)
-// ---------------------------------------------------------------------------
-
-// shorts-clip-meta-v1.json — host-only source provenance (never the full
-// URL; presigned/loopback URLs must not be persisted).
-export type ClipMetaArtifact = {
-  sourceHost: string
-  clip: { startSec: number; endSec: number }
-  durationSec: number
-  fps: number
-  width: number
-  height: number
-  hasAudio: boolean
-  generatedAt: string
-}
-
-// shorts-captions-v1.json — whisper word-level captions (immutable; operator
-// edits live in manager's draft artifact, never here).
-export type CaptionsArtifactCaption = {
-  text: string
-  startMs: number
-  endMs: number
-  timestampMs: number | null
-  confidence: number | null
-}
-
-export type CaptionsArtifact = {
-  captions: CaptionsArtifactCaption[]
-  language: string | null
-  model: "large-v3-turbo" | null
-  annotation: TranscriptionAnnotation | null
-  generatedAt: string
-}
-
-// shorts-render-meta-v1.json — propsHash is the manager's opaque dedupe
-// token (passed through verbatim, never recomputed here).
-export type RenderMetaArtifact = {
-  propsHash: string
-  renderedDraftVersion: number
-  compositionsVersion: string
-  generatedAt: string
 }
 
 export type DevotionalRenderMetaArtifact = {

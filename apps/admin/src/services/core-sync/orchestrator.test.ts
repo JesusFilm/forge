@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { resolveScope } from "./orchestrator"
 
+vi.mock("../watch-catalog-publication", async (original) => ({
+  ...(await original<typeof import("../watch-catalog-publication")>()),
+  requestWatchCatalogPublication: vi.fn().mockResolvedValue(undefined),
+}))
+
 const refreshAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 const refreshSeoAfterCoreSyncMock = vi.hoisted(() => vi.fn())
 
@@ -301,5 +306,189 @@ describe("runSync", () => {
       }),
     )
     expect(advanceWatermark).toHaveBeenCalled()
+  })
+
+  it("logs Core GraphQL error details when a phase throws", async () => {
+    const { refreshSyncLock } = await import("./lock")
+    const { syncVideos } = await import("./phases/sync-videos")
+    const { CoreGraphQLError } = await import("./core-client")
+
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValueOnce(true)
+    ;(syncVideos as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CoreGraphQLError([
+        {
+          message: "Not authorized to resolve Video.restrictViewPlatforms",
+          path: ["videos", 0, "restrictViewPlatforms"],
+          extensions: { code: "FORBIDDEN" },
+        },
+      ]),
+    )
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const { runSyncPhase } = await import("./orchestrator")
+    await runSyncPhase(
+      mockPrismaForPhase(),
+      {
+        runId: "sync-run-1",
+        incremental: true,
+        phasesToRun: ["videos"],
+        startedAtMs: Date.now(),
+      },
+      "videos",
+    )
+
+    const phaseError = errorSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .find((entry) => entry.event === "core-sync.phase.error")
+    expect(phaseError).toMatchObject({
+      phase: "videos",
+      error: expect.stringContaining(
+        "Not authorized to resolve Video.restrictViewPlatforms",
+      ),
+      coreErrors: [
+        {
+          message: "Not authorized to resolve Video.restrictViewPlatforms",
+          path: ["videos", 0, "restrictViewPlatforms"],
+          code: "FORBIDDEN",
+        },
+      ],
+    })
+    errorSpy.mockRestore()
+  })
+})
+
+function mockPrismaForPhase() {
+  return {
+    $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Parameters<typeof import("./orchestrator").runSyncPhase>[0]
+}
+
+describe("runSyncPhase parent watermark cap", () => {
+  const VIDEOS_STUCK_AT = "2026-08-03T11:02:48.000Z"
+  const DUBS_AT = "2026-09-28T07:00:00.000Z"
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    const { refreshSyncLock } = await import("./lock")
+    ;(refreshSyncLock as ReturnType<typeof vi.fn>).mockResolvedValue(true)
+  })
+
+  async function runClean(
+    phase: "video-dubs" | "video-images" | "video-dub-downloads" | "languages",
+    watermarks: Partial<Record<string, string | null>>,
+  ) {
+    const watermark = await import("./watermark")
+    ;(watermark.getWatermark as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_prisma: unknown, p: string) => watermarks[p] ?? null,
+    )
+    const phases = {
+      "video-dubs": (await import("./phases/sync-dubs")).syncDubs,
+      "video-images": (await import("./phases/sync-video-images"))
+        .syncVideoImages,
+      "video-dub-downloads": (await import("./phases/sync-dub-downloads"))
+        .syncDubDownloads,
+      languages: (await import("./phases/sync-languages")).syncLanguages,
+    }
+    ;(phases[phase] as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      created: 0,
+      updated: 4,
+      softDeleted: 0,
+      errors: 0,
+    })
+
+    const { runSyncPhase } = await import("./orchestrator")
+    await runSyncPhase(
+      mockPrismaForPhase(),
+      {
+        runId: "sync-run-1",
+        incremental: true,
+        phasesToRun: [phase],
+        startedAtMs: Date.now(),
+      },
+      phase,
+    )
+    return watermark
+  }
+
+  it("never advances a video-dependent phase past a stuck videos watermark", async () => {
+    // The incident: videos failed every night from 2026-08-10, while
+    // video-dubs kept succeeding and advancing, so dubs of videos published
+    // in that window were skipped (missing parent) and never re-read.
+    const { advanceWatermark } = await runClean("video-dubs", {
+      videos: VIDEOS_STUCK_AT,
+      "video-dubs": DUBS_AT,
+    })
+
+    expect(advanceWatermark).toHaveBeenCalledWith(
+      expect.anything(),
+      "video-dubs",
+      VIDEOS_STUCK_AT,
+      expect.objectContaining({ errors: 0 }),
+    )
+  })
+
+  it("caps video-images at the videos watermark too", async () => {
+    const { advanceWatermark } = await runClean("video-images", {
+      videos: VIDEOS_STUCK_AT,
+    })
+
+    expect(advanceWatermark).toHaveBeenCalledWith(
+      expect.anything(),
+      "video-images",
+      VIDEOS_STUCK_AT,
+      expect.anything(),
+    )
+  })
+
+  it("caps video-dub-downloads at the video-dubs watermark", async () => {
+    const { advanceWatermark } = await runClean("video-dub-downloads", {
+      videos: "2999-01-01T00:00:00.000Z",
+      "video-dubs": VIDEOS_STUCK_AT,
+    })
+
+    expect(advanceWatermark).toHaveBeenCalledWith(
+      expect.anything(),
+      "video-dub-downloads",
+      VIDEOS_STUCK_AT,
+      expect.anything(),
+    )
+  })
+
+  it("advances to its own fetch-start time when the parent is ahead", async () => {
+    const before = Date.now()
+    const { advanceWatermark } = await runClean("video-dubs", {
+      videos: "2999-01-01T00:00:00.000Z",
+    })
+
+    const advancedTo = (advanceWatermark as ReturnType<typeof vi.fn>).mock
+      .calls[0][2] as string
+    expect(Date.parse(advancedTo)).toBeGreaterThanOrEqual(before)
+    expect(Date.parse(advancedTo)).toBeLessThanOrEqual(Date.now())
+  })
+
+  it("holds a dependent watermark when its parent has never synced", async () => {
+    const { advanceWatermark, updateStatsOnly } = await runClean("video-dubs", {
+      videos: null,
+    })
+
+    expect(advanceWatermark).not.toHaveBeenCalled()
+    expect(updateStatsOnly).toHaveBeenCalledWith(
+      expect.anything(),
+      "video-dubs",
+      expect.objectContaining({ errors: 0 }),
+    )
+  })
+
+  it("leaves independent phases uncapped", async () => {
+    const { advanceWatermark, getWatermark } = await runClean("languages", {
+      videos: VIDEOS_STUCK_AT,
+    })
+
+    expect(getWatermark).not.toHaveBeenCalledWith(expect.anything(), "videos")
+    const advancedTo = (advanceWatermark as ReturnType<typeof vi.fn>).mock
+      .calls[0][2] as string
+    expect(advancedTo).not.toBe(VIDEOS_STUCK_AT)
   })
 })

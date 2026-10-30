@@ -26,6 +26,10 @@ tags:
 **Residual risk / follow-ups.**
 
 - **`SEEKER_VIDEO_ENABLED=false` does not retract already-stored replay videos** (decided, not an oversight). The send path is inert with the flag off only because its tools go unregistered; replay's chunks persist in the store and the replay route reads no flag. Levers in escalation order: the flag stops new declarations, `SEEKER_ROUTE_ENABLED=false` darkens the whole ai-chat lane, purging the threads removes the rows. Revisit on audience widening (the feat-236 era) or an incident class needing visual retraction. Cited sources were never gated by this flag on any path. Dated amendment at the plan's rollback step 5.
+  > **Scope clarification (2026-09-08, feat-464):** “whole ai-chat lane” here
+  > described the custom Forge send/history routes. `SEEKER_ROUTE_ENABLED` does
+  > not disable native `/api/agents/seekerAgent`, which remains contained by
+  > the Mastra gateway and Railway network boundary.
 - **One operator check closes both remaining verification residuals at once:** reopen a pre-existing video-featuring thread after merge. That exercises the post-fix video render half (browser-verified pre-fix only — the admin agent-tools upstream was timing out during the post-fix re-run; the sole video-affecting change since is 128-unit title truncation, unit-tested) AND the `PostgresStore`-preserves-tool-parts half, which the real-memory smoke's second scope limit explicitly does not cover (it pins the in-memory backend).
 - A pre-existing flake unrelated to this work can trip under whole-suite load: `apps/mastra/src/mastra/ai-chat-lane-admission.test.ts` "discriminates pool vs lane" takes ~4.0s against a 5s timeout and passes in isolation.
 

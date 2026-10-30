@@ -1,6 +1,7 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 import { MOBILE_APP_SCHEME } from "@/auth/mobile-session"
+import { createOAuthResourceCatalog } from "@/domain/oauth-resources"
 
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value
@@ -25,10 +26,14 @@ export const env = createEnv({
     APPLE_NATIVE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_WATCH_PROGRESS_BASE_URL: z.string().url().optional(),
     ADMIN_WATCH_PROGRESS_API_KEY: z.string().min(1).optional(),
+    AUTH_WATCH_LEARNING_ERASURE_REQUIRED: z.enum(["true", "false"]).optional(),
     OKTA_CLIENT_ID: z.string().min(1).optional(),
     OKTA_CLIENT_SECRET: z.string().min(1).optional(),
     OKTA_ISSUER: z.string().url().optional(),
     AUTH_VALID_AUDIENCES: z.string().min(1).optional(),
+    AUTH_CHANGELOG_PRODUCTION_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
     FIREBASE_WEB_API_KEY: z.string().min(1).optional(),
     FIREBASE_PROJECT_ID: z.string().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
@@ -64,10 +69,16 @@ export const env = createEnv({
     ADMIN_WATCH_PROGRESS_API_KEY: emptyToUndefined(
       process.env.ADMIN_WATCH_PROGRESS_API_KEY,
     ),
+    AUTH_WATCH_LEARNING_ERASURE_REQUIRED: emptyToUndefined(
+      process.env.AUTH_WATCH_LEARNING_ERASURE_REQUIRED,
+    ),
     OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
     OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
     OKTA_ISSUER: emptyToUndefined(process.env.OKTA_ISSUER),
     AUTH_VALID_AUDIENCES: emptyToUndefined(process.env.AUTH_VALID_AUDIENCES),
+    AUTH_CHANGELOG_PRODUCTION_ENABLED: emptyToUndefined(
+      process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED,
+    ),
     FIREBASE_WEB_API_KEY: emptyToUndefined(process.env.FIREBASE_WEB_API_KEY),
     FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
     FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
@@ -146,6 +157,18 @@ export function getAppleNativeClientConfig(): {
   }
 }
 
+/**
+ * `AUTH_WATCH_LEARNING_ERASURE_REQUIRED` is a receiver-first rollout setting,
+ * default off: enable it only after Admin's learning receiver is live, and
+ * before saved learning launches. It is sticky privacy enforcement — never
+ * derived from the public `forge.watch.audience` flag, and kept on after a
+ * public rollback because learning data written while the flag was on must
+ * still be erased.
+ */
+export function isWatchLearningErasureRequired(): boolean {
+  return env.AUTH_WATCH_LEARNING_ERASURE_REQUIRED === "true"
+}
+
 export function getAdminWatchProgressErasureConfig(): {
   baseUrl: string
   apiKey: string
@@ -159,20 +182,22 @@ export function getAdminWatchProgressErasureConfig(): {
   }
 }
 
+export function getAuthCustomAudiences(): string[] {
+  return (env.AUTH_VALID_AUDIENCES ?? "")
+    .split(",")
+    .map((audience) => audience.trim())
+    .filter((audience) => audience.length > 0)
+}
+
 export function getAuthValidAudiences(): string[] {
-  return Array.from(
-    new Set([
-      getAuthBaseUrl(),
-      "http://localhost:3003/mcp",
-      "https://admin-preview.jesusfilm.org/mcp",
-      "https://admin-stage.jesusfilm.org/mcp",
-      "https://admin.jesusfilm.org/mcp",
-      ...(env.AUTH_VALID_AUDIENCES ?? "")
-        .split(",")
-        .map((audience) => audience.trim())
-        .filter((audience) => audience.length > 0),
-    ]),
-  )
+  return createOAuthResourceCatalog({
+    authIssuer: getAuthBaseUrl(),
+    customAudiences: getAuthCustomAudiences(),
+  }).map(({ identifier }) => identifier)
+}
+
+export function isChangelogProductionEnabled(): boolean {
+  return env.AUTH_CHANGELOG_PRODUCTION_ENABLED === "true"
 }
 
 export function assertProductionAuthSecrets(): void {

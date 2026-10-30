@@ -23,6 +23,7 @@ import {
   WatchModalActivityProvider,
   useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 const baseFragment = {
   id: "vh-1",
@@ -93,6 +94,10 @@ describe("VideoHero", () => {
     ).not.toBeNull()
     expect(container.textContent).toContain("Test Heading")
     expect(container.textContent).toContain("Test Subheading")
+    const overlay = container.querySelector('[data-testid="VideoHeroOverlay"]')
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(overlay?.className).toContain(className)
+    }
 
     // @mux/mux-video-react renders a plain <video> element directly.
     expect(container.querySelector("video")).not.toBeNull()

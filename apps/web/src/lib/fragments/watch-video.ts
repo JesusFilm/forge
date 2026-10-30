@@ -1,3 +1,4 @@
+import { visit } from "graphql"
 import { adminGraphql } from "@forge/admin-graphql"
 
 /**
@@ -281,6 +282,11 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           coreId
           bcp47
         }
+        requestedLanguage {
+          slug
+          name
+          bcp47
+        }
         parents {
           parent {
             documentId
@@ -387,6 +393,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           order
           osisId
           passage(languageSlug: $languageSlug) {
+            languageSlug
             content
             copyright
             humanReference
@@ -489,6 +496,17 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       }
     }
   `,
+)
+
+// TEMPORARY (FGE-284): removal recipe lives beside `requestedLanguageSnapshotRetryAfter`
+// in content.ts. Admin and Web deploy independently. Keep the prior selection for the brief
+// schema-lag window, derived from the same operation so the projection cannot drift.
+export const getLegacyWatchVideoRouteSnapshotBySlugOperation = visit(
+  getWatchVideoRouteSnapshotBySlugOperation,
+  {
+    Field: (node) =>
+      node.name.value === "requestedLanguage" ? null : undefined,
+  },
 )
 
 export const getWatchLanguagePickerVariantsBySlugOperation = adminGraphql(`
@@ -602,7 +620,11 @@ export const getWatchCollectionDownloadDubsBySlugOperation = adminGraphql(`
       documentId: id
       downloadableChildDubs(languageSlug: $languageSlug) {
         documentId: id
+        slug
         videoId
+        language {
+          documentId: id
+        }
         downloads {
           documentId: id
           height

@@ -5,6 +5,7 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"],
+      "react-native": ["./node_modules/react-native"],
       "react": ["./node_modules/@types/react/index.d.ts"],
       "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"]
     }

@@ -14,7 +14,6 @@ import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
-import { useBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
@@ -48,9 +47,6 @@ export function WatchQuestionPanel({
   modalSuppressed = false,
 }: WatchQuestionPanelProps) {
   const t = useTranslations("WatchQuestionPanel")
-  const betaModal = useBetaTesterModal()
-  const betaModalOpen = betaModal?.open ?? false
-  const setBetaQuestionPanelOpen = betaModal?.setQuestionPanelOpen
   const { pinned, searchOpen } = useFloatingSearchPinned()
   const inputRef = useRef<HTMLInputElement>(null)
   const [question, setQuestion] = useState("")
@@ -63,15 +59,9 @@ export function WatchQuestionPanel({
   const selectedPrompt = PROMPT_CONFIGS[selectedPromptIndex]!
   const iconPrompt = chatOpen ? selectedPrompt : currentPrompt
   const PromptIcon = iconPrompt.Icon
-  const visible =
-    enabled && pinned && !searchOpen && !modalSuppressed && !betaModalOpen
+  const visible = enabled && pinned && !searchOpen && !modalSuppressed
   const modalOpen = visible && chatOpen
   useWatchModalActivity(modalOpen)
-
-  useEffect(() => {
-    setBetaQuestionPanelOpen?.(modalOpen)
-    return () => setBetaQuestionPanelOpen?.(false)
-  }, [modalOpen, setBetaQuestionPanelOpen])
 
   useEffect(() => {
     if (!visible || hasQuestion || chatOpen) return
@@ -140,7 +130,7 @@ export function WatchQuestionPanel({
           >
             <h2
               id="watch-question-panel-intent-heading"
-              className="text-xs font-semibold tracking-[0.18em] text-white/55 uppercase"
+              className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-white/55 uppercase"
             >
               {t("messageType")}
             </h2>
@@ -181,7 +171,7 @@ export function WatchQuestionPanel({
                           {label}
                         </span>
                         <span
-                          className={`mt-0.5 block text-xs leading-[1.1] font-light ${
+                          className={`mt-0.5 block text-sm sm:text-xs leading-[1.1] font-light ${
                             selected ? "text-white" : "text-white/42"
                           }`}
                         >

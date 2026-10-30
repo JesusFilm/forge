@@ -12,10 +12,18 @@ import {
 } from "@/services/experience-ai/experience-ai-normalize"
 import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
 import { launchMastraExperienceVariant } from "@/services/experience-ai/mastra-experience-variant-client"
-import { serializeLocale } from "@/services/experience-locale-mcp.service"
+import {
+  previewUrlFor,
+  serializeLocale,
+} from "@/services/experience-locale-mcp.service"
+import { ExperienceDuplicationSourceVersion } from "@/services/experience.schemas"
 import { launchMastraExperienceDraft } from "@/services/mastra-experience-draft-client"
 import { resolveTimeoutMs } from "@/services/mastra-http-transport"
-import { ForbiddenError, NotFoundError } from "@/services/errors"
+import {
+  ExperienceDuplicationError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/services/errors"
 import { ExperienceService } from "@/services/experience.service"
 
 // `.strict()` is deliberate: `ExperienceService.create`'s own schema silently
@@ -40,6 +48,14 @@ const GenerateExperienceToolInput = z
     slug: z.string().min(1).max(200).optional(),
     personaId: z.string().min(1).max(50).optional(),
     exemplarExperienceId: z.string().min(1).optional(),
+  })
+  .strict()
+
+const DuplicateExperienceToolInput = z
+  .object({
+    experienceId: z.string().min(1),
+    sourceVersion:
+      ExperienceDuplicationSourceVersion.optional().default("EFFECTIVE"),
   })
   .strict()
 
@@ -140,8 +156,9 @@ function editorUrlFor(experienceId: string, locale: string) {
 }
 
 /**
- * Service behind the two experience-LEVEL Admin MCP tools (`experience.create`
- * and `experience.generate`). The 12 locale-level tools — including
+ * Service behind the three experience-LEVEL Admin MCP tools
+ * (`experience.create`, `experience.duplicate`, and `experience.generate`).
+ * The 12 locale-level tools — including
  * `experience.list` and `experience.media.check` — live in the sibling
  * `ExperienceLocaleMcpService`.
  */
@@ -193,6 +210,46 @@ export class ExperienceMcpService {
       },
       locale: serializeLocale(locale),
       editorUrl: editorUrlFor(created.id, input.locale),
+    }
+  }
+
+  async duplicateExperience({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceToolInput.parse(raw)
+    const duplicated = await new ExperienceService(this.prisma).duplicate({
+      input: { id: input.experienceId, sourceVersion: input.sourceVersion },
+      user,
+    })
+    const firstLocale = duplicated.duplication.locales[0]?.locale
+    if (!firstLocale) throw new ExperienceDuplicationError()
+
+    return {
+      ok: true as const,
+      sourceExperienceId: input.experienceId,
+      sourceVersion: duplicated.duplication.sourceVersion,
+      experience: {
+        id: duplicated.id,
+        isTemplate: duplicated.isTemplate,
+        ownerId: duplicated.ownerId,
+      },
+      locales: duplicated.duplication.locales.map((copy) => ({
+        ...serializeLocale(copy.locale),
+        copiedFrom: copy.source.copiedFrom,
+        sourceLocaleId: copy.source.localeId,
+        sourceDraftRevision: copy.source.draftRevision,
+        draft: {
+          revision: copy.draftRevision,
+          previewUrl: copy.previewToken
+            ? previewUrlFor(copy.previewToken)
+            : null,
+        },
+      })),
+      editorUrl: editorUrlFor(duplicated.id, firstLocale.locale),
     }
   }
 

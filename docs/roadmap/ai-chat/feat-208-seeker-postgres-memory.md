@@ -33,6 +33,13 @@ and a UI storage disclosure line. `AI_CHAT_MEMORY_BACKEND` (optional) is the
 production kill-switch. Full design + verified package-behavior citations:
 `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
 
+> **Superseded (2026-09-08, feat-464):** The per-surface
+> `AI_CHAT_MEMORY_BACKEND` override and its production kill-switch were
+> retired. AI-chat memory now follows `MASTRA_STORAGE_BACKEND` directly;
+> `memory` remains available for local development and tests but is rejected
+> in production. References below retain the shipped feat-208 design as
+> historical evidence, not current operating guidance.
+
 **Residual risk / follow-ups.** The thread ceiling bounds cooperative clients
 only; the purge drains junk past the retention window (capping total junk at
 ~one window × inflow) but does NOT bound in-window growth — inbound auth +

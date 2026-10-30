@@ -1,4 +1,8 @@
-export { watchExperienceFragment } from "./watch-experience"
+export {
+  legacyWatchExperienceFragment,
+  preCopyWatchExperienceFragment,
+  watchExperienceFragment,
+} from "./watch-experience"
 export {
   getWatchHomeVideosOperation,
   watchHomeVideoFragment,
@@ -10,6 +14,7 @@ export {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,

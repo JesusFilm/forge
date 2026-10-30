@@ -39,9 +39,8 @@
     "posterAlt": "Video poster eo",
     "noDownloads": "Downloads ne e aetin a video eo.",
     "fileSizeLabel": "File size e ka ere",
-    "termsAgreementPrefix": "I ae me ",
+    "termsAgreement": "I ae me <link>Terms of Use eo</link>",
     "termsOfUse": "Terms of Use eo",
-    "termsAgreementSuffix": "",
     "close": "Kunar",
     "download": "Download ae",
     "authRequiredTitle": "Ebu download video eo?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook ne share ae (unavailable on this build)",
     "shareOnX": "X ne share ae",
     "shareOnXUnavailable": "X ne share ae (unavailable on this build)",
+    "opensInNewTab": "{label} (ae open ñaga tab ngabuna)",
     "shareDisabledHint": "Sharing e deployed page e aing; video eo production e kare, kar e ronga.",
     "shareFormat": "Share format eo",
     "shareLinkTab": "Link share ae",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language bu",
     "home": "JesusFilm home eo",
     "closeSearch": "Search e kar",
-    "submitSearch": "Bika"
+    "submitSearch": "Bika",
+    "library": "Ekaraewa buk"
   },
   "SearchOverlay": {
     "dialogLabel": "Video ae buata me bika",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Result more biga ae ekoe.",
     "searching": "Bika...",
     "connectionHint": "Connection eo eu check ae me ika ke.",
+    "rateLimitHint": "Kajjitõk ae mui. Ekoe me minit eo nge ika ke.",
     "retrySearch": "Search e kewe",
     "retry": "Kewe",
     "noResults": "\"{query}\" ke result ekoe",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} ne “{suggestion}” ae bika",
     "inLanguage": "{language} ne",
     "browseByRegion": "Region ne bika",
+    "allVideosOnSinglePage": "Videos kakku",
     "clearLanguages": "E kar",
     "queryLanguageDetected": "{language} e detected",
     "searchInLanguage": "{language} ne bika",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
     "tapToUnmute": "Tap e kar me suara ae",
-    "nextEpisode": "Episode re"
+    "nextEpisode": "Episode re",
+    "audioTranslationCount": "{count, plural, one {# language eo} other {# languages re}}",
+    "subtitleCount": "Subtitles re: {count, plural, one {# language eo} other {# languages re}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content biga ae",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Feedback form e inae irababa.",
     "loadingForm": "Biga form ae",
     "retry": "Kewe",
-    "openFormShort": "Aren form",
     "cancel": "Kunar",
-    "title": "Beta Feedback eo",
-    "description": "Ia report wiyebwata ma ibu me koro. Google e aen form eo.",
-    "openInNewTab": "Aren form me tab bwe",
     "closeForm": "Kunar feedback form",
-    "loadingGoogleForm": "Biga Google Form ae",
-    "iframeTitle": "Beta Feedback bu"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos tei {language} ne | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sports re",
     "collections": "Collections re",
     "subtitlesOnly": "Subtitles degen",
+    "backToTop": "Rekoro ianweron",
     "newlyAdded": "Bwe e karen",
     "newVideosTitle": "Christian videos bwe {language} ne",
     "newestFirst": "Bwe first",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Standalone videos re",
     "videosFromCollection": "Videos {collection} ne.",
     "standaloneDescription": "Language eo re standalone videos.",
-    "openCollection": "Collection e open"
+    "openCollection": "Collection e open",
+    "filters": "Kaeaidok",
+    "filterLength": "Ekaewok",
+    "filterLength_under5": "Emoetsi 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Eongo 30 minit",
+    "filterType": "Baiun",
+    "clearFilters": "Emangameng kaeaidok",
+    "filterResults": "Erekomen {count} atsin {total}",
+    "noFilterResults": "Etsimarow bwiema video ame ekamatsi kaeaidok. Emangameng aeaba.",
+    "filterAdded": "Emangenang",
+    "filterAdded_60d": "Aeodaeo 60 alo",
+    "filterAdded_6m": "Aeodaeo 6 maramen",
+    "filterAdded_12m": "Aeodaeo 12 maramen"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch eo",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video kinano preview",
     "nextVideoPreview": "Video re preview",
     "mediaCollection": "Media collection eo",
-    "scrollToVideo": "{title} video ne scroll ae"
+    "scrollToVideo": "{title} video ne scroll ae",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project home eo",
@@ -404,6 +594,29 @@
     "merryChristmas": "Christmas bwa!",
     "daysUntilChristmas": "{count, plural, one {# day Christmas ke} other {# days Christmas ke}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Library e browse ae",
+    "title": "Category ae browse",
+    "description": "Library eo bwe kakku a — Jesus life eo, church year seasons aika, me videos aika family, students me small groups.",
+    "seeAll": "Videos kakku ae",
+    "previous": "Categories kinano",
+    "next": "Categories re",
+    "categories": {
+      "jesus": "JESUS film eo",
+      "gospels": "Gospel aika",
+      "shortVideos": "Short videos aika",
+      "family": "Family eo",
+      "relationships": "Relationships aika",
+      "women": "Women aika",
+      "students": "Students aika",
+      "sports": "Sports aika",
+      "goodNews": "Good News eo",
+      "hope": "Hope eo",
+      "training": "Training eo",
+      "easter": "Easter eo",
+      "christmas": "Christmas eo"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Languages re",
     "metadataDescription": "JesusFilm videos language ne browse ae.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Page ekoe:",
     "title": "Scene eo ia ekoe.",
     "description": "Page eo move ae wansa, a story eo bitaei naba.",
+    "languageDescription": "Page eo ia ekoe, a story eo bitaei naba films me videos aika languages kakku world eo.",
     "actionsLabel": "Page ekoe actions",
     "backToWatch": "Watch ne back ae",
     "browseVideos": "Videos e browse ae"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film keke e bitaei",
-    "actions": {
-      "joinUs": "Ngana me join ae",
-      "shareMission": "Mission bu me share ae"
-    },
-    "welcomeStart": {
-      "label": "Faith me Scripture",
-      "title": "Yiy video picks re",
-      "description": "Library bu faith-centered video content, e inspire, challenge, me reflection e start ae."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration eo",
-      "title": "Morning bwa! Yiy Bible moments re wait ae.",
-      "description": "Day eo e start ae me Bible moments encouraging, spirit eo e inspire me uplift ae."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration eo",
-      "title": "Afternoon bwa! Yiy Bible moments re.",
-      "description": "Bible content encouraging, afternoon break eo me inspiration e continue ae ke perfect."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration eo",
-      "title": "Evening bwa! Bible moments me rest ae.",
-      "description": "Bible moments peaceful e help ae bwe day eo e close, a reflect me comfort e aetin."
-    },
-    "joinUs": {
-      "label": "Ngana me join ae",
-      "title": "People billions re bika",
-      "description": "Harvest eo ia. Digital media e ka me ngana join ae, gospel eo world ne share ae."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ngana together e re",
-      "title": "Jesus story eo together e told ae",
-      "description": "Bwe Jesus love eo ami language eo re hear me see ae, ia etsi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e match ae",
-    "none": "Video eo language eo re recommendations ekoe."
+    "none": "Video eo language eo re recommendations ekoe.",
+    "heading": "Videos e recommended",
+    "loadingLabel": "Biga videos e recommended",
+    "openingTitle": "{title} e open ae",
+    "openingVideo": "Video e open ae",
+    "activityNotRecorded": "Recommendation activity eo record ekoe. Links aika bitaei naba.",
+    "showingContextual": "Recommendations aika contextual.",
+    "showingSaved": "Recommendations aika saved.",
+    "explanationCurated": "Videos aika selected ibukin om explore.",
+    "explanationViewingMode": "E recommended ian video ine me ian bwaeija am watch.",
+    "explanationCowatch": "E recommended ian video ine me ian am interests.",
+    "explanationHybrid": "E recommended ian video ine me ian interests aika ko choose bwe ada remember.",
+    "explanationContextual": "E recommended ian video eo ko watch ianon.",
+    "explanationSemanticFallback": "E recommended ian video eo ko watch ianon, bwe personalization e aki available.",
+    "explanationProfileDurable": "E personalized ian interests aika ko choose bwe ada remember.",
+    "explanationProfileVisit": "E personalized ibukin visit ine.",
+    "personalizationLabel": "Bweine eon tararua ibukin recommendations",
+    "personalizationPrompt": "Ko tuga bwe ko change bwaeija recommendations a personalized?",
+    "openCookieSettings": "Open aterin kuki"
   },
   "BetaTesterModal": {
     "title": "Beta tester e da",
@@ -538,16 +732,39 @@
     "retryFailed": "Downloads failed re kewe"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dorerin eo ekoe",
+    "eyebrow": "Dorerin eo ekoe",
+    "title": "<contentTitle>{title}</contentTitle> ekoe <languageName>{language}</languageName> ne",
+    "actionsLabel": "Ere ae ome re",
+    "browseInLanguage": "Video ae ome {language} ne",
+    "backToSearch": "Buata ne roga",
+    "audioVersionsTitle": "Dorerin wirim mweinaud re",
+    "audioVersionsDescription": "Dorerin wirim e ere bwe video eo ome naba.",
+    "languageVersionLabel": "Dorerin wirim",
+    "selectLanguageVersion": "Dorerin eo e ere",
+    "watchSelectedVersion": "Dorerin e eren ome"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Kuki ibukin",
+    "bannerTitle": "Am tiam ngkoe bun oman",
+    "bannerDescription": "Kuki bwain e kakoro Watch ma e kakaokoro ao e kona n angam. Ma e mwiom, kuki eko dogin ma e boe e kona n aoghoe me bwain am ijoor bwaeija ibukin recommendation aika anganiko. Recommendation aika contextual e kona n tuan maro iroum ngkoe naba.",
+    "acceptAll": "Buiy ir aoera",
+    "essentialOnly": "Boto bwain aikarabo",
+    "manageChoices": "Reken ibukin",
+    "savingChoice": "E tino kuki ibukin",
+    "settings": "Aterin kuki",
+    "settingsDescription": "Kakoro ngkoe bwa Watch e kona n aoghoe recommendation interests ian bwaeija aika boaki. Ngkoe e kona n ekaei ngkanne aeaun aron.",
+    "essentialCookies": "Kuki bwain aikarabo",
+    "essentialDescription": "Kawakina, playback, privacy ibukin, ao recommendation request attribution.",
+    "alwaysActive": "Tuan active ikanne",
+    "personalization": "Bweine eon tararua",
+    "personalizationDescription": "Aoghoe bounded interests ian bwaeija aika boaki. Bwa e aki ia, recommendation aika contextual e tuan maro iroum.",
+    "erasurePending": "Erasure n profile e mena. Recommendation aika contextual a tia n active.",
+    "cancel": "Kabwij",
+    "saveChoices": "Tino ibukin",
+    "saving": "E tino…",
+    "loadError": "Am ibukin e aki kona n load. Ngkoe e kona n tuan ter ibukin aika imwin.",
+    "grantError": "Personalization e aki kona n tena. Essential only e tuan mena.",
+    "saveError": "Am ibukin e aki kona n tino. Maiti, manga kaito."
   }
 }

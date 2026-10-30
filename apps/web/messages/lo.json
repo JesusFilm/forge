@@ -39,9 +39,8 @@
     "posterAlt": "ໂປສເຕີວິດີໂອ",
     "noDownloads": "ບໍ່ມີການດາວໂຫລດສຳລັບວິດີໂອນີ້.",
     "fileSizeLabel": "ເລືອກຂະໜາດໄຟລ໌",
-    "termsAgreementPrefix": "ຂ້ອຍຍອມຮັບ ",
+    "termsAgreement": "ຂ້ອຍຍອມຮັບ<link>ເງື່ອນໄຂການໃຊ້ງານ</link>",
     "termsOfUse": "ເງື່ອນໄຂການໃຊ້ງານ",
-    "termsAgreementSuffix": "",
     "close": "ປິດ",
     "download": "ດາວໂຫລດ",
     "authRequiredTitle": "ຕ້ອງການດາວໂຫລດວິດີໂອນີ້ບໍ?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "ແບ່ງປັນໃນ Facebook (ບໍ່ພ້ອມໃຊ້ໃນບິວນີ້)",
     "shareOnX": "ແບ່ງປັນໃນ X",
     "shareOnXUnavailable": "ແບ່ງປັນໃນ X (ບໍ່ພ້ອມໃຊ້ໃນບິວນີ້)",
+    "opensInNewTab": "{label} (ເປີດໃນແຖບໃໝ່)",
     "shareDisabledHint": "ການແບ່ງປັນຕ້ອງໃຊ້ໜ້າທີ່ເປີດໃຊ້ງານແລ້ວ — ຈະໃຊ້ໄດ້ເມື່ອວິດີໂອນີ້ຢູ່ໃນການໃຊ້ງານຈິງ.",
     "shareFormat": "ຮູບແບບການແບ່ງປັນ",
     "shareLinkTab": "ລິ້ງແບ່ງປັນ",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ປ່ຽນພາສາສຽງ",
     "home": "ໜ້າຫຼັກ JesusFilm",
     "closeSearch": "ປິດການຄົ້ນຫາ",
-    "submitSearch": "ຄົ້ນຫາ"
+    "submitSearch": "ຄົ້ນຫາ",
+    "library": "ຫ້ອງສະໝຸດ"
   },
   "SearchOverlay": {
     "dialogLabel": "ຄົ້ນຫາ ແລະ ຊອກຫາວິດີໂອ",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "ບໍ່ສາມາດໂຫລດຜົນລັບເພີ່ມໄດ້.",
     "searching": "ກຳລັງຄົ້ນຫາ...",
     "connectionHint": "ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ຂອງທ່ານ ແລະລອງໃໝ່.",
+    "rateLimitHint": "ມີຄຳຮ້ອງຂໍຫຼາຍເກີນໄປ. ກະລຸນາລອງໃໝ່ໃນອີກໜຶ່ງນາທີ.",
     "retrySearch": "ລອງຄົ້ນຫາໃໝ່",
     "retry": "ລອງໃໝ່",
     "noResults": "ບໍ່ມີຜົນລັບສຳລັບ \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "ຄົ້ນຫາ “{suggestion}” ໃນ {language}",
     "inLanguage": "ໃນ {language}",
     "browseByRegion": "ຊອກຫາຕາມພາກພື້ນ",
+    "allVideosOnSinglePage": "ວິດີໂອທັງໝົດໃນໜ້າດຽວ",
     "clearLanguages": "ລ້າງ",
     "queryLanguageDetected": "ພົບ {language}",
     "searchInLanguage": "ຄົ້ນຫາໃນ {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "ຮັບຊົມຕອນນີ້",
     "tapToUnmute": "ແຕະເພື່ອເປີດສຽງ",
-    "nextEpisode": "ຕອນຕໍ່ໄປ"
+    "nextEpisode": "ຕອນຕໍ່ໄປ",
+    "audioTranslationCount": "{count, plural, one {# ພາສາ} other {# ພາສາ}}",
+    "subtitleCount": "ຄຳບັນຍາຍ: {count, plural, one {# ພາສາ} other {# ພາສາ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ກຳລັງໂຫລດເນື້ອຫາ",
@@ -268,14 +273,183 @@
     "couldNotLoad": "ບໍ່ສາມາດໂຫລດແບບຟອມຄຳຕິຊົມໄດ້.",
     "loadingForm": "ກຳລັງໂຫລດແບບຟອມຄຳຕິຊົມ…",
     "retry": "ລອງໃໝ່",
-    "openFormShort": "ເປີດແບບຟອມ",
     "cancel": "ຍົກເລີກ",
-    "title": "ຄຳຕິຊົມເບຕ້າ",
-    "description": "ແບ່ງປັນສິ່ງທີ່ໃຊ້ໄດ້ດີ ແລະສິ່ງທີ່ເຮົາສາມາດປັບປຸງໄດ້. ແບບຟອມນີ້ຈັດສະໜອງໂດຍ Google.",
-    "openInNewTab": "ເປີດແບບຟອມໃນແທັບໃໝ່",
     "closeForm": "ປິດແບບຟອມຄຳຕິຊົມ",
-    "loadingGoogleForm": "ກຳລັງໂຫລດ Google Form…",
-    "iframeTitle": "ສົ່ງຄຳຕິຊົມເບຕ້າ"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "ວິດີໂອຄຣິສຕຽນຟຣີໃນ {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "ກິລາ",
     "collections": "ຄໍເລັກຊັນ",
     "subtitlesOnly": "ມີຄຳບັນຍາຍເທົ່ານັ້ນ",
+    "backToTop": "ກັບຄືນຂຶ້ນເທິງ",
     "newlyAdded": "ເພີ່ມໃໝ່",
     "newVideosTitle": "ວິດີໂອຄຣິສຕຽນໃໝ່ໃນ {language}",
     "newestFirst": "ໃໝ່ສຸດກ່ອນ",
@@ -324,7 +499,21 @@
     "standaloneVideos": "ວິດີໂອແຍກຕ່າງຫາກ",
     "videosFromCollection": "ວິດີໂອຈາກ {collection}.",
     "standaloneDescription": "ວິດີໂອແຍກຕ່າງຫາກໃນພາສານີ້.",
-    "openCollection": "ເປີດຄໍເລັກຊັນ"
+    "openCollection": "ເປີດຄໍເລັກຊັນ",
+    "filters": "ຕົວກອງ",
+    "filterLength": "ຄວາມຍາວ",
+    "filterLength_under5": "ຕ່ຳກວ່າ 5 ນາທີ",
+    "filterLength_5to10": "5-10 ນາທີ",
+    "filterLength_10to30": "10-30 ນາທີ",
+    "filterLength_over30": "ຫຼາຍກວ່າ 30 ນາທີ",
+    "filterType": "ປະເພດ",
+    "clearFilters": "ລຶບຕົວກອງ",
+    "filterResults": "ສະແດງ {count} ຈາກ {total}",
+    "noFilterResults": "ບໍ່ມີວິດີໂອທີ່ຕົງກັບຕົວກອງນີ້. ລອງເອົາອອກໜຶ່ງອັນ.",
+    "filterAdded": "ເພີ່ມແລ້ວ",
+    "filterAdded_60d": "60 ວັນຜ່ານມາ",
+    "filterAdded_6m": "6 ເດືອນຜ່ານມາ",
+    "filterAdded_12m": "12 ເດືອນຜ່ານມາ"
   },
   "WatchHome": {
     "pageTitle": "ຮັບຊົມ Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "ຕົວຢ່າງວິດີໂອກ່ອນໜ້າ",
     "nextVideoPreview": "ຕົວຢ່າງວິດີໂອຕໍ່ໄປ",
     "mediaCollection": "ຄໍເລັກຊັນສື່",
-    "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}"
+    "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}",
+    "forYou": "ສຳລັບທ່ານ"
   },
   "WatchFooter": {
     "home": "ໜ້າຫຼັກ Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "ສຸກສັນວັນຄຣິດສະມາດ!",
     "daysUntilChristmas": "{count, plural, one {ອີກ # ມື້ຈະຮອດຄຣິດສະມາດ} other {ອີກ # ມື້ຈະຮອດຄຣິດສະມາດ}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "ສຳຫຼວດຫ້ອງສະໝຸດ",
+    "title": "ຊອກຫາຕາມໝວດໝູ່",
+    "description": "ໄປຫາສ່ວນຂອງຫ້ອງສະໝຸດທີ່ທ່ານຕ້ອງການໂດຍກົງ ເຊັ່ນ ຊີວິດຂອງພຣະເຢຊູ, ລະດູການຕ່າງໆຂອງປີຄຣິສຕະຈັກ ແລະວິດີໂອສຳລັບຄອບຄົວ, ນັກຮຽນ ແລະກຸ່ມນ້ອຍ.",
+    "seeAll": "ເບິ່ງວິດີໂອທັງໝົດ",
+    "previous": "ໝວດໝູ່ກ່ອນໜ້າ",
+    "next": "ໝວດໝູ່ຕໍ່ໄປ",
+    "categories": {
+      "jesus": "ຮູບເງົາ JESUS",
+      "gospels": "ພຣະກິດຕິຄຸນ",
+      "shortVideos": "ວິດີໂອສັ້ນ",
+      "family": "ຄອບຄົວ",
+      "relationships": "ຄວາມສຳພັນ",
+      "women": "ສຳລັບແມ່ຍິງ",
+      "students": "ສຳລັບນັກຮຽນ",
+      "sports": "ກິລາ",
+      "goodNews": "ຂ່າວດີ",
+      "hope": "ຄວາມຫວັງ",
+      "training": "ການຝຶກອົບຮົມ",
+      "easter": "ວັນອີສະເຕີ",
+      "christmas": "ຄຣິດສະມາດ"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ພາສາ",
     "metadataDescription": "ຊອກຫາວິດີໂອ JesusFilm ຕາມພາສາ.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "ບໍ່ພົບໜ້າ:",
     "title": "ຉາກນີ້ບໍ່ຢູ່ທີ່ນີ້.",
     "description": "ໜ້ານີ້ອາດຈະຖືກຍ້າຍໄປ ແຕ່ເລື່ອງລາວຍັງດຳເນີນຕໍ່.",
+    "languageDescription": "ພວກເຮົາບໍ່ພົບໜ້າທີ່ທ່ານກຳລັງຊອກຫາ ແຕ່ເລື່ອງລາວຍັງດຳເນີນຕໍ່ໃນຮູບເງົາ ແລະວິດີໂອຈາກພາສາຕ່າງໆທົ່ວໂລກ.",
     "actionsLabel": "ການດຳເນີນການເມື່ອບໍ່ພົບໜ້າ",
     "backToWatch": "ກັບໄປຮັບຊົມ",
     "browseVideos": "ຊອກຫາວິດີໂອ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "ຮັບຊົມຮູບເງົາສັ້ນ",
-    "actions": {
-      "joinUs": "ຮ່ວມກັບເຮົາ",
-      "shareMission": "ຮ່ວມກັນໃນພາລະກິດຂອງເຮົາ"
-    },
-    "welcomeStart": {
-      "label": "ຄວາມເຊື່ອ ແລະພຣະຄຳພີ",
-      "title": "ວິດີໂອທີ່ແນະນຳສຳລັບມື້ນີ້",
-      "description": "ເນື້ອຫາວິດີໂອທີ່ເນັ້ນຄວາມເຊື່ອຈາກຄັງວິດີໂອຂອງເຮົາ ເພື່ອສ້າງແຮງບັນດານໃຈ, ທ້າທາຍຄວາມຄິດ, ແລະກະຕຸ້ນການຄິດທົບທວນ."
-    },
-    "welcomeMorning": {
-      "label": "ແຮງບັນດານໃຈຍາມເຊົ້າ",
-      "title": "ສະບາຍດີຕອນເຊົ້າ! ຊ່ວງເວລາໃນພຣະຄຳພີຂອງມື້ນີ້ກຳລັງລໍຖ້າທ່ານຢູ່.",
-      "description": "ເລີ່ມມື້ຂອງທ່ານດ້ວຍຊ່ວງເວລາໃນພຣະຄຳພີທີ່ໜຸນໃຈ ອອກແບບເພື່ອສ້າງແຮງບັນດານໃຈ ແລະເຕີມພະລັງໃຫ້ຈິດວິນຍານຂອງທ່ານ."
-    },
-    "welcomeAfternoon": {
-      "label": "ແຮງບັນດານໃຈຍາມບ່າຍ",
-      "title": "ສະບາຍດີຕອນບ່າຍ! ຊ່ວງເວລາໃນພຣະຄຳພີສຳລັບມື້ຂອງທ່ານ.",
-      "description": "ເນື້ອຫາພຣະຄຳພີທີ່ໜຸນໃຈ ເໝາະສຳລັບຊ່ວງພັກຕອນບ່າຍ ຫຼືເປັນແຮງບັນດານໃຈຕໍ່ໄປ."
-    },
-    "welcomeEvening": {
-      "label": "ແຮງບັນດານໃຈຍາມແລງ",
-      "title": "ສະບາຍດີຕອນແລງ! ຜ່ອນຄາຍກັບຊ່ວງເວລາໃນພຣະຄຳພີ.",
-      "description": "ຊ່ວງເວລາໃນພຣະຄຳພີທີ່ສະຫງົບ ເພື່ອຊ່ວຍໃຫ້ທ່ານຄິດທົບທວນ ແລະພົບຄວາມປອບໂຍນເມື່ອມື້ຂອງທ່ານກຳລັງຈົບລົງ."
-    },
-    "joinUs": {
-      "label": "ຮ່ວມກັບເຮົາ",
-      "title": "ຫຼາຍພັນລ້ານຄົນກຳລັງຄົ້ນຫາ",
-      "description": "ເວລາເກັບກ່ຽວມາເຖິງແລ້ວ. ມາຮ່ວມກັບເຮົາໃນການແບ່ງປັນພຣະກິດຕິຄຸນໃຫ້ຊາວໂລກຜ່ານສື່ດິຈິຕອນ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ໄປນຳກັນ",
-      "title": "ເລົ່າເລື່ອງຂອງພຣະເຢຊູຮ່ວມກັນ",
-      "description": "ເພື່ອວ່າພວກເຂົາຈະໄດ້ຍິນ ແລະເຫັນຄວາມຮັກຂອງພຣະເຢຊູໃນພາສາຂອງຕົນເອງ ຢູ່ໃນບ່ອນທີ່ເຂົາຢູ່."
-    }
-  },
   "VideoRecommendations": {
     "match": "ກົງກັນ {percent}%",
-    "none": "ບໍ່ພົບວິດີໂອແນະນຳສຳລັບວິດີໂອນີ້ໃນພາສານີ້."
+    "none": "ບໍ່ພົບວິດີໂອແນະນຳສຳລັບວິດີໂອນີ້ໃນພາສານີ້.",
+    "heading": "ວິດີໂອແນະນຳ",
+    "loadingLabel": "ກຳລັງໂຫລດວິດີໂອແນະນຳ",
+    "openingTitle": "ກຳລັງເປີດ {title}",
+    "openingVideo": "ກຳລັງເປີດວິດີໂອ",
+    "activityNotRecorded": "ບໍ່ສາມາດບັນທຶກການເຄື່ອນໄຫວຂອງຄຳແນະນຳໄດ້. ລິ້ງຍັງໃຊ້ໄດ້ຢູ່.",
+    "showingContextual": "ກຳລັງສະແດງຄຳແນະນຳຕາມບໍລິບົດ.",
+    "showingSaved": "ກຳລັງສະແດງຄຳແນະນຳທີ່ບັນທຶກໄວ້.",
+    "explanationCurated": "ວິດີໂອທີ່ຄັດເລືອກມາໃຫ້ສຳຫຼວດ.",
+    "explanationViewingMode": "ແນະນຳຕາມວິດີໂອນີ້ ແລະ ວິທີທີ່ທ່ານເບິ່ງ.",
+    "explanationCowatch": "ແນະນຳຕາມວິດີໂອນີ້ ແລະ ຄວາມສົນໃຈຂອງທ່ານ.",
+    "explanationHybrid": "ແນະນຳຕາມວິດີໂອນີ້ ແລະ ຄວາມສົນໃຈທີ່ທ່ານເລືອກໃຫ້ຈື່ຈຳໄວ້.",
+    "explanationContextual": "ແນະນຳຕາມສິ່ງທີ່ທ່ານກຳລັງເບິ່ງຢູ່ຕອນນີ້.",
+    "explanationSemanticFallback": "ແນະນຳຕາມສິ່ງທີ່ທ່ານກຳລັງເບິ່ງຢູ່ຕອນນີ້ ໃນຂະນະທີ່ການປັບໃຫ້ເໝາະກັບບຸກຄົນບໍ່ສາມາດໃຊ້ໄດ້.",
+    "explanationProfileDurable": "ປັບໃຫ້ເໝາະກັບທ່ານຕາມຄວາມສົນໃຈທີ່ທ່ານເລືອກໃຫ້ຈື່ຈຳໄວ້.",
+    "explanationProfileVisit": "ປັບໃຫ້ເໝາະກັບທ່ານສຳລັບການເຂົ້າຊົມຄັ້ງນີ້.",
+    "personalizationLabel": "ການປັບຄຳແນະນຳໃຫ້ເໝາະກັບບຸກຄົນ",
+    "personalizationPrompt": "ຕ້ອງການປ່ຽນວິທີປັບຄຳແນະນຳໃຫ້ເໝາະກັບທ່ານບໍ?",
+    "openCookieSettings": "ເປີດການຕັ້ງຄ່າຄຸກກີ"
   },
   "BetaTesterModal": {
     "title": "ກາຍເປັນຜູ້ທົດສອບເບຕ້າ",
@@ -538,16 +732,39 @@
     "retryFailed": "ລອງດາວໂຫລດລາຍການທີ່ບໍ່ສຳເລັດອີກຄັ້ງ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ບໍ່ມີສະບັບພາສານີ້",
+    "eyebrow": "ບໍ່ມີສະບັບພາສານີ້",
+    "title": "<contentTitle>{title}</contentTitle> ບໍ່ມີໃນພາສາ <languageName>{language}</languageName>",
+    "actionsLabel": "ຕົວເລືອກການເບິ່ງທີ່ມີ",
+    "browseInLanguage": "ເບິ່ງວິດີໂອໃນພາສາ {language}",
+    "backToSearch": "ກັບໄປຫາການຄົ້ນຫາ",
+    "audioVersionsTitle": "ສະບັບສຽງອື່ນໆ",
+    "audioVersionsDescription": "ເລືອກພາສາສຽງເພື່ອເບິ່ງວິດີໂອນີ້ຕໍ່.",
+    "languageVersionLabel": "ພາສາສຽງ",
+    "selectLanguageVersion": "ເລືອກສະບັບພາສາ",
+    "watchSelectedVersion": "ເບິ່ງສະບັບທີ່ເລືອກ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ທາງເລືອກຄຸກກີ",
+    "bannerTitle": "ທາງເລືອກຄວາມເປັນສ່ວນຕົວຂອງທ່ານ",
+    "bannerDescription": "ຄຸກກີທີ່ຈຳເປັນຊ່ວຍໃຫ້ Watch ປອດໄພແລະໃຊ້ງານໄດ້ປົກກະຕິ. ດ້ວຍການອະນຸຍາດຂອງທ່ານ ຄຸກກີເສີມຂອງເວັບໄຊນີ້ອາດຈະຈື່ຈຳຄວາມສົນໃຈຂອງທ່ານລະຫວ່າງການເຂົ້າຊົມແຕ່ລະຄັ້ງ ເພື່ອປັບຄຳແນະນຳໃຫ້ເໝາະກັບທ່ານ. ບໍ່ວ່າທ່ານຈະເລືອກແບບໃດ ຄຳແນະນຳຕາມບໍລິບົດຍັງຄົງໃຊ້ໄດ້.",
+    "acceptAll": "ຍອມຮັບທັງໝົດ",
+    "essentialOnly": "ຈຳເປັນເທົ່ານັ້ນ",
+    "manageChoices": "ຈັດການທາງເລືອກ",
+    "savingChoice": "ກຳລັງບັນທຶກທາງເລືອກຄຸກກີ",
+    "settings": "ການຕັ້ງຄ່າຄຸກກີ",
+    "settingsDescription": "ເລືອກວ່າ Watch ຈະຈື່ຈຳຄວາມສົນໃຈສຳລັບຄຳແນະນຳຂ້າມການເຂົ້າຊົມໄດ້ຫຼືບໍ່. ທ່ານສາມາດປ່ຽນແປງສິ່ງນີ້ໄດ້ທຸກເວລາ.",
+    "essentialCookies": "ຄຸກກີທີ່ຈຳເປັນ",
+    "essentialDescription": "ຄວາມປອດໄພ, ການຫຼິ້ນວິດີໂອ, ທາງເລືອກຄວາມເປັນສ່ວນຕົວ ແລະ ການລະບຸທີ່ມາຂອງຄຳຂໍຄຳແນະນຳ",
+    "alwaysActive": "ເປີດໃຊ້ຢູ່ສະເໝີ",
+    "personalization": "ການປັບໃຫ້ເໝາະກັບບຸກຄົນ",
+    "personalizationDescription": "ຈື່ຈຳຄວາມສົນໃຈທີ່ກຳນົດໄວ້ຂ້າມການເຂົ້າຊົມ. ການປິດສິ່ງນີ້ຈະຍັງຄົງໃຫ້ຄຳແນະນຳຕາມບໍລິບົດໃຊ້ໄດ້.",
+    "erasurePending": "ການລຶບໂປຣໄຟລ໌ກຳລັງດຳເນີນການ. ຄຳແນະນຳຕາມບໍລິບົດໄດ້ເປີດໃຊ້ແລ້ວ.",
+    "cancel": "ຍົກເລີກ",
+    "saveChoices": "ບັນທຶກທາງເລືອກ",
+    "saving": "ກຳລັງບັນທຶກ…",
+    "loadError": "ບໍ່ສາມາດໂຫຼດທາງເລືອກຂອງທ່ານໄດ້. ທ່ານຍັງສາມາດເລືອກຂ້າງລຸ່ມໄດ້.",
+    "grantError": "ບໍ່ສາມາດເປີດໃຊ້ການປັບໃຫ້ເໝາະກັບບຸກຄົນໄດ້. ທ່ານຍັງໃຊ້ໄດ້ສະເພາະຄຸກກີທີ່ຈຳເປັນ.",
+    "saveError": "ບໍ່ສາມາດບັນທຶກທາງເລືອກຂອງທ່ານໄດ້. ກະລຸນາລອງອີກຄັ້ງ."
   }
 }

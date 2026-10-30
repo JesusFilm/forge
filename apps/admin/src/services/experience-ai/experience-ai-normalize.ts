@@ -318,6 +318,7 @@ function normalizeDraftBlock(
         ctaLabel: block.ctaLabel,
         showItemNumbers: block.showItemNumbers ?? false,
         footerText: block.footerText,
+        excludedVideoIds: [],
         items: block.items.map((item) => {
           const candidate = resolveVideoCandidate(item.candidateRef, candidates)
           return compactRecord({

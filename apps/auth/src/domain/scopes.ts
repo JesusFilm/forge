@@ -1,5 +1,39 @@
 export const AUTH_SCOPES = [
   {
+    key: "shorts:narration",
+    label: "Generate draft Shorts narration",
+    description:
+      "Use an approved existing voice for one initial pass and one correction per project. Provider charges apply. Never approves final script or publication.",
+  },
+  {
+    key: "shorts:render",
+    label: "Render Shorts drafts",
+    description:
+      "Request private draft renders using infrastructure; never approve or publish.",
+  },
+  {
+    key: "shorts:read",
+    label: "Read Shorts projects",
+    description: "Read Shorts projects, history and shared assets.",
+  },
+  {
+    key: "shorts:edit",
+    label: "Edit Shorts drafts",
+    description:
+      "Apply revision-checked draft edits; never approve or publish.",
+  },
+  {
+    key: "shorts:chat",
+    label: "Run Shorts agent",
+    description:
+      "Request hosted authoring proposals; never approve narration or publication.",
+  },
+  {
+    key: "shorts:instructions:read",
+    label: "Read Shorts instructions",
+    description: "Inspect active Shorts guidance without changing activation.",
+  },
+  {
     key: "openid",
     label: "Sign you in",
     description: "Confirm your identity for the requesting application.",
@@ -52,6 +86,12 @@ export const AUTH_SCOPES = [
     label: "Validate Manager sessions",
     description:
       "Allow Manager to validate operator access against the Admin app.",
+  },
+  {
+    key: "admin:manager-backend",
+    label: "Use the Manager backend",
+    description:
+      "Allow the Manager service to call its Admin-owned backend contracts.",
   },
   {
     key: "tokens:manage",
@@ -108,9 +148,42 @@ export const AUTH_SCOPES = [
     label: "Generate experiences",
     description: "Generate new Experience page drafts with AI.",
   },
+  {
+    key: "push:campaign:read",
+    label: "Read push campaigns",
+    description:
+      "Read push campaigns and their reports, languages, destinations, and audience counts.",
+  },
+  {
+    key: "push:campaign:draft",
+    label: "Draft push campaigns",
+    description:
+      "Create and edit push campaign drafts. Cannot test, schedule, or send.",
+  },
+  {
+    key: "changelog:read",
+    label: "Read Changelog",
+    description: "View and filter published Changelog entries.",
+  },
+  {
+    key: "changelog:submit",
+    label: "Submit Changelog entries",
+    description: "Submit entries and manage entries created by the caller.",
+  },
+  {
+    key: "changelog:admin",
+    label: "Administer Changelog",
+    description: "Manage all Changelog entries and products.",
+  },
 ] as const
 
 export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]
+
+export const CHANGELOG_OAUTH_SCOPES = [
+  "changelog:read",
+  "changelog:submit",
+  "changelog:admin",
+] as const satisfies readonly AuthScopeKey[]
 
 const scopeKeys = new Set(AUTH_SCOPES.map((scope) => scope.key))
 

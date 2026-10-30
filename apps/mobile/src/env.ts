@@ -21,6 +21,11 @@ const _inlined = {
   datadogSessionSampleRate: process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
   datadogReplaySampleRate: process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
   authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+  recommendationsEnabled: process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
+  signInEnabled: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+  exploreEnabled: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+  exploreAndroidEnabled: process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+  muxDataEnvKey: process.env.EXPO_PUBLIC_MUX_DATA_ENV_KEY,
 }
 void _inlined
 
@@ -55,6 +60,19 @@ const createAppEnv = () =>
       // Auth service base URL — optional; unset falls back to production
       // auth so store builds need no new env var.
       EXPO_PUBLIC_AUTH_BASE_URL: z.string().url().optional(),
+      // Opt-out kill switch for the recommendations client (feat-516). Optional
+      // so default builds need no new env var; only "false" / "0" disables.
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED: z.string().optional(),
+      // Opt-in sign-in gate (feat-543). Keep it a loose string: the on-values
+      // live in signInGateState, and a strict schema stops startup on a typo.
+      EXPO_PUBLIC_SIGN_IN_ENABLED: z.string().optional(),
+      // Opt-in Explore tab gate (KTD16). Loose strings for the same reason as
+      // the sign-in gate: the on-values live in explore/availabilityState.
+      EXPO_PUBLIC_EXPLORE_ENABLED: z.string().optional(),
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED: z.string().optional(),
+      // Mux Data env key. Optional so a build without it boots; the shape
+      // check lives in muxData/config.ts, where a bad key turns Mux off.
+      EXPO_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -76,6 +94,13 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE:
         process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
       EXPO_PUBLIC_AUTH_BASE_URL: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED:
+        process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
+      EXPO_PUBLIC_SIGN_IN_ENABLED: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ENABLED: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED:
+        process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+      EXPO_PUBLIC_MUX_DATA_ENV_KEY: process.env.EXPO_PUBLIC_MUX_DATA_ENV_KEY,
     },
     isServer: false,
     emptyStringAsUndefined: true,

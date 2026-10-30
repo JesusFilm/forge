@@ -27,11 +27,12 @@ declare const contentSlugBrand: unique symbol
 /** English-name kebab-case language identifier (e.g. `english`, `russian`, `portuguese-brazil`). NOT a bcp47 code. */
 export type LocaleSlug = string & { readonly [localeSlugBrand]: true }
 
-/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`). Lowercase ASCII slug shape. */
+/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`, `jätku-leiba`). Lowercase letters/digits, hyphens, or underscores. */
 export type ContentSlug = string & { readonly [contentSlugBrand]: true }
 
 const LOCALE_SLUG_PATTERN = /^[a-z0-9-]+$/
-const CONTENT_SLUG_PATTERN = /^[a-z0-9_-]+$/
+const CONTENT_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 
 /** Throw-on-invalid `LocaleSlug` constructor. Use for pre-validated inputs (env vars, configured constants). Prefer `tryAsLocaleSlug` at user-input boundaries. */
 export function asLocaleSlug(value: string): LocaleSlug {
@@ -43,7 +44,7 @@ export function asLocaleSlug(value: string): LocaleSlug {
 
 /** Throw-on-invalid `ContentSlug` constructor. Use for pre-validated inputs. Prefer `tryAsContentSlug` at user-input boundaries. */
 export function asContentSlug(value: string): ContentSlug {
-  if (!CONTENT_SLUG_PATTERN.test(value)) {
+  if (!CONTENT_SLUG_PATTERN.test(value) || value !== value.toLowerCase()) {
     throw new Error(`invalid ContentSlug: ${value}`)
   }
   return value as ContentSlug
@@ -56,7 +57,9 @@ export function tryAsLocaleSlug(value: string): LocaleSlug | null {
 
 /** Result-shape `ContentSlug` constructor. Returns `null` on invalid input. */
 export function tryAsContentSlug(value: string): ContentSlug | null {
-  return CONTENT_SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
+  return CONTENT_SLUG_PATTERN.test(value) && value === value.toLowerCase()
+    ? (value as ContentSlug)
+    : null
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
@@ -110,6 +113,7 @@ type WatchEpisodeRoute = `${WatchEpisodePathname}${"" | `?${string}`}`
 type WatchEpisodeExplicitLanguageRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type LanguagesIndexRoute = "/languages"
+type WhatsNewRoute = "/whats-new"
 type LanguageVideosIndexRoute = `/${string}.html/videos`
 type LocalizedLanguagesRoute = `/${string}.html/languages`
 type LocalizedHistoryRoute = `/${string}.html/history`
@@ -235,6 +239,15 @@ export function languagesIndexPath(): LanguagesIndexRoute & Route {
   return "/languages" as LanguagesIndexRoute & Route
 }
 
+/**
+ * Build the Watch product-update page path `/whats-new` (no `.html`
+ * suffix, no language segment). Single-segment utility route, same shape
+ * family as `/languages` and `/history`.
+ */
+export function whatsNewPath(): WhatsNewRoute & Route {
+  return "/whats-new" as WhatsNewRoute & Route
+}
+
 /** Build the language-bearing all-languages path `/{lang}.html/languages`. */
 export function localizedLanguagesPath(
   lang: LocaleSlug,
@@ -268,7 +281,7 @@ export function searchPath(): SearchRoute & Route {
 }
 
 /**
- * Discriminated union returned by `parseWatchPath`. Twelve kinds:
+ * Discriminated union returned by `parseWatchPath`. Thirteen kinds:
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
@@ -276,6 +289,7 @@ export function searchPath(): SearchRoute & Route {
  * - `episode` — eligible English `/{series}.html/{episode}.html` or explicit `/{series}.html/{episode}/{lang}.html`
  * - `languages` — `/languages`
  * - `localized-languages` — `/{lang}.html/languages`
+ * - `whats-new` — `/whats-new`
  * - `history` — `/history`
  * - `localized-history` — `/{lang}.html/history`
  * - `language-videos` — `/{lang}.html/videos`
@@ -290,6 +304,7 @@ export type ParsedWatchPath =
   | { kind: "episode"; series: string; episode: string; lang: string }
   | { kind: "languages" }
   | { kind: "localized-languages"; lang: string }
+  | { kind: "whats-new" }
   | { kind: "history" }
   | { kind: "localized-history"; lang: string }
   | { kind: "language-videos"; lang: string }
@@ -317,6 +332,7 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
     if (first === "languages" || first === "videos") {
       return { kind: "languages" }
     }
+    if (first === "whats-new") return { kind: "whats-new" }
     if (first === "history") return { kind: "history" }
     if (first === "search") return { kind: "search" }
     return { kind: "localized-home", lang: stripHtmlSuffix(first) }
@@ -381,15 +397,58 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
 // WATCH_PUBLIC_METADATA_ORIGIN when the configured origin is not public.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-// The indexed public website host used by SEO/social metadata and as the Share
-// fallback for local/private app origins.
-export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
+// Keep the public constants available through the established routes API.
+// The neutral module also serves browser helpers without route initialization.
+import {
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+} from "./watch-public-url"
+export { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN }
 
-// Re-exported from the shared watch-base-path.mjs module that
-// next.config.mjs also imports. Single source of truth so a basePath
-// change in next.config can't desync from the URL builders here.
-import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
-export { WATCH_BASE_PATH }
+/**
+ * Validate the stored Admin target against the same canonical builder used by
+ * every authored Watch video link. Recommendation selection never accepts an
+ * arbitrary URL, query string, fragment, or non-canonical English form.
+ */
+export function isCanonicalWatchRecommendationHref(
+  value: unknown,
+): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length > 512 ||
+    !value.startsWith(`${WATCH_BASE_PATH}/`) ||
+    value.startsWith("//")
+  ) {
+    return false
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(value, WATCH_CANONICAL_ORIGIN)
+  } catch {
+    return false
+  }
+  if (
+    parsed.origin !== new URL(WATCH_CANONICAL_ORIGIN).origin ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== value
+  ) {
+    return false
+  }
+
+  const relative = value.slice(WATCH_BASE_PATH.length)
+  const match = relative.match(
+    /^\/([a-z0-9_-]+)\.html(?:\/([a-z0-9-]+)\.html)?$/,
+  )
+  if (!match) return false
+  const content = tryAsContentSlug(match[1]!)
+  const language = tryAsLocaleSlug(match[2] ?? DEFAULT_WATCH_LANGUAGE_SLUG)
+  return (
+    content != null &&
+    language != null &&
+    `${WATCH_BASE_PATH}${watchVideoPath(content, language)}` === value
+  )
+}
 
 /** Build an environment-specific absolute URL for a canonical watch video. */
 export function watchVideoAbsolute(

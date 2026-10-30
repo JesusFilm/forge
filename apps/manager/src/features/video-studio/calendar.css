@@ -1,0 +1,149 @@
+.studio-calendar {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px;
+  color: var(--ds-ink);
+}
+.studio-calendar header,
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.studio-calendar h1 {
+  font-size: 30px;
+  font-weight: 600;
+}
+.studio-calendar h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.studio-calendar p {
+  margin: 8px 0;
+}
+.studio-calendar button,
+.studio-calendar input,
+.studio-calendar select,
+.studio-calendar textarea {
+  border: 1px solid var(--ds-line-strong);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--ds-panel);
+  color: inherit;
+}
+.studio-calendar button {
+  cursor: pointer;
+}
+.studio-calendar button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.studio-calendar button[aria-pressed="true"] {
+  background: var(--ds-ink);
+  color: var(--ds-panel);
+}
+.studio-calendar a {
+  text-decoration: underline;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+}
+.calendar-day {
+  padding: 14px;
+  border: 1px solid var(--ds-line-strong);
+  border-radius: 8px;
+  min-height: 270px;
+  overflow-wrap: anywhere;
+}
+.calendar-day time {
+  font-size: 13px;
+}
+.calendar-day button {
+  display: block;
+  margin-top: 14px;
+}
+.calendar-state {
+  font-weight: 600;
+}
+.calendar-settings {
+  max-width: 700px;
+  padding: 24px;
+  border: 1px solid var(--ds-line-strong);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+.calendar-settings label,
+.calendar-dialog label {
+  display: block;
+  margin: 14px 0;
+}
+.calendar-settings label input:not([type="checkbox"]),
+.calendar-settings select,
+.calendar-dialog input,
+.calendar-dialog textarea,
+.calendar-dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+}
+.calendar-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in srgb, var(--ds-black) 45%, transparent);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.calendar-dialog form,
+.calendar-dialog-panel {
+  background: var(--ds-panel);
+  max-width: 600px;
+  width: 100%;
+  padding: 28px;
+  border-radius: 10px;
+  max-height: 90vh;
+  overflow: auto;
+}
+.calendar-dialog button {
+  margin-right: 10px;
+}
+@media (max-width: 1100px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio-calendar {
+    padding: 16px;
+  }
+  .studio-calendar header,
+  .calendar-toolbar {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+/* Native modal supplies focus containment, Escape handling and backdrop inertness. */
+dialog.calendar-dialog {
+  inset: 0;
+  margin: auto;
+  display: revert;
+  width: min(600px, calc(100vw - 40px));
+  max-height: 90vh;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+dialog.calendar-dialog:not([open]) {
+  display: none;
+}
+dialog.calendar-dialog::backdrop {
+  background: color-mix(in srgb, var(--ds-black) 45%, transparent);
+}

@@ -7,12 +7,13 @@ type MessageCatalog = typeof englishMessages
 
 export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "AccountControl",
-  "BetaTesterModal",
   "ExperienceError",
+  "ExperienceSkeleton",
   "Feedback",
   "FloatingSearch",
   "LanguageCombobox",
   "LanguagePickerModal",
+  "RecommendationConsent",
   "SearchOverlay",
   "SearchResultCard",
   "VideoLabels",
@@ -32,7 +33,7 @@ export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [
   "VideoRecommendations",
   "WatchFooter",
   "WatchHome",
-  "WatchHomeMuxInserts",
+  "WatchHomeCategories",
   "WatchHomePromo",
   "WatchHomeSections",
   "WatchModal",
@@ -49,7 +50,11 @@ export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
   "HeroPlayer",
   "HeroPlayerControls",
   "LanguageCombobox",
+  "LanguageInventory",
   "LanguagePickerModal",
+  // WatchPageClient reads SearchOverlay.connectionHint for the language
+  // component-download error. This nested provider replaces the layout's.
+  "SearchOverlay",
   "SearchResultCard",
   "SeriesPage",
   "ShareModal",
@@ -94,7 +99,21 @@ export async function loadClientMessages(
   locale: UiLocale,
   namespaces: readonly ClientMessageNamespace[],
 ): Promise<Partial<MessageCatalog>> {
-  const messages = (await import(`../../messages/${locale}.json`))
-    .default as MessageCatalog
-  return pickClientMessages(messages, namespaces)
+  const [messages, defaultMessages] = await Promise.all([
+    import(`../../messages/${locale}.json`).then(
+      (catalog) => catalog.default as Partial<MessageCatalog>,
+    ),
+    locale === "en"
+      ? Promise.resolve(null)
+      : import("../../messages/en.json").then(
+          (catalog) => catalog.default as MessageCatalog,
+        ),
+  ])
+
+  return Object.fromEntries(
+    namespaces.map((namespace) => [
+      namespace,
+      messages[namespace] ?? defaultMessages?.[namespace],
+    ]),
+  ) as Partial<MessageCatalog>
 }

@@ -184,14 +184,12 @@ export function AdminShell({
     pathname.startsWith("/dashboard/media") ||
     pathname.startsWith("/dashboard/workflows/")
   const visibleNavItems = adminNavItems.filter((item) =>
-    isNavItemVisible(principal.role, item),
+    isNavItemVisible(principal, item),
   )
   const visibleNavSections = adminNavSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) =>
-        isNavItemVisible(principal.role, item),
-      ),
+      items: section.items.filter((item) => isNavItemVisible(principal, item)),
     }))
     .filter((section) => section.items.length > 0)
 

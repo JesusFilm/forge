@@ -10,6 +10,7 @@ describe("Manager session GraphQL contract", () => {
       managerMembership: {
         role: "OPERATOR",
         revokedAt: null,
+        reviewerLanguageGrants: [],
       },
     })
     const field = schema.getQueryType()!.getFields().managerViewer
@@ -35,6 +36,68 @@ describe("Manager session GraphQL contract", () => {
       email: "manager@example.com",
       managerRole: "OPERATOR",
       permission: "access:manager",
+      reviewerLanguageGrants: [],
+    })
+  })
+
+  it("resolves the separate reviewer lane with exact active language grants", async () => {
+    const field = schema.getQueryType()!.getFields().managerViewer
+    const reviewerLanguageGrants = [
+      {
+        id: "grant-es",
+        languageId: "language-es",
+        permittedRubricDimensions: ["MEANING_ACCURACY", "NATURALNESS"],
+        scriptureSpecialist: false,
+        theologySpecialist: false,
+        revokedAt: null,
+        language: {
+          id: "language-es",
+          slug: "spanish-latin-america",
+          bcp47: "es-419",
+          deletedAt: null,
+        },
+      },
+    ]
+
+    await expect(
+      field.resolve?.(
+        {},
+        {},
+        {
+          user: { id: "admin-reviewer-1", role: "VIEWER" },
+          prisma: {
+            user: {
+              findUnique: vi.fn().mockResolvedValueOnce({
+                id: "admin-reviewer-1",
+                email: "reviewer@example.com",
+                name: "Spanish Reviewer",
+                managerMembership: {
+                  role: "REVIEWER",
+                  revokedAt: null,
+                  reviewerLanguageGrants,
+                },
+              }),
+            },
+          },
+        },
+        {} as never,
+      ),
+    ).resolves.toEqual({
+      id: "admin-reviewer-1",
+      username: "Spanish Reviewer",
+      email: "reviewer@example.com",
+      managerRole: "REVIEWER",
+      permission: "review:subtitles",
+      reviewerLanguageGrants: [
+        {
+          id: "grant-es",
+          languageId: "language-es",
+          languageSlug: "spanish-latin-america",
+          languageBcp47: "es-419",
+          permittedRubricDimensions: ["MEANING_ACCURACY", "NATURALNESS"],
+          specialistCapabilities: { scripture: false, theology: false },
+        },
+      ],
     })
   })
 

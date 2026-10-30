@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext } from "react"
+import type { Route } from "next"
 
 import type { SearchActionResultSource, SearchResult } from "@/lib/search"
 import type {
@@ -9,11 +10,21 @@ import type {
   SearchLanguageRegionGroup,
 } from "@/lib/search-language"
 import type { WatchSearchResultClickAnalytics } from "@/lib/watch-search-analytics-contract"
+import type { WatchSearchErrorKind } from "@/lib/watch-search-client"
 
 export type FloatingSearchResultAnalyticsContext = Omit<
   WatchSearchResultClickAnalytics,
   "position"
 >
+
+export type FloatingSearchResultPage = {
+  key: string
+  startIndex: number
+  results: SearchResult[]
+  surfaceManifest:
+    | import("@/lib/watch-surface-manifest").SignedWatchSurfaceManifest
+    | null
+}
 
 export type FloatingSearchContextValue = {
   open: boolean
@@ -22,6 +33,7 @@ export type FloatingSearchContextValue = {
   submittedQuery: string | null
   results: SearchResult[]
   displayResults: SearchResult[]
+  displayResultPages: FloatingSearchResultPage[]
   exiting: boolean
   resultsKey: number
   hasMore: boolean
@@ -29,6 +41,7 @@ export type FloatingSearchContextValue = {
   showSkeleton: boolean
   loadingMore: boolean
   error: string | null
+  errorKind: WatchSearchErrorKind | null
   searched: boolean
   resultSource: SearchActionResultSource | null
   languageOptions: SearchLanguageOption[]
@@ -46,6 +59,13 @@ export type FloatingSearchContextValue = {
   headerLanguageSwitcherVisible: boolean
   headerLanguageCode: string | null
   headerPinned: boolean
+  /**
+   * Inventory path for the header language, or null when that language has no
+   * public inventory route. Derived once in FloatingSearchProvider so the
+   * header control and the search overlay's mobile row can never disagree
+   * about which language "all videos" means.
+   */
+  languageVideosHref: Route | null
   setOpen: (open: boolean) => void
   setQuery: (q: string) => void
   search: (

@@ -22,11 +22,13 @@ const clickInput = {
   resultType: "video",
   position: 3,
   visibleResultIds: ["video-123", "video-456"],
+  searchLanguageSlug: "english",
 }
 
 const viewedInput = {
   requestId: VALID_REQUEST_ID,
   visibleResultIds: ["video-123", "exp-1"],
+  searchLanguageSlug: "english",
 }
 
 beforeEach(() => {
@@ -48,6 +50,22 @@ describe("buildResultClickedVariables", () => {
     })
   })
 
+  // U7: the event joins its search only when it names the same slug.
+  it("carries the search's own display slug", () => {
+    expect(
+      buildResultClickedVariables({
+        ...clickInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
+    expect(
+      buildResultsViewedVariables({
+        ...viewedInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
+  })
+
   it("never carries an occurredAt key — admin stamps its own clock", () => {
     const variables = buildResultClickedVariables(clickInput)
     expect(variables).not.toHaveProperty("occurredAt")
@@ -55,7 +73,7 @@ describe("buildResultClickedVariables", () => {
 
   it("maps mobile's uppercase EXPERIENCE wire value to EXPERIENCE", () => {
     // The production-reachable shape: SearchResult.type carries admin's
-    // uppercase enum (watch.tsx compares result.type === "EXPERIENCE").
+    // uppercase enum (Discover's index.tsx compares result.type === "EXPERIENCE").
     expect(
       buildResultClickedVariables({ ...clickInput, resultType: "EXPERIENCE" }),
     ).toMatchObject({ resultType: "EXPERIENCE" })

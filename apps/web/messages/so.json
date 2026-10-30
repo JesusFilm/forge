@@ -39,9 +39,8 @@
     "posterAlt": "Sawirka fiidiyowga",
     "noDownloads": "Fiidiyowgan wax soo dejin ah looma hayo.",
     "fileSizeLabel": "Dooro cabbir fayl",
-    "termsAgreementPrefix": "Waan aqbalayaa ",
+    "termsAgreement": "Waan aqbalayaa <link>Shuruudaha Isticmaalka</link>",
     "termsOfUse": "Shuruudaha Isticmaalka",
-    "termsAgreementSuffix": "",
     "close": "Xir",
     "download": "Soo deji",
     "authRequiredTitle": "Ma doonaysaa inaad fiidiyowgan soo dejiso?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Ku wadaag Facebook (ma heli karo dhismahan)",
     "shareOnX": "Ku wadaag X",
     "shareOnXUnavailable": "Ku wadaag X (ma heli karo dhismahan)",
+    "opensInNewTab": "{label} (wuxuu ka furmayaa tab cusub)",
     "shareDisabledHint": "Wadaagistu waxay u baahan tahay bog la daabacay — waxay shaqayn doontaa marka fiidiyowgan la geliyo production.",
     "shareFormat": "Qaabka wadaagga",
     "shareLinkTab": "Link-ga wadaag",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Beddel luqadda codka",
     "home": "Bogga hore ee JesusFilm",
     "closeSearch": "Xir raadinta",
-    "submitSearch": "Raadi"
+    "submitSearch": "Raadi",
+    "library": "Maktabad"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ma soo rari karin natiijooyin dheeraad ah.",
     "searching": "Raadinaya...",
     "connectionHint": "Fadlan hubi xiriirkaaga oo mar kale isku day.",
+    "rateLimitHint": "Codsiyo aad u badan. Fadlan isku day mar kale hal daqiiqo kadib.",
     "retrySearch": "Mar kale raadi",
     "retry": "Mar kale isku day",
     "noResults": "Natiijooyin looma helin \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Ku raadi \"{suggestion}\" gudaha {language}",
     "inLanguage": "gudaha {language}",
     "browseByRegion": "Ku dhex-dhaqaaq gobol ahaan",
+    "allVideosOnSinglePage": "Dhammaan fiidiyowyada bog keliya",
     "clearLanguages": "Nadiifi",
     "queryLanguageDetected": "{language} ayaa la ogaaday",
     "searchInLanguage": "Ku raadi gudaha {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Hadda daawo",
     "tapToUnmute": "Taabo si codka loo daaro",
-    "nextEpisode": "Qaybta xigta"
+    "nextEpisode": "Qaybta xigta",
+    "audioTranslationCount": "{count, plural, one {# luqad} other {# luqadood}}",
+    "subtitleCount": "Qoraal-hoosaadyo: {count, plural, one {# luqad} other {# luqadood}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Waxyaabaha ayaa la soo rarayaa",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Foomka jawaab-celinta lama soo rari karo.",
     "loadingForm": "Foomka jawaab-celinta waa la soo rarayaa…",
     "retry": "Mar kale isku day",
-    "openFormShort": "Fur foomka",
     "cancel": "Jooji",
-    "title": "Jawaab-celin Beta",
-    "description": "La wadaag waxa shaqaynaya iyo waxa aan hagaajin karno. Foomkan waxaa bixiya Google.",
-    "openInNewTab": "Foomka ku fur tab cusub",
     "closeForm": "Xir foomka jawaab-celinta",
-    "loadingGoogleForm": "Google Form ayaa la soo rarayaa…",
-    "iframeTitle": "Gudbi Jawaab-celin Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Fiidiyowyo Masiixi ah oo bilaash ah gudaha {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Ciyaaraha",
     "collections": "Uruurino",
     "subtitlesOnly": "Kaliya qoraal-hoosaadyo",
+    "backToTop": "Ku noqo kor",
     "newlyAdded": "Cusub lagu daray",
     "newVideosTitle": "Fiidiyowyo Masiixi ah oo cusub gudaha {language}",
     "newestFirst": "Kuwa ugu cusub marka hore",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Fiidiyowyo kaligood ah",
     "videosFromCollection": "Fiidiyowyo ka yimid {collection}.",
     "standaloneDescription": "Fiidiyowyo kaligood ah oo luqaddan ku jira.",
-    "openCollection": "Fur ururinta"
+    "openCollection": "Fur ururinta",
+    "filters": "Shaandhooyin",
+    "filterLength": "Dherer",
+    "filterLength_under5": "Ka yar 5 daqiiqo",
+    "filterLength_5to10": "5-10 daqiiqo",
+    "filterLength_10to30": "10-30 daqiiqo",
+    "filterLength_over30": "Ka badan 30 daqiiqo",
+    "filterType": "Nooc",
+    "clearFilters": "Tirtir shaandhooyinka",
+    "filterResults": "{count} ka mid ah {total} ayaa la muujiyay",
+    "noFilterResults": "Ma jiro fiidiyow ku habboon shaandhooyinkan. Isku day inaad mid ka saarto.",
+    "filterAdded": "Lagu daray",
+    "filterAdded_60d": "60-kii maalmood ee la soo dhaafay",
+    "filterAdded_6m": "6-dii bilood ee la soo dhaafay",
+    "filterAdded_12m": "12-kii bilood ee la soo dhaafay"
   },
   "WatchHome": {
     "pageTitle": "Daawashada Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Hor-u-muujinta fiidiyowga hore",
     "nextVideoPreview": "Hor-u-muujinta fiidiyowga xiga",
     "mediaCollection": "Uruurinta warbaahinta",
-    "scrollToVideo": "U deg fiidiyowga {title}"
+    "scrollToVideo": "U deg fiidiyowga {title}",
+    "forYou": "Adiga kuu gaar ah"
   },
   "WatchFooter": {
     "home": "Bogga hore ee Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Kirismas wanaagsan!",
     "daysUntilChristmas": "{count, plural, one {# maalin ayaa ka harsan Kirismaska} other {# maalmood ayaa ka harsan Kirismaska}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Dhex-dhaqaaq maktabadda",
+    "title": "Ku dhex-dhaqaaq qaybaha",
+    "description": "Si toos ah ugu gudub qaybta maktabadda aad u baahan tahay — nolosha Ciise, xilliyada sannadka kaniisadda, iyo fiidiyowyo loogu talagalay qoysaska, ardayda iyo kooxaha yaryar.",
+    "seeAll": "Arag dhammaan fiidiyowyada",
+    "previous": "Qaybihii hore",
+    "next": "Qaybaha xiga",
+    "categories": {
+      "jesus": "Filimka CIISE",
+      "gospels": "Injiillada",
+      "shortVideos": "Fiidiyowyo gaagaaban",
+      "family": "Qoys",
+      "relationships": "Xiriirro",
+      "women": "Haweenka",
+      "students": "Ardayda",
+      "sports": "Ciyaaraha",
+      "goodNews": "War Wanaagsan",
+      "hope": "Rajo",
+      "training": "Tababar",
+      "easter": "Ciidda Faskaha",
+      "christmas": "Ciidda Kirismaska"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Luqado",
     "metadataDescription": "Ku dhex-dhaqaaq fiidiyowyada JesusFilm luqad ahaan.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Bog lama helin:",
     "title": "Muuqaalkan halkan kuma jiro.",
     "description": "Boggu wuu guuri karaa, laakiin sheekadu way sii socotaa.",
+    "languageDescription": "Ma helin bogga aad raadinayso, laakiin sheekadu way sii socotaa iyadoo ah filimo iyo fiidiyowyo ku jira luqado adduunka oo dhan ah.",
     "actionsLabel": "Ficillada bogga lama helin",
     "backToWatch": "Ku noqo Daawashada",
     "browseVideos": "Dhex-dhaqaaq fiidiyowyada"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Daawo filim gaaban",
-    "actions": {
-      "joinUs": "Nagu soo biir",
-      "shareMission": "La wadaag howlteenna"
-    },
-    "welcomeStart": {
-      "label": "Iimaan & Qorniin",
-      "title": "Xulashada fiidiyowyada maanta",
-      "description": "Waxyaabo fiidiyow ah oo ku salaysan iimaan, kana yimid maktabaddeenna, si ay kuu dhiirrigeliyaan, kuu xujeeyaan, oo ay kuu kiciyaan fikir."
-    },
-    "welcomeMorning": {
-      "label": "Dhiirrigelinta subaxnimo",
-      "title": "Subax wanaagsan! Qaybaha Baybalka ee maanta ayaa ku sugaya.",
-      "description": "Ku bilow maalintaada qaybaha Baybalka ee dhiirrigeliya, kuwaas oo loo sameeyay inay ku xoojiyaan oo ay ruuxaaga kiciyaan."
-    },
-    "welcomeAfternoon": {
-      "label": "Dhiirrigelinta galabnimo",
-      "title": "Galab wanaagsan! Qaybaha Baybalka ee maalintaada.",
-      "description": "Waxyaabo Baybal ah oo dhiirrigelin leh, ku habboon nasashadaada galabta ama dhiirrigelin sii socota."
-    },
-    "welcomeEvening": {
-      "label": "Dhiirrigelinta fiidnimo",
-      "title": "Habeen wanaagsan! Ku naso qaybaha Baybalka.",
-      "description": "Qaybaha Baybalka ee deggan si ay kaaga caawiyaan inaad milicsato oo aad hesho qalbi qabow marka maalintaadu dhammaanayso."
-    },
-    "joinUs": {
-      "label": "Nagu soo biir",
-      "title": "Bilyanno ayaa raadinaya",
-      "description": "Goosashadu waa timid. Nagu soo biir anagoo dunida ula wadaageyna injiilka warbaahin dijitaal ah."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Aan wada soconno",
-      "title": "Sheekada Jesus waan wada sheegaynaa",
-      "description": "Si ay meesha ay joogaan uga maqlaan uguna arkaan jacaylka Jesus oo ku jira afkooda."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% waafaqid",
-    "none": "Fiidiyowgan wax talooyin ah loogama helin luqaddan."
+    "none": "Fiidiyowgan wax talooyin ah loogama helin luqaddan.",
+    "heading": "Fiidiyowyada lagu taliyay",
+    "loadingLabel": "Waxaa la soo rarayaa fiidiyowyada lagu taliyay",
+    "openingTitle": "Waa la furayaa {title}",
+    "openingVideo": "Fiidiyowga waa la furayaa",
+    "activityNotRecorded": "Dhaqdhaqaaqa talooyinka lama diiwaangelin karin. Xiriiriyeyaashu weli way shaqeeyaan.",
+    "showingContextual": "Waxaa la tusayaa talooyin ku salaysan macnaha.",
+    "showingSaved": "Waxaa la tusayaa talooyin la keydiyay.",
+    "explanationCurated": "Fiidiyowyo la xushay oo aad sahamin karto.",
+    "explanationViewingMode": "Lagu taliyay iyadoo lagu salaynayo fiidiyowgan iyo sida aad wax u daawato.",
+    "explanationCowatch": "Lagu taliyay iyadoo lagu salaynayo fiidiyowgan iyo xiisahaaga.",
+    "explanationHybrid": "Lagu taliyay iyadoo lagu salaynayo fiidiyowgan iyo xiisaha aad dooratay in la xasuusto.",
+    "explanationContextual": "Lagu taliyay iyadoo lagu salaynayo waxa aad hadda daawanayso.",
+    "explanationSemanticFallback": "Lagu taliyay iyadoo lagu salaynayo waxa aad hadda daawanayso, maadaama shakhsiyeyntu aanay hadda diyaar ahayn.",
+    "explanationProfileDurable": "Loo shakhsiyeeyay iyadoo lagu salaynayo xiisaha aad dooratay in la xasuusto.",
+    "explanationProfileVisit": "Loo shakhsiyeeyay booqashadan.",
+    "personalizationLabel": "Shakhsiyeynta talooyinka",
+    "personalizationPrompt": "Ma rabtaa inaad beddesho sida talooyinka loo shakhsiyeeyo?",
+    "openCookieSettings": "Fur dejinta kukiyada"
   },
   "BetaTesterModal": {
     "title": "Noqo tijaabiye beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Isku-daygii mar kale wuu fashilmay"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Nooca luqaddan lama heli karo",
+    "eyebrow": "Nooca luqaddan lama heli karo",
+    "title": "<contentTitle>{title}</contentTitle> laguma heli karo <languageName>{language}</languageName>",
+    "actionsLabel": "Ikhtiyaarrada daawashada ee jira",
+    "browseInLanguage": "Ka daawo muuqaallo ku qoran {language}",
+    "backToSearch": "Ku noqo raadinta",
+    "audioVersionsTitle": "Noocyo cod oo kale",
+    "audioVersionsDescription": "Dooro luqadda codka si aad u sii waddo daawashada muuqaalkan.",
+    "languageVersionLabel": "Luqadda codka",
+    "selectLanguageVersion": "Dooro nooca luqadda",
+    "watchSelectedVersion": "Daawo nooca la doortay"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Doorashooyinka kukiyada",
+    "bannerTitle": "Doorashooyinkaaga gaarka ahaanshaha",
+    "bannerDescription": "Kukiyada lama huraanka ahi waxay Watch ka dhigaan mid ammaan ah oo shaqaynaya. Oggolaanshahaaga, kuki ikhtiyaari ah oo koowaad ayaa xusuusan kara danahaaga booqashooyin kala duwan si talooyinka laguugu habeeyo. Talooyinka ku salaysan macnaha ayaa si kastaba kuu diyaar ah.",
+    "acceptAll": "Ogolow dhammaan",
+    "essentialOnly": "Kuwa lama huraanka ah oo keliya",
+    "manageChoices": "Maamul doorashooyinka",
+    "savingChoice": "Waxaa la kaydinayaa doorashada kukiyada",
+    "settings": "Dejinta kukiyada",
+    "settingsDescription": "Dooro in Watch xusuusan karo danaha talooyinka booqashooyin kala duwan. Waad beddeli kartaa wakhti kasta.",
+    "essentialCookies": "Kukiyada lama huraanka ah",
+    "essentialDescription": "Amniga, daawashada, doorashooyinka gaarka ahaanshaha, iyo raadraaca codsiyada talooyinka.",
+    "alwaysActive": "Had iyo jeer waa shaqaynayaan",
+    "personalization": "Shakhsiyeynta",
+    "personalizationDescription": "Xusuuso danaha xaddidan booqashooyin kala duwan. Haddii aad damiso, talooyinka ku salaysan macnaha weli waa diyaar.",
+    "erasurePending": "Tirtiridda xogta astaantaada weli way socotaa. Talooyinka ku salaysan macnaha mar hore way shaqaynayaan.",
+    "cancel": "Jooji",
+    "saveChoices": "Kaydi doorashooyinka",
+    "saving": "Waa la kaydinayaa…",
+    "loadError": "Lama soo dejin karin doorashadaada. Weli hoos ayaad ka dooran kartaa.",
+    "grantError": "Shakhsiyeynta lama hawlgelin karin. Kaliya kuwa lama huraanka ah ayaa sii ahaanaya kuwo la heli karo.",
+    "saveError": "Lama kaydin karin doorashadaada. Fadlan mar kale isku day."
   }
 }

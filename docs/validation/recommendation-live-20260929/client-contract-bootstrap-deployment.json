@@ -1,0 +1,120 @@
+{
+  "measured_at": "2026-09-29T06:05:55.081453+00:00",
+  "environment": "production",
+  "inventory": [
+    {
+      "service": "@forge/admin",
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "active": [
+        {
+          "id": "94a10edd-d4c3-4a67-ad79-96fc948947b9",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T05:54:37.841Z",
+          "commit": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59",
+          "image_digest": "sha256:7661eb208daa3bc8e04a1c6a12126ca28865babaa24d3a4c5750eed7bde9dc3c",
+          "config_file": "/apps/admin/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "94a10edd-d4c3-4a67-ad79-96fc948947b9",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T05:54:37.841Z",
+        "commit": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59"
+      }
+    },
+    {
+      "service": "@forge/admin/worker",
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "active": [
+        {
+          "id": "8ff5458b-00f7-4193-80de-543c8050da8e",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T05:54:36.898Z",
+          "commit": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59",
+          "image_digest": "sha256:b10d09cf6830a50982c994c54d29d488ad1bab6ec6e34e620c9c0b70da055074",
+          "config_file": "/apps/admin/railway.worker.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "8ff5458b-00f7-4193-80de-543c8050da8e",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T05:54:36.898Z",
+        "commit": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59"
+      }
+    },
+    {
+      "service": "@forge/web",
+      "service_id": "23b82451-0da1-4edc-bcde-096a9fd2a687",
+      "active": [
+        {
+          "id": "77d3968b-c786-4a20-b09b-bf14cda67e23",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T00:06:52.205Z",
+          "commit": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+          "image_digest": "sha256:ead0d5c874b2a837b3172177ac9834aeae4d09924019c4a697c26a30b4eb8fea",
+          "config_file": "/apps/web/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/watch"
+          }
+        }
+      ],
+      "latest": {
+        "id": "77d3968b-c786-4a20-b09b-bf14cda67e23",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T00:06:52.205Z",
+        "commit": "e2582c77b92ded7891c3b645f6a177bb4cb1a097"
+      }
+    }
+  ],
+  "processes": {
+    "web": {
+      "RAILWAY_GIT_COMMIT_SHA": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59",
+      "RAILWAY_DEPLOYMENT_ID": "94a10edd-d4c3-4a67-ad79-96fc948947b9",
+      "RAILWAY_REPLICA_ID": "ed412181-6349-464c-b298-22c38075dfa2",
+      "WORKFLOW_RUNNER_ENABLED": "false",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact",
+      "health_status": 200
+    },
+    "worker": {
+      "RAILWAY_GIT_COMMIT_SHA": "e5a78708d20cd1fe5b5ae400d4240abfccfe3f59",
+      "RAILWAY_DEPLOYMENT_ID": "8ff5458b-00f7-4193-80de-543c8050da8e",
+      "RAILWAY_REPLICA_ID": "7d535c0f-6c4b-4dfe-b772-a01f982d7724",
+      "WORKFLOW_RUNNER_ENABLED": "true",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact",
+      "health_status": 200
+    },
+    "watch": {
+      "RAILWAY_GIT_COMMIT_SHA": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+      "RAILWAY_DEPLOYMENT_ID": "77d3968b-c786-4a20-b09b-bf14cda67e23",
+      "RAILWAY_REPLICA_ID": "ff72e84e-aeb8-44aa-843f-cd10b2666a1d",
+      "WORKFLOW_RUNNER_ENABLED": null,
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+      "health_status": 200
+    }
+  },
+  "filesystem": "Not queried: storage monitoring remains independently owned."
+}

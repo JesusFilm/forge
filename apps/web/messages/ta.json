@@ -39,9 +39,8 @@
     "posterAlt": "வீடியோ போஸ்டர்",
     "noDownloads": "இந்த வீடியோவிற்கு பதிவிறக்கங்கள் எதுவும் கிடைக்கவில்லை.",
     "fileSizeLabel": "கோப்பு அளவைத் தேர்ந்தெடுக்கவும்",
-    "termsAgreementPrefix": "நான் இதற்கு ஒப்புக்கொள்கிறேன்: ",
+    "termsAgreement": "நான் <link>பயன்பாட்டு விதிமுறைகளை</link> ஏற்கிறேன்",
     "termsOfUse": "பயன்பாட்டு விதிமுறைகள்",
-    "termsAgreementSuffix": "",
     "close": "மூடு",
     "download": "பதிவிறக்கு",
     "authRequiredTitle": "இந்த வீடியோவைப் பதிவிறக்க விரும்புகிறீர்களா?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-இல் பகிரவும் (இந்த கட்டுதலில் கிடைக்கவில்லை)",
     "shareOnX": "X-இல் பகிரவும்",
     "shareOnXUnavailable": "X-இல் பகிரவும் (இந்த கட்டுதலில் கிடைக்கவில்லை)",
+    "opensInNewTab": "{label} (புதிய தாவலில் திறக்கும்)",
     "shareDisabledHint": "பகிர்வுக்கு வெளியிடப்பட்ட பக்கம் தேவை — இந்த வீடியோ தயாரிப்பில் இருந்தால் இது செயல்படும்.",
     "shareFormat": "பகிர்வு வடிவம்",
     "shareLinkTab": "இணைப்பைப் பகிர்",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
     "home": "JesusFilm முகப்பு",
     "closeSearch": "தேடலை மூடு",
-    "submitSearch": "தேடவும்"
+    "submitSearch": "தேடவும்",
+    "library": "நூலகம்"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "மேலும் முடிவுகளை ஏற்ற முடியவில்லை.",
     "searching": "தேடப்படுகிறது...",
     "connectionHint": "தயவுசெய்து உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.",
+    "rateLimitHint": "அதிகமான கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலவும்.",
     "retrySearch": "தேடலை மீண்டும் முயற்சிக்கவும்",
     "retry": "மீண்டும் முயற்சி",
     "noResults": "\"{query}\" க்கு முடிவுகள் எதுவும் இல்லை",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-இல் “{suggestion}” என்பதைத் தேடவும்",
     "inLanguage": "{language}-இல்",
     "browseByRegion": "பகுதியின்படி உலாவவும்",
+    "allVideosOnSinglePage": "அனைத்து வீடியோக்களும் ஒரே பக்கத்தில்",
     "clearLanguages": "அழிக்கவும்",
     "queryLanguageDetected": "{language} கண்டறியப்பட்டது",
     "searchInLanguage": "{language}-இல் தேடவும்",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",
     "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்",
-    "nextEpisode": "அடுத்த அத்தியாயம்"
+    "nextEpisode": "அடுத்த அத்தியாயம்",
+    "audioTranslationCount": "{count, plural, one {# மொழி} other {# மொழிகள்}}",
+    "subtitleCount": "வசனங்கள்: {count, plural, one {# மொழி} other {# மொழிகள்}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது",
@@ -268,14 +273,183 @@
     "couldNotLoad": "கருத்து படிவத்தை ஏற்ற முடியவில்லை.",
     "loadingForm": "கருத்து படிவம் ஏற்றப்படுகிறது…",
     "retry": "மீண்டும் முயற்சி",
-    "openFormShort": "படிவத்தைத் திறக்கவும்",
     "cancel": "ரத்து",
-    "title": "பீட்டா கருத்து",
-    "description": "எது வேலை செய்கிறது, எதை மேம்படுத்தலாம் என்பதைப் பகிருங்கள். இந்தப் படிவம் Google மூலம் வழங்கப்படுகிறது.",
-    "openInNewTab": "படிவத்தை புதிய தாவலில் திறக்கவும்",
     "closeForm": "கருத்து படிவத்தை மூடவும்",
-    "loadingGoogleForm": "Google படிவம் ஏற்றப்படுகிறது…",
-    "iframeTitle": "பீட்டா கருத்தை சமர்ப்பிக்கவும்"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-இல் இலவச கிறிஸ்தவ வீடியோக்கள் | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "விளையாட்டு",
     "collections": "தொகுப்புகள்",
     "subtitlesOnly": "வசனங்கள் மட்டும்",
+    "backToTop": "மேலே திரும்பு",
     "newlyAdded": "புதிதாக சேர்க்கப்பட்டது",
     "newVideosTitle": "{language}-இல் புதிய கிறிஸ்தவ வீடியோக்கள்",
     "newestFirst": "முதலில் சமீபத்தியது",
@@ -324,7 +499,21 @@
     "standaloneVideos": "தனிப்பட்ட வீடியோக்கள்",
     "videosFromCollection": "{collection}-இலிருந்து வீடியோக்கள்.",
     "standaloneDescription": "இந்த மொழியில் உள்ள தனிப்பட்ட வீடியோக்கள்.",
-    "openCollection": "தொகுப்பைத் திறக்கவும்"
+    "openCollection": "தொகுப்பைத் திறக்கவும்",
+    "filters": "வடிகட்டிகள்",
+    "filterLength": "நீளம்",
+    "filterLength_under5": "5 நிமிடத்திற்கும் குறைவு",
+    "filterLength_5to10": "5-10 நிமிடம்",
+    "filterLength_10to30": "10-30 நிமிடம்",
+    "filterLength_over30": "30 நிமிடத்திற்கும் மேல்",
+    "filterType": "வகை",
+    "clearFilters": "வடிகட்டிகளை அழி",
+    "filterResults": "{total} இல் {count} காட்டப்படுகிறது",
+    "noFilterResults": "இந்த வடிகட்டிகளுக்கு எந்த வீடியோவும் பொருந்தவில்லை. ஒன்றை நீக்கிப் பாருங்கள்.",
+    "filterAdded": "சேர்க்கப்பட்டது",
+    "filterAdded_60d": "கடந்த 60 நாட்கள்",
+    "filterAdded_6m": "கடந்த 6 மாதங்கள்",
+    "filterAdded_12m": "கடந்த 12 மாதங்கள்"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project பார்வை",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "முந்தைய வீடியோ முன்னோட்டம்",
     "nextVideoPreview": "அடுத்த வீடியோ முன்னோட்டம்",
     "mediaCollection": "ஊடகத் தொகுப்பு",
-    "scrollToVideo": "{title} வீடியோவுக்குச் செல்லவும்"
+    "scrollToVideo": "{title} வீடியோவுக்குச் செல்லவும்",
+    "forYou": "உங்களுக்கான பரிந்துரைகள்"
   },
   "WatchFooter": {
     "home": "Jesus Film Project முகப்பு",
@@ -404,6 +594,29 @@
     "merryChristmas": "கிறிஸ்துமஸ் வாழ்த்துகள்!",
     "daysUntilChristmas": "{count, plural, one {கிறிஸ்துமஸுக்கு இன்னும் # நாள்} other {கிறிஸ்துமஸுக்கு இன்னும் # நாட்கள்}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "நூலகத்தை உலாவுங்கள்",
+    "title": "வகை வாரியாக உலாவுங்கள்",
+    "description": "நூலகத்தில் உங்களுக்குத் தேவையான பகுதிக்கு நேரடியாகச் செல்லுங்கள் — இயேசுவின் வாழ்க்கை, திருச்சபை ஆண்டின் பருவங்கள், மற்றும் குடும்பங்கள், மாணவர்கள், சிறு குழுக்களுக்காக உருவாக்கப்பட்ட வீடியோக்கள்.",
+    "seeAll": "அனைத்து வீடியோக்களையும் காண்க",
+    "previous": "முந்தைய வகைகள்",
+    "next": "அடுத்த வகைகள்",
+    "categories": {
+      "jesus": "JESUS திரைப்படம்",
+      "gospels": "சுவிசேஷங்கள்",
+      "shortVideos": "குறும் வீடியோக்கள்",
+      "family": "குடும்பம்",
+      "relationships": "உறவுகள்",
+      "women": "பெண்களுக்காக",
+      "students": "மாணவர்களுக்காக",
+      "sports": "விளையாட்டு",
+      "goodNews": "நற்செய்தி",
+      "hope": "நம்பிக்கை",
+      "training": "பயிற்சி",
+      "easter": "ஈஸ்டர்",
+      "christmas": "கிறிஸ்துமஸ்"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "மொழிகள்",
     "metadataDescription": "JesusFilm வீடியோக்களை மொழிப்படி உலாவவும்.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "பக்கம் கிடைக்கவில்லை:",
     "title": "இந்த காட்சி இங்கே இல்லை.",
     "description": "பக்கம் நகர்ந்திருக்கலாம், ஆனால் கதை தொடர்கிறது.",
+    "languageDescription": "நீங்கள் தேடும் பக்கத்தை எங்களால் கண்டுபிடிக்க முடியவில்லை, ஆனால் உலகெங்கிலும் உள்ள மொழிகளில் உள்ள திரைப்படங்களிலும் வீடியோக்களிலும் கதை தொடர்கிறது.",
     "actionsLabel": "பக்கம் கிடைக்கவில்லை செயல்கள்",
     "backToWatch": "பார்வைக்கு திரும்பவும்",
     "browseVideos": "வீடியோக்களை உலாவவும்"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "குறும்படத்தைப் பார்க்கவும்",
-    "actions": {
-      "joinUs": "எங்களுடன் சேருங்கள்",
-      "shareMission": "எங்கள் பணியில் பங்கெடுக்கவும்"
-    },
-    "welcomeStart": {
-      "label": "நம்பிக்கை & வேதாகமம்",
-      "title": "இன்றைய வீடியோ தேர்வுகள்",
-      "description": "ஊக்கமளிக்கவும், சவால் செய்யவும், சிந்தனையைத் தூண்டவும் எங்கள் நூலகத்திலிருந்து நம்பிக்கை மையமான வீடியோ உள்ளடக்கம்."
-    },
-    "welcomeMorning": {
-      "label": "காலை ஊக்கம்",
-      "title": "காலை வணக்கம்! இன்றைய வேதாகம தருணங்கள் காத்திருக்கின்றன.",
-      "description": "உங்கள் நாளை உற்சாகப்படுத்தவும் உயர்த்தவும் வடிவமைக்கப்பட்ட ஊக்கமளிக்கும் வேதாகம தருணங்களுடன் தொடங்குங்கள்."
-    },
-    "welcomeAfternoon": {
-      "label": "மதிய ஊக்கம்",
-      "title": "மதிய வணக்கம்! உங்கள் நாளுக்கான வேதாகம தருணங்கள்.",
-      "description": "உங்கள் மதிய இடைவேளைக்கோ அல்லது தொடர்ந்த ஊக்கத்துக்கோ சிறந்த ஊக்கமளிக்கும் வேதாகம உள்ளடக்கம்."
-    },
-    "welcomeEvening": {
-      "label": "மாலை ஊக்கம்",
-      "title": "மாலை வணக்கம்! வேதாகம தருணங்களுடன் அமைதியாகுங்கள்.",
-      "description": "உங்கள் நாள் முடிவடையும் போது சிந்தித்து ஆறுதல் பெற உதவும் அமைதியான வேதாகம தருணங்கள்."
-    },
-    "joinUs": {
-      "label": "எங்களுடன் சேருங்கள்",
-      "title": "பில்லியன் கணக்கானோர் தேடுகிறார்கள்",
-      "description": "அறுவடை இங்கே உள்ளது. டிஜிட்டல் ஊடகத்தைப் பயன்படுத்தி உலகிற்கு சுவிசேஷத்தைப் பகிர எங்களுடன் சேருங்கள்."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ஒன்றாகச் செல்வோம்",
-      "title": "இயேசுவின் கதையை ஒன்றாகச் சொல்லுதல்",
-      "description": "அவர்கள் இருக்கும் இடத்திலேயே, அவர்களின் சொந்த மொழியில் இயேசுவின் அன்பை கேட்டு காண முடிவதற்காக."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% பொருத்தம்",
-    "none": "இந்த மொழியில் இந்த வீடியோவுக்கான பரிந்துரைகள் எதுவும் கிடைக்கவில்லை."
+    "none": "இந்த மொழியில் இந்த வீடியோவுக்கான பரிந்துரைகள் எதுவும் கிடைக்கவில்லை.",
+    "heading": "பரிந்துரைக்கப்பட்ட வீடியோக்கள்",
+    "loadingLabel": "பரிந்துரைக்கப்பட்ட வீடியோக்கள் ஏற்றப்படுகின்றன",
+    "openingTitle": "{title} திறக்கப்படுகிறது",
+    "openingVideo": "வீடியோ திறக்கப்படுகிறது",
+    "activityNotRecorded": "பரிந்துரை செயல்பாட்டைப் பதிவு செய்ய முடியவில்லை. இணைப்புகள் இன்னும் செயல்படுகின்றன.",
+    "showingContextual": "சூழல் சார்ந்த பரிந்துரைகள் காட்டப்படுகின்றன.",
+    "showingSaved": "சேமிக்கப்பட்ட பரிந்துரைகள் காட்டப்படுகின்றன.",
+    "explanationCurated": "ஆராய்வதற்காகத் தேர்ந்தெடுக்கப்பட்ட வீடியோக்கள்.",
+    "explanationViewingMode": "இந்த வீடியோ மற்றும் நீங்கள் பார்க்கும் விதத்தின் அடிப்படையில் பரிந்துரைக்கப்பட்டவை.",
+    "explanationCowatch": "இந்த வீடியோ மற்றும் உங்கள் ஆர்வங்களின் அடிப்படையில் பரிந்துரைக்கப்பட்டவை.",
+    "explanationHybrid": "இந்த வீடியோ மற்றும் நினைவில் வைக்க நீங்கள் தேர்ந்தெடுத்த ஆர்வங்களின் அடிப்படையில் பரிந்துரைக்கப்பட்டவை.",
+    "explanationContextual": "நீங்கள் இப்போது பார்ப்பதன் அடிப்படையில் பரிந்துரைக்கப்பட்டவை.",
+    "explanationSemanticFallback": "தனிப்பயனாக்கம் கிடைக்காததால், நீங்கள் இப்போது பார்ப்பதன் அடிப்படையில் பரிந்துரைக்கப்பட்டவை.",
+    "explanationProfileDurable": "நினைவில் வைக்க நீங்கள் தேர்ந்தெடுத்த ஆர்வங்களின் அடிப்படையில் தனிப்பயனாக்கப்பட்டவை.",
+    "explanationProfileVisit": "இந்த வருகைக்காகத் தனிப்பயனாக்கப்பட்டவை.",
+    "personalizationLabel": "பரிந்துரை தனிப்பயனாக்கம்",
+    "personalizationPrompt": "பரிந்துரைகள் தனிப்பயனாக்கப்படும் விதத்தை மாற்ற விரும்புகிறீர்களா?",
+    "openCookieSettings": "குக்கீ அமைப்புகளைத் திறக்கவும்"
   },
   "BetaTesterModal": {
     "title": "பீட்டா சோதனையாளராகுங்கள்",
@@ -538,16 +732,39 @@
     "retryFailed": "தோல்வியுற்றவற்றை மீண்டும் முயற்சிக்கவும்"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "மொழிப் பதிப்பு கிடைக்கவில்லை",
+    "eyebrow": "மொழிப் பதிப்பு கிடைக்கவில்லை",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> மொழியில் கிடைக்கவில்லை",
+    "actionsLabel": "கிடைக்கும் பார்வை விருப்பங்கள்",
+    "browseInLanguage": "{language} மொழியில் காணொளிகளை உலாவுக",
+    "backToSearch": "தேடலுக்குத் திரும்பு",
+    "audioVersionsTitle": "பிற ஒலி பதிப்புகள்",
+    "audioVersionsDescription": "இந்தக் காணொளியைத் தொடர்ந்து பார்க்க ஒலி மொழியைத் தேர்ந்தெடுக்கவும்.",
+    "languageVersionLabel": "ஒலி மொழி",
+    "selectLanguageVersion": "மொழிப் பதிப்பைத் தேர்ந்தெடுக்கவும்",
+    "watchSelectedVersion": "தேர்ந்தெடுத்த பதிப்பைப் பார்க்கவும்"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "குக்கீ தேர்வுகள்",
+    "bannerTitle": "உங்கள் தனியுரிமை தேர்வுகள்",
+    "bannerDescription": "அவசியமான குக்கீகள் Watch-ஐ பாதுகாப்பாகவும் சரியாக செயல்படவும் செய்கின்றன. உங்கள் அனுமதியுடன், விருப்பமான first-party குக்கீ ஒன்று, தனிப்பயன் பரிந்துரைகளுக்காக வருகைகளுக்கிடையில் உங்கள் ஆர்வங்களை நினைவில் வைத்துக்கொள்ளும். எந்தத் தேர்வாக இருந்தாலும், சூழல் சார்ந்த பரிந்துரைகள் கிடைக்கும்.",
+    "acceptAll": "அனைத்தையும் ஏற்கவும்",
+    "essentialOnly": "அவசியமானவை மட்டும்",
+    "manageChoices": "தேர்வுகளை நிர்வகிக்கவும்",
+    "savingChoice": "குக்கீ தேர்வை சேமிக்கிறது",
+    "settings": "குக்கீ அமைப்புகள்",
+    "settingsDescription": "வருகைகளுக்கிடையில் பரிந்துரை ஆர்வங்களை Watch நினைவில் வைத்துக்கொள்ளலாமா என்பதைத் தேர்ந்தெடுக்கவும். இதை நீங்கள் எப்போது வேண்டுமானாலும் மாற்றலாம்.",
+    "essentialCookies": "அவசியமான குக்கீகள்",
+    "essentialDescription": "பாதுகாப்பு, இயக்கம், தனியுரிமைத் தேர்வுகள் மற்றும் பரிந்துரை கோரிக்கை ஒதுக்கீடு.",
+    "alwaysActive": "எப்போதும் செயல்பாட்டில்",
+    "personalization": "தனிப்பயனாக்கம்",
+    "personalizationDescription": "வருகைகளுக்கிடையில் வரையறுக்கப்பட்ட ஆர்வங்களை நினைவில் வைத்துக்கொள்ளும். இதை முடக்கியாலும் சூழல் சார்ந்த பரிந்துரைகள் தொடர்ந்து கிடைக்கும்.",
+    "erasurePending": "சுயவிவர நீக்கம் நிலுவையில் உள்ளது. சூழல் சார்ந்த பரிந்துரைகள் ஏற்கனவே செயல்பாட்டில் உள்ளன.",
+    "cancel": "ரத்துசெய்",
+    "saveChoices": "தேர்வுகளைச் சேமிக்கவும்",
+    "saving": "சேமிக்கப்படுகிறது…",
+    "loadError": "உங்கள் தேர்வை ஏற்ற முடியவில்லை. இருந்தாலும் கீழே நீங்கள் தேர்வு செய்யலாம்.",
+    "grantError": "தனிப்பயனாக்கத்தை இயக்க முடியவில்லை. அவசியமானவை மட்டும் இன்னும் கிடைக்கும்.",
+    "saveError": "உங்கள் தேர்வைச் சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
   }
 }

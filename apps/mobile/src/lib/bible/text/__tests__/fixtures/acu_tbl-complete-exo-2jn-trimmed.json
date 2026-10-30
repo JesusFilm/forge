@@ -1,0 +1,271 @@
+{
+  "translation": {
+    "id": "acu_tbl",
+    "name": "Achuar Peru: Yuse Chichame Aarmauri",
+    "website": "https://ebible.org/Scriptures/details.php?id=acuNT",
+    "licenseUrl": "https://ebible.org/Scriptures/details.php?id=acuNT",
+    "shortName": "TBL",
+    "englishName": "Achuar-shiwiar Bible",
+    "language": "acu",
+    "textDirection": "ltr",
+    "sha256": "14ee1479a8f343db52280f6cdcf26cf159e4fbd2d44c57e834ff8d6c9caf2845",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/acu_tbl/books.json",
+    "completeTranslationApiLink": "/api/acu_tbl/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/acu_tbl/complete.simple.json",
+    "numberOfBooks": 59,
+    "totalNumberOfChapters": 478,
+    "totalNumberOfVerses": 11523,
+    "languageName": "Achuar-Shiwiar",
+    "languageEnglishName": "Achuar-Shiwiar"
+  },
+  "books": [
+    {
+      "id": "EXO",
+      "name": "Éxodo",
+      "commonName": "Éxodo",
+      "title": "Éxodo",
+      "order": 2,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 0,
+      "chapters": [
+        {
+          "numberOfVerses": 0,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 1,
+            "content": [
+              { "type": "heading", "content": ["Moisésa akiinamuri"] },
+              {
+                "type": "heading",
+                "content": ["Moisés Egiptonmaya tupikiakmiauri"]
+              },
+              { "type": "heading", "content": ["Yus Moisésan untsukmauri"] },
+              { "type": "heading", "content": ["Moisés Egiptonam wemauri"] },
+              {
+                "type": "heading",
+                "content": ["Moisés yachiijai faraónnum jeamuri"]
+              },
+              { "type": "heading", "content": ["Yumi numpa najanamuri"] },
+              {
+                "type": "heading",
+                "content": ["Parungkachjai wait wajakmauri"]
+              },
+              { "type": "heading", "content": ["Temajai wait wajakmauri"] },
+              { "type": "heading", "content": ["Anchiijai wait wajakmauri"] },
+              {
+                "type": "heading",
+                "content": ["Egipto tangkuri ainau wait wajakmauri"]
+              },
+              { "type": "heading", "content": ["Kuchapjai wait wajakmauri"] },
+              {
+                "type": "heading",
+                "content": ["Micha akupkamujai wait wajakmauri"]
+              },
+              { "type": "heading", "content": ["Manchijai wait wajakmauri"] },
+              { "type": "heading", "content": ["Teejai wait wajakmauri"] },
+              {
+                "type": "heading",
+                "content": ["Uchi jakatniuri pachis etserkamuri"]
+              },
+              { "type": "heading", "content": ["Pascua kinta jeamuri"] },
+              {
+                "type": "heading",
+                "content": ["Egipto uchiri ainau jakamuri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Israel ainau Egiptonmaya jiinkimuri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Egipto ainau Israel ainaun papeekmauri"]
+              },
+              { "type": "heading", "content": ["Juun entsa katingmauri"] },
+              {
+                "type": "heading",
+                "content": ["Yus aints ainau amurarat tusa yumi akuptukmauri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Yus ni aintsrin yutan akuptukmauri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Yus aints ainaun yumi aarmauri"]
+              },
+              { "type": "heading", "content": ["Amalecjai maanikmauri"] },
+              {
+                "type": "heading",
+                "content": ["Moisés chichaman iwiarniun inaikiamuri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Yus ni umirkatin chichaman akuptukmauri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Diez (10) umiktin chichaman Yus akupkamuri"]
+              },
+              {
+                "type": "heading",
+                "content": [
+                  "Israel ainau: Yus taa nuka mash umiktatji timiauri"
+                ]
+              },
+              {
+                "type": "heading",
+                "content": [
+                  "Moisés cuarenta (40) kinta yutsuk muranam pujusmauri"
+                ]
+              },
+              {
+                "type": "heading",
+                "content": [
+                  "Yus wina pachitsaram seatin jea jeamkataram timiauri"
+                ]
+              },
+              { "type": "heading", "content": ["Sacerdote ainau inaikiamuri"] },
+              {
+                "type": "heading",
+                "content": ["Waaka uchiri kuri najanamu pachis etserkamuri"]
+              },
+              {
+                "type": "heading",
+                "content": ["Yus Moisésan umirkatin chichaman ataksha susamuri"]
+              },
+              { "type": "heading", "content": ["Yus seati jea jeamkamuri"] }
+            ],
+            "footnotes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "2JN",
+      "name": "2 Juan",
+      "commonName": "2 Juan",
+      "title": "Juan Papin Ataksha Akupkamuri",
+      "order": 63,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 13,
+      "chapters": [
+        {
+          "numberOfVerses": 13,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 1,
+            "content": [
+              {
+                "type": "heading",
+                "content": ["Nekas chichaman tura anenitnasha pachis etserkamu"]
+              },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "Wiitjai Cristonu ainau juuntrinjai. Ju papinasha Yuse uchiri iruntrar pujuinamunam akupajai. Cristo atumin eatmaku asamtai, wisha nekasan atumin aneajrume. Antsu wikikia aneatsjarme. Antsu chikich ainausha nekas chicham aa nuna nekainauka atumniasha anenminawai."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Nekas chicham aa nuka ii nintin ukusmau asamtai, tura iijai tuke pujustin asamtai, wisha atumniasha aneajrume."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "Ii Apaachiri Yus tura ni uchiri Jesucristo nekas chichaman atumin nekamtikramau asa, ni anengkratairi atumniasha nekamtikramawarti tusan, tura atumniasha wait anentramrarti tusan, tura pengker nintimsaram angkan pujustinnasha suramsarti tusan aatjarme."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "Ii Apaachiri Yus nekas chicham aa nuka umirtuktaram tusa, iin akupturmakmiaji nuna aints atumjai pujuinauka umirinawai. Tura asaramtai wikia nuna nekaan nukap warasmajai."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "Yamaikia yatsur ainautirmin umaarutirmincha tajarme: Wait aneasrum aneenitaram. Chichaman akupaja juka yamarmachuitai. Antsu nu nangkamtaik antukmiaji nuketai."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "Nekasar Yus aneakrikia: Wína akupamur umirtuktaram tusa, Yus akupturmakmiaji nu umirkur pujustinuitji. Tura nu chichamka nu nangkamtaik antukmiarume nuka juwaitai: Nekasrum aneenisrum pujustaram."
+                ]
+              },
+              {
+                "type": "heading",
+                "content": ["Anangkartinun pachis etserkamu"]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "Ju nungkanam anangkartin untsuri irunui. Nuka Jesucristo aintsua nunisang akiinamiayi tinatsui. Aints tu pujuinauka aints ainaun anangkinau asar Cristo nemase ainawai."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Yus atumin takatan suramsamia nuna mengkatrukai tusaram wainkataram. Antsu Yusnum tuke pujustaj tusaram aneartaram."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "Aints Cristo nuikiarturmaurin inais: Nuna nangkamasnak nekajai tauka Yusjaingkia pujatsui. Antsu aints Cristo nuikiarturmaurin tuke umirak pujakka, nuka ii Apaachiri Yusjai tura ni Uchirijai tsanias pujawai."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "Aints Cristo chichamen nuikiartichutiat wait chichaman atumin nuitamrartas wininamtaikia: Iijai pujusmi tiirap."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "Nu aints: Iijai pujusmi takurmeka ni pasé nuikiartamuri pachisrum: Nuka pengkeraitai titinuitrume. Turakrumka nu aintsua nunisrumek tunau wajastinuitrume."
+                ]
+              },
+              {
+                "type": "heading",
+                "content": ["Inangnamu chicham akupkamuri"]
+              },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Chichaman untsuri atumin ujaktasan wakerayatun, ju papinumka mashkia aatrashtatjarme. Antsu wiki atumin jiistasan nintimjai. Tura atumjai jinum ingkiunisar wainaikiar chichaakur warastinuitji."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "Yuse uchiri ainau Yus eakmau asar chichaman akupturminawai. Maaketai."
+                ]
+              }
+            ],
+            "footnotes": []
+          }
+        }
+      ]
+    }
+  ]
+}

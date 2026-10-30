@@ -50,6 +50,13 @@ export type PermissionKey =
   | "read:manager-read-models"
   | "read:manager-seo"
   | "read:manager-seo-audit-detail"
+  | "read:manager-subtitle-eval"
+  | "read:manager-watch-route-alerts"
+  | "read:recommendation-aggregates"
+  | "read:recommendation-traces"
+  | "operate:recommendation-experiments"
+  | "rollback:recommendations"
+  | "approve:recommendation-permanent"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
@@ -63,12 +70,23 @@ export type PermissionKey =
   | "read:watch-progress:own"
   | "write:watch-progress:own"
   | "delete:watch-progress:own"
+  // Own-data learning progress (feat-731) for the checked WEB_USER only.
+  // Subject comes from the introspected token, never from arguments; unlike
+  // watch-progress:own there is no editorial override (see below).
+  | "read:watch-learning-progress:own"
+  | "write:watch-learning-progress:own"
+  | "delete:watch-learning-progress:own"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
   | "write:manager-jobs"
+  | "write:manager-subtitle-eval"
+  // Localized push campaigns. Any signed-in admin user may write, test,
+  // schedule, and send an announcement (R28), so this sits at the viewer
+  // tier rather than behind a campaign role.
+  | "write:push-campaigns"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -113,6 +131,15 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:manager-read-models": "PUBLIC",
   "read:manager-seo": "PUBLIC",
   "read:manager-seo-audit-detail": "PUBLIC",
+  "read:manager-subtitle-eval": "PUBLIC",
+  "read:manager-watch-route-alerts": "PUBLIC",
+  // Recommendation operations are deliberately split: EDITOR may inspect
+  // windowed aggregate health, while only ADMIN may inspect request roots.
+  "read:recommendation-aggregates": "EDITOR",
+  "read:recommendation-traces": "ADMIN",
+  "operate:recommendation-experiments": "ADMIN",
+  "rollback:recommendations": "ADMIN",
+  "approve:recommendation-permanent": "ADMIN",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
@@ -135,6 +162,12 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:watch-progress:own": "ADMIN",
   "write:watch-progress:own": "ADMIN",
   "delete:watch-progress:own": "ADMIN",
+  // Matrix entries exist for completeness only: `hasPermission` resolves
+  // these keys through `OWN_LEARNING_PERMISSIONS` before the tier ladder, so
+  // no editorial role (ADMIN included) is ever granted them.
+  "read:watch-learning-progress:own": "SYSTEM",
+  "write:watch-learning-progress:own": "SYSTEM",
+  "delete:watch-learning-progress:own": "SYSTEM",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -143,6 +176,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
   "write:manager-jobs": "PUBLIC",
+  "write:manager-subtitle-eval": "PUBLIC",
+  // No service or anonymous caller reaches it: a campaign is always a
+  // person's decision, and the send-now confirmation is theirs to complete.
+  "write:push-campaigns": "VIEWER",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -279,7 +316,10 @@ const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
   "read:manager-seo",
   "read:manager-seo-audit-detail",
+  "read:manager-subtitle-eval",
+  "read:manager-watch-route-alerts",
   "write:manager-jobs",
+  "write:manager-subtitle-eval",
 ])
 
 const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
@@ -302,6 +342,21 @@ const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:watch-progress:own",
   "write:watch-progress:own",
   "delete:watch-progress:own",
+  "read:watch-learning-progress:own",
+  "write:watch-learning-progress:own",
+  "delete:watch-learning-progress:own",
+])
+
+/**
+ * Learning-progress keys (feat-731). Granted to a WEB_USER with a subject and
+ * to nobody else — not ADMIN, not MOBILE_USER, not any bearer. An editor's id
+ * is not a learning account, so there is no operational override; resolving
+ * these first keeps a tier-ladder edit from ever widening them.
+ */
+const OWN_LEARNING_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:watch-learning-progress:own",
+  "write:watch-learning-progress:own",
+  "delete:watch-learning-progress:own",
 ])
 
 /**
@@ -336,6 +391,14 @@ export function hasPermission(
   key: PermissionKey,
 ): boolean {
   const role = principalRole(user)
+  if (OWN_LEARNING_PERMISSIONS.has(key)) {
+    return (
+      role === "WEB_USER" &&
+      typeof user?.id === "string" &&
+      user.id.length > 0 &&
+      WEB_USER_PERMISSIONS.has(key)
+    )
+  }
   // WORKFLOW_TRIGGER bypasses the editorial tier ladder entirely and is
   // gated by an explicit per-key allowlist instead. This keeps the
   // bearer-auth path's blast radius surgical — adding the role to the
@@ -504,4 +567,28 @@ export function canEditVideo(user: Principal | null): boolean {
 export function canWriteDerived(user: Principal | null): boolean {
   const role = principalRole(user)
   return role === "SYSTEM" || role === "ADMIN"
+}
+
+/** Studio is a shared operator workspace; all verified operators can author it. */
+export function isStudioHuman(user: Principal | null): boolean {
+  return Boolean(
+    user?.id &&
+    user.role !== "SYSTEM" &&
+    user.role !== "MANAGER_BACKEND" &&
+    (user.role === "ADMIN" || user.managerRole === "OPERATOR"),
+  )
+}
+
+/** Service principals can manage attempts/edits but cannot manufacture review. */
+export function canAuthorStudio(user: Principal | null): boolean {
+  return (
+    isStudioHuman(user) ||
+    user?.role === "SYSTEM" ||
+    user?.role === "MANAGER_BACKEND"
+  )
+}
+
+/** Attribution does not confer explicit operator review authority. */
+export function canReviewStudio(user: Principal | null): boolean {
+  return isStudioHuman(user) && user?.studioAuthority === "interactive"
 }

@@ -21,13 +21,15 @@ import {
 } from "@/components/watch/LanguagePickerModal"
 import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageBadgeCodeFor, languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -66,18 +68,26 @@ const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 type SeriesModalState = "none" | "download" | "share" | "language"
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type SeriesPageClientProps = {
+  surfaceManifest?: SignedWatchSurfaceManifest
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
   subtitleLanguageSlug?: string | null
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
 }
 
 export function SeriesPageClient({
+  surfaceManifest,
   series,
   selectedVariant,
   locale,
   subtitleLanguageSlug = null,
+  audioLanguageCountLabel = null,
+  subtitleLanguageCountLabel = null,
 }: SeriesPageClientProps) {
   const t = useTranslations("SeriesPage")
   const router = useRouter()
@@ -134,9 +144,24 @@ export function SeriesPageClient({
   // what we want for series-level language switching.
   const playerRef = useRef<MuxPlayerRef | null>(null)
 
-  const episodes = (series.children ?? []).filter(
-    (child): child is NonNullable<(typeof series.children)[number]> =>
-      child != null,
+  const episodes = useMemo(
+    () =>
+      (series.children ?? []).filter(
+        (child): child is NonNullable<(typeof series.children)[number]> =>
+          child != null,
+      ),
+    [series],
+  )
+  const downloadEpisodes = useMemo(
+    () =>
+      episodes.map((episode) => ({
+        documentId: episode.documentId,
+        order: episode.order ?? null,
+        slug: episode.slug,
+        title: episode.title,
+        thumbnailUrl: resolveEpisodeImageUrl(episode),
+      })),
+    [episodes],
   )
   // R8 pluralization: ICU plural covers N === 0 / 1 / 2+. The "SERIES · …"
   // composite is built from the localized episode-count string.
@@ -286,9 +311,14 @@ export function SeriesPageClient({
   const currentLanguageSlug =
     resolveSeriesLanguageIdentity(languageOptions, locale, { slug: locale })
       ?.slug ?? ""
-  const currentLanguageCode = languageCodeFor(
-    languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
+  const currentLanguageOption = languageOptions.find(
+    (option) => option.slug === currentLanguageSlug,
   )
+  const currentLanguageCode = languageBadgeCodeFor(currentLanguageOption ?? {})
+  const currentLanguageName = deriveLanguageDisplay(
+    currentLanguageSlug,
+    currentLanguageOption?.name ?? null,
+  ).name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("series-page-language-switcher"),
   ).current
@@ -346,6 +376,9 @@ export function SeriesPageClient({
             languageCode: headerLanguageSwitcherVisible
               ? currentLanguageCode
               : null,
+            languageName: headerLanguageSwitcherVisible
+              ? currentLanguageName
+              : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -361,6 +394,7 @@ export function SeriesPageClient({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -369,6 +403,7 @@ export function SeriesPageClient({
     }
   }, [
     currentLanguageCode,
+    currentLanguageName,
     headerLanguageSwitcherOwnerToken,
     headerLanguageSwitcherVisible,
     heroOwnsHeaderLanguageSwitcher,
@@ -409,16 +444,16 @@ export function SeriesPageClient({
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
+        audioLanguageCountLabel={audioLanguageCountLabel}
+        subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
-          // Stack the label on top, then a horizontal row with the title
-          // on the left and the share pill on the right. Using
-          // `items-center` on that row aligns the share button to the
-          // title's vertical midline rather than its bottom — earlier
-          // `items-end` alignment positioned the share slightly below
-          // the title baseline because the pill is shorter than the H1.
+          // Stack the label on top, then keep title and actions vertical on
+          // phones so the fixed-width pills cannot squeeze the heading into
+          // a one-word column. Desktop keeps the established side-by-side
+          // band, with the pills aligned to the title's lower edge.
           <div
             data-testid="series-page-hero-overlay"
-            className="absolute right-10 bottom-0 left-10 flex flex-col items-stretch gap-3 pb-8 md:right-16 md:left-16 md:pb-10 xl:right-24 xl:left-24"
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             <span
               data-testid="series-page-label"
@@ -426,24 +461,31 @@ export function SeriesPageClient({
             >
               {t("seriesLabel", { episodes: episodeLabel })}
             </span>
-            <div className="flex items-end justify-between gap-4">
+            <div
+              data-testid="series-page-hero-content-row"
+              className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-4"
+            >
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <div
+                data-testid="series-page-hero-actions"
+                className="flex w-full flex-wrap justify-start gap-2 md:w-auto md:shrink-0 md:justify-end"
+              >
                 {episodes.length > 0 ? (
                   <Button
                     variant="pill"
+                    className="max-w-full min-w-0 px-3 text-[0.6875rem] md:max-w-none md:px-5 md:text-xs"
                     onClick={openDownload}
                     disabled={downloadPending}
                     aria-label={t("downloadCollection")}
                     data-testid="series-page-download-button"
                   >
                     <Download size={16} />
-                    <span>
+                    <span className="min-w-0 truncate">
                       {downloadPending
                         ? t("checkingDownloads")
                         : t("downloadCollection")}
@@ -452,17 +494,21 @@ export function SeriesPageClient({
                 ) : null}
                 <Button
                   variant="pill"
+                  className="px-3 text-[0.6875rem] md:px-5 md:text-xs"
                   onClick={openShare}
                   aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>{t("share")}</span>
+                  <span className="max-[360px]:sr-only">{t("share")}</span>
                 </Button>
               </div>
             </div>
             {downloadError ? (
-              <p role="alert" className="text-sm font-semibold text-red-300">
+              <p
+                role="alert"
+                className="text-base sm:text-sm font-semibold text-red-300"
+              >
                 {downloadError}
               </p>
             ) : null}
@@ -483,40 +529,48 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className={`relative z-30 grid w-full grid-cols-1 gap-6 px-5 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
+          className={`relative z-30 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
         >
-          {description ? (
-            <div className="md:col-span-3">
-              <p
-                data-testid="series-page-description"
-                className="text-base leading-relaxed text-stone-200/80 md:text-lg"
-              >
-                {description}
-              </p>
-            </div>
-          ) : (
-            // Reserve the left columns so the combobox stays in the right
-            // rail even when description is missing.
-            <div className="hidden md:col-span-3 md:block" aria-hidden="true" />
-          )}
-          {languageOptions.length > 0 ? (
-            <div
-              data-testid="series-page-languages"
-              className="flex flex-col gap-2"
-            >
-              <span
-                data-testid="series-page-languages-label"
-                className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
-              >
-                {t("languages")}
-              </span>
-              <LanguageCombobox
-                options={languageOptions}
-                value={currentLanguageSlug}
-                onChange={handleLanguageChange}
+          <div
+            data-testid="series-page-meta-content"
+            className={`grid grid-cols-1 gap-6 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:pt-12 md:pb-8 ${WATCH_PAGE_CONTENT_CLASSES}`}
+          >
+            {description ? (
+              <div className="md:col-span-3">
+                <p
+                  data-testid="series-page-description"
+                  className="text-base leading-relaxed text-stone-200/80 md:text-lg"
+                >
+                  {description}
+                </p>
+              </div>
+            ) : (
+              // Reserve the left columns so the combobox stays in the right
+              // rail even when description is missing.
+              <div
+                className="hidden md:col-span-3 md:block"
+                aria-hidden="true"
               />
-            </div>
-          ) : null}
+            )}
+            {languageOptions.length > 0 ? (
+              <div
+                data-testid="series-page-languages"
+                className="flex flex-col gap-2"
+              >
+                <span
+                  data-testid="series-page-languages-label"
+                  className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
+                >
+                  {t("languages")}
+                </span>
+                <LanguageCombobox
+                  options={languageOptions}
+                  value={currentLanguageSlug}
+                  onChange={handleLanguageChange}
+                />
+              </div>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
@@ -527,24 +581,28 @@ export function SeriesPageClient({
           The grid owns its full-bleed section and repeats the metadata
           band's stone glass treatment so the lower page remains visually
           continuous. */}
-      <SeriesEpisodesGrid
-        episodes={episodes}
-        languageSlug={currentLanguageSlug}
-        parentSlug={series.slug ?? ""}
-      />
+      <WatchExposureBoundary
+        manifest={surfaceManifest}
+        config={{
+          surface: "watch-series",
+          block: "episodes",
+          presentation: "episode-grid",
+          placement: "series-episodes",
+        }}
+      >
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug={currentLanguageSlug}
+          parentSlug={series.slug ?? ""}
+        />
+      </WatchExposureBoundary>
 
       {modalState === "download" ? (
         <CollectionDownloadModal
           open
           collectionSlug={series.slug ?? ""}
           collectionTitle={series.title}
-          episodes={episodes.map((episode) => ({
-            documentId: episode.documentId,
-            order: episode.order ?? null,
-            slug: episode.slug,
-            title: episode.title,
-            thumbnailUrl: resolveEpisodeImageUrl(episode),
-          }))}
+          episodes={downloadEpisodes}
           languages={languageOptions}
           currentLanguageSlug={currentLanguageSlug}
           accountGateEnabled={downloadAccountGateEnabled}

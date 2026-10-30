@@ -1,0 +1,45 @@
+{
+  "mode": "probe",
+  "expectedRuntimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "remoteProgramSha256": "2705533c2a3a23648629e9b1fdb657f5c6d3adcb0661a8841a78bca8b5c7104f",
+  "pinsSha256": "71fd439f8c1de0a2229af45c2100f7891ea1e663ba742fb948a577537bf19cdd",
+  "automaticRetryPermitted": false,
+  "activationAuthority": false,
+  "executed": true,
+  "dispatchExpiresAt": null,
+  "startedAt": "2026-09-29T22:02:12.208649+00:00",
+  "transportExitCode": 0,
+  "rawTransportStdoutWithheld": true,
+  "rawTransportStderrWithheld": true,
+  "status": "probe_pass",
+  "receipt": {
+    "probe": "forge_owner_publication_broker",
+    "status": "probe_pass",
+    "runtimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+    "nodeVersion": "v24.21.0",
+    "sourceHashesExact": true,
+    "sourceFileCount": 16,
+    "packages": {
+      "tsx": "4.21.0",
+      "@prisma/client": "6.19.3",
+      "@prisma/adapter-pg": "6.19.3",
+      "pg": "8.22.0",
+      "zod": "4.3.6"
+    },
+    "generatedPrismaClientPresent": true,
+    "timeoutAvailable": true,
+    "timeoutImplementation": "GNU coreutils",
+    "childOldSpaceMiB": 512,
+    "childDeadlineSeconds": 45,
+    "killAfterSeconds": 2,
+    "cgroup": {
+      "memory.current": "1722109952",
+      "memory.max": "24000000000",
+      "cpu.max": "2400000 100000"
+    },
+    "privateDatabaseHost": true,
+    "applicationImported": false,
+    "databaseConnected": false
+  },
+  "endedAt": "2026-09-29T22:02:15.407061+00:00"
+}

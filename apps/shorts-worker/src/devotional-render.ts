@@ -20,7 +20,8 @@ import {
 import { devotionalRenderConfigSchema } from "@forge/shorts-compositions/devotional/styles"
 import { env } from "./config/env.js"
 import { JobDeadlineExceededError, type JobDeadline } from "./deadline.js"
-import { WorkerError } from "./errors.js"
+import { settleWorkerCleanup } from "./cleanup.js"
+import { WorkerError, WorkerCleanupError } from "./errors.js"
 import {
   downloadDevotionalWorkspaceGrant,
   readDevotionalWorkspaceGrant,
@@ -33,7 +34,10 @@ import {
   probeMedia,
   type RunCommand,
 } from "./ffmpeg.js"
-import { createDefaultRenderEngine, type RenderEngine } from "./render.js"
+import {
+  createDefaultRenderEngine,
+  type RenderEngine,
+} from "./render-engine.js"
 import { validateSourceUrl } from "./source-url.js"
 import {
   artifactKey,
@@ -604,13 +608,16 @@ async function prepareServeUrl(
     })
   }
   await cp(bundleDir, serveDir, { recursive: true })
+  const servedPublicDir = join(serveDir, "public")
+  await mkdir(servedPublicDir, { recursive: true })
   for (const file of await readdir(publicDir)) {
-    await copyFile(join(publicDir, file), join(serveDir, file))
+    await copyFile(join(publicDir, file), join(servedPublicDir, file))
   }
   return serveDir
 }
 
 async function renderAspect(options: {
+  pending: Set<Promise<unknown>>
   aspect: "portrait" | "wide"
   outputAssetId: string
   engine: RenderEngine
@@ -623,15 +630,25 @@ async function renderAspect(options: {
   onProgress?: DevotionalRenderProgress
   signal?: AbortSignal
 }): Promise<DevotionalRenderOutput> {
+  function track<T>(operation: Promise<T>): Promise<T> {
+    options.pending.add(operation)
+    void operation.then(
+      () => options.pending.delete(operation),
+      () => options.pending.delete(operation),
+    )
+    return operation
+  }
   const isWide = options.aspect === "wide"
   const composition = await withDeadline(
-    options.engine.selectComposition({
-      serveUrl: options.serveUrl,
-      id: isWide ? DEVOTIONAL_WIDE_COMPOSITION_ID : DEVOTIONAL_COMPOSITION_ID,
-      inputProps: options.inputProps,
-      puppeteerInstance: options.browser,
-      timeoutInMilliseconds: DELAY_RENDER_TIMEOUT_MS,
-    }),
+    track(
+      options.engine.selectComposition({
+        serveUrl: options.serveUrl,
+        id: isWide ? DEVOTIONAL_WIDE_COMPOSITION_ID : DEVOTIONAL_COMPOSITION_ID,
+        inputProps: options.inputProps,
+        puppeteerInstance: options.browser,
+        timeoutInMilliseconds: DELAY_RENDER_TIMEOUT_MS,
+      }),
+    ),
     options.deadline,
     options.signal,
   )
@@ -647,27 +664,30 @@ async function renderAspect(options: {
   }
   let lastReported = -1
   await withDeadline(
-    options.engine.renderMedia({
-      composition,
-      serveUrl: options.serveUrl,
-      codec: "h264",
-      outputLocation: options.outputPath,
-      inputProps: options.inputProps,
-      puppeteerInstance: options.browser,
-      concurrency: options.concurrency,
-      offthreadVideoCacheSizeInBytes: OFFTHREAD_VIDEO_CACHE_BYTES,
-      timeoutInMilliseconds: DELAY_RENDER_TIMEOUT_MS,
-      onProgress: ({ progress }) => {
-        if (progress - lastReported >= 0.05 || progress >= 1) {
-          lastReported = progress
-          const base = isWide ? 0.55 : 0.2
-          options.onProgress?.(
-            base + progress * 0.3,
-            `Rendering ${options.aspect} ${Math.round(progress * 100)}%`,
-          )
-        }
-      },
-    }),
+    track(
+      options.engine.renderMedia({
+        signal: options.signal,
+        composition,
+        serveUrl: options.serveUrl,
+        codec: "h264",
+        outputLocation: options.outputPath,
+        inputProps: options.inputProps,
+        puppeteerInstance: options.browser,
+        concurrency: options.concurrency,
+        offthreadVideoCacheSizeInBytes: OFFTHREAD_VIDEO_CACHE_BYTES,
+        timeoutInMilliseconds: DELAY_RENDER_TIMEOUT_MS,
+        onProgress: ({ progress }) => {
+          if (progress - lastReported >= 0.05 || progress >= 1) {
+            lastReported = progress
+            const base = isWide ? 0.55 : 0.2
+            options.onProgress?.(
+              base + progress * 0.3,
+              `Rendering ${options.aspect} ${Math.round(progress * 100)}%`,
+            )
+          }
+        },
+      }),
+    ),
     options.deadline,
     options.signal,
   )
@@ -712,8 +732,11 @@ export async function runDevotionalRender({
   const tempDir = await mkdtemp(join(tmpdir(), "shorts-worker-devotional-"))
   const publicDir = join(tempDir, "public")
   const serveDir = join(tempDir, "bundle")
+  let failed = false
+  const pending = new Set<Promise<unknown>>()
   const written: ArtifactRef[] = []
   let workspaceManifest: z.infer<typeof workspaceManifestSchema> | undefined
+  let openingBrowser: ReturnType<RenderEngine["openBrowser"]> | undefined
   let browser: Awaited<ReturnType<RenderEngine["openBrowser"]>> | undefined
   try {
     await mkdir(publicDir, { recursive: true })
@@ -1137,25 +1160,19 @@ export async function runDevotionalRender({
     }
 
     onProgress?.(0.16, "Bundling devotional composition")
-    const serveUrl = await withDeadline(
-      prepareServeUrl(engine, bundleDir, publicDir, serveDir),
-      deadline,
-      signal,
+    const preparing = prepareServeUrl(engine, bundleDir, publicDir, serveDir)
+    pending.add(preparing)
+    void preparing.then(
+      () => pending.delete(preparing),
+      () => pending.delete(preparing),
     )
-    const openingBrowser = engine.openBrowser()
-    try {
-      browser = await withDeadline(openingBrowser, deadline, signal)
-    } catch (error) {
-      // Promise.race cannot cancel Chromium startup. If the deadline/cancel
-      // wins, close a browser that resolves later instead of orphaning it.
-      void openingBrowser
-        .then((lateBrowser) => lateBrowser.close({ silent: true }))
-        .catch(() => {})
-      throw error
-    }
+    const serveUrl = await withDeadline(preparing, deadline, signal)
+    openingBrowser = engine.openBrowser()
+    browser = await withDeadline(openingBrowser, deadline, signal)
     const portraitPath = join(tempDir, "portrait.mp4")
     const widePath = join(tempDir, "wide.mp4")
     const portrait = await renderAspect({
+      pending,
       aspect: "portrait",
       outputAssetId,
       engine,
@@ -1169,6 +1186,7 @@ export async function runDevotionalRender({
       signal,
     })
     const wide = await renderAspect({
+      pending,
       aspect: "wide",
       outputAssetId,
       engine,
@@ -1362,26 +1380,47 @@ export async function runDevotionalRender({
     }
     return { artifacts: [...written], report }
   } catch (error) {
-    // Workspace artifacts are immutable and content-addressed. A crash before
-    // the manifest is written leaves them unreachable, but they must not be
-    // deleted: another replay may already be relying on the same valid bytes.
-    if (!workspaceManifest) {
-      await Promise.all(
-        written.map((artifact) =>
-          storage
-            .deleteArtifact(
-              artifact.assetId,
-              artifact.artifactType,
-              artifact.ext,
-            )
-            .catch(() => {}),
-        ),
-      )
-    }
+    failed = true
     throw error
   } finally {
-    if (browser) await browser.close({ silent: true }).catch(() => {})
-    await rm(tempDir, { recursive: true, force: true }).catch(() => {})
+    await settleWorkerCleanup(
+      (async () => {
+        // Keep late startup owned after the caller's cancellation/deadline wins.
+        // Failure to confirm cleanup retires the service instead of reusing slots.
+        if (!browser && openingBrowser)
+          browser = await openingBrowser.catch(() => undefined)
+        let cleanupFailed = false
+        if (browser) {
+          try {
+            await browser.close({ silent: true })
+          } catch {
+            cleanupFailed = true
+          }
+        }
+        await Promise.allSettled(pending)
+        // Immutable workspace artifacts may already be used by replay: never
+        // delete them. Legacy rollback is itself cleanup and shares this bound.
+        if (failed && !workspaceManifest) {
+          const rollback = await Promise.allSettled(
+            written.map((artifact) =>
+              storage.deleteArtifact(
+                artifact.assetId,
+                artifact.artifactType,
+                artifact.ext,
+              ),
+            ),
+          )
+          if (rollback.some((result) => result.status === "rejected"))
+            cleanupFailed = true
+        }
+        try {
+          await rm(tempDir, { recursive: true, force: true })
+        } catch {
+          cleanupFailed = true
+        }
+        if (cleanupFailed) throw new WorkerCleanupError()
+      })(),
+    )
   }
 }
 

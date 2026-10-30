@@ -2,15 +2,17 @@
 // inline copies). Screens keep their shell (background, top bar, header); this
 // renders the centered content and owns the text/retry treatment.
 
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../lib/scale"
 import { RetryButton } from "./RetryButton"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
+import { LoadingAnimation } from "./LoadingAnimation"
+import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 
 type ScreenStateViewProps = {
   kind: "loading" | "error" | "empty"
-  /** Headline for error/empty (e.g. "Something went wrong"). */
+  /** Optional headline for the current screen state. */
   message?: string
   /** Secondary error line (e.g. the retryable error message). */
   detail?: string | null
@@ -35,10 +37,25 @@ export function ScreenStateView({
   retryAutoFocus = true,
   accent = WATCH_THEME.accent,
 }: ScreenStateViewProps) {
+  const { loadingAnimationId } = useWatchPreferences()
   return (
     <View style={styles.centered}>
       {kind === "loading" ? (
-        <ActivityIndicator size="large" color={accent} />
+        <>
+          <View
+            accessible
+            accessibilityLabel={message ?? "Loading"}
+            accessibilityState={{ busy: true }}
+          >
+            <LoadingAnimation id={loadingAnimationId} size={400} />
+          </View>
+          {message != null ? (
+            <Text style={styles.message} accessibilityLiveRegion="polite">
+              {message}
+            </Text>
+          ) : null}
+          {hint != null ? <Text style={styles.hint}>{hint}</Text> : null}
+        </>
       ) : (
         <>
           {message != null ? (

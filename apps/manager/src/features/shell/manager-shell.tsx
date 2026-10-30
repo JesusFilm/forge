@@ -19,6 +19,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart2,
+  Beaker,
   Bell,
   Bot,
   Building2,
@@ -48,6 +49,7 @@ import {
   type ManagerTheme,
 } from "@/lib/manager-theme"
 import { cn } from "@/lib/utils"
+import { MANAGER_SIDEBAR_COOKIE } from "@/lib/manager-sidebar"
 
 export type ManagerShellUser = {
   username: string
@@ -265,6 +267,12 @@ const navItems: Array<{
     icon: ListChecks,
   },
   {
+    key: "subtitle-lab",
+    href: "/dashboard/subtitle-lab" as Route,
+    label: "Subtitle Lab",
+    icon: Beaker,
+  },
+  {
     key: "smart-crop",
     href: "/dashboard/smart-crop",
     label: "Smart Crop",
@@ -283,12 +291,22 @@ const navItems: Array<{
     icon: SearchCheck,
   },
   {
+    key: "alerts",
+    href: "/dashboard/alerts",
+    label: "Alerts",
+    icon: Bell,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
     icon: Bot,
   },
 ]
+
+export function getManagerShellNavigation() {
+  return navItems
+}
 
 function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
@@ -342,16 +360,40 @@ function getBreadcrumbs(pathname: string): string[] {
     return ["Studio", "SEO"]
   }
 
+  if (pathname.startsWith("/dashboard/subtitle-lab/assignments/")) {
+    return ["Studio", "Subtitle Lab", "Assignment evidence"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/comparisons/")) {
+    return ["Studio", "Subtitle Lab", "Comparison"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/runs/")) {
+    return ["Studio", "Subtitle Lab", "Run report"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab")) {
+    return ["Studio", "Subtitle Lab"]
+  }
+
+  if (pathname.startsWith("/dashboard/alerts")) {
+    return ["Studio", "Alerts"]
+  }
+
   if (pathname.startsWith("/dashboard/smart-crop")) {
     return ["Studio", "Smart Crop"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/new")) {
-    return ["Studio", "Shorts", "New short"]
+    return ["Studio", "Shorts", "New project"]
+  }
+
+  if (pathname === "/dashboard/shorts/calendar") {
+    return ["Studio", "Shorts", "Planning calendar"]
   }
 
   if (pathname.startsWith("/dashboard/shorts/")) {
-    return ["Studio", "Shorts", "Short detail"]
+    return ["Studio", "Shorts", "Project"]
   }
 
   if (pathname.startsWith("/dashboard/shorts")) {
@@ -737,8 +779,10 @@ export function ManagerShellSidebarSlot({ children }: { children: ReactNode }) {
 export function ManagerDashboardShell({
   children,
   user,
+  initialSidebarCollapsed = false,
 }: {
   children: ReactNode
+  initialSidebarCollapsed?: boolean
   user: ManagerShellUser
 }) {
   const pathname = usePathname()
@@ -824,6 +868,10 @@ export function ManagerDashboardShell({
               aria-label="Collapse sidebar"
               className="design-system-sidebar-checkbox sr-only"
               id={toggleId}
+              defaultChecked={initialSidebarCollapsed}
+              onChange={(event) => {
+                document.cookie = `${MANAGER_SIDEBAR_COOKIE}=${event.currentTarget.checked ? "collapsed" : "expanded"}; Path=/; Max-Age=31536000; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`
+              }}
               type="checkbox"
             />
 
@@ -840,7 +888,24 @@ export function ManagerDashboardShell({
             </div>
 
             <div className="design-system-sidebar-content">
-              <StudioReportSwitcher />
+              {pathname.startsWith("/dashboard/shorts") ? (
+                <Link
+                  href="/dashboard/shorts"
+                  className="design-system-workspace-button"
+                  aria-label="Shorts"
+                  title="Shorts"
+                >
+                  <span className="design-system-avatar design-system-avatar--report">
+                    <Clapperboard size={18} />
+                  </span>
+                  <span className="design-system-workspace-copy">
+                    <strong>Shorts</strong>
+                    <small>Standalone projects</small>
+                  </span>
+                </Link>
+              ) : (
+                <StudioReportSwitcher />
+              )}
 
               <nav className="design-system-shell-nav" aria-label="Primary">
                 {navItems.map((item) => {
@@ -851,6 +916,8 @@ export function ManagerDashboardShell({
                     <Link
                       key={item.key}
                       href={item.href}
+                      aria-label={item.label}
+                      title={item.label}
                       className={isActive ? "is-active" : undefined}
                       {...(isActive ? { "aria-current": "page" as const } : {})}
                     >

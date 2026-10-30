@@ -5,12 +5,18 @@ import { type VideoAttachment } from "@/lib/conversations"
 
 import { UntrustedLink } from "./untrusted-link"
 
+class VideoPlayerLoadError extends Error {}
+
 // ssr:false keeps hls.js + the Mux element in their own chunk: turns without a
 // video never download them, and nothing renders server-side. A failed chunk
 // load is session-scoped and NOT retryable — see the JSDoc below.
-const MuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
-  ssr: false,
-})
+const MuxVideo = dynamic(
+  () =>
+    import("@forge/video-player/mux-video").catch(() => {
+      throw new VideoPlayerLoadError("Video player unavailable")
+    }),
+  { ssr: false },
+)
 
 // Every still is derived from the playback id, which toVideo pattern-gates —
 // so this interpolation cannot introduce a URL shape of the wire's choosing.
@@ -71,12 +77,12 @@ function formatDuration(totalSeconds: number): string {
  */
 export class VideoRenderBoundary extends Component<
   { children: (fail: () => void) => ReactNode },
-  { failed: boolean }
+  { failed: boolean; loadFailed: boolean }
 > {
-  state = { failed: false }
+  state = { failed: false, loadFailed: false }
 
-  static getDerivedStateFromError() {
-    return { failed: true }
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, loadFailed: error instanceof VideoPlayerLoadError }
   }
 
   fail = () => {
@@ -88,6 +94,11 @@ export class VideoRenderBoundary extends Component<
       return (
         <p data-video="unavailable" className="text-sm text-ash italic">
           This video can&rsquo;t be played here.
+          {this.state.loadFailed ? (
+            <span className="block">
+              Refresh the page to try loading videos again.
+            </span>
+          ) : null}
         </p>
       )
     }

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import type { Route } from "next"
 import { ArrowRight, ChevronDown, Globe2, Search, X } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useMemo, useState } from "react"
 
 import type {
@@ -11,6 +11,8 @@ import type {
   WatchLanguageIndexLanguage,
   WatchLanguageIndexRegion,
 } from "@/lib/language-index"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { isDeclarableHtmlLangTag, textDirectionForLocale } from "@/lib/locale"
 import {
   createWatchLanguageSearchMatcher,
   type WatchLanguageSearchMatcher,
@@ -141,22 +143,37 @@ function safeDomId(value: string): string {
 }
 
 function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
+  const nativeLanguage =
+    language.nativeLabel === language.englishLabel
+      ? "en"
+      : language.bcp47 && isDeclarableHtmlLangTag(language.bcp47)
+        ? language.bcp47
+        : undefined
   return (
     <li>
       <Link
         href={language.href as Route}
-        className="group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-left text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+        className="group flex min-h-14 items-center gap-3 rounded-lg px-3 py-2 text-start text-stone-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base leading-tight font-medium">
-            {language.englishLabel}
+            <bdi lang="en" dir="ltr">
+              {language.englishLabel}
+            </bdi>
           </span>
-          <span className="mt-1 block truncate text-sm leading-tight font-normal text-stone-500">
-            {language.nativeLabel}
+          <span className="mt-1 block truncate text-base sm:text-sm leading-tight font-normal text-stone-500">
+            <bdi
+              lang={nativeLanguage ?? "und"}
+              dir={
+                nativeLanguage ? textDirectionForLocale(nativeLanguage) : "auto"
+              }
+            >
+              {language.nativeLabel}
+            </bdi>
           </span>
         </span>
         <ArrowRight
-          className="size-4 shrink-0 text-amber-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          className="size-4 shrink-0 text-amber-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 rtl:rotate-180"
           aria-hidden="true"
         />
       </Link>
@@ -209,9 +226,11 @@ function CountryLanguages({
         )}
         <div className="min-w-0">
           <h4 className="m-0 truncate text-lg leading-tight font-bold text-white">
-            {country.name}
+            <bdi lang="en" dir="ltr">
+              {country.name}
+            </bdi>
           </h4>
-          <p className="m-0 mt-0.5 text-sm leading-tight font-semibold text-stone-400">
+          <p className="m-0 mt-0.5 text-base sm:text-sm leading-tight font-semibold text-stone-400">
             {t("languageCount", { count: country.languages.length })}
           </p>
         </div>
@@ -232,7 +251,7 @@ function CountryLanguages({
       {hiddenLanguageCount > 0 ? (
         <button
           type="button"
-          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-medium text-amber-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+          className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-base sm:text-sm font-medium text-amber-100 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
           aria-controls={extraLanguagesId}
           aria-expanded={expanded}
           onClick={onToggle}
@@ -275,11 +294,13 @@ function RegionLanguages({
         <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         <span className="absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-25 mix-blend-soft-light" />
         <span className="relative z-[1] flex h-full min-h-48 flex-col justify-end p-5 lg:min-h-[24rem]">
-          <span className="mb-3 w-fit rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold tracking-[0.2em] text-amber-200 uppercase backdrop-blur-sm">
+          <span className="mb-3 w-fit rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold tracking-[0.2em] text-amber-200 uppercase sm:text-[11px] backdrop-blur-sm">
             {t("region")}
           </span>
           <h3 className="m-0 text-3xl leading-none font-bold text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
-            {region.name}
+            <bdi lang="en" dir="ltr">
+              {region.name}
+            </bdi>
           </h3>
           <span className="mt-2 text-lg leading-none font-bold text-stone-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
             {t("languageCount", { count: region.languages.length })}
@@ -309,6 +330,7 @@ export function WatchLanguageIndexBrowser({
   regions,
 }: WatchLanguageIndexBrowserProps) {
   const t = useTranslations("WatchLanguageIndex")
+  const locale = useLocale()
   const [searchValue, setSearchValue] = useState("")
   const [expandedCountryKeys, setExpandedCountryKeys] = useState<
     ReadonlySet<string>
@@ -393,7 +415,7 @@ export function WatchLanguageIndexBrowser({
 
   return (
     <section
-      className="relative mx-auto w-full max-w-[112rem] font-sans text-stone-100"
+      className={`relative font-sans text-stone-100 ${WATCH_PAGE_CONTENT_CLASSES}`}
       aria-labelledby="language-index-title"
     >
       <header className="mb-6 flex items-center gap-4">
@@ -401,7 +423,7 @@ export function WatchLanguageIndexBrowser({
           <Globe2 className="size-6" aria-hidden="true" />
         </span>
         <span className="min-w-0">
-          <span className="mb-1 block text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
+          <span className="mb-1 block text-sm sm:text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
             {t("eyebrow")}
           </span>
           <h1
@@ -418,7 +440,7 @@ export function WatchLanguageIndexBrowser({
 
       <label className="relative mb-8 block w-full max-w-3xl">
         <Search
-          className="pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2 text-white/70"
+          className="pointer-events-none absolute top-1/2 start-5 z-10 size-5 -translate-y-1/2 text-white/70"
           aria-hidden="true"
         />
         <input
@@ -427,12 +449,13 @@ export function WatchLanguageIndexBrowser({
           onChange={(event) => setSearchValue(event.target.value)}
           placeholder={t("searchPlaceholder")}
           aria-label={t("searchLabel")}
-          className="h-14 w-full rounded-[35px] border border-white/10 bg-white/10 pr-12 pl-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40"
+          dir={textDirectionForLocale(locale)}
+          className="h-14 w-full appearance-none rounded-[35px] border border-white/10 bg-white/10 pe-12 ps-[3.25rem] text-base font-semibold text-white shadow-xl shadow-black/20 outline-none backdrop-blur-[10px] transition-colors placeholder:text-white/55 hover:bg-white/15 focus:border-white/35 focus:ring-2 focus:ring-white/40 [&::-webkit-search-cancel-button]:appearance-none"
         />
         {searchValue ? (
           <button
             type="button"
-            className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
+            className="absolute top-1/2 end-3 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
             onClick={() => setSearchValue("")}
             aria-label={t("clearSearch")}
           >
@@ -441,14 +464,14 @@ export function WatchLanguageIndexBrowser({
         ) : null}
       </label>
 
-      <p className="m-0 text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
+      <p className="m-0 text-sm sm:text-xs font-bold tracking-[0.24em] text-red-100/70 uppercase">
         {t("browse")}
       </p>
       <h2 className="m-0 mt-1 text-xl leading-tight font-bold text-white sm:text-2xl">
         {t("browseByRegion")}
       </h2>
       <p
-        className="m-0 mt-2 text-sm font-bold text-stone-400"
+        className="m-0 mt-2 text-base sm:text-sm font-bold text-stone-400"
         aria-live="polite"
       >
         {t("languageCount", { count: visibleLanguageCount })}
@@ -468,7 +491,7 @@ export function WatchLanguageIndexBrowser({
           <h3 className="m-0 text-lg font-bold text-white">
             {t("noLanguages")}
           </h3>
-          <p className="m-0 mt-2 text-sm font-semibold text-stone-400">
+          <p className="m-0 mt-2 text-base sm:text-sm font-semibold text-stone-400">
             {t("tryAnotherSearch")}
           </p>
         </section>

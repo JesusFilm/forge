@@ -16,16 +16,7 @@
 
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { toPgVector } from "@/db/pgvector"
-
-// Embedding provenance the relevance query must match. Mirrors the
-// canonical filter in hybrid-search-retrievers.ts (QWEN_CONTENT_EMBEDDING_*)
-// so we only ever compare a Qwen query vector against Qwen-space stored
-// vectors — never against legacy-provider or mid-migration vectors that
-// share the same column. Kept as local constants (not imported) to avoid
-// pulling the heavy hybrid-search module's type graph into this file; if
-// the gateway provenance changes, update both sites together.
-const CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const CONTENT_EMBEDDING_NATIVE_DIMENSIONS = 1536
+import { activeExperienceContentEmbeddingWhere } from "@/services/content-embedding-contract"
 // Per-call statement timeout for the vector scan, well under the draft
 // action's budget so a slow DB / lock degrades to the fallback instead of
 // hanging the generation request.
@@ -126,9 +117,7 @@ export async function findExperienceExemplar(
       WHERE el.embedding IS NOT NULL
         AND el.status = 'published'
         AND e.archived_at IS NULL
-        AND el.embedding_provider = ${CONTENT_EMBEDDING_PROVIDER}
-        AND el.embedding_native_dimensions = ${CONTENT_EMBEDDING_NATIVE_DIMENSIONS}
-        AND el.embedding_transform_version IS NULL
+        ${activeExperienceContentEmbeddingWhere("el")}
         ${localeFilter}
         ${excludeFilter}
       ORDER BY distance

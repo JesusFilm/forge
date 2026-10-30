@@ -15,6 +15,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import { toPgVector } from "@/db/pgvector"
+import { activeExperienceContentEmbeddingWhere } from "./content-embedding-contract"
 
 type SearchHit = { id: string; distance: number }
 
@@ -85,6 +86,7 @@ export class ExperienceSearchService {
         FROM experience_locale el
         JOIN experience e ON e.id = el.experience_id
         WHERE el.embedding IS NOT NULL
+          ${activeExperienceContentEmbeddingWhere("el")}
           ${localeFilter}
           ${statusFilter}
           ${archiveFilter}

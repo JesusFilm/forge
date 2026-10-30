@@ -1,0 +1,10 @@
+# The runner runs this flow on iOS after each failed attempt (KTD14). A link
+# prompt that the attempt left open stays up across the app reinstall and
+# fails the next journey. The flow does not start the app.
+appId: org.jesusfilm.forgewatch
+name: clear-system-alert
+---
+- tapOn:
+    text: Cancel
+    optional: true
+    label: Close a system prompt that the failed attempt left open

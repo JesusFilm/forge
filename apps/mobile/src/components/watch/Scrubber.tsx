@@ -9,6 +9,7 @@ import {
   type PanResponderGestureState,
 } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import {
   applySkip,
@@ -43,7 +44,9 @@ type ScrubberProps = {
 
 const THUMB = 14
 const TRACK_HEIGHT = 3
-const HIT_HEIGHT = 44
+/** The transparent grab area's height. Exported so the caption above it
+ *  can clear the TOUCH target, not just the thin visible track. */
+export const SCRUBBER_HIT_HEIGHT = 44
 
 /**
  * Draggable seek bar (built-in PanResponder — gesture-handler is forbidden under Expo Go). Position uses an
@@ -58,6 +61,7 @@ export function Scrubber({
   flush = false,
   edgeGuardWidth = 0,
 }: ScrubberProps) {
+  const t = useT("Player")
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
   // Last fraction from grant/move. Release seeks to THIS, not a fresh read of
@@ -207,7 +211,7 @@ export function Scrubber({
       // + actions never reach VoiceOver/Switch Control — bar silently unreachable.
       accessible
       accessibilityRole="adjustable"
-      accessibilityLabel="Seek bar"
+      accessibilityLabel={t("seekBarAriaLabel")}
       // Drag-only by touch; expose increment/decrement (swipe up/down → ±10s,
       // matching skip buttons) so VoiceOver/Switch Control/idb can operate it.
       // `now` reads playback position (props), what a screen-reader user tracks.
@@ -231,6 +235,7 @@ export function Scrubber({
     >
       <View style={styles.track}>
         <Animated.View
+          testID="scrubber-fill"
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
       </View>
@@ -239,6 +244,7 @@ export function Scrubber({
           left while the fill shows the real position — a one-frame desync. */}
       {trackWidth > 0 && (
         <Animated.View
+          testID="scrubber-thumb"
           style={[
             styles.thumb,
             flush && styles.thumbBottom,
@@ -259,8 +265,11 @@ const styles = StyleSheet.create({
   // Tall (44px), transparent hit area for an easy, accessible grab; the visible
   // track is thin and vertically centered within it.
   hitArea: {
-    height: HIT_HEIGHT,
+    height: SCRUBBER_HIT_HEIGHT,
     justifyContent: "center",
+    // Playback does not mirror (feat-695 R12). React Native swaps `left` and
+    // `right` in a right-to-left app, so the bar sets its own direction.
+    direction: "ltr",
   },
   hitAreaBottom: {
     justifyContent: "flex-end",
@@ -285,13 +294,13 @@ const styles = StyleSheet.create({
     borderRadius: THUMB / 2,
     backgroundColor: ACCENT,
     // Vertically center on the track; horizontally center on the position.
-    top: (HIT_HEIGHT - THUMB) / 2,
+    top: (SCRUBBER_HIT_HEIGHT - THUMB) / 2,
     left: 0,
     marginLeft: -THUMB / 2,
   },
   // Centered on a bottom-aligned track. The track touches the player's edge, so
   // the lower half draws past it — the caller must not clip its overflow.
   thumbBottom: {
-    top: HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
+    top: SCRUBBER_HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
   },
 })

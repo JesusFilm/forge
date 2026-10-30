@@ -1,0 +1,956 @@
+{
+  "version": "2026-09-14.astra-homepage-ui-languages.v1",
+  "sourceDigest": "c56419b51f5b0504d15740cc8b4e7419b80c18965dd8cb4176c89b570da182b8",
+  "validationVersion": "curated-admin-eligibility-v1",
+  "checkedAt": "2026-09-14T00:23:48.099Z",
+  "passed": true,
+  "requirement": {
+    "requestedCount": 6,
+    "excludedReserve": 0
+  },
+  "unknownCoreVideoIds": [],
+  "promotion": {
+    "version": "2026-09-14.astra-homepage-ui-languages.v1",
+    "revision": 2
+  },
+  "contexts": [
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-algerian-spoken",
+      "coreLanguageId": "525",
+      "passed": true,
+      "startUnique": 63,
+      "poolCounts": {
+        "start": 63,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 25,
+        "love-and-belonging": 22,
+        "forgiveness-and-new-beginnings": 14,
+        "exploring-jesus": 40
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-chadian-spoken",
+      "coreLanguageId": "20531",
+      "passed": true,
+      "startUnique": 42,
+      "poolCounts": {
+        "start": 42,
+        "meaning-and-purpose": 19,
+        "hope-and-perseverance": 16,
+        "love-and-belonging": 16,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 23
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-egyptian-colloquial",
+      "coreLanguageId": "20533",
+      "passed": true,
+      "startUnique": 78,
+      "poolCounts": {
+        "start": 78,
+        "meaning-and-purpose": 26,
+        "hope-and-perseverance": 30,
+        "love-and-belonging": 28,
+        "forgiveness-and-new-beginnings": 17,
+        "exploring-jesus": 50
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-gulf",
+      "coreLanguageId": "139181",
+      "passed": true,
+      "startUnique": 54,
+      "poolCounts": {
+        "start": 54,
+        "meaning-and-purpose": 23,
+        "hope-and-perseverance": 23,
+        "love-and-belonging": 18,
+        "forgiveness-and-new-beginnings": 9,
+        "exploring-jesus": 36
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-iraqi-baghdadi",
+      "coreLanguageId": "21061",
+      "passed": true,
+      "startUnique": 42,
+      "poolCounts": {
+        "start": 42,
+        "meaning-and-purpose": 19,
+        "hope-and-perseverance": 16,
+        "love-and-belonging": 16,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 23
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-libyan",
+      "coreLanguageId": "184848",
+      "passed": true,
+      "startUnique": 33,
+      "poolCounts": {
+        "start": 33,
+        "meaning-and-purpose": 18,
+        "hope-and-perseverance": 14,
+        "love-and-belonging": 12,
+        "forgiveness-and-new-beginnings": 7,
+        "exploring-jesus": 19
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-modern-standard",
+      "coreLanguageId": "22658",
+      "passed": true,
+      "startUnique": 154,
+      "poolCounts": {
+        "start": 154,
+        "meaning-and-purpose": 61,
+        "hope-and-perseverance": 56,
+        "love-and-belonging": 55,
+        "forgiveness-and-new-beginnings": 38,
+        "exploring-jesus": 79
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-modern-standard-egyptian",
+      "coreLanguageId": "53441",
+      "passed": true,
+      "startUnique": 57,
+      "poolCounts": {
+        "start": 57,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 23,
+        "love-and-belonging": 18,
+        "forgiveness-and-new-beginnings": 10,
+        "exploring-jesus": 39
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-modern-standard-sharif",
+      "coreLanguageId": "184495",
+      "passed": true,
+      "startUnique": 33,
+      "poolCounts": {
+        "start": 33,
+        "meaning-and-purpose": 18,
+        "hope-and-perseverance": 14,
+        "love-and-belonging": 12,
+        "forgiveness-and-new-beginnings": 7,
+        "exploring-jesus": 19
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-moroccan-spoken",
+      "coreLanguageId": "8418",
+      "passed": true,
+      "startUnique": 65,
+      "poolCounts": {
+        "start": 65,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 26,
+        "love-and-belonging": 23,
+        "forgiveness-and-new-beginnings": 14,
+        "exploring-jesus": 42
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-palestinian",
+      "coreLanguageId": "53347",
+      "passed": true,
+      "startUnique": 63,
+      "poolCounts": {
+        "start": 63,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 25,
+        "love-and-belonging": 22,
+        "forgiveness-and-new-beginnings": 14,
+        "exploring-jesus": 40
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-saidi-spoken",
+      "coreLanguageId": "4532",
+      "passed": true,
+      "startUnique": 54,
+      "poolCounts": {
+        "start": 54,
+        "meaning-and-purpose": 23,
+        "hope-and-perseverance": 23,
+        "love-and-belonging": 18,
+        "forgiveness-and-new-beginnings": 9,
+        "exploring-jesus": 36
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-sudanese-spoken",
+      "coreLanguageId": "13562",
+      "passed": true,
+      "startUnique": 64,
+      "poolCounts": {
+        "start": 64,
+        "meaning-and-purpose": 25,
+        "hope-and-perseverance": 25,
+        "love-and-belonging": 23,
+        "forgiveness-and-new-beginnings": 14,
+        "exploring-jesus": 40
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-taizzi-yemeni",
+      "coreLanguageId": "184627",
+      "passed": true,
+      "startUnique": 53,
+      "poolCounts": {
+        "start": 53,
+        "meaning-and-purpose": 23,
+        "hope-and-perseverance": 23,
+        "love-and-belonging": 18,
+        "forgiveness-and-new-beginnings": 9,
+        "exploring-jesus": 35
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-tunisian",
+      "coreLanguageId": "20547",
+      "passed": true,
+      "startUnique": 62,
+      "poolCounts": {
+        "start": 62,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 25,
+        "love-and-belonging": 22,
+        "forgiveness-and-new-beginnings": 14,
+        "exploring-jesus": 39
+      }
+    },
+    {
+      "locale": "bn",
+      "audioLanguageSlug": "bangla-2",
+      "coreLanguageId": "176243",
+      "passed": true,
+      "startUnique": 112,
+      "poolCounts": {
+        "start": 112,
+        "meaning-and-purpose": 47,
+        "hope-and-perseverance": 44,
+        "love-and-belonging": 44,
+        "forgiveness-and-new-beginnings": 26,
+        "exploring-jesus": 57
+      }
+    },
+    {
+      "locale": "bn",
+      "audioLanguageSlug": "bangla-muslim",
+      "coreLanguageId": "139082",
+      "passed": true,
+      "startUnique": 82,
+      "poolCounts": {
+        "start": 82,
+        "meaning-and-purpose": 28,
+        "hope-and-perseverance": 32,
+        "love-and-belonging": 25,
+        "forgiveness-and-new-beginnings": 19,
+        "exploring-jesus": 56
+      }
+    },
+    {
+      "locale": "bn",
+      "audioLanguageSlug": "bengali-indian",
+      "coreLanguageId": "139081",
+      "passed": true,
+      "startUnique": 117,
+      "poolCounts": {
+        "start": 117,
+        "meaning-and-purpose": 47,
+        "hope-and-perseverance": 44,
+        "love-and-belonging": 46,
+        "forgiveness-and-new-beginnings": 27,
+        "exploring-jesus": 62
+      }
+    },
+    {
+      "locale": "ru",
+      "audioLanguageSlug": "central-asian-russian",
+      "coreLanguageId": "20899",
+      "passed": true,
+      "startUnique": 74,
+      "poolCounts": {
+        "start": 74,
+        "meaning-and-purpose": 25,
+        "hope-and-perseverance": 28,
+        "love-and-belonging": 23,
+        "forgiveness-and-new-beginnings": 18,
+        "exploring-jesus": 51
+      }
+    },
+    {
+      "locale": "en",
+      "audioLanguageSlug": "english",
+      "coreLanguageId": "529",
+      "passed": true,
+      "startUnique": 191,
+      "poolCounts": {
+        "start": 191,
+        "meaning-and-purpose": 81,
+        "hope-and-perseverance": 65,
+        "love-and-belonging": 68,
+        "forgiveness-and-new-beginnings": 45,
+        "exploring-jesus": 94
+      }
+    },
+    {
+      "locale": "fa",
+      "audioLanguageSlug": "farsi-western",
+      "coreLanguageId": "6788",
+      "passed": true,
+      "startUnique": 139,
+      "poolCounts": {
+        "start": 139,
+        "meaning-and-purpose": 56,
+        "hope-and-perseverance": 46,
+        "love-and-belonging": 51,
+        "forgiveness-and-new-beginnings": 35,
+        "exploring-jesus": 77
+      }
+    },
+    {
+      "locale": "fr",
+      "audioLanguageSlug": "french",
+      "coreLanguageId": "496",
+      "passed": true,
+      "startUnique": 164,
+      "poolCounts": {
+        "start": 164,
+        "meaning-and-purpose": 65,
+        "hope-and-perseverance": 58,
+        "love-and-belonging": 58,
+        "forgiveness-and-new-beginnings": 39,
+        "exploring-jesus": 87
+      }
+    },
+    {
+      "locale": "fr",
+      "audioLanguageSlug": "french-african",
+      "coreLanguageId": "53424",
+      "passed": true,
+      "startUnique": 28,
+      "poolCounts": {
+        "start": 28,
+        "meaning-and-purpose": 5,
+        "hope-and-perseverance": 10,
+        "love-and-belonging": 9,
+        "forgiveness-and-new-beginnings": 10,
+        "exploring-jesus": 22
+      }
+    },
+    {
+      "locale": "de",
+      "audioLanguageSlug": "german-standard",
+      "coreLanguageId": "1106",
+      "passed": true,
+      "startUnique": 148,
+      "poolCounts": {
+        "start": 148,
+        "meaning-and-purpose": 57,
+        "hope-and-perseverance": 49,
+        "love-and-belonging": 55,
+        "forgiveness-and-new-beginnings": 35,
+        "exploring-jesus": 84
+      }
+    },
+    {
+      "locale": "ko",
+      "audioLanguageSlug": "hamgyongdo",
+      "coreLanguageId": "7350",
+      "passed": true,
+      "startUnique": 34,
+      "poolCounts": {
+        "start": 34,
+        "meaning-and-purpose": 18,
+        "hope-and-perseverance": 15,
+        "love-and-belonging": 12,
+        "forgiveness-and-new-beginnings": 7,
+        "exploring-jesus": 20
+      }
+    },
+    {
+      "locale": "he",
+      "audioLanguageSlug": "hebrew",
+      "coreLanguageId": "6930",
+      "passed": true,
+      "startUnique": 83,
+      "poolCounts": {
+        "start": 83,
+        "meaning-and-purpose": 39,
+        "hope-and-perseverance": 32,
+        "love-and-belonging": 35,
+        "forgiveness-and-new-beginnings": 23,
+        "exploring-jesus": 37
+      }
+    },
+    {
+      "locale": "hi",
+      "audioLanguageSlug": "hindi",
+      "coreLanguageId": "6464",
+      "passed": true,
+      "startUnique": 141,
+      "poolCounts": {
+        "start": 141,
+        "meaning-and-purpose": 57,
+        "hope-and-perseverance": 47,
+        "love-and-belonging": 54,
+        "forgiveness-and-new-beginnings": 34,
+        "exploring-jesus": 77
+      }
+    },
+    {
+      "locale": "id",
+      "audioLanguageSlug": "indonesian-isa",
+      "coreLanguageId": "184566",
+      "passed": true,
+      "startUnique": 64,
+      "poolCounts": {
+        "start": 64,
+        "meaning-and-purpose": 25,
+        "hope-and-perseverance": 28,
+        "love-and-belonging": 19,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 45
+      }
+    },
+    {
+      "locale": "id",
+      "audioLanguageSlug": "indonesian-yesus",
+      "coreLanguageId": "16639",
+      "passed": true,
+      "startUnique": 115,
+      "poolCounts": {
+        "start": 115,
+        "meaning-and-purpose": 50,
+        "hope-and-perseverance": 38,
+        "love-and-belonging": 44,
+        "forgiveness-and-new-beginnings": 29,
+        "exploring-jesus": 61
+      }
+    },
+    {
+      "locale": "ja",
+      "audioLanguageSlug": "japanese",
+      "coreLanguageId": "7083",
+      "passed": true,
+      "startUnique": 129,
+      "poolCounts": {
+        "start": 129,
+        "meaning-and-purpose": 55,
+        "hope-and-perseverance": 44,
+        "love-and-belonging": 49,
+        "forgiveness-and-new-beginnings": 30,
+        "exploring-jesus": 72
+      }
+    },
+    {
+      "locale": "kk",
+      "audioLanguageSlug": "kazakh",
+      "coreLanguageId": "371",
+      "passed": true,
+      "startUnique": 80,
+      "poolCounts": {
+        "start": 80,
+        "meaning-and-purpose": 28,
+        "hope-and-perseverance": 30,
+        "love-and-belonging": 25,
+        "forgiveness-and-new-beginnings": 19,
+        "exploring-jesus": 55
+      }
+    },
+    {
+      "locale": "ko",
+      "audioLanguageSlug": "korean",
+      "coreLanguageId": "3804",
+      "passed": true,
+      "startUnique": 123,
+      "poolCounts": {
+        "start": 123,
+        "meaning-and-purpose": 53,
+        "hope-and-perseverance": 44,
+        "love-and-belonging": 46,
+        "forgiveness-and-new-beginnings": 29,
+        "exploring-jesus": 63
+      }
+    },
+    {
+      "locale": "ko",
+      "audioLanguageSlug": "korean-north",
+      "coreLanguageId": "24000",
+      "passed": true,
+      "startUnique": 72,
+      "poolCounts": {
+        "start": 72,
+        "meaning-and-purpose": 36,
+        "hope-and-perseverance": 28,
+        "love-and-belonging": 31,
+        "forgiveness-and-new-beginnings": 21,
+        "exploring-jesus": 30
+      }
+    },
+    {
+      "locale": "ko",
+      "audioLanguageSlug": "kurmanji-standard",
+      "coreLanguageId": "20770",
+      "passed": true,
+      "startUnique": 63,
+      "poolCounts": {
+        "start": 63,
+        "meaning-and-purpose": 25,
+        "hope-and-perseverance": 26,
+        "love-and-belonging": 19,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 44
+      }
+    },
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "mardini",
+      "coreLanguageId": "23800",
+      "passed": true,
+      "startUnique": 42,
+      "poolCounts": {
+        "start": 42,
+        "meaning-and-purpose": 19,
+        "hope-and-perseverance": 16,
+        "love-and-belonging": 16,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 23
+      }
+    },
+    {
+      "locale": "mn",
+      "audioLanguageSlug": "mongolian-halh",
+      "coreLanguageId": "18259",
+      "passed": true,
+      "startUnique": 77,
+      "poolCounts": {
+        "start": 77,
+        "meaning-and-purpose": 28,
+        "hope-and-perseverance": 27,
+        "love-and-belonging": 26,
+        "forgiveness-and-new-beginnings": 18,
+        "exploring-jesus": 52
+      }
+    },
+    {
+      "locale": "pt",
+      "audioLanguageSlug": "portuguese-brazil",
+      "coreLanguageId": "584",
+      "passed": true,
+      "startUnique": 154,
+      "poolCounts": {
+        "start": 154,
+        "meaning-and-purpose": 62,
+        "hope-and-perseverance": 52,
+        "love-and-belonging": 54,
+        "forgiveness-and-new-beginnings": 37,
+        "exploring-jesus": 85
+      }
+    },
+    {
+      "locale": "pt",
+      "audioLanguageSlug": "portuguese-mozambique",
+      "coreLanguageId": "139136",
+      "passed": true,
+      "startUnique": 14,
+      "poolCounts": {
+        "start": 14,
+        "meaning-and-purpose": 1,
+        "hope-and-perseverance": 3,
+        "love-and-belonging": 6,
+        "forgiveness-and-new-beginnings": 9,
+        "exploring-jesus": 7
+      }
+    },
+    {
+      "locale": "pt",
+      "audioLanguageSlug": "portuguese-portugal",
+      "coreLanguageId": "21064",
+      "passed": true,
+      "startUnique": 78,
+      "poolCounts": {
+        "start": 78,
+        "meaning-and-purpose": 28,
+        "hope-and-perseverance": 28,
+        "love-and-belonging": 24,
+        "forgiveness-and-new-beginnings": 18,
+        "exploring-jesus": 52
+      }
+    },
+    {
+      "locale": "pt",
+      "audioLanguageSlug": "ribeirinho",
+      "coreLanguageId": "185334",
+      "passed": true,
+      "startUnique": 33,
+      "poolCounts": {
+        "start": 33,
+        "meaning-and-purpose": 18,
+        "hope-and-perseverance": 14,
+        "love-and-belonging": 12,
+        "forgiveness-and-new-beginnings": 7,
+        "exploring-jesus": 19
+      }
+    },
+    {
+      "locale": "ru",
+      "audioLanguageSlug": "russian",
+      "coreLanguageId": "3934",
+      "passed": true,
+      "startUnique": 151,
+      "poolCounts": {
+        "start": 151,
+        "meaning-and-purpose": 60,
+        "hope-and-perseverance": 56,
+        "love-and-belonging": 55,
+        "forgiveness-and-new-beginnings": 36,
+        "exploring-jesus": 77
+      }
+    },
+    {
+      "locale": "es",
+      "audioLanguageSlug": "spanish-castilian",
+      "coreLanguageId": "21046",
+      "passed": true,
+      "startUnique": 74,
+      "poolCounts": {
+        "start": 74,
+        "meaning-and-purpose": 28,
+        "hope-and-perseverance": 28,
+        "love-and-belonging": 27,
+        "forgiveness-and-new-beginnings": 15,
+        "exploring-jesus": 47
+      }
+    },
+    {
+      "locale": "es",
+      "audioLanguageSlug": "spanish-latin-american",
+      "coreLanguageId": "21028",
+      "passed": true,
+      "startUnique": 137,
+      "poolCounts": {
+        "start": 137,
+        "meaning-and-purpose": 58,
+        "hope-and-perseverance": 49,
+        "love-and-belonging": 49,
+        "forgiveness-and-new-beginnings": 33,
+        "exploring-jesus": 69
+      }
+    },
+    {
+      "locale": "fil",
+      "audioLanguageSlug": "tagalog",
+      "coreLanguageId": "12551",
+      "passed": true,
+      "startUnique": 117,
+      "poolCounts": {
+        "start": 117,
+        "meaning-and-purpose": 46,
+        "hope-and-perseverance": 43,
+        "love-and-belonging": 45,
+        "forgiveness-and-new-beginnings": 29,
+        "exploring-jesus": 64
+      }
+    },
+    {
+      "locale": "th",
+      "audioLanguageSlug": "thai",
+      "coreLanguageId": "13169",
+      "passed": true,
+      "startUnique": 133,
+      "poolCounts": {
+        "start": 133,
+        "meaning-and-purpose": 51,
+        "hope-and-perseverance": 48,
+        "love-and-belonging": 48,
+        "forgiveness-and-new-beginnings": 33,
+        "exploring-jesus": 76
+      }
+    },
+    {
+      "locale": "th",
+      "audioLanguageSlug": "thai-northern",
+      "coreLanguageId": "21118",
+      "passed": true,
+      "startUnique": 59,
+      "poolCounts": {
+        "start": 59,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 25,
+        "love-and-belonging": 19,
+        "forgiveness-and-new-beginnings": 12,
+        "exploring-jesus": 40
+      }
+    },
+    {
+      "locale": "th",
+      "audioLanguageSlug": "thai-southern",
+      "coreLanguageId": "20969",
+      "passed": true,
+      "startUnique": 35,
+      "poolCounts": {
+        "start": 35,
+        "meaning-and-purpose": 18,
+        "hope-and-perseverance": 15,
+        "love-and-belonging": 12,
+        "forgiveness-and-new-beginnings": 8,
+        "exploring-jesus": 21
+      }
+    },
+    {
+      "locale": "tr",
+      "audioLanguageSlug": "turkish",
+      "coreLanguageId": "1942",
+      "passed": true,
+      "startUnique": 139,
+      "poolCounts": {
+        "start": 139,
+        "meaning-and-purpose": 54,
+        "hope-and-perseverance": 49,
+        "love-and-belonging": 50,
+        "forgiveness-and-new-beginnings": 33,
+        "exploring-jesus": 81
+      }
+    },
+    {
+      "locale": "ur",
+      "audioLanguageSlug": "urdu",
+      "coreLanguageId": "407",
+      "passed": true,
+      "startUnique": 117,
+      "poolCounts": {
+        "start": 117,
+        "meaning-and-purpose": 47,
+        "hope-and-perseverance": 43,
+        "love-and-belonging": 45,
+        "forgiveness-and-new-beginnings": 28,
+        "exploring-jesus": 66
+      }
+    },
+    {
+      "locale": "vi",
+      "audioLanguageSlug": "vietnamese",
+      "coreLanguageId": "3887",
+      "passed": true,
+      "startUnique": 142,
+      "poolCounts": {
+        "start": 142,
+        "meaning-and-purpose": 54,
+        "hope-and-perseverance": 51,
+        "love-and-belonging": 53,
+        "forgiveness-and-new-beginnings": 35,
+        "exploring-jesus": 79
+      }
+    },
+    {
+      "locale": "vi",
+      "audioLanguageSlug": "vietnamese-northern",
+      "coreLanguageId": "22500",
+      "passed": true,
+      "startUnique": 56,
+      "poolCounts": {
+        "start": 56,
+        "meaning-and-purpose": 24,
+        "hope-and-perseverance": 23,
+        "love-and-belonging": 19,
+        "forgiveness-and-new-beginnings": 10,
+        "exploring-jesus": 37
+      }
+    }
+  ],
+  "browserChecks": {
+    "mobile-settled": {
+      "startedAt": "2026-09-14T00:30:00.630Z",
+      "label": "mobile-settled",
+      "home": "https://www.jesusfilm.org/watch",
+      "errors": [],
+      "pageStatus": 200,
+      "heading": "Recommended for You",
+      "distinctCards": 6,
+      "previousBlock": null,
+      "stableWhileBrowsing": true,
+      "horizontalPageOverflow": false,
+      "passed": true,
+      "finishedAt": "2026-09-14T00:30:12.452Z"
+    },
+    "mobile-spanish-standard": {
+      "startedAt": "2026-09-14T00:33:54.531Z",
+      "label": "mobile-spanish-standard",
+      "home": "https://www.jesusfilm.org/watch/spanish-latin-american.html",
+      "errors": [],
+      "pageStatus": 200,
+      "heading": "Recomendados para ti",
+      "distinctCards": 6,
+      "previousBlock": null,
+      "stableWhileBrowsing": true,
+      "horizontalPageOverflow": false,
+      "passed": true,
+      "finishedAt": "2026-09-14T00:34:06.620Z"
+    },
+    "desktop-return": {
+      "startedAt": "2026-09-14T00:34:55.241Z",
+      "label": "desktop-return",
+      "home": "https://www.jesusfilm.org/watch",
+      "errors": [],
+      "failedRequests": [
+        {
+          "path": "/watch/api/recommendations/playback",
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "selections": 1,
+      "pageStatus": 200,
+      "heading": "Recommended for You",
+      "distinctCards": 6,
+      "previousBlock": null,
+      "stableWhileBrowsing": true,
+      "horizontalPageOverflow": false,
+      "playback": {
+        "currentTime": 36.037166,
+        "paused": false,
+        "readyState": 4
+      },
+      "selectionAcknowledged": true,
+      "returnCards": 6,
+      "refetchedOnReturn": true,
+      "coreJourneyPassed": true,
+      "passed": true,
+      "finishedAt": "2026-09-14T00:36:02.305Z"
+    }
+  },
+  "languageApiRecheck": [
+    {
+      "locale": "ar",
+      "audioLanguageSlug": "arabic-algerian-spoken",
+      "coreLanguageId": "525",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 3473
+    },
+    {
+      "locale": "en",
+      "audioLanguageSlug": "english",
+      "coreLanguageId": "529",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 1838
+    },
+    {
+      "locale": "fr",
+      "audioLanguageSlug": "french",
+      "coreLanguageId": "496",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 1124
+    },
+    {
+      "locale": "hi",
+      "audioLanguageSlug": "hindi",
+      "coreLanguageId": "6464",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 770
+    },
+    {
+      "locale": "ja",
+      "audioLanguageSlug": "japanese",
+      "coreLanguageId": "7083",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 928
+    },
+    {
+      "locale": "es",
+      "audioLanguageSlug": "spanish-castilian",
+      "coreLanguageId": "21046",
+      "status": 200,
+      "result": "served",
+      "reason": null,
+      "poolVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+      "count": 6,
+      "distinct": 6,
+      "errors": [],
+      "elapsedMs": 1235
+    }
+  ],
+  "monitoring": {
+    "from": "2026-09-14T00:18:00Z",
+    "to": "2026-09-14T00:25:00Z",
+    "webVersion": "111421952942061fa80c1710a25aa1efba735132",
+    "requests": 5408,
+    "fiveXX": 0,
+    "sourceFreeRequests": 8,
+    "scope": "Shared production version tags; not a primary-only denominator"
+  },
+  "databaseVerification": {
+    "checkedAt": "2026-09-14T00:38:30.511Z",
+    "passed": true,
+    "activeVersion": "2026-09-14.astra-homepage-ui-languages.v1",
+    "previousVersion": "2026-09-14.astra-homepage-initial.v1",
+    "pointerRevision": 2,
+    "contexts": 51,
+    "locales": [
+      {
+        "locale": "en",
+        "blocks": 17,
+        "placementVerified": true,
+        "otherBlocksPreservedAfterSchemaNormalization": true,
+        "existingDraftPreserved": true
+      },
+      {
+        "locale": "es",
+        "blocks": 11,
+        "placementVerified": true,
+        "otherBlocksPreservedAfterSchemaNormalization": true,
+        "existingDraftPreserved": false
+      }
+    ]
+  }
+}

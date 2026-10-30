@@ -9,13 +9,16 @@ import {
   Languages,
   LayoutDashboard,
   Layers3,
+  ListTree,
+  Megaphone,
   Search,
   Settings,
   Shield,
   Workflow,
 } from "lucide-react"
 import type { AdminMessages } from "@/i18n/messages"
-import type { Role } from "@/auth/principal"
+import { hasPermission } from "@/auth/permissions"
+import type { Principal } from "@/auth/principal"
 
 export type AdminNavSectionKey = Extract<
   keyof AdminMessages["nav"]["sections"],
@@ -89,6 +92,12 @@ export const adminNavItems: AdminNavItem[] = [
     icon: Search,
   },
   {
+    id: "recommendations",
+    href: "/dashboard/recommendations",
+    section: "system",
+    icon: ListTree,
+  },
+  {
     id: "users",
     href: "/dashboard/users",
     section: "system",
@@ -99,6 +108,12 @@ export const adminNavItems: AdminNavItem[] = [
     href: "/dashboard/partner-keys",
     section: "system",
     icon: KeyRound,
+  },
+  {
+    id: "pushCampaigns",
+    href: "/dashboard/push-campaigns",
+    section: "system",
+    icon: Megaphone,
   },
   {
     id: "mcp",
@@ -122,15 +137,25 @@ export const adminNavSections = Array.from(
   ),
 ).map(([label, items]) => ({ label, items }))
 
-export function isNavItemVisible(role: Role, item: AdminNavItem) {
+export function isNavItemVisible(principal: Principal, item: AdminNavItem) {
   if (
-    role !== "ADMIN" &&
+    principal.role !== "ADMIN" &&
     (item.id === "users" ||
       item.id === "settings" ||
       item.id === "partnerKeys" ||
       item.id === "mcp")
   ) {
     return false
+  }
+
+  if (item.id === "recommendations") {
+    return hasPermission(principal, "read:recommendation-aggregates")
+  }
+
+  // R28 — the campaign pages sit at the viewer tier, not behind the ADMIN
+  // list above, so the nav entry reads the same key the pages read.
+  if (item.id === "pushCampaigns") {
+    return hasPermission(principal, "write:push-campaigns")
   }
 
   return true

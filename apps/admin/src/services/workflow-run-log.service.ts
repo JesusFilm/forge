@@ -13,6 +13,7 @@ type WorkflowRunClient = Pick<PrismaClient, "workflowRun" | "coreSyncRun">
 export type WorkflowRunLogTrigger = CoreSyncTrigger | "system"
 
 export type WorkflowRunLogInput = {
+  id?: string
   workflowKey: string
   workflowName?: string
   runtimeRunId?: string
@@ -87,6 +88,7 @@ export async function createWorkflowRunLog(
 ) {
   return client.workflowRun.create({
     data: {
+      ...(input.id ? { id: input.id } : {}),
       workflowKey: input.workflowKey,
       workflowName: input.workflowName,
       runtimeRunId: input.runtimeRunId,
@@ -119,6 +121,21 @@ export async function markWorkflowRunStarted(
   return client.workflowRun.update({
     where: { id: workflowRunId },
     data: {
+      status: WorkflowRunStatus.RUNNING,
+      startedAt: new Date(),
+    },
+  })
+}
+
+export async function markWorkflowRunRuntimeStarted(
+  workflowRunId: string,
+  runtimeRunId: string,
+  client: WorkflowRunClient = prisma,
+) {
+  return client.workflowRun.update({
+    where: { id: workflowRunId },
+    data: {
+      runtimeRunId,
       status: WorkflowRunStatus.RUNNING,
       startedAt: new Date(),
     },

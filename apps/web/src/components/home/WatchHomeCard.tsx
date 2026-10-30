@@ -162,7 +162,7 @@ export function WatchHomeCard({
         ) : null}
         <WatchProgressBar videoId={card.id} />
         {showMetaLabel ? (
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-sm font-semibold text-white backdrop-blur-sm">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 px-2 py-1 text-base sm:text-sm font-semibold text-white backdrop-blur-sm">
             {card.href ? (
               <Play className="h-4 w-4 fill-current" aria-hidden />
             ) : null}

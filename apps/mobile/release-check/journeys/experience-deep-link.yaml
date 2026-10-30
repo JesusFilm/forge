@@ -1,0 +1,164 @@
+# Open an Experience with a forgemobile:// link and scroll through its blocks
+# (R19 starter journey). The Easter Experience page shows its hero, video
+# cards, and carousels; a section's other blocks show on its video page.
+appId: org.jesusfilm.forgewatch
+name: experience-deep-link
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://experience/easter
+    label: Open the Easter Experience
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-experience
+    timeout: 30000
+    label: The Experience page shows
+- assertVisible:
+    id: sdui-video-hero
+    label: The hero shows
+- scrollUntilVisible:
+    element:
+      id: sdui-video-card
+    direction: DOWN
+    timeout: 30000
+    label: Scroll to a video card
+- scrollUntilVisible:
+    element:
+      id: sdui-media-collection
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+    label: Scroll to the media collection
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ media items?"
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 20000
+    label: The media collection lists its items
+- scrollUntilVisible:
+    element:
+      id: sdui-video-carousel
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+    label: Scroll to a video carousel
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ video items?"
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 20000
+    label: The video carousel lists its videos
+# The Easter Explained section holds the text, dates, questions, Bible quotes,
+# and quiz blocks, which show on its video page.
+- scrollUntilVisible:
+    element:
+      text: Play Easter Explained
+    direction: UP
+    centerElement: true
+    timeout: 60000
+    label: Scroll back to the Easter Explained card
+- tapOn:
+    text: Play Easter Explained
+    label: Open the Easter Explained video page
+- extendedWaitUntil:
+    visible:
+      id: screen-video
+    timeout: 30000
+    label: The video page shows
+- scrollUntilVisible:
+    element:
+      id: sdui-text
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+    label: Scroll to a text block
+- scrollUntilVisible:
+    element:
+      id: sdui-easter-dates
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+    label: Scroll to the Easter dates
+- scrollUntilVisible:
+    element:
+      id: sdui-related-questions
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+    label: Scroll to the related questions
+# Partner links open web pages, so the journey asserts them and never taps
+# them (KTD12, not-tested.json).
+- scrollUntilVisible:
+    element:
+      text: Ask yours
+    direction: DOWN
+    timeout: 20000
+    label: Scroll to the questions partner link
+- assertVisible:
+    text: Ask yours
+    label: The questions partner link shows
+- scrollUntilVisible:
+    element:
+      id: sdui-bible-quotes
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+    label: Scroll to the Bible quotes
+# Android adds the carousel's position to its label.
+- assertVisible:
+    text: "[0-9]+ Bible quotes?(, .+)?"
+    label: The Bible quotes carousel lists its quotes
+# iOS reads the quotes carousel as one element, so only Android can see the
+# partner link on its last card.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - repeat:
+          times: 3
+          commands:
+            - swipe:
+                from:
+                  id: sdui-bible-quotes
+                direction: LEFT
+                label: Swipe the quotes to the next card
+          label: Swipe the quotes to the partner card
+      # On a tablet the card is taller than the screen, so the link can sit
+      # below the screen's bottom edge.
+      - scrollUntilVisible:
+          element:
+            text: Join Our Bible Study
+          direction: DOWN
+          timeout: 15000
+          label: The Bible study partner link shows
+    label: Check the Bible study partner link on Android
+# The quiz page is a third-party web page, so the journey never opens it.
+- scrollUntilVisible:
+    element:
+      text: Open faith quiz
+    direction: DOWN
+    timeout: 20000
+    label: Scroll to the quiz button
+- assertVisible:
+    text: Open faith quiz
+    label: The quiz button shows

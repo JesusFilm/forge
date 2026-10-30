@@ -1,0 +1,30 @@
+{
+  "productionExecuted": false,
+  "databaseConfigured": {
+    "NanoCpus": 2000000000,
+    "Memory": 2147483648,
+    "MemorySwap": 2147483648
+  },
+  "databaseRuntime": {
+    "cpu.max": "200000 100000",
+    "memory.max": "2147483648",
+    "memory.swap.max": "0",
+    "memory.peak": "776126464"
+  },
+  "databaseOomKilled": false,
+  "loggedTempFilesSinceFixtureCreation": 7,
+  "loggedLargestTempFileBytes": 17948672,
+  "loggedTempBytesSinceFixtureCreation": 93765452,
+  "loggedTempScope": "Includes source preflight and publisher plus setup; exact publisher totals are pg_stat_database after reset in atomic receipt.",
+  "cleanup": {
+    "productionExecuted": false,
+    "removedExactContainers": [
+      "forge-owner-publish-app-preflight-20260930",
+      "forge-owner-publish-app-atomic-20260930",
+      "forge-owner-publish-capacity-20260930"
+    ],
+    "allContainersAbsent": true,
+    "ownedVolumeCount": 1,
+    "allOwnedVolumesAbsent": true
+  }
+}

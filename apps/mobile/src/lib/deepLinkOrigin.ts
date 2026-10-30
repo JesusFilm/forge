@@ -7,9 +7,32 @@ import { withTimeout } from "./withTimeout"
  */
 export type DeepLinkEntry = "cold" | "warm"
 
-type Arrival = { entry: DeepLinkEntry; at: number }
+/** How the app was addressed. A reminder or announcement tap is an arrival the
+ *  app made for itself, so the dashboards can separate each from a share-link
+ *  open, and only a campaign arrival can be attributed to a campaign. */
+export type DeepLinkOrigin = "url" | "reminder" | "campaign"
 
-const externalArrivals = new Map<string, Arrival>()
+export type DeepLinkArrival = {
+  entry: DeepLinkEntry
+  origin: DeepLinkOrigin
+  /** The opaque campaign identifier, present ONLY on a campaign arrival, so a
+   *  reader cannot mistake an absent nonce for an empty one (KTD8). */
+  campaign?: string
+}
+
+type ArrivalRecord = {
+  entry: DeepLinkEntry
+  origin: DeepLinkOrigin
+  campaign: string | null
+  at: number
+}
+
+const externalArrivals = new Map<string, ArrivalRecord>()
+
+// Launch-level, and deliberately separate from the per-slug map: a caller asks
+// "did this launch start from a link?" once, and must not consume the
+// attribution an arriving route still needs.
+let launchedFromExternalUrl = false
 
 // A genuine arrival is consumed within a microtask of navigation. Anything older
 // was stranded (e.g. the slug was already the active route, so no effect re-ran)
@@ -56,26 +79,68 @@ export function registerDeepLinkUrl(
   if (!url) return
   const slug = watchSlugFromUrl(url)
   if (!slug) return
+  // Only the cold read describes the launch. A warm url arrives while the app
+  // already runs, so it cannot change how the app started.
+  if (entry === "cold") launchedFromExternalUrl = true
+  registerDeepLinkSlug(slug, entry, "url", now)
+}
+
+/**
+ * Records an arrival by a slug the caller has already validated. Re-deriving a
+ * reminder's slug from its url would strip a `.html` suffix as the web share
+ * shape, filing it under a slug the watch route never consumes.
+ */
+export function registerDeepLinkSlug(
+  slug: string,
+  entry: DeepLinkEntry,
+  origin: DeepLinkOrigin,
+  now: number = Date.now(),
+  campaign: string | null = null,
+): void {
+  if (!slug) return
   // Never downgrade cold to warm: an iOS universal link can arrive through both
   // getInitialURL and the url event on the same cold launch.
   const existing = externalArrivals.get(slug)
   if (existing?.entry === "cold" && entry === "warm") return
-  externalArrivals.set(slug, { entry, at: now })
+  externalArrivals.set(slug, { entry, origin, campaign, at: now })
 }
 
 /**
- * Returns the arrival kind once, then forgets it, so a later in-app visit to the
- * same slug is not re-counted. Entries past the TTL are treated as absent.
+ * Returns the arrival once, then forgets it, so a later in-app visit to the
+ * same slug is not re-counted. Entries past the TTL are treated as absent. One
+ * consume for the whole record: a second reader would race this one for it.
  */
-export function consumeDeepLinkEntry(
+export function consumeDeepLinkArrival(
   slug: string | null | undefined,
   now: number = Date.now(),
-): DeepLinkEntry | null {
+): DeepLinkArrival | null {
   if (!slug) return null
   const arrival = externalArrivals.get(slug)
   if (arrival == null) return null
   externalArrivals.delete(slug)
-  return now - arrival.at > ARRIVAL_TTL_MS ? null : arrival.entry
+  if (now - arrival.at > ARRIVAL_TTL_MS) return null
+  const consumed: DeepLinkArrival = {
+    entry: arrival.entry,
+    origin: arrival.origin,
+  }
+  if (arrival.campaign == null) return consumed
+  return { ...consumed, campaign: arrival.campaign }
+}
+
+/**
+ * Reports whether this launch started from a URL that addresses a WATCH route.
+ * The read clears nothing, so repeated reads agree and the per-slug entries stay
+ * for `consumeDeepLinkArrival`. Await the gate below before the first read.
+ *
+ * A watch slug, not "any URL", and that is a decision rather than an oversight:
+ * every development-client launch carries a wrapper URL, so the wider read
+ * would report every launch anyone can observe locally as external. The cost is
+ * that a cold launch on another app route — `experience/`, `series`, `mission` —
+ * reports NON-external, so the splash plays and delays it by the hold. Widening
+ * this means teaching the module those routes, not deleting the narrowing.
+ */
+export function isExternalLaunch(): boolean {
+  return launchedFromExternalUrl
 }
 
 // Consumers must AWAIT this: the initial URL is only readable asynchronously and
@@ -115,6 +180,7 @@ export function initDeepLinkOrigins(deps: DeepLinkOriginDeps): () => void {
 /** Test seam only. */
 export function resetDeepLinkOrigins(): void {
   externalArrivals.clear()
+  launchedFromExternalUrl = false
   ready = new Promise<void>((resolve) => {
     resolveReady = resolve
   })

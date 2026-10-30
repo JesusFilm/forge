@@ -39,9 +39,8 @@
     "posterAlt": "Ifoto ya videwo",
     "noDownloads": "Nta bikururwa bihari kuri iyi videwo.",
     "fileSizeLabel": "Hitamwo ingano y’idosiye",
-    "termsAgreementPrefix": "Nemeye ",
+    "termsAgreement": "Nemeye <link>Amategeko yo kuyikoresha</link>",
     "termsOfUse": "Amategeko yo kuyikoresha",
-    "termsAgreementSuffix": "",
     "close": "Funga",
     "download": "Kuramo",
     "authRequiredTitle": "Ushaka gukura iyi videwo?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Sangira kuri Facebook (ntibishoboka kuri iyi verisiyo)",
     "shareOnX": "Sangira kuri X",
     "shareOnXUnavailable": "Sangira kuri X (ntibishoboka kuri iyi verisiyo)",
+    "opensInNewTab": "{label} (bizugururwa mu rupapuro rushasha)",
     "shareDisabledHint": "Kusangira bisaba urupapuro rwashyizwe ahabona — bizakora iyo iyi videwo imaze kujya ku murongo.",
     "shareFormat": "Uburyo bwo gusangira",
     "shareLinkTab": "Sangira ihuza",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hindura ururimi rw’amajwi",
     "home": "Urugo rwa JesusFilm",
     "closeSearch": "Funga ubushakashatsi",
-    "submitSearch": "Rondera"
+    "submitSearch": "Rondera",
+    "library": "Isomero"
   },
   "SearchOverlay": {
     "dialogLabel": "Rondera kandi ucukure muri videwo",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Kunanirwa kwikorera ibisubizo vyinshi.",
     "searching": "Kurarondera...",
     "connectionHint": "Ndakwinginze genzura ihuza ryawe hanyuma ugerageze kandi.",
+    "rateLimitHint": "Ibisabwa ni vyinshi cane. Ndakwinginze wongere ugerageze mu munota umwe.",
     "retrySearch": "Ongera ugerageze ubushakashatsi",
     "retry": "Gerageza kandi",
     "noResults": "Nta bisubizo vya \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Rondera “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Gucukura hakurikijwe intara",
+    "allVideosOnSinglePage": "Amavidewo yose ku rupapuro rumwe",
     "clearLanguages": "Siba",
     "queryLanguageDetected": "Hamenyekanye {language}",
     "searchInLanguage": "Rondera mu {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Raba ubu",
     "tapToUnmute": "Kanda kugira ngo ufungure ijwi",
-    "nextEpisode": "Igice gikurikira"
+    "nextEpisode": "Igice gikurikira",
+    "audioTranslationCount": "{count, plural, one {# ururimi} other {# indimi}}",
+    "subtitleCount": "Ivyandikishijwe: {count, plural, one {# ururimi} other {# indimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kurikora ibirimwo",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Ifishi y’ibitekerezo ntiyashoboye kwikorera.",
     "loadingForm": "Kurikora ifishi y’ibitekerezo…",
     "retry": "Gerageza kandi",
-    "openFormShort": "Fungura ifishi",
     "cancel": "Kuraho",
-    "title": "Ibitekerezo vya Beta",
-    "description": "Sangira ikiri gukora neza n’ivyo twokosora. Iyi fishi itangwa na Google.",
-    "openInNewTab": "Fungura ifishi mu tundi tugihe",
     "closeForm": "Funga ifishi y’ibitekerezo",
-    "loadingGoogleForm": "Kurikora ifishi ya Google…",
-    "iframeTitle": "Tanga ibitekerezo vya Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Amavidewo ya gikirisu y’ubuntu mu {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Imikino",
     "collections": "Ibigwi",
     "subtitlesOnly": "Ivyandikishijwe gusa",
+    "backToTop": "Subira hejuru",
     "newlyAdded": "Vyongerewe vuba",
     "newVideosTitle": "Amavidewo mashasha ya gikirisu mu {language}",
     "newestFirst": "Ivy’ubu mbere",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Videwo zigenga",
     "videosFromCollection": "Amavidewo ava kuri {collection}.",
     "standaloneDescription": "Videwo zigenga muri uru rurimi.",
-    "openCollection": "Fungura ihuriro"
+    "openCollection": "Fungura ihuriro",
+    "filters": "Ivyungurura",
+    "filterLength": "Uburebure",
+    "filterLength_under5": "Munsi y'iminuta 5",
+    "filterLength_5to10": "Iminuta 5-10",
+    "filterLength_10to30": "Iminuta 10-30",
+    "filterLength_over30": "Hejuru y'iminuta 30",
+    "filterType": "Ubwoko",
+    "clearFilters": "Kura ivyungurura",
+    "filterResults": "{count} kuri {total} vyerekanywe",
+    "noFilterResults": "Nta videwo ihuye n'ivyungurura bino. Gerageza gukura kimwe.",
+    "filterAdded": "Vyongewemwo",
+    "filterAdded_60d": "Iminsi 60 iheze",
+    "filterAdded_6m": "Amezi 6 aheze",
+    "filterAdded_12m": "Amezi 12 aheze"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Raba",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Ibanza rya videwo",
     "nextVideoPreview": "Iganisha rya videwo",
     "mediaCollection": "Ihuriro rya media",
-    "scrollToVideo": "Yiyunguruze kuri videwo ya {title}"
+    "scrollToVideo": "Yiyunguruze kuri videwo ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Urugo rwa Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Noheli nziza!",
     "daysUntilChristmas": "{count, plural, one {Hasigaye umusi # ngo Noheli ishike} other {Hasigaye imisi # ngo Noheli ishike}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Rondera mu isomero",
+    "title": "Rondera ukurikije imice",
+    "description": "Ja ako kanya mu gice c’isomero ukeneye — ubuzima bwa Yesu, ibihe vy’umwaka w’ekleziya, n’amavidewo yagenewe imiryango, abanyeshure n’imigwi mito.",
+    "seeAll": "Raba amavidewo yose",
+    "previous": "Imice ibanza",
+    "next": "Imice ikurikira",
+    "categories": {
+      "jesus": "Filime JESUS",
+      "gospels": "Ivanjili",
+      "shortVideos": "Amavidewo magufi",
+      "family": "Umuryango",
+      "relationships": "Imigenderanire",
+      "women": "Ku bagore",
+      "students": "Ku banyeshure",
+      "sports": "Imikino",
+      "goodNews": "Inkuru Nziza",
+      "hope": "Icizere",
+      "training": "Amahugurwa",
+      "easter": "Pasika",
+      "christmas": "Noheri"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Indimi",
     "metadataDescription": "Rondera amavidewo ya JesusFilm hakurikijwe ururimi.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Urupapuro ntiruboneka:",
     "title": "Iyi nsiguro ntihari.",
     "description": "Urupapuro rushobora kuba rwarimukiye, ariko inkuru irabandanya.",
+    "languageDescription": "Ntitwashoboye kuronka urupapuro urondera, ariko inkuru irabandanya mu mafilime no mu mavidewo yo mu ndimi zo kw’isi yose.",
     "actionsLabel": "Ibikorwa vy’urupapuro ntibuboneka",
     "backToWatch": "Subira kuri Watch",
     "browseVideos": "Rondera videwo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Raba filime ngufi",
-    "actions": {
-      "joinUs": "Injira natwe",
-      "shareMission": "Sangiza ubutumwa bwacu"
-    },
-    "welcomeStart": {
-      "label": "Ukwizera n’Ivyanditswe",
-      "title": "Amahitamwo ya videwo y’uyu musi",
-      "description": "Ibikoresho vya videwo bishingiye ku kwizera vyo mu isomero ryacu kugira bitere inkomezi, bitume utekereza, kandi bikubure ivyiyumviro."
-    },
-    "welcomeMorning": {
-      "label": "Ikoresha ry’umutaga",
-      "title": "Mwiriwe neza! Ibintu vya Bibiliya vy’uyu musi biragutegereje.",
-      "description": "Tangura umusi wawe n’ibintu vyiza vya Bibiliya vyagenewe gutera inkomezi no gukomeza umutima wawe."
-    },
-    "welcomeAfternoon": {
-      "label": "Ikoresha ry’inyuma ya sasita",
-      "title": "Mwiriwe! Ibintu vya Bibiliya vy’umusi wawe.",
-      "description": "Ibikoresho vya Bibiliya biteye inkomezi bikwiranye neza n’akaruhuko ka sasita canke gukomeza guhabwa impwemu."
-    },
-    "welcomeEvening": {
-      "label": "Ikoresha rya mwijoro",
-      "title": "Mwiriwe neza! Ruhuka hamwe n’ibintu vya Bibiliya.",
-      "description": "Ibintu vy’amahoro vya Bibiliya kugira bigufashe gutekereza no kuronka ihumure umusi wawe uheze."
-    },
-    "joinUs": {
-      "label": "Injira natwe",
-      "title": "Abantu imiliyaridi bariko bararondera",
-      "description": "Igihe co gusoromera kirahari. Injira natwe mu kwamamaza ubutumwa bwiza ku isi dukoresheje ibikoresho vya digitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tugende hamwe",
-      "title": "Kuvuga inkuru ya Yesu, hamwe",
-      "description": "Kugira ngo bumve kandi babone urukundo rwa Yesu mu rurimi rwabo aho bari."
-    }
-  },
   "VideoRecommendations": {
     "match": "Bihuye {percent}%",
-    "none": "Nta zindi videwo zisabwa kuri iyi videwo zabonetse muri uru rurimi."
+    "none": "Nta zindi videwo zisabwa kuri iyi videwo zabonetse muri uru rurimi.",
+    "heading": "Amavidewo asabwa",
+    "loadingLabel": "Kurikora amavidewo asabwa",
+    "openingTitle": "Kwugurura {title}",
+    "openingVideo": "Kwugurura videwo",
+    "activityNotRecorded": "Ibikorwa vy’impanuro ntivyashoboye kwandikwa. Amahuza aracakora.",
+    "showingContextual": "Herekanwa impanuro zijanye n’ivyo uriko urabona.",
+    "showingSaved": "Herekanwa impanuro zabitswe.",
+    "explanationCurated": "Amavidewo yatoranijwe ngo uyarabe.",
+    "explanationViewingMode": "Impanuro zishingiye kuri iyi videwo n’ingene uraba amavidewo.",
+    "explanationCowatch": "Impanuro zishingiye kuri iyi videwo n’ivyo ukunda.",
+    "explanationHybrid": "Impanuro zishingiye kuri iyi videwo n’ivyo ukunda wahisemwo ko bibukwa.",
+    "explanationContextual": "Impanuro zishingiye ku vyo uriko urabona ubu.",
+    "explanationSemanticFallback": "Impanuro zishingiye ku vyo uriko urabona ubu, kuko guhindura bikujane bitaboneka ubu.",
+    "explanationProfileDurable": "Vyahinduwe bikujane hashingiwe ku vyo ukunda wahisemwo ko bibukwa.",
+    "explanationProfileVisit": "Vyahinduwe bikujane kuri uru rugendo gusa.",
+    "personalizationLabel": "Guhindura impanuro bikujane",
+    "personalizationPrompt": "Urashaka guhindura ingene impanuro zihindurwa bikujane?",
+    "openCookieSettings": "Ugurura igenamiterere rya cookie"
   },
   "BetaTesterModal": {
     "title": "Ba umugeragezi wa beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Ongera ugerageze ivyananiwe"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Uburyo bw'ururimi ntibuhari",
+    "eyebrow": "Uburyo bw'ururimi ntibuhari",
+    "title": "<contentTitle>{title}</contentTitle> ntiboneka mu <languageName>{language}</languageName>",
+    "actionsLabel": "Uburyo bwo kuraba buhari",
+    "browseInLanguage": "Raba amavidewo yo mu {language}",
+    "backToSearch": "Subira ku bushakashatsi",
+    "audioVersionsTitle": "Izindi ndimi z'amajwi",
+    "audioVersionsDescription": "Hitamwo ururimi rw'amajwi kugira ngo ukomeze kuraba iyi videwo.",
+    "languageVersionLabel": "Ururimi rw'amajwi",
+    "selectLanguageVersion": "Hitamwo uburyo bw'ururimi",
+    "watchSelectedVersion": "Raba uburyo wahisemwo"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Amahitamwo ya cookie",
+    "bannerTitle": "Amahitamwo yawe y'ubuzima bwite",
+    "bannerDescription": "Ama cookie y'ingenzi atuma Watch itekana kandi ikora neza. Ubitanzeko uruhusha, cookie y'inyongera yo kuri uru rubuga ishobora kwibuka ivyo ukunda mu ngendo zitandukanye kugira ngo impanuro zigushikirizwa zijane n'ivyo ukunda. Impanuro zijanye n'ivyo uriko urabona ziraboneka uko biri kwose.",
+    "acceptAll": "Emeza vyose",
+    "essentialOnly": "Ivy'ingenzi gusa",
+    "manageChoices": "Tegekanya amahitamwo",
+    "savingChoice": "Kubika ihitamwo rya cookie",
+    "settings": "Igenamiterere rya cookie",
+    "settingsDescription": "Hitamwo nimba Watch ishobora kwibuka ivyo ukunda ku mpanuro mu ngendo zitandukanye. Ushobora kubihindura igihe cose.",
+    "essentialCookies": "Ama cookie y'ingenzi",
+    "essentialDescription": "Umutekano, gukina amashusho, amahitamwo y'ubuzima bwite, no kumenya inkomoko y'ugusaba impanuro.",
+    "alwaysActive": "Bikora nantaryo",
+    "personalization": "Guhindura bikujane",
+    "personalizationDescription": "Kwibuka ivyo ukunda mu rugero rwagenwe mu ngendo zitandukanye. Kubizimya bituma impanuro zijanye n'ivyo uriko urabona ziguma ziboneka.",
+    "erasurePending": "Gusiba umwirondoro wawe kuracarindiriye. Impanuro zijanye n'ivyo uriko urabona zisanzwe zikora.",
+    "cancel": "Kureka",
+    "saveChoices": "Bika amahitamwo",
+    "saving": "Biriko birabikwa…",
+    "loadError": "Ihitamwo ryawe ntiryashoboye kwinjizwa. Uracashobora guhitamwo munsi.",
+    "grantError": "Ntivyashobotse gukoresha uguhindura kukujana. Ivy'ingenzi gusa biracaboneka.",
+    "saveError": "Ihitamwo ryawe ntiryashoboye kubikwa. Gerageza kandi."
   }
 }

@@ -4,7 +4,11 @@ import { importPKCS8, SignJWT } from "jose"
 
 import { getSeoConfig, type SeoConfig } from "../config/seo"
 
-export type SeoWorkloadCapability = "ingest" | "evaluate" | "tickets"
+export type SeoWorkloadCapability =
+  | "ingest"
+  | "evaluate"
+  | "tickets"
+  | "watch_alerts"
 
 export function seoRequestDigest(rawBody: string): string {
   return createHash("sha256").update(rawBody).digest("hex")

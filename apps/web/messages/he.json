@@ -39,9 +39,8 @@
     "posterAlt": "פוסטר של הווידאו",
     "noDownloads": "אין הורדות זמינות עבור סרטון זה.",
     "fileSizeLabel": "בחרו גודל קובץ",
-    "termsAgreementPrefix": "אני מסכים/ה ל־",
+    "termsAgreement": "אני מסכים/ה ל־<link>תנאי השימוש</link>",
     "termsOfUse": "תנאי השימוש",
-    "termsAgreementSuffix": "",
     "close": "סגור",
     "download": "הורדה",
     "authRequiredTitle": "רוצים להוריד את הסרטון הזה?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "שתף ב‑Facebook (לא זמין בבנייה זו)",
     "shareOnX": "שתף ב‑X",
     "shareOnXUnavailable": "שתף ב‑X (לא זמין בבנייה זו)",
+    "opensInNewTab": "{label} (נפתח בכרטיסייה חדשה)",
     "shareDisabledHint": "שיתוף דורש דף פרוס — יעבוד ברגע שהסרטון הזה יהיה בייצור.",
     "shareFormat": "פורמט שיתוף",
     "shareLinkTab": "קישור לשיתוף",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "שנו שפת שמע",
     "home": "דף הבית של JesusFilm",
     "closeSearch": "סגירת החיפוש",
-    "submitSearch": "חיפוש"
+    "submitSearch": "חיפוש",
+    "library": "ספרייה"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "טעינת תוצאות נוספות נכשלה.",
     "searching": "מחפש...",
     "connectionHint": "בדקו את החיבור ונסו שוב.",
+    "rateLimitHint": "יותר מדי בקשות. אפשר לנסות שוב בעוד דקה.",
     "retrySearch": "נסו את החיפוש שוב",
     "retry": "נסו שוב",
     "noResults": "לא נמצאו תוצאות עבור \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "חפשו ב־{language} את ״{suggestion}״",
     "inLanguage": "ב־{language}",
     "browseByRegion": "עיון לפי אזור",
+    "allVideosOnSinglePage": "כל הסרטונים בעמוד אחד",
     "clearLanguages": "ניקוי",
     "queryLanguageDetected": "זוהתה שפה: {language}",
     "searchInLanguage": "חיפוש ב־{language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",
     "tapToUnmute": "הקישו כדי לבטל השתקה",
-    "nextEpisode": "הפרק הבא"
+    "nextEpisode": "הפרק הבא",
+    "audioTranslationCount": "{count, plural, one {# שפה} other {# שפות}}",
+    "subtitleCount": "כתוביות: {count, plural, one {# שפה} other {# שפות}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "טוען תוכן",
@@ -268,14 +273,183 @@
     "couldNotLoad": "לא ניתן לטעון את טופס המשוב.",
     "loadingForm": "טופס המשוב נטען…",
     "retry": "נסה שוב",
-    "openFormShort": "פתח טופס",
     "cancel": "ביטול",
-    "title": "משוב בטא",
-    "description": "שתפו מה עובד ומה אפשר לשפר. הטופס מסופק על ידי Google.",
-    "openInNewTab": "פתח את הטופס בלשונית חדשה",
     "closeForm": "סגור את טופס המשוב",
-    "loadingGoogleForm": "Google Form נטען…",
-    "iframeTitle": "שליחת משוב בטא"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "סרטונים נוצריים בחינם ב־{language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "ספורט",
     "collections": "אוספים",
     "subtitlesOnly": "כתוביות בלבד",
+    "backToTop": "חזרה למעלה",
     "newlyAdded": "נוסף לאחרונה",
     "newVideosTitle": "סרטונים נוצריים חדשים ב־{language}",
     "newestFirst": "החדשים תחילה",
@@ -324,7 +499,21 @@
     "standaloneVideos": "סרטונים עצמאיים",
     "videosFromCollection": "סרטונים מתוך {collection}.",
     "standaloneDescription": "סרטונים עצמאיים בשפה זו.",
-    "openCollection": "פתחו אוסף"
+    "openCollection": "פתחו אוסף",
+    "filters": "מסננים",
+    "filterLength": "אורך",
+    "filterLength_under5": "פחות מ-5 דקות",
+    "filterLength_5to10": "5-10 דקות",
+    "filterLength_10to30": "10-30 דקות",
+    "filterLength_over30": "יותר מ-30 דקות",
+    "filterType": "סוג",
+    "clearFilters": "נקה מסננים",
+    "filterResults": "מוצגים {count} מתוך {total}",
+    "noFilterResults": "אין סרטונים שתואמים למסננים אלה. נסה להסיר אחד.",
+    "filterAdded": "נוסף",
+    "filterAdded_60d": "60 הימים האחרונים",
+    "filterAdded_6m": "6 החודשים האחרונים",
+    "filterAdded_12m": "12 החודשים האחרונים"
   },
   "WatchHome": {
     "pageTitle": "צפייה של Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "תצוגה מקדימה של הסרטון הקודם",
     "nextVideoPreview": "תצוגה מקדימה של הסרטון הבא",
     "mediaCollection": "אוסף מדיה",
-    "scrollToVideo": "גללו לסרטון {title}"
+    "scrollToVideo": "גללו לסרטון {title}",
+    "forYou": "בשבילך"
   },
   "WatchFooter": {
     "home": "דף הבית של Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "חג מולד שמח!",
     "daysUntilChristmas": "{count, plural, one {עוד יום אחד עד חג המולד} other {עוד # ימים עד חג המולד}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "עיון בספרייה",
+    "title": "עיון לפי קטגוריה",
+    "description": "דלגו ישר לחלק בספרייה שאתם צריכים — חיי ישו, עונות שנת הכנסייה וסרטונים שנוצרו למשפחות, לסטודנטים ולקבוצות קטנות.",
+    "seeAll": "הצגת כל הסרטונים",
+    "previous": "הקטגוריות הקודמות",
+    "next": "הקטגוריות הבאות",
+    "categories": {
+      "jesus": "הסרט ״ישוע״",
+      "gospels": "הבשורות",
+      "shortVideos": "סרטונים קצרים",
+      "family": "משפחה",
+      "relationships": "מערכות יחסים",
+      "women": "לנשים",
+      "students": "לסטודנטים",
+      "sports": "ספורט",
+      "goodNews": "הבשורה הטובה",
+      "hope": "תקווה",
+      "training": "הכשרה",
+      "easter": "פסחא",
+      "christmas": "חג המולד"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "שפות",
     "metadataDescription": "עיינו בסרטוני JesusFilm לפי שפה.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "הדף לא נמצא:",
     "title": "הסצנה הזו לא כאן.",
     "description": "ייתכן שהדף הועבר, אבל הסיפור נמשך.",
+    "languageDescription": "לא הצלחנו למצוא את הדף שחיפשתם, אבל הסיפור נמשך בסרטים ובסרטונים בשפות מכל העולם.",
     "actionsLabel": "פעולות לדף שלא נמצא",
     "backToWatch": "חזרה לצפייה",
     "browseVideos": "עיון בסרטונים"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "צפו בסרט קצר",
-    "actions": {
-      "joinUs": "הצטרפו אלינו",
-      "shareMission": "שותפו בשליחות שלנו"
-    },
-    "welcomeStart": {
-      "label": "אמונה וכתובים",
-      "title": "בחירות הווידאו של היום",
-      "description": "תוכן וידאו מהספרייה שלנו, ממוקד אמונה, כדי לעורר השראה, לאתגר ולעודד מחשבה."
-    },
-    "welcomeMorning": {
-      "label": "השראה לבוקר",
-      "title": "בוקר טוב! רגעי התנ״ך של היום מחכים לכם.",
-      "description": "פתחו את היום ברגעי תנ״ך מעודדים שנועדו להעניק השראה ולהרים את רוחכם."
-    },
-    "welcomeAfternoon": {
-      "label": "השראה לצהריים",
-      "title": "צהריים טובים! רגעי תנ״ך ליום שלכם.",
-      "description": "תוכן תנ״כי מעודד, מושלם להפסקת הצהריים שלכם או להמשך השראה."
-    },
-    "welcomeEvening": {
-      "label": "השראה לערב",
-      "title": "ערב טוב! הירגעו עם רגעי תנ״ך.",
-      "description": "רגעי תנ״ך שלווים שיעזרו לכם להרהר ולמצוא נחמה עם סיום היום."
-    },
-    "joinUs": {
-      "label": "הצטרפו אלינו",
-      "title": "מיליארדים מחפשים",
-      "description": "הקציר כבר כאן. הצטרפו אלינו כשאנחנו משתפים את הבשורה עם העולם באמצעות מדיה דיגיטלית."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "בואו נצעד יחד",
-      "title": "מספרים את סיפורו של ישו, יחד",
-      "description": "כדי שיוכלו לשמוע ולראות את אהבתו של ישו בשפתם, ממש במקום שבו הם נמצאים."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% התאמה",
-    "none": "לא נמצאו המלצות לסרטון הזה בשפה זו."
+    "none": "לא נמצאו המלצות לסרטון הזה בשפה זו.",
+    "heading": "סרטונים מומלצים",
+    "loadingLabel": "טוען סרטונים מומלצים",
+    "openingTitle": "פותח את {title}",
+    "openingVideo": "פותח סרטון",
+    "activityNotRecorded": "לא ניתן היה לתעד את הפעילות בהמלצות. הקישורים עדיין פועלים.",
+    "showingContextual": "מוצגות המלצות לפי הקשר.",
+    "showingSaved": "מוצגות המלצות שמורות.",
+    "explanationCurated": "סרטונים נבחרים לגילוי.",
+    "explanationViewingMode": "מומלצים על סמך הסרטון הזה ואופן הצפייה שלך.",
+    "explanationCowatch": "מומלצים על סמך הסרטון הזה ותחומי העניין שלך.",
+    "explanationHybrid": "מומלצים על סמך הסרטון הזה ותחומי עניין שבחרת שייזכרו.",
+    "explanationContextual": "מומלצים על סמך התוכן שבצפייה כעת.",
+    "explanationSemanticFallback": "מומלצים על סמך התוכן שבצפייה כעת, כל עוד התאמה אישית אינה זמינה.",
+    "explanationProfileDurable": "מותאמים אישית לפי תחומי עניין שבחרת שייזכרו.",
+    "explanationProfileVisit": "מותאמים אישית לביקור הזה.",
+    "personalizationLabel": "התאמה אישית של המלצות",
+    "personalizationPrompt": "רוצה לשנות את אופן ההתאמה האישית של ההמלצות?",
+    "openCookieSettings": "פתיחת הגדרות קובצי Cookie"
   },
   "BetaTesterModal": {
     "title": "הפכו לבודקי בטא",
@@ -538,16 +732,39 @@
     "retryFailed": "נסו שוב את ההורדות שנכשלו"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "גרסת השפה אינה זמינה",
+    "eyebrow": "גרסת השפה אינה זמינה",
+    "title": "<contentTitle>{title}</contentTitle> אינו זמין ב<languageName>{language}</languageName>",
+    "actionsLabel": "אפשרויות צפייה זמינות",
+    "browseInLanguage": "עיון בסרטונים ב{language}",
+    "backToSearch": "חזרה לחיפוש",
+    "audioVersionsTitle": "גרסאות שמע אחרות",
+    "audioVersionsDescription": "יש לבחור שפת שמע כדי להמשיך לצפות בסרטון הזה.",
+    "languageVersionLabel": "שפת שמע",
+    "selectLanguageVersion": "בחירת גרסת שפה",
+    "watchSelectedVersion": "צפייה בגרסה שנבחרה"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "העדפות קובצי Cookie",
+    "bannerTitle": "העדפות הפרטיות שלך",
+    "bannerDescription": "קובצי Cookie חיוניים שומרים על Watch מאובטח ופועל כראוי. באישורך, קובץ Cookie אופציונלי של האתר יכול לזכור תחומי עניין בין ביקורים כדי להתאים אישית המלצות. המלצות לפי הקשר יישארו זמינות בכל מקרה.",
+    "acceptAll": "אישור הכול",
+    "essentialOnly": "חיוניים בלבד",
+    "manageChoices": "ניהול העדפות",
+    "savingChoice": "שומר את בחירת קובצי ה-Cookie",
+    "settings": "הגדרות קובצי Cookie",
+    "settingsDescription": "בחר אם Watch יוכל לזכור תחומי עניין להמלצות בין ביקורים. אפשר לשנות זאת בכל עת.",
+    "essentialCookies": "קובצי Cookie חיוניים",
+    "essentialDescription": "אבטחה, ניגון, העדפות פרטיות וייחוס בקשות להמלצות.",
+    "alwaysActive": "פעיל תמיד",
+    "personalization": "התאמה אישית",
+    "personalizationDescription": "זכירת תחומי עניין מוגבלים בין ביקורים. כיבוי אפשרות זו ישאיר המלצות לפי הקשר זמינות.",
+    "erasurePending": "מחיקת הפרופיל ממתינה. המלצות לפי הקשר כבר פעילות.",
+    "cancel": "ביטול",
+    "saveChoices": "שמירת העדפות",
+    "saving": "שומר…",
+    "loadError": "לא ניתן היה לטעון את הבחירה שלך. עדיין אפשר לבחור למטה.",
+    "grantError": "לא ניתן היה להפעיל התאמה אישית. האפשרות של חיוניים בלבד עדיין זמינה.",
+    "saveError": "לא ניתן היה לשמור את הבחירה שלך. נא לנסות שוב."
   }
 }

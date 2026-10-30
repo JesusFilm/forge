@@ -1,7 +1,7 @@
 ---
 title: "Browser-facing SSE proxy to a bearer-gated internal SSE service — parse-and-re-emit, classify HTTP status before the stream, one client parse path"
 date: 2026-06-26
-last_updated: 2026-07-27
+last_updated: 2026-09-03
 category: architecture-patterns
 problem_type: architecture_pattern
 component: service_object
@@ -21,13 +21,16 @@ tags:
   - ssrf
   - bearer
   - error-mapping
+  - railway
+  - private-networking
 ---
 
 ## Context
 
 A browser surface (apps/chat) needs to stream answers from an internal,
 bearer-gated SSE service (Mastra's `POST /forge-seeker`). The bearer must never
-reach the browser, so a server-side route handler (`app/api/seeker/route.ts`)
+reach the browser, so a server-side route handler
+(`apps/chat/src/app/api/seeker/route.ts`)
 proxies the call. This is the **browser-restreaming** variant of admin's
 `mastra-experience-chat-client.ts` relay — admin re-emits tokens onto its own
 editor channel and returns the final text server-side, whereas here the proxy
@@ -131,7 +134,8 @@ cleartext concern doesn't apply:
   `apps/web/src/env.ts` already reads). Match on `url.hostname` (never a substring of the
   URL string) with an END-ANCHORED dotted suffix: the leading dot makes it a
   label-boundary match, so `railway.internal.evil.com`, `evilrailway.internal`,
-  and bare `railway.internal` are all rejected. A bare `endsWith` is NOT yet a
+  bare `railway.internal`, and a trailing-dot host such as
+  `mastra.railway.internal.` are all rejected. A bare `endsWith` is NOT yet a
   full-label match, though — empty-label hosts (`.railway.internal`,
   `a..railway.internal`) parse fine in the WHATWG URL parser and satisfy the
   suffix, so pair it with the empty-label rejections shown below.
@@ -206,6 +210,42 @@ REQUIRED if the environment ever hosts services outside this trust boundary.
 > is a deploy gate on top of it, and a FAILED DIAGNOSTIC deliberately fails open
 > rather than failing the deploy. That the probe GATES (rather than merely runs)
 > is proven by a production experiment after feat-306 lands, not before it.
+
+> **Sibling application: Mastra to Forge RAG (2026-09-03, feat-434 —
+> [#2153](https://github.com/JesusFilm/forge/pull/2153), open at this
+> update).** Mastra applies the same private-HTTP transport exception to
+> `JESUSFILM_RAG_BASE_URL`, but its production host pin is always mandatory:
+> HTTPS and Railway-private HTTP both pass through the same exact
+> `JESUSFILM_RAG_ALLOWED_HOSTS` membership check
+> (`apps/mastra/src/config/env.ts:1427-1451`). The optional-integration
+> boundary is separate: an unset RAG URL still returns before validation, so
+> unrelated agents do not acquire a new required variable; once configured in
+> production, an invalid URL or missing host pin fails shared Mastra startup
+> (`apps/mastra/src/config/env.ts:1614-1621`,
+> `apps/mastra/src/mastra/index.ts:185`).
+>
+> Pin every conjunct independently. The Mastra matrix accepts the exact private
+> host; rejects a valid private host when its allowlist is missing or names a
+> sibling; rejects bare, prefix-lookalike, suffix-lookalike, leading-empty,
+> inner-empty, and trailing-dot hostnames; and retains the public-HTTP,
+> allowlisted-HTTPS, and non-production cases
+> (`apps/mastra/src/config/env.test.ts:1065-1192`). The missing- and
+> mismatched-allowlist cases should fail under a mutation that lets private HTTP
+> bypass the exact pin; a happy-path test alone proves only that the exception
+> opens. Because this guard runs before the shared Mastra runtime initializes,
+> pair the focused environment suite with the full Mastra test, lint,
+> typecheck, and build gates. Validation for PR #2153 recorded 179 focused
+> environment tests and 3,015 full-suite tests passing, but those results are
+> execution evidence rather than a permanent claim about the tree.
+>
+> Repository checks and live checks answer different questions (session
+> history). Unit and service suites prove the configuration matrix and broad
+> agent regression posture; only the deployed service can prove private DNS,
+> process boot with the exact variables, authenticated retrieval, source
+> presentation, and rollback. Deploy the guard before changing the URL and
+> allowlist atomically, retain the public values, smoke Seeker, observe, and
+> restore both values together on failure. The open cutover contract remains
+> `docs/roadmap/rag/feat-434-rag-seeker-cutover.md`.
 
 **6. First terminal frame wins (both sides).** The proxy emits exactly one
 terminal frame then closes; the client treats the first `result`/`error` as

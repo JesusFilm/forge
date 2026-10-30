@@ -39,9 +39,8 @@
     "posterAlt": "Video-mi saqqummiussaq",
     "noDownloads": "Video taanna nakkuttassaanngilaq.",
     "fileSizeLabel": "Suliassaq toqoruk",
-    "termsAgreementPrefix": "Akuerivara ",
-    "termsOfUse": "Atuinerup piumasaqaatit",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "<link>ᐊᑐᕐᓂᕐᒧᑦ ᒪᓕᒐᐃᑦ</link> ᐊᖏᖅᑕᒃᑲ",
+    "termsOfUse": "ᐊᑐᕐᓂᕐᒧᑦ ᒪᓕᒐᐃᑦ",
     "close": "Matuuk",
     "download": "Nakkuk",
     "authRequiredTitle": "Video taanna nakkukkusuppiuk?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebookikkut aviguk (aarlerinngilaq imaaliallaannaq atorneqanngitsoq)",
     "shareOnX": "X-ikkut aviguk",
     "shareOnXUnavailable": "X-ikkut aviguk (aarlerinngilaq imaaliallaannaq atorneqanngitsoq)",
+    "opensInNewTab": "{label} (ᓄᑖᒥ ᐃᓂᒥ ᒪᑐᐃᖅᑕᐅᓂᐊᖅᑐᖅ)",
     "shareDisabledHint": "Avitsineq atorfissaqartitsivoq nittartagaq saqqummiunneqarsimasoq — video taanna ingerlatsinermut ingerlaannaraangat atorneqassaaq.",
     "shareFormat": "Avitsineq qanoq ittoq",
     "shareLinkTab": "Link aviguk",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Oqalussinermut oqaatsit allanngortigit",
     "home": "JesusFilm aallartiffia",
     "closeSearch": "Ujarlerfik matuuk",
-    "submitSearch": "Ujarlerit"
+    "submitSearch": "Ujarlerit",
+    "library": "ᐅᖃᓕᒫᒐᖃᕐᕕᒃ"
   },
   "SearchOverlay": {
     "dialogLabel": "Videonik ujarlerit takusaqarlutillu",
@@ -193,6 +194,7 @@
     "connectionHint": "Attaveqarneq misissoruk nangeqqillugulu.",
     "retrySearch": "Ujartueqqissaarit",
     "retry": "Nangeqqi",
+    "rateLimitHint": "ᑐᒃᓯᕋᐅᑎᑦ ᐊᒥᓲᓗᐊᖅᑐᑦ. ᐊᑕᐅᓯᖅ ᒥᓂᑦ ᐅᑕᖅᑭᓗᑎᑦ ᐆᒃᑐᕋᓐᓂᒃᑲᓐᓂᕆᑦ.",
     "noResults": "\"{query}\" pillugu takussutissaqanngilaq",
     "tryDifferentKeywords": "Oqaatsit allaanerusut atukkit imaluunniit immikkoortut takukkit",
     "loading": "Aalartisartoq...",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language}-imi ujarlerit: “{suggestion}”",
     "inLanguage": "{language}-imi",
     "browseByRegion": "Sumiiffik naapertorlugu takusassiarit",
+    "allVideosOnSinglePage": "Videot tamarmik quppernermi ataatsimi",
     "clearLanguages": "Piiaruk",
     "queryLanguageDetected": "{language} paasineqarpoq",
     "searchInLanguage": "{language}-imi ujarlerit",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Maanna takuguk",
     "tapToUnmute": "Nipaa aammaarlugu tuuguk",
-    "nextEpisode": "Immikkoortoq tullinnguuttoq"
+    "nextEpisode": "Immikkoortoq tullinnguuttoq",
+    "audioTranslationCount": "{count, plural, one {# oqaatsi} other {# oqaatsit}}",
+    "subtitleCount": "Subtitlet: {count, plural, one {# oqaatsi} other {# oqaatsit}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Imarisat ammarneqartut",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Iluarsiissutissanik immersugassaq ammaqqinneqarsinnaanngilaq.",
     "loadingForm": "Iluarsiissutissanik immersugassaq ammarneqartoq…",
     "retry": "Nangeqqi",
-    "openFormShort": "Immersugassaq ameeruk",
     "cancel": "Unitsiuk",
-    "title": "Beta-mi iluarsiissutit",
-    "description": "Suununa ajoqutaatillugit qanorlu pitsaanerulersinneqarsinnaanersoq oqaluttuarit. Immersugassaq taanna Google-imit tunniunneqarpoq.",
-    "openInNewTab": "Immersugassaq nutaami ameeruk",
     "closeForm": "Iluarsiissutissanik immersugassaq matuuk",
-    "loadingGoogleForm": "Google Form ammarneqartoq…",
-    "iframeTitle": "Beta-mi iluarsiissutit nassiukkit"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-imi videoit Kristumiut akeqanngitsut | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersat",
     "subtitlesOnly": "Subtitlet kisiisa",
+    "backToTop": "ᖁᓛᓄᑦ ᐅᑎᖅ",
     "newlyAdded": "Nutaanut ilanngunneqartoq",
     "newVideosTitle": "{language}-imi videoit Kristumiut nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Videoit nammineq ingerlasut",
     "videosFromCollection": "Videoit {collection}-imeersut.",
     "standaloneDescription": "Videoit oqaatsit taakku ingerlaneranni nammineq ingerlasut.",
-    "openCollection": "Katersaq ameeruk"
+    "openCollection": "Katersaq ameeruk",
+    "filters": "ᐊᕕᒃᑐᖅᓯᒪᔪᑦ",
+    "filterLength": "ᑕᑭᓂᖓ",
+    "filterLength_under5": "5 ᒥᓂᑦᓂᑦ ᐃᑭᓐᓂᖅᓴᖅ",
+    "filterLength_5to10": "5-10 ᒥᓂᑦ",
+    "filterLength_10to30": "10-30 ᒥᓂᑦ",
+    "filterLength_over30": "30 ᒥᓂᑦᓂᑦ ᐊᒥᓱᓂᖅᓴᖅ",
+    "filterType": "ᐊᔾᔨᒋᖏᑦᑐᖅ",
+    "clearFilters": "ᐊᕕᒃᑐᖅᓯᒪᔪᑦ ᓴᓗᒻᒪᖅᓴᖅ",
+    "filterResults": "{total}−ᓂᑦ {count} ᑕᑯᒃᓴᐅᑎᑕᐅᔪᑦ",
+    "noFilterResults": "ᑕᒪᒃᑯᓄᖓ ᐊᕕᒃᑐᖅᓯᒪᔪᓄᑦ ᐊᔾᔨᒋᔭᖃᖏᑦᑐᖅ. ᐊᑕᐅᓯᖅ ᐲᔭᕐᓗᒍ.",
+    "filterAdded": "ᐃᓚᒋᐊᖅᓯᒪᔪᖅ",
+    "filterAdded_60d": "ᑭᖑᓪᓕᖅᐹᑦ 60 ᐅᓪᓗᑦ",
+    "filterAdded_6m": "ᑭᖑᓪᓕᖅᐹᑦ 6 ᑕᖅᑭᑦ",
+    "filterAdded_12m": "ᑭᖑᓪᓕᖅᐹᑦ 12 ᑕᖅᑭᑦ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Takujuk",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Video siulleq takussutissaq",
     "nextVideoPreview": "Video tullinnguuttoq takussutissaq",
     "mediaCollection": "Media katersaq",
-    "scrollToVideo": "{title} video-mut ingerlaaruk"
+    "scrollToVideo": "{title} video-mut ingerlaaruk",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",
@@ -404,6 +594,29 @@
     "merryChristmas": "Juullimi pilluarit!",
     "daysUntilChristmas": "{count, plural, one {Juullimut # ulloq} other {Juullimut # ullut}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "ᐅᖃᓕᒫᒐᕐᕕᒃ ᕿᒥᕐᕈᒃᑭᑦ",
+    "title": "ᐃᓚᖏᑦ ᒪᓕᒡᓗᒋᑦ ᕿᒥᕐᕈᒃᑭᑦ",
+    "description": "ᐅᖃᓕᒫᒐᕐᕕᐅᑉ ᐃᓚᖓᓄᑦ ᐱᔭᕆᐊᖃᖅᑕᕐᓄᑦ ᑐᓄᑦᑎᐊᕐᓗᑎᑦ — ᔩᓱᓯᐅᑉ ᐃᓅᓯᖓ, ᑐᒃᓯᐊᕐᕕᐅᑉ ᐅᑭᐅᖓᑕ ᐊᕙᑎᖏᑦ, ᐊᒻᒪ ᕖᑎᐅᑦ ᐃᓚᒌᓄᑦ, ᐃᓕᓐᓂᐊᖅᑐᓄᑦ ᐊᒻᒪ ᒥᑭᔪᓄᑦ ᑲᑎᒪᔨᓄᑦ.",
+    "seeAll": "ᕖᑎᐅᑦ ᑕᒪᕐᒥᒃ ᑕᑯᓪᓗᒋᑦ",
+    "previous": "ᓯᕗᓪᓕᐅᔪᑦ ᐃᓚᖏᑦ",
+    "next": "ᑐᓪᓕᐊ ᐃᓚᖏᑦ",
+    "categories": {
+      "jesus": "ᔩᓱᓯ ᑕᕐᕆᔭᒐᖅ",
+      "gospels": "ᐃᕙᓐᔨᓕᑦ",
+      "shortVideos": "ᓇᐃᑦᑐᑦ ᕖᑎᐅᑦ",
+      "family": "ᐃᓚᒌᑦ",
+      "relationships": "ᐊᑦᑐᐊᓂᖃᑎᒌᖕᓂᖅ",
+      "women": "ᐊᕐᓇᓄᑦ",
+      "students": "ᐃᓕᓐᓂᐊᖅᑐᓄᑦ",
+      "sports": "ᐱᙳᐊᕐᓂᖅ",
+      "goodNews": "ᑐᓴᕋᒃᓴᖅ ᐱᐅᔪᖅ",
+      "hope": "ᓂᕆᐅᓂᖅ",
+      "training": "ᐊᔪᕆᖅᓴᐃᓂᖅ",
+      "easter": "ᐃᓅᒃᑲᓐᓂᕐᕕᒃ",
+      "christmas": "ᖁᕕᐊᓱᒡᕕᒃ"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Oqaatsit",
     "metadataDescription": "JesusFilm videos oqaatsit naapertorlugit takukkit.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Qupperneq nassaarineqanngilaq:",
     "title": "Sceni taanna uaniinngilaq.",
     "description": "Qupperneq allanut nuunneqarsimassaaq, kisianni oqaluttuaq ingerlaannarpoq.",
+    "languageDescription": "ᖃᕆᑕᐅᔭᒃᑯᑦ ᒪᑉᐱᒐᖅ ᕿᓂᖅᑕᐃᑦ ᓇᓂᓯᓐᓇᙱᓚᕗᑦ, ᑭᓯᐊᓂ ᐅᓂᑉᑳᖅ ᓱᓕ ᑲᔪᓯᔪᖅ ᑕᕐᕆᔭᒐᓂ ᕖᑎᐅᓂᓗ ᐅᖃᐅᓰᑦ ᓄᓇᕐᔪᐊᒥ ᑕᒪᐃᓐᓂ.",
     "actionsLabel": "Qupperneq nassaarineqanngilaq iliuutsit",
     "backToWatch": "Watch-imut uterit",
     "browseVideos": "Videonik takujuk"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film naatsuk takuguk",
-    "actions": {
-      "joinUs": "Ilanngugit",
-      "shareMission": "Suliaqarnitsinni avitseqatigit"
-    },
-    "welcomeStart": {
-      "label": "Upperneq & Allakkat Illernartut",
-      "title": "Ullumi video-t toqqagaat",
-      "description": "Katersugaanitsinni videonik uppernermik tunngaveqartunik isumassarsiavit, eqqarsaatiginnilersitsisunik, eqqarsaatinik aallartitsisunik saqqummiussivugut."
-    },
-    "welcomeMorning": {
-      "label": "Ullaakkut isumassarsiorneq",
-      "title": "Ullaaq! Ullumi Biibilimik pisoqarfiit utaqqivaat.",
-      "description": "Ullut aallartinnerani Biibilimeersut pitsaasunik nalunaarutitalinnik videonik uppernermik nukittorsaasunik aallartigit."
-    },
-    "welcomeAfternoon": {
-      "label": "Unnukkut isumassarsiorneq",
-      "title": "Unnukkut! Ullormut Biibilimeersut pisoqarfiit.",
-      "description": "Unnukkut ataatsimoorlutit imaluunniit ingerlaqqillutit eqqarsaatigiinnarsinnaasatit Biibilimeersut isumassarsiat."
-    },
-    "welcomeEvening": {
-      "label": "Unnukkut isumassarsiorneq",
-      "title": "Unnukkut pitsaasumik! Biibilimeersut pisoqarfiit atorlugit qasuersaak.",
-      "description": "Ullut naanerani eqqarsarninni imaluunniit eqqissiallannissannut iluaqutaasussanik Biibilimeersut pisoqarfiit eqqissisimanartut."
-    },
-    "joinUs": {
-      "label": "Ilanngugit",
-      "title": "Billions takunnissapput",
-      "description": "Ukiup ingerlanerani nungusaq nalunaarneqarpoq. Nunarsuarmi digitalikkut attaveqaatit atorlugit evangeliumi avitseqatigalugu peqataagitsi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ileqataanikkut ingerlaqatigiitta",
-      "title": "Jesusip oqaluttuaanik oqaluttuarineq, ataatsimoorluta",
-      "description": "Taamaalillutik inuup nammineq oqaatsiminik Jesusip asanninnera tusarnaarlugu takusinnaaniassammassuk."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-imik naleqquppoq",
-    "none": "Video taanna oqaatsimi uani innersuussutissaqarfigineqanngilaq."
+    "none": "Video taanna oqaatsimi uani innersuussutissaqarfigineqanngilaq.",
+    "heading": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᕖᑎᐅᑦ",
+    "loadingLabel": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᕖᑎᐅᑦ ᐅᓐᓗᐊᑦᑕᐅᔪᑦ",
+    "openingTitle": "{title} ᒪᑐᐃᖅᑕᐅᔪᖅ",
+    "openingVideo": "ᕖᑎᐅ ᒪᑐᐃᖅᑕᐅᔪᖅ",
+    "activityNotRecorded": "ᐊᔭᐅᖅᑐᐃᓃᑦ ᐱᓕᕆᐊᖏᑦ ᑎᑎᕋᖅᑕᐅᓯᓐᓇᙱᑦᑐᑦ. ᐊᑦᑕᑦᑕᐅᑎᑦ ᓱᓕ ᐊᑐᖅᓯᓐᓇᖅᑐᑦ.",
+    "showingContextual": "ᖃᓄᐃᓕᖓᓂᕐᒧᑦ ᐊᔭᐅᖅᑐᐃᓃᑦ ᓴᖅᑭᑎᑕᐅᔪᑦ.",
+    "showingSaved": "ᑐᖅᑯᖅᓯᒪᔪᑦ ᐊᔭᐅᖅᑐᐃᓃᑦ ᓴᖅᑭᑎᑕᐅᔪᑦ.",
+    "explanationCurated": "ᓂᕈᐊᖅᑕᐅᓯᒪᔪᑦ ᕖᑎᐅᑦ ᖃᐅᔨᓴᕐᓂᐊᖅᑕᑎᑦ.",
+    "explanationViewingMode": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᐅᓇ ᕖᑎᐅ ᐊᒻᒪ ᖃᓄᖅ ᑕᑯᓐᓇᖅᑕᐃᑦ ᐊᑐᕐᓗᒋᑦ.",
+    "explanationCowatch": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᐅᓇ ᕖᑎᐅ ᐊᒻᒪ ᐃᓯᒪᒋᔭᑎᑦ ᐊᑐᕐᓗᒋᑦ.",
+    "explanationHybrid": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᐅᓇ ᕖᑎᐅ ᐊᒻᒪ ᐃᓯᒪᒋᔭᑎᑦ ᐃᖅᑲᐅᒪᔭᐅᖁᓪᓗᒋᑦ ᓂᕈᐊᖅᑕᑎᑦ ᐊᑐᕐᓗᒋᑦ.",
+    "explanationContextual": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᑕᑯᓐᓇᖅᑕᐃᑦ ᒫᓐᓇ ᐊᑐᕐᓗᒍ.",
+    "explanationSemanticFallback": "ᐊᔭᐅᖅᑐᐃᓐᓂᐅᔪᑦ ᑕᑯᓐᓇᖅᑕᐃᑦ ᒫᓐᓇ ᐊᑐᕐᓗᒍ, ᐃᓚᒌᖅᑐᒥᒃ ᐋᖅᑭᒃᓱᐃᓂᖅ ᐊᑐᐃᓐᓇᐅᙱᓐᓂᖓᓂ.",
+    "explanationProfileDurable": "ᐋᖅᑭᒃᓯᒪᔪᑦ ᐃᓕᖕᓄᑦ ᐃᓯᒪᒋᔭᑎᑦ ᐃᖅᑲᐅᒪᔭᐅᖁᓪᓗᒋᑦ ᓂᕈᐊᖅᑕᑎᑦ ᐊᑐᕐᓗᒋᑦ.",
+    "explanationProfileVisit": "ᐋᖅᑭᒃᓯᒪᔪᑦ ᐃᓕᖕᓄᑦ ᐅᑉᐱᓐᓇᐅᑎᓗᒍ ᐳᓛᕐᓂᕐᓄᑦ ᐅᕙᓂ.",
+    "personalizationLabel": "ᐊᔭᐅᖅᑐᐃᓃᑦ ᐃᓚᒌᖅᑐᒥᒃ ᐋᖅᑭᒃᓱᐃᓂᖓ",
+    "personalizationPrompt": "ᐊᓯᔾᔨᕆᐊᖃᕈᒪᕕᑦ ᖃᓄᖅ ᐊᔭᐅᖅᑐᐃᓃᑦ ᐋᖅᑭᒃᓯᒪᓂᖏᓐᓂᒃ?",
+    "openCookieSettings": "ᐅᒃᑯᐃᓗᒋᑦ ᑯᑭᑦ ᐋᖅᑭᒃᓱᐃᓂᖏᑦ"
   },
   "BetaTesterModal": {
     "title": "Beta tester-inngorit",
@@ -538,16 +732,39 @@
     "retryFailed": "ᐱᔭᐅᔪᓐᓇᙱᑦᑐᑦ ᐆᒃᑐᒃᑲᓐᓂᕐᓗᒋᑦ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᐱᑕᖃᙱᑦᑐᖅ",
+    "eyebrow": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᐱᑕᖃᙱᑦᑐᖅ",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>ᑐᑦ ᐱᑕᖃᙱᑦᑐᖅ",
+    "actionsLabel": "ᑕᐅᑐᓐᓂᕐᒧᑦ ᐱᕕᒃᓴᑦ",
+    "browseInLanguage": "{language}ᑐᑦ ᑕᐅᑐᒃᓴᑦ ᕿᓂᕐᓗᒋᑦ",
+    "backToSearch": "ᕿᓂᕐᒧᑦ ᐅᑎᕆᑦ",
+    "audioVersionsTitle": "ᓂᐱᓕᐅᒐᐃᑦ ᐊᓯᖏᑦ",
+    "audioVersionsDescription": "ᐅᓇ ᑕᐅᑐᒃᓴᖅ ᑕᐅᑐᒃᑲᓐᓂᕈᒪᒍᕕᐅᒃ ᓂᐱᐅᑉ ᐅᖃᐅᓯᖓ ᓂᕈᐊᕐᓗᒍ.",
+    "languageVersionLabel": "ᓂᐱᐅᑉ ᐅᖃᐅᓯᖓ",
+    "selectLanguageVersion": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᓂᕈᐊᕐᓗᒍ",
+    "watchSelectedVersion": "ᓂᕈᐊᖅᑕᖅ ᑕᐅᑐᒃ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ᑯᑭᑦ ᓂᕈᐊᒐᑦ",
+    "bannerTitle": "ᑕᕝᕙ ᐃᓄᒃᑎᑦᑎᓂᕐᓄᑦ ᓂᕈᐊᒐᑎᑦ",
+    "bannerDescription": "ᐊᑐᕐᓂᖓᓄᑦ ᐱᔭᕆᐊᓖᑦ ᑯᑭᑦ Watch ᐊᑦᑕᓇᙱᑦᑐᒥᒃ ᐊᐅᓚᑎᑦᑎᔪᑦ. ᐊᖏᖅᑕᐅᒍᓂ, ᓂᕈᐊᕈᑎᓄᑦ ᐃᓱᒪᒋᔭᑎᑦ ᐃᖅᑲᐅᒪᑎᑕᐅᓗᑎᒃ ᐳᓛᖅᑕᐃᑦ ᐊᑯᓐᓂᖏᓐᓂ ᐃᓚᒌᖅᑐᒥᒃ ᑯᑭᒥᒃ ᑐᓴᐅᒪᑎᑦᑎᔪᒥᒃ ᐊᑐᕈᓐᓇᖅᑐᖅ ᐊᔾᔨᐅᙱᑦᑐᓂᒃ ᐱᑦᔪᑎᓕᒃ ᐊᔭᐅᖅᑐᐃᓂᕐᓂᒃ. ᐊᑐᐃᓐᓇᐅᔪᑦ ᖃᓄᐃᓕᖓᓂᕐᒧᑦ ᐊᔭᐅᖅᑐᐃᓂᖏᑦ ᓱᓕ ᒪᕐᕉᓐᓂᒃ ᐃᓕᖓᓪᓗᑎᒃ.",
+    "acceptAll": "ᐊᖏᖅᓗᒋᑦ ᑕᒪᕐᒥᒃ",
+    "essentialOnly": "ᐱᔭᕆᐊᓖᑦ ᑭᓯᐊᓂ",
+    "manageChoices": "ᓂᕈᐊᒐᑦ ᐊᐅᓚᑦᑎᒋᑦ",
+    "savingChoice": "ᑯᑭᑦ ᓂᕈᐊᒐᑦ ᑐᖅᑯᖅᑕᐅᓕᖅᑐᑦ",
+    "settings": "ᑯᑭᑦ ᐋᖅᑭᒃᓱᐃᓂᖏᑦ",
+    "settingsDescription": "ᓂᕈᐊᕆᑦ Watch ᐃᖅᑲᐅᒪᑎᑦᑎᖁᔭᐅᓂᖓ ᐊᔭᐅᖅᑐᐃᓂᕐᓄᑦ ᐃᓱᒪᒋᔭᓂᒃ ᐳᓛᖅᑕᐃᑦ ᐊᑯᓐᓂᖏᓐᓂ. ᐅᖃᓕᒫᕐᓗᒍ ᓯᕗᓂᖓᓂ ᐊᓯᔾᔨᕈᓐᓇᖅᑕᐃᑦ.",
+    "essentialCookies": "ᐱᔭᕆᐊᓖᑦ ᑯᑭᑦ",
+    "essentialDescription": "ᐊᑦᑕᓇᙱᓐᓂᖅ, ᑕᑯᒃᓴᐅᑎᑦᑎᓂᖅ, ᐃᓄᒃᑎᑦᑎᓂᕐᒧᑦ ᓂᕈᐊᒐᑦ, ᐊᒻᒪ ᐊᔭᐅᖅᑐᐃᓂᕐᓄᑦ ᐱᔪᒪᔾᔪᑎᑦ ᓇᓗᓇᐃᕈᑎᖏᑦ.",
+    "alwaysActive": "ᖃᒪᓂᖅᓴᐅᙱᑦᑐᖅ ᐊᑐᖅᑕᐅᔪᖅ",
+    "personalization": "ᐃᓚᒌᖅᑐᒥᒃ ᐋᖅᑭᒃᓱᐃᓂᖅ",
+    "personalizationDescription": "ᐃᓯᒪᒋᔭᑦ ᑭᒡᓕᖃᖅᑐᑦ ᐃᖅᑲᐅᒪᑎᑕᐅᓕᒫᖁᔭᐅᔪᑦ ᐳᓛᖅᑕᐃᑦ ᐊᑯᓐᓂᖏᓐᓂ. ᐅᒃᑯᐃᙶᕐᓂᖓ ᓴᖅᑭᑕᐅᒍᓂ, ᖃᓄᐃᓕᖓᓂᕐᒧᑦ ᐊᔭᐅᖅᑐᐃᓃᑦ ᓱᓕ ᐊᑐᐃᓐᓇᐅᔪᑦ.",
+    "erasurePending": "ᐊᔭᐅᕐᓯᒪᔪᖅ ᐲᖅᑕᐅᓂᖓ ᐅᑕᖅᑭᔪᖅ. ᖃᓄᐃᓕᖓᓂᕐᒧᑦ ᐊᔭᐅᖅᑐᐃᓃᑦ ᐅᖅᑲᓕᕇᖅᑐᑦ.",
+    "cancel": "ᑲᑕᙱᓚᖅ",
+    "saveChoices": "ᓂᕈᐊᒐᑦ ᑐᖅᑯᕐᓗᒋᑦ",
+    "saving": "ᑐᖅᑯᖅᑐᑦ…",
+    "loadError": "ᓂᕈᐊᒐᑎᑦ ᐃᓕᔭᐅᔪᓐᓇᙱᓚᑦ. ᑕᐃᒪᐃᓐᓇᓗᓂ ᐊᑖᓂ ᓂᕈᐊᕈᓐᓇᖅᑐᑎᑦ.",
+    "grantError": "ᐃᓚᒌᖅᑐᒥᒃ ᐋᖅᑭᒃᓱᐃᓂᖅ ᐊᐅᓚᑕᐅᓯᐊᙱᓚᖅ. ᐱᔭᕆᐊᓖᑦ ᑭᓯᐊᓂ ᓱᓕ ᐊᑐᐃᓐᓇᐅᔪᑦ.",
+    "saveError": "ᓂᕈᐊᒐᑎᑦ ᑐᖅᑯᖅᑕᐅᔪᓐᓇᙱᓚᑦ. ᐆᒃᑲᐃᓐᓇᕆᑦ ᐊᓯᐊᒍᑦ."
   }
 }

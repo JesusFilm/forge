@@ -1,0 +1,447 @@
+{
+  "runtimeReceipt": "deployment-final.json",
+  "watchRevision": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+  "mode": "Genuine headed Chrome154, 1280x800, same session, no headers/identity/visibility overrides.",
+  "observations": [
+    {
+      "documentFocused": true,
+      "documentVisibility": "visible",
+      "focus": {
+        "connected": true,
+        "label": null,
+        "tag": "BODY"
+      },
+      "hero": {
+        "actionPath": "/watch/4-god-forgiveness.html",
+        "actionText": "Watch Now",
+        "autoplay": "1",
+        "coverage": [
+          {
+            "block": "hero",
+            "coverage": null,
+            "presentation": "hero-card"
+          }
+        ],
+        "label": "4. God's Forgiveness",
+        "resumeSeconds": "7",
+        "timeline": [
+          {
+            "current": "true",
+            "focused": false,
+            "label": "4. God's Forgiveness"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Angels at the Tomb"
+          },
+          {
+            "current": "true",
+            "focused": false,
+            "label": "4. God's Forgiveness"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Angels at the Tomb"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show 2. The Blood of Jesus"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show LUMO - Luke 7:1-50"
+          }
+        ]
+      },
+      "issuanceTiming": [],
+      "media": [
+        {
+          "currentTime": 7.858187,
+          "errorCode": null,
+          "muted": true,
+          "paused": false,
+          "readyState": 4,
+          "tag": "VIDEO"
+        }
+      ],
+      "path": "/watch",
+      "title": "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "capturedAt": "2026-09-29T00:32:14.776207+00:00",
+      "phase": "hero-initial-final"
+    },
+    {
+      "documentFocused": true,
+      "documentVisibility": "visible",
+      "focus": {
+        "connected": true,
+        "label": "4. God's Forgiveness",
+        "tag": "BUTTON"
+      },
+      "hero": {
+        "actionPath": "/watch/4-god-forgiveness.html",
+        "actionText": "Watch Now",
+        "autoplay": "1",
+        "coverage": [
+          {
+            "block": "hero",
+            "coverage": null,
+            "presentation": "hero-card"
+          }
+        ],
+        "label": "4. God's Forgiveness",
+        "resumeSeconds": null,
+        "timeline": [
+          {
+            "current": "true",
+            "focused": false,
+            "label": "4. God's Forgiveness"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Angels at the Tomb"
+          },
+          {
+            "current": "true",
+            "focused": true,
+            "label": "4. God's Forgiveness"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Angels at the Tomb"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show 2. The Blood of Jesus"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show LUMO - Luke 7:1-50"
+          }
+        ]
+      },
+      "issuanceTiming": [
+        {
+          "afterLoadMs": 487.39999997615814,
+          "durationMs": 297.7000000476837,
+          "startMs": 1006.5,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 488,
+          "durationMs": 239.80000001192093,
+          "startMs": 1007.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 488.60000002384186,
+          "durationMs": 313.2999999523163,
+          "startMs": 1007.7000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 489,
+          "durationMs": 269.69999998807907,
+          "startMs": 1008.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 489.5,
+          "durationMs": 293,
+          "startMs": 1008.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 490.10000002384186,
+          "durationMs": 301.69999998807907,
+          "startMs": 1009.2000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 490.5,
+          "durationMs": 306.19999998807907,
+          "startMs": 1009.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 491,
+          "durationMs": 265.10000002384186,
+          "startMs": 1010.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 491.5,
+          "durationMs": 267.69999998807907,
+          "startMs": 1010.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 492,
+          "durationMs": 292.60000002384186,
+          "startMs": 1011.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 494.10000002384186,
+          "durationMs": 295.19999998807907,
+          "startMs": 1013.2000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 107808.69999998808,
+          "durationMs": 239.5,
+          "startMs": 108327.80000001192,
+          "status": 200
+        }
+      ],
+      "media": [
+        {
+          "currentTime": 0,
+          "errorCode": null,
+          "muted": true,
+          "paused": true,
+          "readyState": 0,
+          "tag": "VIDEO"
+        }
+      ],
+      "path": "/watch",
+      "title": "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "capturedAt": "2026-09-29T00:34:12.545083+00:00",
+      "phase": "hero-focused-transition-final"
+    },
+    {
+      "documentFocused": true,
+      "documentVisibility": "visible",
+      "focus": {
+        "connected": true,
+        "label": "2. The Blood of Jesus",
+        "tag": "BUTTON"
+      },
+      "hero": {
+        "actionPath": "/watch/2-the-blood-of-jesus.html",
+        "actionText": "Watch Now",
+        "autoplay": "1",
+        "coverage": [
+          {
+            "block": "hero",
+            "coverage": null,
+            "presentation": "hero-card"
+          }
+        ],
+        "label": "2. The Blood of Jesus",
+        "resumeSeconds": null,
+        "timeline": [
+          {
+            "current": "true",
+            "focused": false,
+            "label": "2. The Blood of Jesus"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show LUMO - Luke 7:1-50"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Angels at the Tomb"
+          },
+          {
+            "current": "true",
+            "focused": true,
+            "label": "2. The Blood of Jesus"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show LUMO - Luke 7:1-50"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show Chara / Joy"
+          },
+          {
+            "current": null,
+            "focused": false,
+            "label": "Show How to Know Jesus Personally"
+          }
+        ]
+      },
+      "issuanceTiming": [
+        {
+          "afterLoadMs": 487.39999997615814,
+          "durationMs": 297.7000000476837,
+          "startMs": 1006.5,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 488,
+          "durationMs": 239.80000001192093,
+          "startMs": 1007.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 488.60000002384186,
+          "durationMs": 313.2999999523163,
+          "startMs": 1007.7000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 489,
+          "durationMs": 269.69999998807907,
+          "startMs": 1008.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 489.5,
+          "durationMs": 293,
+          "startMs": 1008.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 490.10000002384186,
+          "durationMs": 301.69999998807907,
+          "startMs": 1009.2000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 490.5,
+          "durationMs": 306.19999998807907,
+          "startMs": 1009.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 491,
+          "durationMs": 265.10000002384186,
+          "startMs": 1010.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 491.5,
+          "durationMs": 267.69999998807907,
+          "startMs": 1010.600000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 492,
+          "durationMs": 292.60000002384186,
+          "startMs": 1011.100000023842,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 494.10000002384186,
+          "durationMs": 295.19999998807907,
+          "startMs": 1013.2000000476836,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 107808.69999998808,
+          "durationMs": 239.5,
+          "startMs": 108327.80000001192,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 128476.10000002384,
+          "durationMs": 444.699999988079,
+          "startMs": 128995.20000004768,
+          "status": 200
+        },
+        {
+          "afterLoadMs": 156269.5,
+          "durationMs": 245.39999997615817,
+          "startMs": 156788.60000002384,
+          "status": 200
+        }
+      ],
+      "media": [
+        {
+          "currentTime": 0,
+          "errorCode": null,
+          "muted": true,
+          "paused": true,
+          "readyState": 4,
+          "tag": "VIDEO"
+        }
+      ],
+      "path": "/watch",
+      "title": "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "capturedAt": "2026-09-29T00:34:41.848017+00:00",
+      "phase": "hero-changed-ready-final"
+    },
+    {
+      "documentFocused": true,
+      "documentVisibility": "visible",
+      "focus": {
+        "connected": true,
+        "label": null,
+        "tag": "BODY"
+      },
+      "hero": null,
+      "issuanceTiming": [],
+      "media": [
+        {
+          "currentTime": 21.744253,
+          "errorCode": null,
+          "muted": false,
+          "paused": false,
+          "readyState": 4,
+          "tag": "VIDEO"
+        }
+      ],
+      "path": "/watch/2-the-blood-of-jesus.html",
+      "title": "2. The Blood of Jesus | Jesus Film Project",
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "capturedAt": "2026-09-29T00:35:06.948077+00:00",
+      "phase": "hero-destination-final"
+    }
+  ],
+  "interactionVerification": {
+    "timeline": "Keyboard focus was placed on the visible large timeline. Enter changed the card, and the selected button stayed focused/connected both immediately and after the receipt settled.",
+    "selectedPublicPath": "/watch/2-the-blood-of-jesus.html",
+    "selectedPolicy": "watch-exposure-v2",
+    "selectionNetworkReceipt": "watch-browser-final-hero-network.json",
+    "destinationMedia": "Correct destination, readyState4, currentTime21.744253, pausedfalse, errornull. This is playback progress, not click-to-first-frame latency.",
+    "pageErrors": [],
+    "finalCleanup": "Used the normal Pause control and then navigated to about:blank."
+  },
+  "harnessLimits": [
+    "Earlier snapshot-ref clicks selected hidden compact-timeline duplicates and did not establish a change; they are not counted as successful interactions. DOM rectangles and a screenshot identified the visible large timeline.",
+    "One focus attempt raced natural slide advancement; its target was absent, so it is not counted as keyboard-transition proof. Only the subsequent confirmed visible-button focus/Enter operations are included.",
+    "The initial helper used an exact /api path and missed the /watch/api issuance timing entries. That empty initial timing array is a filter miss, not evidence of no issuance; later records use an endpoint suffix match.",
+    "Snapshot immediately after Watch Now still showed the old route during soft navigation. The later destination observation confirms the final URL and playback.",
+    "All screenshot timing is diagnostic and not paint-latency evidence."
+  ],
+  "transientLegacyFact": {
+    "path": "/watch/paying-taxes-to-caesar.html",
+    "kind": "rendered",
+    "policy": "watch-exposure-v1",
+    "issuanceObserved": false,
+    "sourceInterpretation": "Consistent with the deterministic pre-mount pool card retiring during the per-visit draw before load/activation-gated issuance. Cleanup preserves unreceipted buffered facts as V1. Source authority includes every playable pool item and eligible intro parent; no authority omission demonstrated.",
+    "limit": "Aggregate capture does not prove exact production gate/retirement ordering or actual catalog membership. V1 retains an unknown served denominator.",
+    "review": "Exposure child performed bounded read-only source/lifecycle review; no additional code change or production probe."
+  },
+  "rawIdentitiesRetained": false
+}

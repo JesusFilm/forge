@@ -3,7 +3,7 @@ id: "feat-334"
 title: "Chat render-boundary + clamp-guard consolidation"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-08-14"
 duration: 2
 depends_on:
@@ -14,6 +14,43 @@ tags:
   - "testing"
   - "error-handling"
 ---
+
+## Resolution
+
+**Shipped:** Pending merge via [PR #2190](https://github.com/JesusFilm/forge/pull/2190)
+(`fix(chat): explain recovery when the video player fails to load`).
+
+**What changed.** (a) Kept the video and markdown boundaries separate because
+their fallbacks and async failure handling differ; the reason is recorded in
+`apps/chat/CLAUDE.md`. (b) Both clamp suites share one test-only display-utility
+constant. (c) A rejected player import adds manual refresh guidance; ordinary
+render and playback failures retain the existing fallback and caption link.
+(d) Kept poster and accessible-label calls inline by user preference; recorded
+the throw-free callback guideline in `apps/chat/CLAUDE.md`.
+(e) The per-branch wire-value leak test covers non-object `shape` rejection.
+(f) The source pin strips block, whole-line, and trailing comments.
+
+**Verification.** All 1,062 chat tests, lint, typecheck, and production build
+pass. The rejected-import regression
+fails against the original component using the real App Router loader. Both
+clamp suites fail independently when `block` is added beside their clamp
+classes; the mutations were restored byte-for-byte. A production Chromium
+check at 390px and 1280px confirms refresh guidance for failed imports,
+reachable caption links, collapsed player boxes, and no horizontal overflow.
+The player chunk is absent at initial load; its deferred mount records no
+layout shifts. Before the final inline-prop restoration, measured initial
+JavaScript grew by 251 uncompressed bytes; the heavy player chunk stayed
+outside the initial scripts and root manifest. Playback
+failure shows no refresh guidance.
+
+**Compound docs.** [App Router test runtime](../../solutions/best-practices/per-message-boundary-limits-for-media-surfaces.md#app-router-test-runtime-feat-334-2026-09-07)
+records why Vitest must use Next's App Router dynamic loader to exercise import
+rejections faithfully.
+
+**Accepted limitations.** Refresh is manual and can discard an unsent draft or
+an ephemeral conversation. It starts a new load attempt, not a guarantee that
+a persistent network or deployment fault is resolved. No import retry or
+automatic reload was added.
 
 ## Problem
 

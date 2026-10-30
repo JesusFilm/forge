@@ -12,12 +12,12 @@ const YOUVERSION_LAUNCH_FALLBACK_VERSION_ID = 3034
 // Only full-Bible candidates are included; partial/NT-only candidates stay out
 // of runtime defaults until explicitly approved.
 const YOUVERSION_LANGUAGE_VERSIONS = [
-  { languageId: "7839", languageSlug: "arabic-hassaniya", versionId: 195 },
   {
     languageId: "22658",
     languageSlug: "arabic-modern-standard",
     versionId: 195,
   },
+  { languageId: "7839", languageSlug: "arabic-hassaniya", versionId: 195 },
   { languageId: "1171", languageSlug: "assamese", versionId: 1979 },
   { languageId: "185219", languageSlug: "assamese-muslim", versionId: 1979 },
   { languageId: "176243", languageSlug: "bangla-2", versionId: 1883 },
@@ -27,6 +27,16 @@ const YOUVERSION_LANGUAGE_VERSIONS = [
   { languageId: "139081", languageSlug: "bengali-indian", versionId: 1883 },
   { languageId: "5671", languageSlug: "bhadrawahi", versionId: 2767 },
   { languageId: "24096", languageSlug: "chinese-qinghai", versionId: 43 },
+  {
+    languageId: "21754",
+    languageSlug: "chinese-simplified",
+    versionId: 43,
+  },
+  {
+    languageId: "21753",
+    languageSlug: "chinese-traditional",
+    versionId: 312,
+  },
   { languageId: "4432", languageSlug: "czech", versionId: 44 },
   { languageId: "4454", languageSlug: "danish", versionId: 49 },
   { languageId: "4633", languageSlug: "dawro", versionId: 1672 },
@@ -54,6 +64,8 @@ const YOUVERSION_LANGUAGE_VERSIONS = [
   { languageId: "6464", languageSlug: "hindi", versionId: 819 },
   { languageId: "147285", languageSlug: "konta", versionId: 1672 },
   { languageId: "184487", languageSlug: "mahasu-pahari", versionId: 2957 },
+  { languageId: "20615", languageSlug: "mandarin-china", versionId: 43 },
+  { languageId: "23221", languageSlug: "mandarin-taiwan", versionId: 312 },
   {
     languageId: "4700",
     languageSlug: "oromo-borana-arsi-guji",
@@ -106,6 +118,8 @@ const YouVersionPassageSchema = z
 type YouVersionVersion = z.infer<typeof YouVersionVersionSchema>
 
 export type Passage = {
+  /** Canonical content language of the selected version, not the requested dub. */
+  languageSlug?: string | null
   content: string
   copyright: string
   humanReference: string
@@ -170,6 +184,13 @@ export class ScripturePassageService {
     if (reference == null) return null
 
     const versionId = getVersionIdForLanguage({ languageId, languageSlug })
+    // The first representative for a version identifies the text's language.
+    // In particular Hassaniyya requests use the Modern Standard Arabic Bible;
+    // unmapped/missing languages select the existing English fallback version.
+    const passageLanguageSlug =
+      YOUVERSION_LANGUAGE_VERSIONS.find(
+        (entry) => entry.versionId === versionId,
+      )?.languageSlug ?? null
     const versionIdString = versionId.toString()
     const now = new Date()
     const cacheKey = {
@@ -186,6 +207,7 @@ export class ScripturePassageService {
     })
     if (cached != null && cached.expiresAt > now) {
       return {
+        languageSlug: passageLanguageSlug,
         content: cached.content,
         copyright: cached.copyright,
         humanReference: cached.humanReference ?? reference,
@@ -244,6 +266,7 @@ export class ScripturePassageService {
     })
 
     return {
+      languageSlug: passageLanguageSlug,
       content: saved.content,
       copyright: saved.copyright,
       humanReference: saved.humanReference ?? reference,

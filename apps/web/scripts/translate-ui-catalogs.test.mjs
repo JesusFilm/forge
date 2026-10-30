@@ -33,6 +33,364 @@ const MODEL = "gpt-5.4-mini-2026-03-17"
 const temporaryDirectories = []
 
 describe("Watch search contextual translation contract", () => {
+  it("supplies each message with its UI surface and copy role", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.title":
+            "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
+          "DownloadModal.signInToDownload": "Sign in to download",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "WatchUnavailableLanguage.title": expect.objectContaining({
+        surface: expect.stringContaining("recovery page"),
+        role: "page heading",
+      }),
+      "DownloadModal.signInToDownload": expect.objectContaining({
+        surface: expect.stringContaining("download dialog"),
+        role: "action label",
+      }),
+    })
+  })
+
+  it("identifies accessibility-only copy that cannot be inferred from its key", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BibleQuotes.previousQuote": "Previous Bible quote",
+          "WatchUnavailableLanguage.languageVersionLabel": "Audio language",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "BibleQuotes.previousQuote": expect.objectContaining({
+        role: "carousel navigation accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "WatchUnavailableLanguage.languageVersionLabel": expect.objectContaining({
+        role: "audio-language selector accessibility label",
+        visibility: "assistive technology only",
+      }),
+    })
+  })
+
+  it("distinguishes status and error copy from similarly named actions", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BetaTesterModal.loading": "Loading...",
+          "SearchOverlay.loadMoreFailed": "Failed to load more results.",
+          "CollectionDownloadModal.signInTitle": "Sign in to download",
+          "ShareModal.shareOnXUnavailable":
+            "Share on X (unavailable on this build)",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "BetaTesterModal.loading": expect.objectContaining({
+        role: "status message",
+      }),
+      "SearchOverlay.loadMoreFailed": expect.objectContaining({
+        role: "error or unavailable-state message",
+      }),
+      "CollectionDownloadModal.signInTitle": expect.objectContaining({
+        role: "download authentication heading",
+      }),
+      "ShareModal.shareOnXUnavailable": expect.objectContaining({
+        role: "disabled action label",
+      }),
+    })
+  })
+
+  it("uses authoritative roles for controls, alt text, and section headings", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.audioVersionsTitle": "Other audio versions",
+          "WatchHome.mutePreview": "Mute preview",
+          "DownloadModal.posterAlt": "Video poster",
+          "LanguagePickerModal.translateWithAi": "Translate with AI",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "WatchUnavailableLanguage.audioVersionsTitle": expect.objectContaining({
+        role: "section heading",
+      }),
+      "WatchHome.mutePreview": expect.objectContaining({
+        role: "video-preview accessibility action label",
+        visibility: "assistive technology only",
+      }),
+      "DownloadModal.posterAlt": expect.objectContaining({
+        role: "image alternative text",
+      }),
+      "LanguagePickerModal.translateWithAi": expect.objectContaining({
+        role: "action label",
+      }),
+    })
+  })
+
+  it("describes strings that components compose with runtime values", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "LanguagePickerModal.noSubtitles": "No subtitles",
+          "LanguagePickerModal.toggleOn": "On",
+          "HeroPlayerControls.changeAudioLanguage": "Change audio language",
+          "SubtitleTranscript.aiSuffix": " · AI",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "LanguagePickerModal.noSubtitles": expect.objectContaining({
+        role: "subtitle unavailable-state message",
+        composition: expect.stringContaining("languageName"),
+      }),
+      "LanguagePickerModal.toggleOn": expect.objectContaining({
+        role: "toggle state label",
+        composition: expect.stringContaining("language code"),
+      }),
+      "HeroPlayerControls.changeAudioLanguage": expect.objectContaining({
+        role: "player-control accessibility action label",
+        composition: expect.stringContaining("languageCode"),
+      }),
+      "SubtitleTranscript.aiSuffix": expect.objectContaining({
+        role: "AI-generated subtitle marker",
+        composition: expect.stringContaining("subtitle language name"),
+      }),
+    })
+  })
+
+  it("identifies player slider copy as assistive-only labels and values", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "HeroPlayerControls.seek": "Seek",
+          "HeroPlayerControls.seekValue": "{current} of {total}",
+          "HeroPlayerControls.volume": "Volume",
+          "HeroPlayerControls.volumeValue": "{percent} percent",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "HeroPlayerControls.seek": expect.objectContaining({
+        role: "timeline slider accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.seekValue": expect.objectContaining({
+        role: "timeline slider accessibility value",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.volume": expect.objectContaining({
+        role: "volume slider accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.volumeValue": expect.objectContaining({
+        role: "volume slider accessibility value",
+        visibility: "assistive technology only",
+      }),
+    })
+  })
+
+  it("tells the translator to judge composed messages after rendering", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.title":
+            "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
+        },
+        references: {},
+      }),
+    )
+
+    expect(
+      prompt.messageContexts["WatchUnavailableLanguage.title"].composition,
+    ).toContain("complete rendered message")
+    expect(prompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("mentally render representative values"),
+        expect.stringContaining("screen reader"),
+      ]),
+    )
+  })
+
+  it("supplies omitted neighboring source messages from the same UI namespace", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BibleQuotes.joinBibleStudy": "Join our Bible study",
+        },
+        references: {},
+        sourceMessages: {
+          "BibleQuotes.promoHeading":
+            "Want to understand the Bible more deeply?",
+          "BibleQuotes.joinBibleStudy": "Join our Bible study",
+          "SearchOverlay.noResults": "No results found",
+        },
+      }),
+    )
+
+    expect(prompt.surroundingSourceMessages).toEqual({
+      "BibleQuotes.promoHeading": "Want to understand the Bible more deeply?",
+    })
+  })
+
+  it("does not duplicate source messages already being translated", () => {
+    const messages = {
+      "BibleQuotes.promoHeading": "Want to understand the Bible more deeply?",
+      "BibleQuotes.joinBibleStudy": "Join our Bible study",
+    }
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages,
+        references: {},
+        sourceMessages: messages,
+      }),
+    )
+
+    expect(prompt.surroundingSourceMessages).toEqual({})
+  })
+
+  it("has explicit surface context for every current catalog namespace", () => {
+    const source = JSON.parse(
+      readFileSync(join(process.cwd(), "messages/en.json"), "utf8"),
+    )
+    const messages = flattenCatalog(source)
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages,
+        references: {},
+      }),
+    )
+
+    expect(Object.keys(prompt.messageContexts)).toEqual(Object.keys(messages))
+    expect(
+      Object.values(prompt.messageContexts).filter(({ surface }) =>
+        surface.endsWith("area of the Watch experience"),
+      ),
+    ).toEqual([])
+  })
+
+  it("adds universal localization guidance and keeps Chinese-specific guidance scoped", () => {
+    const chinesePrompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: { "ExperienceError.pageLoadFailed": "Something went wrong." },
+        references: {},
+      }),
+    )
+    const russianPrompt = JSON.parse(
+      buildUserPrompt({
+        locale: "ru",
+        inventoryEntry: { countries: [{ name: "Russia" }] },
+        messages: { "ExperienceError.pageLoadFailed": "Something went wrong." },
+        references: {},
+      }),
+    )
+
+    expect(chinesePrompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("native product writer in the target language"),
+        expect.stringContaining("established Christian terminology"),
+        expect.stringContaining("reference materials"),
+        expect.stringContaining("English sentence structure"),
+        expect.stringContaining("verb to verb"),
+        expect.stringContaining("X后Y or X并Y"),
+        expect.stringContaining("biblical metaphor"),
+        expect.stringContaining("word for word"),
+        expect.stringContaining("exact failure category"),
+        expect.stringContaining("original-language source"),
+        expect.stringContaining("self-contained"),
+        expect.stringContaining("equivalent target-catalog copy"),
+        expect.stringContaining("Traditional Chinese vocabulary"),
+        expect.stringContaining("Do not add product claims"),
+      ]),
+    )
+    expect(russianPrompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("native product writer in the target language"),
+        expect.stringContaining("established Christian terminology"),
+        expect.stringContaining("reference materials"),
+        expect.stringContaining("biblical metaphor"),
+        expect.stringContaining("Do not add product claims"),
+      ]),
+    )
+    expect(russianPrompt.targetLanguageWritingInstructions).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("originally written in Chinese"),
+        expect.stringContaining("Traditional Chinese vocabulary"),
+      ]),
+    )
+  })
+
+  it("adds authoritative context for Chinese error, scripture, and sign-in copy", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "ExperienceError.authFailed":
+            "Unable to authenticate with the content service. Please contact support if this persists.",
+          "WatchHomePromo.buildingNext": "What we are building next",
+          "WatchHomeSections.scriptureAsWrittenTitle":
+            "Scripture, Spoken Exactly as Written",
+          "CollectionDownloadModal.signIn": "Sign in to download",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "ExperienceError.authFailed": expect.objectContaining({
+        role: "authentication failure message",
+      }),
+      "WatchHomePromo.buildingNext": expect.objectContaining({
+        role: "heading introducing the following feature cards",
+      }),
+      "WatchHomeSections.scriptureAsWrittenTitle": expect.objectContaining({
+        composition: expect.stringContaining("does not refer"),
+      }),
+      "CollectionDownloadModal.signIn": expect.objectContaining({
+        composition: expect.stringContaining("returns them to the dialog"),
+      }),
+    })
+  })
+
   it("supplies the model with action, status, heading, and language-chip context", () => {
     const prompt = JSON.parse(
       buildUserPrompt({
@@ -134,6 +492,20 @@ function translatedCatalog(source) {
   }
 }
 
+// Rebuilds the source digest inline, as web's provisional-catalog test does,
+// so a caller policy is held to the same digest shape as web's own policy.
+function inlinePolicyDigest(sourceFlat, policy) {
+  return contentDigest({
+    sourceFlat,
+    translationPolicy: {
+      humanReviewedLocales: [...policy.humanReviewedLocales].sort(
+        (left, right) => left.localeCompare(right),
+      ),
+      intentionallyLocaleNeutral: [...policy.intentionallyLocaleNeutral].sort(),
+    },
+  })
+}
+
 function createBatchFixture({
   source = sourceCatalog(),
   catalogs,
@@ -141,6 +513,8 @@ function createBatchFixture({
   progress,
   selectedLocales = Object.keys(catalogs),
   concurrency = 1,
+  policy,
+  contexts,
 }) {
   const root = mkdtempSync(join(tmpdir(), "watch-ui-translator-"))
   temporaryDirectories.push(root)
@@ -163,11 +537,26 @@ function createBatchFixture({
     })),
   })
   writeJson(manifestPath, manifest)
-  writeJson(progressPath, {
-    ...progress,
-    model: MODEL,
-    sourceDigest: sourceDigestForFlatCatalog(sourceFlat),
-  })
+  if (progress) {
+    writeJson(progressPath, {
+      ...progress,
+      model: MODEL,
+      sourceDigest: policy
+        ? inlinePolicyDigest(sourceFlat, policy)
+        : sourceDigestForFlatCatalog(sourceFlat),
+    })
+  }
+  const callerArgs = []
+  if (policy) {
+    const policyPath = join(root, "caller-policy.json")
+    writeJson(policyPath, policy)
+    callerArgs.push("--policy", policyPath)
+  }
+  if (contexts) {
+    const contextsPath = join(root, "caller-contexts.json")
+    writeJson(contextsPath, contexts)
+    callerArgs.push("--contexts", contextsPath)
+  }
 
   return {
     args: [
@@ -187,6 +576,7 @@ function createBatchFixture({
       selectedLocales.join(","),
       "--concurrency",
       String(concurrency),
+      ...callerArgs,
     ],
     manifestPath,
     messagesDir,
@@ -275,6 +665,7 @@ function withLocales(args, locales, promote = false) {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   process.exitCode = undefined
@@ -285,13 +676,25 @@ afterEach(() => {
 
 describe("translate UI catalogs", () => {
   it("accepts an empty translation only when its English source is empty", () => {
-    const key = "DownloadModal.termsAgreementSuffix"
+    // Synthetic key: no live catalog message has an empty English source, so
+    // the empty message is declared locale-neutral here rather than relying
+    // on the repository policy.
+    const key = "Example.emptySuffix"
+    const policy = {
+      humanReviewedLocales: ["en"],
+      intentionallyLocaleNeutral: new Set([key]),
+    }
 
     expect(() =>
-      validateCatalogIntegrity({ [key]: "" }, { [key]: "" }, 0),
+      validateCatalogIntegrity({ [key]: "" }, { [key]: "" }, 0, policy),
     ).not.toThrow()
     expect(() =>
-      validateCatalogIntegrity({ [key]: "Terms apply" }, { [key]: "" }, 0),
+      validateCatalogIntegrity(
+        { [key]: "Terms apply" },
+        { [key]: "" },
+        0,
+        policy,
+      ),
     ).toThrow(`Empty translation: ${key}`)
   })
 
@@ -333,6 +736,61 @@ describe("translate UI catalogs", () => {
       JSON.parse(readFileSync(join(fixture.messagesDir, "es.json"), "utf-8"))
         .common.message19,
     ).toBe("Mensaje diecinueve")
+  })
+
+  it("uses OpenRouter credentials only with an explicit non-default base URL", async () => {
+    const source = sourceCatalog()
+    const currentCatalog = translatedCatalog(source)
+    currentCatalog.common.message19 = source.common.message19
+    const fixture = createFixture({
+      currentCatalog,
+      progressCatalog: currentCatalog,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENROUTER_API_KEY: "test-openrouter-key" },
+      }),
+    ).rejects.toThrow("only with an explicit non-default OPENAI_BASE_URL")
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: {
+          OPENAI_BASE_URL: "https://api.openai.com/v1/",
+          OPENROUTER_API_KEY: "test-openrouter-key",
+        },
+      }),
+    ).rejects.toThrow("only with an explicit non-default OPENAI_BASE_URL")
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    await main({
+      args: fixture.args,
+      environment: {
+        OPENAI_BASE_URL: "https://openrouter.ai/api/v1/",
+        OPENROUTER_API_KEY: "test-openrouter-key",
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://openrouter.ai/api/v1/chat/completions",
+    )
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+      "Bearer test-openrouter-key",
+    )
   })
 
   it("limits a stale-provenance refresh to explicitly requested keys", async () => {
@@ -399,6 +857,18 @@ describe("translate UI catalogs", () => {
     expect(
       promptFromRequest(fetchMock.mock.calls[0][1])
         .existingReferenceTranslations,
+    ).not.toHaveProperty("other.unrelated")
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).surroundingSourceMessages,
+      ),
+    ).toEqual(
+      Object.keys(source.common)
+        .filter((key) => key !== "message19")
+        .map((key) => `common.${key}`),
+    )
+    expect(
+      promptFromRequest(fetchMock.mock.calls[0][1]).surroundingSourceMessages,
     ).not.toHaveProperty("other.unrelated")
   })
 
@@ -756,6 +1226,32 @@ describe("translate UI catalogs", () => {
         total_tokens: 19,
       },
     })
+  })
+
+  it("uses an explicitly configured OpenAI-compatible base URL", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([{ key: "common.greeting", value: "Hola" }]),
+      )
+
+    await requestTranslations({
+      apiKey: "test-api-key",
+      baseUrl: "https://openrouter.ai/api/v1/",
+      locale: "es",
+      inventoryEntry: { countries: [{ name: "Spain" }] },
+      messages: { "common.greeting": "Hello" },
+      references: {},
+      model: "openai/gpt-5.4-mini",
+      maxAttempts: 1,
+      minimumChangeRatio: 1,
+      fetchImpl,
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      "https://openrouter.ai/api/v1/chat/completions",
+    )
   })
 
   it("surfaces a Responses API refusal after retries are exhausted", async () => {
@@ -1338,16 +1834,650 @@ describe("translate UI catalogs", () => {
         existingNonInventoryLocales: [],
         missingCatalogs: [],
       },
-      inventory: { languages: [{ tag: "ru" }] },
-      completedLocales: ["ru"],
-      generatedLocales: ["ru"],
+      inventory: { languages: [{ tag: "en" }] },
+      completedLocales: ["en"],
+      generatedLocales: ["en"],
       model: MODEL,
       sourceDigest: "current-source",
-      catalogDigests: { ru: "current-ru" },
+      catalogDigests: { en: "current-en" },
       generatedOn: "2026-07-23",
     })
 
     expect(manifest.machineTranslatedLocales).toEqual([])
     expect(manifest.metadata.translation.localeProvenance).toEqual({})
+  })
+})
+
+function authoredManifest(locales) {
+  return {
+    metadata: {},
+    authoredInventoryLocales: locales,
+    machineTranslatedLocales: [],
+    provisionalLocales: [],
+    existingNonInventoryLocales: [],
+    missingCatalogs: [],
+  }
+}
+
+function provisionalManifest(locales) {
+  return {
+    ...authoredManifest([]),
+    provisionalLocales: locales,
+  }
+}
+
+// OpenAI's 429 bodies for a used-up quota and for a transient rate limit.
+function quotaExhaustedResponse(messageSuffix = "") {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: `You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.${messageSuffix}`,
+        type: "insufficient_quota",
+        param: null,
+        code: "insufficient_quota",
+      },
+    }),
+    { status: 429, headers: { "content-type": "application/json" } },
+  )
+}
+
+function rateLimitedResponse(retryAfterSeconds) {
+  return new Response(
+    JSON.stringify({
+      error: {
+        message:
+          "Rate limit reached for gpt-5.4-mini in organization org-test on tokens per min (TPM): Limit 200000, Used 199000, Requested 4000. Please try again in 1.2s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        type: "tokens",
+        param: null,
+        code: "rate_limit_exceeded",
+      },
+    }),
+    {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(retryAfterSeconds),
+      },
+    },
+  )
+}
+
+describe("caller translation options", () => {
+  it("keeps web's policy file as the default policy", () => {
+    const webPolicy = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "scripts/ui-translation-policy.json"),
+        "utf-8",
+      ),
+    )
+    const sourceFlat = flattenCatalog(
+      JSON.parse(readFileSync(join(process.cwd(), "messages/en.json"), "utf8")),
+    )
+
+    expect(sourceDigestForFlatCatalog(sourceFlat)).toBe(
+      inlinePolicyDigest(sourceFlat, webPolicy),
+    )
+  })
+
+  it("uses a caller policy for the locale-neutral set and the source digest", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    catalog.common.message19 = source.common.message19
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: authoredManifest(["es"]),
+      progress: null,
+      policy,
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: fixture.args,
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(process.exitCode).toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).messagesToTranslate,
+      ),
+    ).toEqual(["common.message19"])
+    expect(
+      JSON.parse(readFileSync(join(fixture.messagesDir, "es.json"), "utf-8"))
+        .brand.name,
+    ).toBe("Forge")
+
+    const sourceFlat = flattenCatalog(source)
+    const progress = JSON.parse(readFileSync(fixture.progressPath, "utf-8"))
+    expect(progress.sourceDigest).toBe(inlinePolicyDigest(sourceFlat, policy))
+    expect(progress.sourceDigest).not.toBe(
+      sourceDigestForFlatCatalog(sourceFlat),
+    )
+  })
+
+  it("keeps a caller's human-reviewed locales out of machine provenance on promotion", async () => {
+    const source = sourceCatalog()
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: structuredClone(source) },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      policy: {
+        humanReviewedLocales: ["en", "es"],
+        pendingTranslationPaths: [],
+        intentionallyLocaleNeutral: [],
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: withLocales(fixture.args, ["es"], true),
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(manifest.provisionalLocales).toEqual([])
+    expect(manifest.machineTranslatedLocales).toEqual([])
+    expect(manifest.metadata.translation.localeProvenance).toEqual({})
+  })
+
+  it("applies a caller policy when it resumes and promotes a completed catalog", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: provisionalManifest(["es"]),
+      progress: {
+        completedLocales: ["es"],
+        generatedLocales: ["es"],
+        catalogDigests: { es: contentDigest(flattenCatalog(catalog)) },
+        usage: {},
+      },
+      policy,
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const warnings = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    await main({
+      args: withLocales(fixture.args, ["es"], true),
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(warnings).not.toHaveBeenCalled()
+    expect(manifest.machineTranslatedLocales).toEqual(["es"])
+    expect(manifest.metadata.translation.localeProvenance.es.sourceDigest).toBe(
+      inlinePolicyDigest(flattenCatalog(source), policy),
+    )
+  })
+
+  it("measures scoped promotion drift against a caller policy's baseline digest", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const sourceFlat = flattenCatalog(source)
+    const catalog = translatedCatalog(source)
+    catalog.brand = { name: "Forge" }
+    const policy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: ["brand.name"],
+    }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: catalog },
+      manifest: {
+        ...authoredManifest(["es"]),
+        metadata: {
+          translation: {
+            localeProvenance: {
+              es: {
+                model: "gpt-old-primary",
+                sourceDigest: inlinePolicyDigest(
+                  Object.fromEntries(
+                    Object.entries(sourceFlat).filter(
+                      ([key]) => key !== "common.message19",
+                    ),
+                  ),
+                  policy,
+                ),
+                catalogDigest: contentDigest(flattenCatalog(catalog)),
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        machineTranslatedLocales: ["es"],
+      },
+      progress: {
+        completedLocales: [],
+        generatedLocales: [],
+        catalogDigests: {},
+        usage: {},
+      },
+      policy,
+    })
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion([
+          { key: "common.message19", value: "Mensaje diecinueve" },
+        ]),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await main({
+      args: [...fixture.args, "--keys", "common.message19", "--promote"],
+      environment: { OPENAI_API_KEY: "test-api-key" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      JSON.parse(readFileSync(fixture.manifestPath, "utf-8")).metadata
+        .translation.localeProvenance.es.sourceDigest,
+    ).toBe(inlinePolicyDigest(sourceFlat, policy))
+  })
+
+  it("replaces web's product, surface, and per-key context with a caller's contexts", async () => {
+    const source = sourceCatalog()
+    source.AccountControl = { accountMenu: "Account menu" }
+    const requestFor = async (contexts) => {
+      const fixture = createBatchFixture({
+        source,
+        catalogs: { es: structuredClone(source) },
+        manifest: provisionalManifest(["es"]),
+        progress: null,
+        contexts,
+      })
+      const fetchMock = vi.fn(async (_url, options) =>
+        translatedPromptResponse(options, "Traducido"),
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      await main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+      return {
+        system: body.messages[0].content,
+        prompt: JSON.parse(body.messages[1].content),
+      }
+    }
+    const searchLines = (prompt) =>
+      prompt.contextualInstructions.filter((line) =>
+        line.includes("SearchOverlay"),
+      )
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    const web = await requestFor(undefined)
+    expect(web.system).toContain(
+      "Jesus Film Project, a Christian video-streaming and discipleship website.",
+    )
+    expect(web.prompt.messageContexts["AccountControl.accountMenu"]).toEqual({
+      surface: "the Watch account menu",
+      role: "account-menu accessibility label",
+      visibility: "assistive technology only",
+    })
+    expect(searchLines(web.prompt)).toHaveLength(4)
+
+    const caller = await requestFor({
+      product: "a Christian video-streaming and discipleship mobile app",
+      namespaces: {
+        common: "the mobile settings screen",
+        AccountControl: "the mobile profile tab",
+      },
+      keys: {
+        "common.message0": {
+          role: "tab bar label",
+          visibility: "shown under a tab icon",
+        },
+      },
+    })
+    expect(caller.system).toContain(
+      "Jesus Film Project, a Christian video-streaming and discipleship mobile app.",
+    )
+    expect(caller.system).not.toContain("website")
+    expect(caller.prompt.messageContexts["common.message0"]).toEqual({
+      surface: "the mobile settings screen",
+      role: "tab bar label",
+      visibility: "shown under a tab icon",
+    })
+    expect(caller.prompt.messageContexts["common.message1"]).toEqual({
+      surface: "the mobile settings screen",
+      role: "interface message",
+    })
+    expect(caller.prompt.messageContexts["AccountControl.accountMenu"]).toEqual(
+      {
+        surface: "the mobile profile tab",
+        role: "interface message",
+      },
+    )
+    expect(searchLines(caller.prompt)).toEqual([])
+    expect(caller.prompt.contextualInstructions).toEqual(
+      web.prompt.contextualInstructions.filter(
+        (line) => !line.includes("SearchOverlay"),
+      ),
+    )
+  })
+
+  it("rejects caller contexts that miss a catalog namespace before any request", async () => {
+    const source = sourceCatalog()
+    source.brand = { name: "Forge" }
+    const fixture = createBatchFixture({
+      source,
+      catalogs: { es: structuredClone(source) },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      contexts: {
+        product: "a Christian video-streaming and discipleship mobile app",
+        namespaces: { common: "the mobile settings screen" },
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toMatchObject({
+      code: "MISSING_NAMESPACE_CONTEXT",
+      message: expect.stringContaining("brand"),
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects a caller context override for an unknown message key before any request", async () => {
+    const fixture = createBatchFixture({
+      catalogs: { es: sourceCatalog() },
+      manifest: provisionalManifest(["es"]),
+      progress: null,
+      contexts: {
+        product: "a Christian video-streaming and discipleship mobile app",
+        namespaces: { common: "the mobile settings screen" },
+        keys: { "common.retired": { role: "action label" } },
+      },
+    })
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+
+    await expect(
+      main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }),
+    ).rejects.toMatchObject({
+      code: "UNKNOWN_CONTEXT_KEY",
+      message: expect.stringContaining("common.retired"),
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed caller policy and contexts files before any request", async () => {
+    const fetchMock = vi.fn(async (_url, options) =>
+      translatedPromptResponse(options, "Traducido"),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    // Each case breaks one field and keeps every other field valid, so only
+    // the check under test can reject it.
+    const validPolicy = {
+      humanReviewedLocales: ["en"],
+      pendingTranslationPaths: [],
+      intentionallyLocaleNeutral: [],
+    }
+    const validContexts = {
+      product: "a Christian video-streaming and discipleship mobile app",
+      namespaces: { common: "the mobile settings screen" },
+    }
+    const policyCases = [
+      [
+        "intentionallyLocaleNeutral is not an array",
+        { ...validPolicy, intentionallyLocaleNeutral: "common.message0" },
+        "intentionallyLocaleNeutral must be an array of strings",
+      ],
+      [
+        "humanReviewedLocales is not an array",
+        { ...validPolicy, humanReviewedLocales: "en" },
+        "humanReviewedLocales must be an array of strings",
+      ],
+      [
+        "the root is not an object",
+        ["common.message0"],
+        "must be a JSON object",
+      ],
+    ]
+    const contextsCases = [
+      [
+        "product is missing",
+        { namespaces: validContexts.namespaces },
+        "product must be a non-empty string",
+      ],
+      [
+        "namespaces is an array",
+        { ...validContexts, namespaces: ["common"] },
+        "namespaces must map each namespace",
+      ],
+      [
+        "a namespace sentence is not a string",
+        { ...validContexts, namespaces: { common: 123 } },
+        "namespaces must map each namespace",
+      ],
+      [
+        "an override has an unknown field",
+        {
+          ...validContexts,
+          keys: { "common.message0": { unknownField: "x" } },
+        },
+        "keys must map each message key",
+      ],
+      [
+        "an override value is not a string",
+        { ...validContexts, keys: { "common.message0": { role: 123 } } },
+        "keys must map each message key",
+      ],
+    ]
+    const cases = [
+      ...policyCases.map(([label, policy, detail]) => ({
+        label: `policy: ${label}`,
+        options: { policy },
+        code: "INVALID_TRANSLATION_POLICY",
+        detail,
+      })),
+      ...contextsCases.map(([label, contexts, detail]) => ({
+        label: `contexts: ${label}`,
+        options: { contexts },
+        code: "INVALID_CATALOG_CONTEXTS",
+        detail,
+      })),
+    ]
+
+    for (const { label, options, code, detail } of cases) {
+      const fixture = createBatchFixture({
+        catalogs: { es: sourceCatalog() },
+        manifest: provisionalManifest(["es"]),
+        progress: null,
+        ...options,
+      })
+      // `.rejects` drops the label when main() resolves; this keeps it.
+      const rejection = await main({
+        args: fixture.args,
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      }).then(
+        () => "resolved without an error",
+        (error) => error,
+      )
+      expect(rejection, label).toMatchObject({
+        code,
+        message: expect.stringContaining(detail),
+      })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("stops the whole run at the first used-up quota only with --stop-on-quota", async () => {
+    const source = sourceCatalog()
+    const runWith = async (extraArgs) => {
+      const fixture = createBatchFixture({
+        source,
+        catalogs: { es: structuredClone(source), fr: structuredClone(source) },
+        manifest: provisionalManifest(["es", "fr"]),
+        progress: null,
+      })
+      const fetchMock = vi.fn(async () => quotaExhaustedResponse())
+      vi.stubGlobal("fetch", fetchMock)
+      process.exitCode = undefined
+      const run = main({
+        args: [...fixture.args, ...extraArgs],
+        environment: { OPENAI_API_KEY: "test-api-key" },
+      })
+      await vi.runAllTimersAsync()
+      await run
+      return fetchMock
+    }
+    // main() uses the real retry wait; fake setTimeout keeps a retry from sleeping.
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    const retried = await runWith([])
+    expect(retried).toHaveBeenCalledTimes(8)
+    expect(process.exitCode).toBe(1)
+
+    const stopped = await runWith(["--stop-on-quota"])
+    expect(stopped).toHaveBeenCalledTimes(1)
+    expect(process.exitCode).toBe(1)
+    expect(JSON.parse(errors.mock.calls.at(-1)[0])).toMatchObject({
+      event: "translation_failed",
+      failures: [
+        {
+          locale: "es",
+          message: expect.stringContaining("insufficient_quota"),
+        },
+      ],
+    })
+  })
+
+  it("classifies a used-up quota as permanent with stopOnQuota", async () => {
+    const fetchImpl = vi.fn(async () => quotaExhaustedResponse())
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: MODEL,
+        maxAttempts: 4,
+        minimumChangeRatio: 1,
+        fetchImpl,
+        waitForRetry,
+        stopOnQuota: true,
+      }),
+    ).rejects.toMatchObject({
+      name: "PermanentApiError",
+      message: expect.stringContaining("insufficient_quota"),
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(waitForRetry).not.toHaveBeenCalled()
+  })
+
+  it("finds the quota code after a long error message with stopOnQuota", async () => {
+    const fetchImpl = vi.fn(async () =>
+      quotaExhaustedResponse(" Contact support.".repeat(60)),
+    )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      requestTranslations({
+        apiKey: "test-api-key",
+        locale: "es",
+        inventoryEntry: { countries: [{ name: "Spain" }] },
+        messages: { "common.greeting": "Hello" },
+        references: {},
+        model: MODEL,
+        maxAttempts: 4,
+        minimumChangeRatio: 1,
+        fetchImpl,
+        waitForRetry,
+        stopOnQuota: true,
+      }),
+    ).rejects.toMatchObject({
+      name: "PermanentApiError",
+      message: expect.not.stringContaining("insufficient_quota"),
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(waitForRetry).not.toHaveBeenCalled()
+  })
+
+  it("still retries a rate-limit 429 after its Retry-After wait with stopOnQuota", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(rateLimitedResponse(7))
+      .mockResolvedValueOnce(
+        chatCompletion([{ key: "common.greeting", value: "Hola" }]),
+      )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    const result = await requestTranslations({
+      apiKey: "test-api-key",
+      locale: "es",
+      inventoryEntry: { countries: [{ name: "Spain" }] },
+      messages: { "common.greeting": "Hello" },
+      references: {},
+      model: MODEL,
+      maxAttempts: 2,
+      minimumChangeRatio: 1,
+      fetchImpl,
+      waitForRetry,
+      stopOnQuota: true,
+    })
+
+    expect(result.translations).toEqual({ "common.greeting": "Hola" })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(waitForRetry).toHaveBeenCalledTimes(1)
+    expect(waitForRetry.mock.calls[0][0]).toBeGreaterThanOrEqual(7000)
+    expect(waitForRetry.mock.calls[0][0]).toBeLessThan(7500)
   })
 })

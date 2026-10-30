@@ -1,0 +1,13 @@
+{
+  "mode": "candidate",
+  "startedAt": "2026-09-28T21:08:22.008748+00:00",
+  "endedAt": "2026-09-28T21:08:27.749325+00:00",
+  "transportElapsedMs": 5741,
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "exitCode": 0,
+  "sqlstates": [],
+  "statementTimeout": false,
+  "returnedAggregateGroups": 129
+}

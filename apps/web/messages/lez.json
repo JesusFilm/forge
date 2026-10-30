@@ -39,9 +39,8 @@
     "posterAlt": "Видео плакат",
     "noDownloads": "А видеодал цӏайдак гьилан имконийат авач.",
     "fileSizeLabel": "Фаилдин чӏилли кьабул",
-    "termsAgreementPrefix": "Кьатӏавай мен",
-    "termsOfUse": "Иштиякъан шартӏар",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "Зун <link>ишлемишунин шартӀаралди</link> рази я",
+    "termsOfUse": "Ишлемишунин шартӀар",
     "close": "Кьепь",
     "download": "Цӏайдак гьиле",
     "authRequiredTitle": "А видеони цӏайдак гьилей гьарзав?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-да хатъар (и сборкада авач)",
     "shareOnX": "X-да хатъар",
     "shareOnXUnavailable": "X-да хатъар (и сборкада авач)",
+    "opensInNewTab": "{label} (цӀийи вкладкада ачух жеда)",
     "shareDisabledHint": "Хатъар авун тарафдан лайих я — а видеони production-да хьана кийин гьарай я.",
     "shareFormat": "Хатъардин форматы",
     "shareLinkTab": "Ссылка хатъар",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио чӏал эгечӏ",
     "home": "JesusFilm ксар",
     "closeSearch": "Гъарун кьепь",
-    "submitSearch": "Гъарун"
+    "submitSearch": "Гъарун",
+    "library": "Ктабхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолар гъарун ва къарагъун",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Хутӏ кьватӏ артухариз хьанвач.",
     "searching": "Гъарда...",
     "connectionHint": "Сизни гьалди текшер кьуна гьаъ хъсан кьван.",
+    "rateLimitHint": "ТIалабунар лап гзаф я. Са минутдилай мадни алахъ.",
     "retrySearch": "Гъарун хъсан кьван",
     "retry": "Хъсан кьван",
     "noResults": "\"{query}\" учун натижалар авач",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» {language} чӏалал гъарун",
     "inLanguage": "{language}-да",
     "browseByRegion": "Региондалди къарагъ",
+    "allVideosOnSinglePage": "Вири видеолар са саҳифада",
     "clearLanguages": "Кьатӏ",
     "queryLanguageDetected": "{language} таб хьана",
     "searchInLanguage": "{language} чӏалал гъарун",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Азиздик къарагъун",
     "tapToUnmute": "Тышкъун тӏур",
-    "nextEpisode": "Агъани эпизод"
+    "nextEpisode": "Агъани эпизод",
+    "audioTranslationCount": "{count, plural, one {# чӏал} other {# чӏалар}}",
+    "subtitleCount": "Субтитрлар: {count, plural, one {# чӏал} other {# чӏалар}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Мәзунин ашкара",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Фикърим гьарф формас хъутӏанач.",
     "loadingForm": "Фикърим гьарф формас ашкара...",
     "retry": "Кьибла",
-    "openFormShort": "Форма ачухь",
     "cancel": "Кьелем",
-    "title": "Бета фикър",
-    "description": "Ни винин ва ни къуьне епин кьван кумар гьарза. Ана Google ийир форма я.",
-    "openInNewTab": "Формани цӏийи вкладкада ачухь",
     "closeForm": "Фикърим гьарф формас кьепь",
-    "loadingGoogleForm": "Google Form ашкара...",
-    "iframeTitle": "Бета фикър къалур"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-да тӏуьл христиандин видеолар | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциялар",
     "subtitlesOnly": "Тек субтитрлар",
+    "backToTop": "Кьуле хъфин",
     "newlyAdded": "Цӏийидан эгечӏ",
     "newVideosTitle": "{language}-да цӏийи христиандин видеолар",
     "newestFirst": "Агъаниди кьиливди",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Тӏек видеолар",
     "videosFromCollection": "{collection}-дай видеолар.",
     "standaloneDescription": "И чӏалда тӏек видеолар.",
-    "openCollection": "Коллекция ачухь"
+    "openCollection": "Коллекция ачухь",
+    "filters": "Хкягъунар",
+    "filterLength": "Яргъивал",
+    "filterLength_under5": "5 декьикьадилай тӏимил",
+    "filterLength_5to10": "5-10 декьикьа",
+    "filterLength_10to30": "10-30 декьикьа",
+    "filterLength_over30": "30 декьикьадилай гзаф",
+    "filterType": "Жуьре",
+    "clearFilters": "Хкягъунар михьун",
+    "filterResults": "{total}-дай {count} къалурна",
+    "noFilterResults": "И хкягъунриз кутугай видео авач. Садни къахчун ая.",
+    "filterAdded": "Алава хьана",
+    "filterAdded_60d": "Эхиримжи 60 югъ",
+    "filterAdded_6m": "Эхиримжи 6 варз",
+    "filterAdded_12m": "Эхиримжи 12 варз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Къарагъ",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Кьазмахь видео preview",
     "nextVideoPreview": "Агъани видео preview",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеоалдиз кьазухь"
+    "scrollToVideo": "{title} видеоалдиз кьазухь",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ксар",
@@ -404,6 +594,29 @@
     "merryChristmas": "Рождество мубарак хьуй!",
     "daysUntilChristmas": "{count, plural, one {Рождестводалди # югъ ама} other {Рождестводалди # йикъар ама}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Библиотека килиг",
+    "title": "Категорийрай килиг",
+    "description": "Библиотекадин квез герек тир паюниз дуьз фена: Исадин уьмуьр, килисадин йисан вахтар ва хизанриз, студентриз ва гъвечӏи группайриз туькӏуьрнавай видеояр.",
+    "seeAll": "Вири видеояр килиг",
+    "previous": "Кьазмахь категорияр",
+    "next": "Агъани категорияр",
+    "categories": {
+      "jesus": "JESUS фильм",
+      "gospels": "Инжилар",
+      "shortVideos": "Куьруь видеояр",
+      "family": "Хизан",
+      "relationships": "Алакъаяр",
+      "women": "Дишегьлияр патал",
+      "students": "Студентар патал",
+      "sports": "Спорт",
+      "goodNews": "Хъсан хабар",
+      "hope": "Умуд",
+      "training": "Чирвилер гун",
+      "easter": "Пасха",
+      "christmas": "Рождество"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Чӏалар",
     "metadataDescription": "JesusFilm видеолар чӏалдалди къарагъ.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Саҳифа таб хьана:",
     "title": "А сцена мад хъанай авач.",
     "description": "Саҳифа я са винихьа көчмірмиш хьанвай, гьикаят амай кьван давам я.",
+    "languageDescription": "Квез герек тир саҳифа чна жагъуриз хьанач, амма гьикаят дуьньядин чӏаларал алай фильмара ва видеойра давам жезва.",
     "actionsLabel": "Саҳифа таб хьанвай хәрекатар",
     "backToWatch": "Къарагъдиз хъсан",
     "browseVideos": "Видеолар къарагъ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кӏуртӏ фильм къарагъ",
-    "actions": {
-      "joinUs": "Биздал къатӏ",
-      "shareMission": "Биздин миссиядал пайда кьабул авун"
-    },
-    "welcomeStart": {
-      "label": "Иман ва Къуьран",
-      "title": "Гьанин видеолардин тавсияр",
-      "description": "Бизнин библиотекадан имандал кьиливди авай видеоконтент, сизни илхам авун, тӏерез авун ва фикърдаш кьатӏ авун учун."
-    },
-    "welcomeMorning": {
-      "label": "Гьедени илхам",
-      "title": "Сабахьыр хъва! Гьанин Инжилдин лаҳзар кьатӏухьнава.",
-      "description": "Гьанин къуват ва илхам кьабул авунар учун хъсан Инжилдин лаҳзардалди къатӏув авун."
-    },
-    "welcomeAfternoon": {
-      "label": "Гъвечӏин илхам",
-      "title": "Гъвечӏин хъва! Сизнин гьанин Инжилдин лаҳзар.",
-      "description": "Гъвечӏин тӏирдин кьван я са давам илхам учун къулай Инжилдин мазмун."
-    },
-    "welcomeEvening": {
-      "label": "Амалдин илхам",
-      "title": "Гьадин хъва! Инжилдин лаҳзардалди кьарагъ.",
-      "description": "Гьанин къурулуш кьиливди фикир авун ва рагьатвал таб авун учун тӏынч Инжилдин лаҳзар."
-    },
-    "joinUs": {
-      "label": "Биздал къатӏ",
-      "title": "Миллиардар кьетӏар жеда",
-      "description": "Урожай гьанва. Дигитал медиа къуллугъдалди дуьньядал Инжил хабар кьатӏуда биздал къатӏ."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кьамалди къарагъун",
-      "title": "Иса гьикаятни кьамалди къарагъун",
-      "description": "Аларни Иса-дин мейр ва гьакъий чӏалдал, авайни кьван са кьисмик кьиливди эшитун ва къалурун учун."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% дуьзкъвезва",
-    "none": "И чӏалда и видеодиз тавсияр таб хьанач."
+    "none": "И чӏалда и видеодиз тавсияр таб хьанач.",
+    "heading": "Тавсия авунвай видеояр",
+    "loadingLabel": "Тавсия авунвай видеояр ашкара жезва",
+    "openingTitle": "{title} ахъайзава",
+    "openingVideo": "Видео ахъайзава",
+    "activityNotRecorded": "Тавсийрин активность кхьиз хьанач. Ссылкаяр кӏвалахзава.",
+    "showingContextual": "Контекстдин тавсияр къалурзава.",
+    "showingSaved": "Хвенвай тавсияр къалурзава.",
+    "explanationCurated": "Килигун патал хкягъай видеояр.",
+    "explanationViewingMode": "И видеодиз ва куьне килигдай къайдадиз килигна тавсия авунва.",
+    "explanationCowatch": "И видеодиз ва квен интересриз килигна тавсия авунва.",
+    "explanationHybrid": "И видеодиз ва куьне рикIел хуьн патал хкягъай интересриз килигна тавсия авунва.",
+    "explanationContextual": "Куьне гила килигзавай видеодиз килигна тавсия авунва.",
+    "explanationSemanticFallback": "Шахсий авун гила авачирвиляй, куьне гила килигзавай видеодиз килигна тавсия авунва.",
+    "explanationProfileDurable": "Куьне рикIел хуьн патал хкягъай интересриз килигна шахсий авунва.",
+    "explanationProfileVisit": "И зиярат патал шахсий авунва.",
+    "personalizationLabel": "Тавсиярин шахсий авун",
+    "personalizationPrompt": "Тавсияр гьикI шахсий ийизватIа, дегишариз кIанзавани?",
+    "openCookieSettings": "Кукидин настройкаяр ахъая"
   },
   "BetaTesterModal": {
     "title": "Бета-тестер хьухь",
@@ -538,16 +732,39 @@
     "retryFailed": "Хъутӏайбур хъсан кьван"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ЧIалан версия авач",
+    "eyebrow": "ЧIалан версия авач",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> чIалал авач",
+    "actionsLabel": "Килигдай мумкинвилер",
+    "browseInLanguage": "{language} чIалал видеояр килиг",
+    "backToSearch": "Жузунал элкъвена",
+    "audioVersionsTitle": "Маса сесин версияяр",
+    "audioVersionsDescription": "И видео килигзавайди давамарун патал сесин чIал хкягъ.",
+    "languageVersionLabel": "Сесин чIал",
+    "selectLanguageVersion": "ЧIалан версия хкягъ",
+    "watchSelectedVersion": "Хкягъай версиядиз килиг"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Кукирин кьилияр",
+    "bannerTitle": "Чи махфи кьилияр",
+    "bannerDescription": "Зарур кукияр Watch-дини хатасуз ва ишлек авуна кьуна. Куь квез ихтияр гуз, тIимилу кхьин патай тир куки зияратрин арада интересар рикIел хуьз жеда, тавсияр шахсий авунин патал. Контекстдин тавсияр и кьве гьалда къалур жеда.",
+    "acceptAll": "Вири кьабул авун",
+    "essentialOnly": "Садра зарурбур",
+    "manageChoices": "Кьилияр идаре авун",
+    "savingChoice": "Куки кьили хъуьруьн",
+    "settings": "Кукидин настройкаяр",
+    "settingsDescription": "Watch-дини зияратрин арада тавсиярин интересар рикIел хуьн лазим ятIа, кьил авуна. И кьил куьне гьар са вахтунда дегишариз жеда.",
+    "essentialCookies": "Зарур кукияр",
+    "essentialDescription": "Хатасузвал, видеодин къалурун, махфивалдин кьилияр ва тавсиярин тIалабдин атрибуция.",
+    "alwaysActive": "Гьамиша актив",
+    "personalization": "Шахсий авун",
+    "personalizationDescription": "Зияратрин арада чIехи тушир интересар рикIел хуьн. И кар акъуд авуналди, контекстдин тавсияр гележегъ я.",
+    "erasurePending": "Профилдин чIур авун гуьзлемиш жеда. Контекстдин тавсияр эхиримжи актив я.",
+    "cancel": "ИмтIан",
+    "saveChoices": "Кьилияр хуьн",
+    "saving": "Хуьзва…",
+    "loadError": "Куь кьил къачуз хьанач. Куьне агъа кIаник кьил авун мумкин я.",
+    "grantError": "Шахсий авун кабулариз хьанач. Садра зарурбур гележегъ я.",
+    "saveError": "Куь кьил хуьз хьанач. Зегьмет олна, мад сеферда хъийиз."
   }
 }

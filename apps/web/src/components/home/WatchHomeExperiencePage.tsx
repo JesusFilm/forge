@@ -1,16 +1,49 @@
+import { WatchHomeRoleBand } from "@/components/home/WatchHomeRoleBand"
+import {
+  signWatchHomeHeroManifestCatalog,
+  signWatchSurfaceManifest,
+} from "@/lib/watch-surface-manifest.server"
+import {
+  authoredWatchSurfaceSource,
+  watchHomeHeroSource,
+} from "@/lib/watch-surface-manifest.sources"
+import { Fragment, Suspense } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
+import {
+  boundDynamicCollectionFeedReferences,
+  mergeDynamicCollectionFeedExcludedIds,
+  type DynamicCollectionFeedCacheScope,
+} from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
+import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 type WatchHomeExperiencePageProps = {
+  audienceEnabled?: boolean
+  /** Published audience configuration; absent keeps the code definitions. */
+  audience?: WatchAudienceResolution
   heroModel: WatchHomeModel
   blocks: readonly Section[]
+  locale?: string
   languageSlug: string
+  publicDocumentPathname?: string
+  legacyCategoryRailCompatibility?: boolean
+  dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
 }
+
+const LEGACY_CATEGORY_RAIL_SECTION = {
+  __typename: "WatchHomeCategoryRailBlock",
+  categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+} as unknown as Section
 
 function findBackdropImage(model: WatchHomeModel): {
   url: string
@@ -30,6 +63,13 @@ function isWatchHomeHeroBlock(block: Section) {
     (block as { readonly __typename?: string | null }).__typename ===
     "WatchHomeHeroBlock"
   )
+}
+
+function watchHomeBlockKey(block: Section, index: number) {
+  const sectionKey = (block as { sectionKey?: string | null }).sectionKey
+  return typeof sectionKey === "string" && sectionKey.trim().length > 0
+    ? sectionKey
+    : index
 }
 
 type PageHeadingCandidate = {
@@ -98,18 +138,179 @@ function isStandaloneMediaBlock(block: Section) {
   return typename === "VideoBlock" || typename === "VideoCarouselBlock"
 }
 
+function isDynamicMediaCollectionBlock(block: Section) {
+  const candidate = block as {
+    readonly __typename?: string | null
+    readonly itemsSource?: string | null
+  }
+
+  return (
+    candidate.__typename === "MediaCollectionBlock" &&
+    candidate.itemsSource === "dynamicCollections"
+  )
+}
+
 export function WatchHomeExperiencePage({
+  audienceEnabled = false,
+  audience,
   heroModel,
   blocks,
+  locale = "en",
   languageSlug,
+  publicDocumentPathname,
+  legacyCategoryRailCompatibility = false,
+  dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
+  const tLoading = useTranslations("ExperienceSkeleton")
   const backdrop = findBackdropImage(heroModel)
   const normalized = normalizeAuthoredPageHeadings(blocks)
   const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
+  // The intro is sticky and the body zone scrolls over it, so the carousel has
+  // to render OUTSIDE that zone. An authored hero block renders the very same
+  // carousel (see `renderBlock`), so hoist it when it leads the page. An
+  // authored hero placed mid-page keeps its inline position and simply does
+  // not pin — pinning a hero that starts halfway down has no meaning.
+  const leadsWithHeroBlock =
+    normalized.blocks.length > 0 && isWatchHomeHeroBlock(normalized.blocks[0])
+  const heroAboveBodyZone = !hasHeroBlock || leadsWithHeroBlock
+  const bodyZoneBlocks = leadsWithHeroBlock
+    ? normalized.blocks.slice(1)
+    : normalized.blocks
+  const featuredCollections = collectFeaturedCollectionReferences(
+    normalized.blocks,
+  )
+  const dynamicCollectionBlock = normalized.blocks.find(
+    isDynamicMediaCollectionBlock,
+  )
+  const boundedFeaturedCollections = {
+    ids: featuredCollections.ids,
+    slugs: boundDynamicCollectionFeedReferences(featuredCollections.slugs),
+  }
+  const dynamicCollectionCacheSignatures = dynamicCollectionBlock
+    ? createInitialDynamicCollectionFeedCacheSignatures({
+        locale,
+        languageSlug,
+        cacheScope: dynamicCollectionCacheScope,
+        excludedIds: mergeDynamicCollectionFeedExcludedIds(
+          (
+            dynamicCollectionBlock as unknown as {
+              excludedVideoIds?: readonly string[] | null
+            }
+          ).excludedVideoIds,
+          boundedFeaturedCollections.ids,
+        ),
+        excludedSlugs: boundedFeaturedCollections.slugs,
+      })
+    : undefined
+  const dynamicCollections = {
+    featuredCollections: boundedFeaturedCollections,
+    cacheScope: dynamicCollectionCacheScope,
+    cacheSignatures: dynamicCollectionCacheSignatures,
+  }
+  const compatibilityCategoryRail = legacyCategoryRailCompatibility ? (
+    <ExperienceSectionRenderer
+      section={LEGACY_CATEGORY_RAIL_SECTION}
+      locale={locale}
+      languageSlug={languageSlug}
+      dynamicCollections={dynamicCollections}
+    />
+  ) : null
+
+  const renderBlock = (block: Section, index: number) => {
+    const blockKey = watchHomeBlockKey(block, index)
+
+    if (isWatchHomeHeroBlock(block)) {
+      // Reached only by a hero authored somewhere other than first — a leading
+      // one is hoisted above the body zone below. This one renders inside that
+      // zone, so it must not pin: it would stick at the viewport top under the
+      // very content its coverage check measures against.
+      return (
+        <Fragment key={blockKey}>
+          <WatchHomeTvCarousel
+            pinned={false}
+            exposurePlacement={`authored-hero-${index}`}
+            heroManifestCatalog={
+              signWatchHomeHeroManifestCatalog(
+                watchHomeHeroSource(heroModel, `authored-hero-${index}`),
+              ) ?? undefined
+            }
+            slides={heroModel.heroSlides}
+            sequence={heroModel.carousel}
+          />
+          {compatibilityCategoryRail}
+        </Fragment>
+      )
+    }
+
+    const renderedBlock = (
+      <ExperienceSectionRenderer
+        section={block}
+        locale={locale}
+        languageSlug={languageSlug}
+        dynamicCollections={dynamicCollections}
+      />
+    )
+    const typename = (block as { readonly __typename?: string | null })
+      .__typename
+    // The audience frame is the one shared band above, fed by the published
+    // configuration. The authored block only carries that data: it keeps its
+    // place (and every other block's key and placement index) but mounts
+    // nothing, so the questionnaire never appears twice.
+    if (typename === "WatchAudienceBlock") return <Fragment key={blockKey} />
+    const instrumentedBlock =
+      typename === "LanguageGlobeBlock" ? (
+        <Fragment key={blockKey}>{renderedBlock}</Fragment>
+      ) : (
+        <WatchExposureBoundary
+          key={blockKey}
+          manifest={
+            signWatchSurfaceManifest(
+              authoredWatchSurfaceSource(
+                {
+                  surface: "watch-home",
+                  block: "authored",
+                  presentation: "authored-block",
+                  placement: `authored-${index}`,
+                },
+                block,
+                languageSlug,
+                { publicDocumentPathname },
+              ),
+            ) ?? undefined
+          }
+          config={{
+            surface: "watch-home",
+            block: "authored",
+            presentation: "authored-block",
+            placement: `authored-${index}`,
+          }}
+        >
+          {renderedBlock}
+        </WatchExposureBoundary>
+      )
+
+    return isStandaloneMediaBlock(block) ? (
+      <div
+        key={blockKey}
+        className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
+        data-watch-home-content-rail
+      >
+        {instrumentedBlock}
+      </div>
+    ) : (
+      instrumentedBlock
+    )
+  }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-black text-white">
+    <main
+      // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
+      // axis to `auto`, which makes this element the scroll container and
+      // silently stops the hero below from sticking. Clip does not establish a
+      // scroll container, so the pin survives.
+      className="min-h-screen overflow-x-clip bg-black text-white"
+    >
       <div
         className="relative font-sans text-white"
         style={{ minHeight: "100svh" }}
@@ -138,51 +339,67 @@ export function WatchHomeExperiencePage({
           <div aria-hidden className="absolute inset-0 bg-black/35" />
         </div>
 
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px] overflow-x-clip">
+        {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
+            rail to the viewport edges. `html`/`body` already clip the page,
+            so nothing gains a horizontal scrollbar. */}
+        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
           {normalized.hasAuthoredPageHeading ? null : (
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
-          {hasHeroBlock ? null : (
-            <WatchHomeTvCarousel
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
-          )}
-          {normalized.blocks.map((block, index) => {
-            const blockKey =
-              (block as { sectionKey?: string | null }).sectionKey ?? index
-
-            if (isWatchHomeHeroBlock(block)) {
-              return (
-                <WatchHomeTvCarousel
-                  key={blockKey}
-                  slides={heroModel.heroSlides}
-                  sequence={heroModel.carousel}
-                />
-              )
-            }
-
-            const renderedBlock = (
-              <ExperienceSectionRenderer
-                key={blockKey}
-                section={block}
+          {heroAboveBodyZone ? (
+            <Suspense
+              fallback={
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-label={tLoading("loadingContent")}
+                  className="relative h-[66svh] w-full animate-pulse bg-stone-900 md:h-[min(100svh,56.25vw)]"
+                >
+                  <div className="absolute bottom-8 left-6 right-6 flex flex-col gap-3 md:left-12 md:right-12">
+                    <div className="h-10 w-2/3 rounded bg-stone-800 md:h-14" />
+                    <div className="h-4 w-1/3 rounded bg-stone-800" />
+                  </div>
+                </div>
+              }
+            >
+              <WatchHomeTvCarousel
+                heroManifestCatalog={
+                  signWatchHomeHeroManifestCatalog(
+                    watchHomeHeroSource(heroModel),
+                  ) ?? undefined
+                }
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+            </Suspense>
+          ) : null}
+          <WatchHomeBodyZone>
+            {audienceEnabled ? (
+              <WatchHomeRoleBand
+                audience={audience}
                 languageSlug={languageSlug}
               />
-            )
-
-            return isStandaloneMediaBlock(block) ? (
-              <div
-                key={blockKey}
-                className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
-                data-watch-home-content-rail
-              >
-                {renderedBlock}
-              </div>
-            ) : (
-              renderedBlock
-            )
-          })}
-          <WatchHomeFooter />
+            ) : null}
+            {heroAboveBodyZone ? (
+              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+            ) : null}
+            {bodyZoneBlocks.map((block, index) => {
+              // Keep the original index so a block without a `sectionKey`
+              // keeps the key it had before the hero was hoisted out.
+              const renderIndex = leadsWithHeroBlock ? index + 1 : index
+              return (
+                <Suspense
+                  key={watchHomeBlockKey(block, renderIndex)}
+                  fallback={null}
+                >
+                  {renderBlock(block, renderIndex)}
+                </Suspense>
+              )
+            })}
+            <Suspense fallback={null}>
+              <WatchHomeFooter />
+            </Suspense>
+          </WatchHomeBodyZone>
         </div>
       </div>
     </main>

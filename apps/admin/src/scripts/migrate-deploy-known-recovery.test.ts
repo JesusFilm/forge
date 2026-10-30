@@ -1,4 +1,6 @@
+import { LEGACY_STAGE_MIGRATION } from "./legacy-stage-migration-recovery"
 import { describe, expect, it, vi } from "vitest"
+import { LIVE_POLICY_MIGRATION } from "./live-policy-migration-recovery"
 
 import {
   RECOVERABLE_MIGRATION,
@@ -12,6 +14,8 @@ import {
 
 const videoLocaleSearchSocialMetadataMigration =
   "0047_video_locale_search_social_metadata"
+const watchSearchCandidateExactCompatibilityMigration =
+  "0073_watch_search_candidate_exact_compatibility_identities"
 
 describe("isKnownRecoverableP3009", () => {
   it("matches only P3009 output for known recoverable migrations", () => {
@@ -31,6 +35,14 @@ describe("isKnownRecoverableP3009", () => {
     expect(
       isKnownRecoverableP3009(
         `Error code: P3009 ${videoLocaleSearchSocialMetadataMigration}`,
+      ),
+    ).toBe(true)
+  })
+
+  it("recovers the failed Watch search exact compatibility migration", () => {
+    expect(
+      isKnownRecoverableP3009(
+        `Error code: P3009 ${watchSearchCandidateExactCompatibilityMigration}`,
       ),
     ).toBe(true)
   })
@@ -62,10 +74,91 @@ describe("isTransientPrismaDeployFailure", () => {
   })
 })
 
+describe("legacy stage deployment recovery", () => {
+  it.each([false, true])(
+    "resolves only after preparation and handles a completed concurrent recovery (%s)",
+    async (alreadyApplied) => {
+      const runner = vi
+        .fn()
+        .mockResolvedValueOnce({
+          code: 1,
+          output: `P3009 ${LEGACY_STAGE_MIGRATION}`,
+        })
+        .mockResolvedValue({ code: 0, output: "" })
+      await deployWithKnownRecovery(runner, {
+        legacyStageRecovery: async (apply) => {
+          expect(runner).toHaveBeenCalledTimes(1)
+          await apply(alreadyApplied)
+        },
+      })
+      expect(runner.mock.calls.map((call) => call[0])).toEqual(
+        alreadyApplied
+          ? [
+              ["migrate", "deploy"],
+              ["migrate", "deploy"],
+            ]
+          : [
+              ["migrate", "deploy"],
+              ["migrate", "resolve", "--rolled-back", LEGACY_STAGE_MIGRATION],
+              ["migrate", "deploy"],
+            ],
+      )
+    },
+  )
+  it("does not resolve or deploy after a failed marker preparation", async () => {
+    const runner = vi
+      .fn()
+      .mockResolvedValue({ code: 1, output: `P3009 ${LEGACY_STAGE_MIGRATION}` })
+    await expect(
+      deployWithKnownRecovery(runner, {
+        legacyStageRecovery: async () => {
+          throw new Error("preparation stopped")
+        },
+      }),
+    ).rejects.toThrow("preparation stopped")
+    expect(runner).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe("deployWithKnownRecovery", () => {
   const result = (code: number, output = ""): CommandResult => ({
     code,
     output,
+  })
+
+  it.each(["P3009", "P3018"])(
+    "verifies the reviewed live-policy checksum before resolving its replayable %s failure",
+    async (code) => {
+      const runner = vi
+        .fn()
+        .mockResolvedValueOnce(result(1, `${code} ${LIVE_POLICY_MIGRATION}`))
+        .mockResolvedValue(result(0))
+      const verifyLivePolicyRecovery = vi.fn(async () => {
+        expect(runner).toHaveBeenCalledTimes(1)
+      })
+      await deployWithKnownRecovery(runner, { verifyLivePolicyRecovery })
+      expect(verifyLivePolicyRecovery).toHaveBeenCalledOnce()
+      expect(runner).toHaveBeenNthCalledWith(2, [
+        "migrate",
+        "resolve",
+        "--rolled-back",
+        LIVE_POLICY_MIGRATION,
+      ])
+    },
+  )
+
+  it("leaves unknown or changed live-policy state unresolved", async () => {
+    const runner = vi
+      .fn()
+      .mockResolvedValue(result(1, `P3009 ${LIVE_POLICY_MIGRATION}`))
+    await expect(
+      deployWithKnownRecovery(runner, {
+        verifyLivePolicyRecovery: async () => {
+          throw new Error("identity mismatch")
+        },
+      }),
+    ).rejects.toThrow("identity mismatch")
+    expect(runner).toHaveBeenCalledTimes(1)
   })
 
   it("does not run recovery when migrate deploy succeeds", async () => {
@@ -88,6 +181,25 @@ describe("deployWithKnownRecovery", () => {
     await deployWithKnownRecovery(runner)
 
     expect(runner).toHaveBeenNthCalledWith(1, ["migrate", "deploy"])
+    expect(runner).toHaveBeenNthCalledWith(2, [
+      "migrate",
+      "resolve",
+      "--rolled-back",
+      migration,
+    ])
+    expect(runner).toHaveBeenNthCalledWith(3, ["migrate", "deploy"])
+  })
+
+  it("resolves the failed Watch search exact compatibility migration", async () => {
+    const migration = watchSearchCandidateExactCompatibilityMigration
+    const runner = vi
+      .fn()
+      .mockResolvedValueOnce(result(1, `P3009 ${migration}`))
+      .mockResolvedValueOnce(result(0))
+      .mockResolvedValueOnce(result(0))
+
+    await deployWithKnownRecovery(runner)
+
     expect(runner).toHaveBeenNthCalledWith(2, [
       "migrate",
       "resolve",

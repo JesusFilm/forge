@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
+import arabicMessages from "../../messages/ar.json"
 import englishMessages from "../../messages/en.json"
+import russianMessages from "../../messages/ru.json"
+import chineseMessages from "../../messages/zh.json"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
@@ -15,11 +18,28 @@ describe("route-scoped client messages", () => {
     )
 
     expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("LanguagePickerModal")
-    expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("BetaTesterModal")
+    expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).not.toContain("BetaTesterModal")
     expect(messages.LanguagePickerModal?.dialogTitle).toBe("Language")
+    expect(messages.LanguagePickerModal?.notAvailable).toBe("Not available")
     expect(messages.LanguagePickerModal?.apply).toBe("Apply")
-    expect(messages.BetaTesterModal?.trigger).toBe("Become a beta tester")
+    expect(messages).not.toHaveProperty("BetaTesterModal")
   })
+
+  it.each([
+    ["Russian", russianMessages, "Недоступно"],
+    ["Arabic", arabicMessages, "غير متاح"],
+    ["Chinese", chineseMessages, "暂不可用"],
+  ])(
+    "projects the localized unavailable badge status in %s",
+    (_, catalog, expected) => {
+      const messages = pickClientMessages(
+        catalog,
+        GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+      )
+
+      expect(messages.LanguagePickerModal?.notAvailable).toBe(expected)
+    },
+  )
 
   it("keeps the language inventory collection switcher translated", () => {
     const messages = pickClientMessages(
@@ -45,6 +65,9 @@ describe("route-scoped client messages", () => {
     expect(messages.SeriesPage?.downloadCollection).toBe("Download collection")
     expect(messages.CollectionDownloadModal?.dialogTitle).toBe(
       "Download collection",
+    )
+    expect(messages.LanguageInventory?.videoCount).toBe(
+      "{count, plural, one {# video} other {# videos}}",
     )
   })
 })

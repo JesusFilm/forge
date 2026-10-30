@@ -10,6 +10,11 @@ import {
   type AuthSessionDeps,
 } from "../authSession"
 
+const mockDatadogWarn = jest.fn()
+jest.mock("../datadog", () => ({
+  datadogLog: { warn: (...args: unknown[]) => mockDatadogWarn(...args) },
+}))
+
 function fakeJwt(expSeconds: number): string {
   const payload = btoa(JSON.stringify({ exp: expSeconds }))
     .replace(/\+/g, "-")
@@ -370,7 +375,10 @@ describe("secure storage adapter (R14)", () => {
       backing.set(key, value)
     })
 
-    const adapter = createSecureStorageAdapter({ getItem, setItem }, options)
+    const adapter = createSecureStorageAdapter(
+      { getItem, setItem, getItemAsync: jest.fn(), setItemAsync: jest.fn() },
+      options,
+    )
     adapter.setItem("forge-watch_cookie", "session-blob")
 
     expect(adapter.getItem("forge-watch_cookie")).toBe("session-blob")
@@ -391,12 +399,131 @@ describe("secure storage adapter (R14)", () => {
         setItem: () => {
           throw new Error("keychain unavailable")
         },
+        getItemAsync: async () => {
+          throw new Error("keychain unavailable")
+        },
+        setItemAsync: async () => {
+          throw new Error("keychain unavailable")
+        },
       },
       {},
     )
 
     expect(adapter.getItem("any")).toBeNull()
     expect(() => adapter.setItem("any", "value")).not.toThrow()
+  })
+
+  // A refused keychain write otherwise reads as a quiet cancel with no trace
+  // (the simulator's unsigned client hit exactly this); name it in Datadog.
+  it("reports every swallowed storage failure with namespaced attributes", async () => {
+    mockDatadogWarn.mockClear()
+    const failing = () => {
+      throw new Error("keychain unavailable")
+    }
+    const adapter = createSecureStorageAdapter(
+      {
+        getItem: failing,
+        setItem: failing,
+        getItemAsync: async () => failing(),
+        setItemAsync: async () => failing(),
+      },
+      {},
+    )
+
+    adapter.getItem("forge-watch_cookie")
+    adapter.setItem("forge-watch_cookie", "v")
+    await adapter.getItemAsync("forge-watch_cookie")
+    await adapter.setItemAsync("forge-watch_cookie", "v")
+
+    expect(mockDatadogWarn).toHaveBeenCalledTimes(4)
+    expect(mockDatadogWarn).toHaveBeenLastCalledWith("auth_storage_failed", {
+      auth_storage_op: "setItemAsync",
+      auth_storage_key: "forge-watch_cookie",
+    })
+  })
+
+  // Falsify the "telemetry never breaks storage access" catch: a throwing
+  // warn must stay invisible to callers on all four adapter ops.
+  it("keeps storage access alive when the telemetry itself throws", async () => {
+    mockDatadogWarn.mockClear()
+    mockDatadogWarn.mockImplementation(() => {
+      throw new Error("datadog down")
+    })
+    const failing = () => {
+      throw new Error("keychain unavailable")
+    }
+    const adapter = createSecureStorageAdapter(
+      {
+        getItem: failing,
+        setItem: failing,
+        getItemAsync: async () => failing(),
+        setItemAsync: async () => failing(),
+      },
+      {},
+    )
+
+    try {
+      expect(adapter.getItem("forge-watch_cookie")).toBeNull()
+      expect(() => adapter.setItem("forge-watch_cookie", "v")).not.toThrow()
+      await expect(
+        adapter.getItemAsync("forge-watch_cookie"),
+      ).resolves.toBeNull()
+      await expect(
+        adapter.setItemAsync("forge-watch_cookie", "v"),
+      ).resolves.toBeUndefined()
+      expect(mockDatadogWarn).toHaveBeenCalledTimes(4)
+    } finally {
+      mockDatadogWarn.mockReset()
+    }
+  })
+
+  // @better-auth/expo 1.7 reads and writes the cookie through the ASYNC pair
+  // on every request; an adapter without it throws "getItemAsync is not a
+  // function" at the first sign-in, not at construction.
+  it("round-trips through the async pair with the same option", async () => {
+    const backing = new Map<string, string>()
+    const options = { keychainAccessible: "this-device-only" }
+    const getItemAsync = jest.fn(
+      async (key: string) => backing.get(key) ?? null,
+    )
+    const setItemAsync = jest.fn(async (key: string, value: string) => {
+      backing.set(key, value)
+    })
+
+    const adapter = createSecureStorageAdapter(
+      { getItem: jest.fn(), setItem: jest.fn(), getItemAsync, setItemAsync },
+      options,
+    )
+    await adapter.setItemAsync("forge-watch_cookie", "session-blob")
+
+    await expect(adapter.getItemAsync("forge-watch_cookie")).resolves.toBe(
+      "session-blob",
+    )
+    expect(setItemAsync).toHaveBeenCalledWith(
+      "forge-watch_cookie",
+      "session-blob",
+      options,
+    )
+    expect(getItemAsync).toHaveBeenCalledWith("forge-watch_cookie", options)
+  })
+
+  it("degrades async storage failures to null instead of rejecting", async () => {
+    const adapter = createSecureStorageAdapter(
+      {
+        getItem: jest.fn(),
+        setItem: jest.fn(),
+        getItemAsync: async () => {
+          throw new Error("keychain unavailable")
+        },
+        setItemAsync: async () => {
+          throw new Error("keychain unavailable")
+        },
+      },
+      {},
+    )
+
+    await expect(adapter.getItemAsync("any")).resolves.toBeNull()
+    await expect(adapter.setItemAsync("any", "value")).resolves.toBeUndefined()
   })
 })
 
@@ -570,32 +697,69 @@ describe("getAuthClient native wiring", () => {
   // The ephemeral flag's EFFECT (no iOS consent alert / no shared-cookie
   // residual) is only observable at iOS runtime; this pins the config so a
   // getAuthClient refactor cannot silently drop it back to non-ephemeral.
+  function wireClient() {
+    const expoClient = jest.fn(() => ({ id: "expo" }))
+    const createAuthClient = jest.fn(() => ({}))
+    jest.doMock("@better-auth/expo/client", () => ({ expoClient }))
+    jest.doMock("better-auth/client", () => ({ createAuthClient }))
+    jest.doMock("expo-secure-store", () => ({
+      getItem: jest.fn(),
+      setItem: jest.fn(),
+      getItemAsync: jest.fn(),
+      setItemAsync: jest.fn(),
+      WHEN_UNLOCKED_THIS_DEVICE_ONLY: "device-only",
+    }))
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs the mocked graph at require time
+    const required = require("../authSession")
+    const authSessionModule = required as typeof import("../authSession")
+    authSessionModule.getAuthClient()
+    return { expoClient, createAuthClient }
+  }
+
   it("configures the expo client for an ephemeral iOS auth session", () => {
     jest.isolateModules(() => {
-      const expoClient = jest.fn(() => ({ id: "expo" }))
-      jest.doMock("@better-auth/expo/client", () => ({ expoClient }))
-      jest.doMock("better-auth/client", () => ({
-        createAuthClient: jest.fn(() => ({})),
-      }))
-      jest.doMock("better-auth/client/plugins", () => ({
-        genericOAuthClient: jest.fn(() => ({})),
-      }))
-      jest.doMock("expo-secure-store", () => ({
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        WHEN_UNLOCKED_THIS_DEVICE_ONLY: "device-only",
-      }))
-
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs the mocked graph at require time
-      const required = require("../authSession")
-      const authSessionModule = required as typeof import("../authSession")
-      authSessionModule.getAuthClient()
+      const { expoClient } = wireClient()
 
       expect(expoClient).toHaveBeenCalledWith(
         expect.objectContaining({
           webBrowserOptions: { preferEphemeralSession: true },
         }),
       )
+    })
+  })
+
+  // Better Auth 1.7 dropped `genericOAuthClient` and the `/sign-in/oauth2`
+  // route it drove; hosted sign-in is `signIn.social` against the core
+  // `/sign-in/social` endpoint, so the expo plugin is the ONLY client plugin.
+  it("registers the expo plugin alone — no generic OAuth client plugin", () => {
+    jest.isolateModules(() => {
+      const { createAuthClient } = wireClient()
+
+      expect(createAuthClient).toHaveBeenCalledTimes(1)
+      const [config] = createAuthClient.mock.calls[0] as unknown as [
+        { baseURL: string; plugins: unknown[] },
+      ]
+      expect(config.baseURL).toBe("https://auth.jesusfilm.org")
+      expect(config.plugins).toEqual([{ id: "expo" }])
+    })
+  })
+
+  it("hands the expo plugin a storage with the sync AND async pairs", () => {
+    jest.isolateModules(() => {
+      const { expoClient } = wireClient()
+
+      const [options] = expoClient.mock.calls[0] as unknown as [
+        { storage: Record<string, unknown> },
+      ]
+      for (const method of [
+        "getItem",
+        "setItem",
+        "getItemAsync",
+        "setItemAsync",
+      ]) {
+        expect(typeof options.storage[method]).toBe("function")
+      }
     })
   })
 })

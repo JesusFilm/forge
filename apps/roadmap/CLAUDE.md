@@ -7,6 +7,7 @@ Read-only Next.js dashboard that renders feature tickets from `docs/roadmap/` ma
 ## Architecture
 
 - `lib/features.ts` — reads markdown files from `../../docs/roadmap/`, parses YAML frontmatter with `gray-matter`, computes blocked status from dependencies.
+- `cancelled` is terminal for its own ticket and excluded from open/overdue work. Historical `canceled` spelling normalizes to `cancelled`. A dependency on cancelled work remains blocked until the dependency is removed; duplicate IDs are treated as incomplete unless every matching ticket is complete.
 - `components/` — server components except `RoadmapTimeline.tsx` (client, for hover interactions and toggle), `CopyBrainstormButton.tsx` (client, clipboard), `Sidebar.tsx` (client, mobile toggle), `MarkdownRenderer.tsx` (client, react-markdown).
 - Data flows one way: `docs/roadmap/*.md` → `lib/features.ts` → pages/components.
 
@@ -30,9 +31,12 @@ Read-only Next.js dashboard that renders feature tickets from `docs/roadmap/` ma
 
 This app does NOT need changes when tickets are added to `docs/roadmap/`. It reads them dynamically. Only change this app if the viewer itself needs new functionality.
 
-## Excluded lane: `ai-chat` (do not register)
+## Excluded docs-only lanes (do not register)
 
-The `docs/roadmap/ai-chat/` lane is **intentionally NOT registered in this app**. It is deliberately excluded from `LANE_DIRS` / the `Lane` union (`lib/features.ts`) and from `README_LANE_ORDER` (`scripts/generate-roadmap-readme.js`), so the viewer never renders it and the generated root `docs/roadmap/README.md` never counts it. This is by design — do not "fix" the missing lane by adding it. It is a docs-only lane maintained via its own `docs/roadmap/ai-chat/README.md` + `CLAUDE.md`, which explain the lane and why it is unregistered.
+The `docs/roadmap/ai-chat/` and `docs/roadmap/rag/` lanes are intentionally not registered in this app. They stay absent from `LANE_DIRS` / the `Lane` union (`lib/features.ts`) and from the shared `README_LANE_ORDER` (`lib/markdown.ts`), so neither the viewer nor generated root `docs/roadmap/README.md` includes them. Do not "fix" either missing lane by registering it.
+
+- AI Chat lane guidance: `docs/roadmap/ai-chat/README.md` and `docs/roadmap/ai-chat/CLAUDE.md`
+- RAG lane guidance: `docs/roadmap/rag/README.md` and `docs/roadmap/rag/CLAUDE.md`
 
 ## Deployment
 

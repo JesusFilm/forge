@@ -8,7 +8,7 @@ import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { RouteVideo } from "@/lib/content"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
-  CONTENT_WIDTH_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
 } from "@/lib/content-width"
 import { videoHeroFragment } from "@/lib/fragments/video-hero"
 import { resolvedBlockStreamingUrl } from "./video-dub"
@@ -224,7 +224,8 @@ function VideoHeroOverlay({
 }) {
   return (
     <div
-      className={`relative flex flex-col pb-4 sm:flex-row ${CONTENT_WIDTH_CLASSES}`}
+      data-testid="VideoHeroOverlay"
+      className={`relative flex flex-col pb-4 sm:flex-row ${WATCH_PAGE_CONTENT_CLASSES}`}
     >
       <div
         className="pointer-events-none absolute top-0 right-0 left-0 h-full w-full md:hidden"

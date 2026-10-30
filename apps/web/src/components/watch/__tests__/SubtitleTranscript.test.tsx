@@ -68,18 +68,39 @@ describe("filterTranscriptSubtitlesForAudio", () => {
 })
 
 describe("formatCompactTranscript", () => {
-  test("preserves cue boundaries as blank lines in one string", () => {
+  test("separates cues with a single newline in one string", () => {
     expect(
       formatCompactTranscript([
         { start: 1, end: 2, text: "First phrase." },
         { start: 3, end: 4, text: "Second phrase." },
         { start: 5, end: 6, text: "Third phrase." },
       ]),
-    ).toBe("First phrase.\n\nSecond phrase.\n\nThird phrase.")
+    ).toBe("First phrase.\nSecond phrase.\nThird phrase.")
   })
 
   test("returns an empty string for an empty transcript", () => {
     expect(formatCompactTranscript([])).toBe("")
+  })
+
+  test("never drops or truncates cue text, however long the transcript", () => {
+    // This string is the ONLY transcript text in the server-rendered HTML, so
+    // search and AI crawlers index exactly what this function returns. A
+    // truncating "optimization" to fit the collapsed clamp would be invisible
+    // to component tests, which receive compactText as an already-built prop.
+    const cues = Array.from({ length: 1200 }, (_, index) => ({
+      start: index * 3,
+      end: index * 3 + 2,
+      text: `Cue ${index + 1} carries meaningful indexable words.`,
+    }))
+
+    const result = formatCompactTranscript(cues)
+
+    for (const cue of cues) expect(result).toContain(cue.text)
+    // Exact length: every cue's text plus one separator between each pair.
+    expect(result).toHaveLength(
+      cues.reduce((total, cue) => total + cue.text.length, 0) + cues.length - 1,
+    )
+    expect(result.split("\n")).toHaveLength(cues.length)
   })
 })
 

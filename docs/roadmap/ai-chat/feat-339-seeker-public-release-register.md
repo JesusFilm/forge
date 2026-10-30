@@ -131,9 +131,10 @@ with no release-level view.
   ruling) — `SEEKER_FOLLOWUPS_ENABLED=false` stops NEW chip sets only, and a
   write-path suppression never covers already-persisted output. The accepted
   lever for already-stored chips: flag off (stops new sets) →
-  `SEEKER_ROUTE_ENABLED=false` (darkens the lane) → thread purge (retracts
-  existing ones). Revisit triggers: audience widening, or an incident class
-  needing visual retraction.
+  `SEEKER_ROUTE_ENABLED=false` (darkens the custom Forge routes; native
+  `/api/agents/seekerAgent` remains separately gateway/network-contained) →
+  thread purge (retracts existing ones). Revisit triggers: audience widening,
+  or an incident class needing visual retraction.
 - **Follow-up chips silently DROP on some non-Latin scripts, and the code's
   revisit trigger points here (added 2026-08-21, feat-366):** the chip
   projection's invisible-character rung (`FORMAT_CHAR_PATTERN` in
@@ -171,6 +172,7 @@ with no release-level view.
 - feat-236 is the mechanical removal recipe for the dogfood allowlist gate
   (keep-list, grep patterns, teardown). It is the LAST step, executed only
   once the register above is cleared.
+- **Temporary Apologist comparison (STATUS: open; recorded 2026-09-25 from feat-601's user-directed temporary scope):** feat-602 tracks removal of feat-601 based on its implementation boundary. Complete feat-602 before public Forge Chat release. Turning off the switch is rollback, not removal; the follow-up also removes comparison code and Forge Chat deployment settings. If feat-601 is canceled, record that outcome before closing this item.
 
 ## Constraints
 

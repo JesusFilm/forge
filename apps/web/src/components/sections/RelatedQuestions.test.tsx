@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -52,105 +53,140 @@ function renderQuestions() {
   })
 }
 
-function getFaqTriggers() {
-  return Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
-}
+const rows = () => [
+  ...container.querySelectorAll<HTMLDetailsElement>(
+    '[data-testid="RelatedQuestionsItem"]',
+  ),
+]
 
-function getControlledPanel(trigger: HTMLButtonElement) {
-  const panelId = trigger.getAttribute("aria-controls")
-  expect(panelId).toBeTruthy()
-
-  const panel = document.getElementById(panelId ?? "")
-  expect(panel).not.toBeNull()
-  return panel as HTMLDivElement
+/** What the browser does when a user clicks a summary. */
+function nativeToggle(row: HTMLDetailsElement, open: boolean) {
+  act(() => {
+    row.open = open
+    row.dispatchEvent(new Event("toggle"))
+  })
 }
 
 describe("RelatedQuestions", () => {
-  it("uses icon-free, normal-weight rows with centered content and equal padding", () => {
+  it("renders every question through the shared Watch FAQ list", () => {
     renderQuestions()
 
-    const trigger = container.querySelector("button")
-    const row = trigger?.firstElementChild?.firstElementChild
-    const question = row?.querySelector("p")
+    // Sharing `WatchFaqList` with the what's-new FAQ is what keeps the two
+    // surfaces from drifting; the disclosure primitive coming back as
+    // `<details>` is the visible edge of that.
+    expect(rows()).toHaveLength(2)
+    for (const row of rows()) {
+      expect(row.tagName).toBe("DETAILS")
+      expect(row.querySelector("summary")).not.toBeNull()
+      expect(row.open).toBe(false)
+    }
 
-    expect(trigger?.className).toContain("p-4")
-    expect(trigger?.className).not.toContain("py-3")
-    expect(row?.className).toContain("items-center")
-    expect(row?.className).not.toContain("items-start")
-    expect(question?.className).toContain("font-normal")
-    expect(question?.className).not.toContain("font-semibold")
-    expect(question?.querySelector("svg")).toBeNull()
-    expect(trigger?.querySelectorAll("svg")).toHaveLength(1)
-  })
-
-  it("keeps the row expandable after the presentation change", () => {
-    renderQuestions()
-
-    const trigger = container.querySelector("button")
-    expect(container.textContent).not.toContain(
-      "You can watch it on this site.",
+    expect(container.querySelector("h2")?.textContent).toBe(
+      "Frequently Asked Questions",
     )
+    expect(rows()[0].querySelector("h3")?.textContent).toBe(
+      "Where can I watch the JESUS film online for free?",
+    )
+  })
 
-    act(() => {
-      trigger?.click()
-    })
+  it("puts every answer in the markup before anything is opened", () => {
+    renderQuestions()
 
+    // A behaviour change from the old button/`hidden` panel, which mounted
+    // an answer only once its row was clicked and so shipped none of this
+    // text in the server-rendered HTML. Native `<details>` keeps closed
+    // content in the DOM, which is what gives the rows find-in-page
+    // expansion — and puts FAQ answers where a crawler can read them.
+    expect(rows().every((row) => !row.open)).toBe(true)
     expect(container.textContent).toContain("You can watch it on this site.")
+    expect(container.textContent).toContain("Jesus came to bring hope.")
   })
 
-  it("connects every collapsed trigger to a unique hidden answer panel", () => {
+  it("opens one row at a time", () => {
     renderQuestions()
+    const [first, second] = rows()
 
-    const triggers = getFaqTriggers()
-    expect(triggers).toHaveLength(2)
+    nativeToggle(first, true)
+    expect(first.open).toBe(true)
+    expect(second.open).toBe(false)
 
-    const panelIds = triggers.map((trigger) => {
-      expect(trigger.type).toBe("button")
-      expect(trigger.getAttribute("aria-expanded")).toBe("false")
-
-      const panel = getControlledPanel(trigger)
-      expect(panel.hidden).toBe(true)
-      expect(panel.textContent).toBe("")
-      return panel.id
-    })
-
-    expect(new Set(panelIds).size).toBe(panelIds.length)
+    nativeToggle(second, true)
+    expect(second.open).toBe(true)
+    // React closes the first row in response, which is the whole point of the
+    // accordion — the what's-new FAQ keeps every row open instead.
+    expect(first.open).toBe(false)
   })
 
-  it("keeps state and controlled-panel visibility accurate while toggling rows", () => {
+  it("ignores the close echo from a row React itself just closed", () => {
+    renderQuestions()
+    const [first, second] = rows()
+
+    nativeToggle(first, true)
+    nativeToggle(second, true)
+
+    // React setting `open={false}` on the first row makes the browser fire a
+    // `toggle` for it. Handled naively — "a close clears the open row" — that
+    // echo would immediately collapse the row the user just opened.
+    nativeToggle(first, false)
+    expect(second.open).toBe(true)
+  })
+
+  it("collapses the open row when it is toggled again", () => {
+    renderQuestions()
+    const [first] = rows()
+
+    nativeToggle(first, true)
+    expect(first.open).toBe(true)
+
+    nativeToggle(first, false)
+    expect(first.open).toBe(false)
+  })
+
+  it("sets no ink of its own, so the section's background can pick it", () => {
     renderQuestions()
 
-    const [firstTrigger, secondTrigger] = getFaqTriggers()
-    expect(firstTrigger).toBeDefined()
-    expect(secondTrigger).toBeDefined()
+    // `WhatsNewFaq` owns its band and hard-codes `#131111`. This block is
+    // dropped into a `Section` spanning `stone-100` to `stone-900`, so a
+    // literal light-on-dark colour anywhere here breaks the `light` theme —
+    // which is exactly what the pre-share `text-stone-100` did.
+    for (const el of container.querySelectorAll<HTMLElement>("*")) {
+      const className = el.getAttribute("class") ?? ""
+      expect(className, className).not.toMatch(/\btext-stone-[12]/)
+      expect(className, className).not.toMatch(/\bborder-stone-/)
+    }
+  })
 
-    const firstPanel = getControlledPanel(firstTrigger!)
-    const secondPanel = getControlledPanel(secondTrigger!)
+  describe("server-rendered markup", () => {
+    // The behaviour that actually changed on this surface. Before the shared
+    // component, an answer's <Markdown> subtree mounted only while its row
+    // was open, so no answer text reached the server-rendered HTML. Proving
+    // it on /watch/whats-new would prove nothing: that page already rendered
+    // <details> with unconditional answers beforehand, so the check passes
+    // there whether or not this change works.
+    it("emits every answer while all rows are closed", () => {
+      const html = renderToStaticMarkup(<RelatedQuestions data={makeData()} />)
 
-    act(() => {
-      firstTrigger!.click()
+      expect(html).toContain("You can watch it on this site.")
+      expect(html).toContain("Jesus came to bring hope.")
+      expect(html).not.toContain("<details open")
+      expect(html).not.toMatch(/<details[^>]*\sopen[\s>]/)
     })
-    expect(firstTrigger!.getAttribute("aria-expanded")).toBe("true")
-    expect(firstPanel.hidden).toBe(false)
-    expect(firstPanel.textContent).toContain("You can watch it on this site.")
-    expect(secondTrigger!.getAttribute("aria-expanded")).toBe("false")
-    expect(secondPanel.hidden).toBe(true)
 
-    act(() => {
-      secondTrigger!.click()
-    })
-    expect(firstTrigger!.getAttribute("aria-expanded")).toBe("false")
-    expect(firstPanel.hidden).toBe(true)
-    expect(firstPanel.textContent).toBe("")
-    expect(secondTrigger!.getAttribute("aria-expanded")).toBe("true")
-    expect(secondPanel.hidden).toBe(false)
-    expect(secondPanel.textContent).toContain("Jesus came to bring hope.")
+    it("server-renders the markdown subtree, not just the raw text", () => {
+      const data = {
+        ...(makeData() as unknown as Record<string, unknown>),
+        questions: [
+          {
+            question: "Why did Jesus come?",
+            answer: "He came:\n\n- to seek the lost\n- to give his life",
+          },
+        ],
+      } as unknown as Parameters<typeof RelatedQuestions>[0]["data"]
 
-    act(() => {
-      secondTrigger!.click()
+      const html = renderToStaticMarkup(<RelatedQuestions data={data} />)
+
+      expect(html).toContain("<ul")
+      expect(html).toContain("to seek the lost")
     })
-    expect(secondTrigger!.getAttribute("aria-expanded")).toBe("false")
-    expect(secondPanel.hidden).toBe(true)
-    expect(secondPanel.textContent).toBe("")
   })
 })

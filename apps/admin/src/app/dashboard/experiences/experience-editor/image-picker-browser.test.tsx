@@ -157,4 +157,48 @@ describe("ImagePickerBrowser accessibility", () => {
       container.remove()
     }
   })
+
+  it("shows on-demand loading and retry feedback", () => {
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root: Root = createRoot(container)
+    const onRetryLoad = vi.fn()
+    const baseProps = {
+      open: true,
+      mediaLibrary: { rootLabel: "Library", folders: [], images: [] },
+      query: "",
+      selectedFolderId: null,
+      selectedAssetId: null,
+      canClearImage: false,
+      canUpload: false,
+      uploadAction: async () => ({ ok: false as const }),
+      onQueryChange: () => {},
+      onSelectFolder: () => {},
+      onSelectImage: () => {},
+      onClearImage: () => {},
+      onClose: () => {},
+      onRetryLoad,
+    }
+
+    try {
+      act(() => root.render(<ImagePickerBrowser {...baseProps} loading />))
+      expect(container.textContent).toContain("Loading image library")
+      expect(container.querySelector('[role="status"]')).not.toBeNull()
+      expect(container.querySelector('[aria-live="polite"]')).not.toBeNull()
+
+      act(() => root.render(<ImagePickerBrowser {...baseProps} loadError />))
+      expect(container.textContent).toContain(
+        "Unable to load the image library",
+      )
+      expect(container.querySelector('[role="alert"]')).not.toBeNull()
+      const retry = Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent === "Retry",
+      )
+      act(() => retry?.click())
+      expect(onRetryLoad).toHaveBeenCalledOnce()
+    } finally {
+      act(() => root.unmount())
+      container.remove()
+    }
+  })
 })

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   clearWatchRouteManifestCache,
   getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
   isWatchEpisodePairAdmittedByManifest,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
@@ -363,5 +364,28 @@ describe("nested container Watch route admission", () => {
         "english",
       ),
     ).toBe(false)
+  })
+})
+
+describe("isWatchAudioLanguageSlug", () => {
+  it("accepts the compiled corpus with or without a manifest", () => {
+    expect(isWatchAudioLanguageSlug("english", null)).toBe(true)
+    expect(isWatchAudioLanguageSlug("english", manifest)).toBe(true)
+  })
+
+  it("accepts a manifest-only audio language and rejects it when the manifest is unavailable", () => {
+    const newLanguage = "newly-published-language"
+    const withNewLanguage: WatchRouteManifest = {
+      ...manifest,
+      audioLanguageSlugs: [...manifest.audioLanguageSlugs, newLanguage],
+    }
+    expect(isWatchAudioLanguageSlug(newLanguage, withNewLanguage)).toBe(true)
+    expect(isWatchAudioLanguageSlug(newLanguage, manifest)).toBe(false)
+    expect(isWatchAudioLanguageSlug(newLanguage, null)).toBe(false)
+  })
+
+  it("never treats content slugs as languages", () => {
+    expect(isWatchAudioLanguageSlug("jesus", manifest)).toBe(false)
+    expect(isWatchAudioLanguageSlug("the-beginning", manifest)).toBe(false)
   })
 })

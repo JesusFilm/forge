@@ -30,6 +30,7 @@
  */
 
 import { refuseUnlessLaneAdmitted } from "./ai-chat-lane-admission"
+import { clampAiChatTitle } from "./ai-chat-title-clamp"
 import { settleWithinBudget, TIME_BUDGET_MS } from "./budgets"
 import {
   resolveOwnedExistingThread,
@@ -219,6 +220,7 @@ export type AiChatHistoryMemory = {
   }) => Promise<{
     threads: Array<{
       id: string
+      resourceId?: string | null
       title?: string | null
       updatedAt?: Date | string | null
     }>
@@ -361,7 +363,13 @@ function parseReplayBody(
 /**
  * Project one listed thread onto the wire field-by-field — never spreads, so a
  * future store field cannot silently widen the wire. A stored `""` title
- * passes through verbatim (the client's untitled sentinel).
+ * passes through verbatim — `""` is still the untitled sentinel the client
+ * turns into a date label, now repairable by the daily title-repair sweep
+ * rather than permanent (feat-405, R10). Non-empty titles are clamped through
+ * the shared `clampAiChatTitle` (feat-405, KTD9): this projection is the one
+ * bound covering BOTH writers (per-turn titling and the sweep) plus the
+ * framework's own unclamped `createThread` path, and it is what keeps 50
+ * listed titles from breaching the chat proxy's 2 MiB response cap.
  */
 function projectThreadRow(row: {
   id: string
@@ -370,7 +378,7 @@ function projectThreadRow(row: {
 }): AiChatHistoryWireThread {
   return {
     id: row.id,
-    title: typeof row.title === "string" ? row.title : "",
+    title: typeof row.title === "string" ? clampAiChatTitle(row.title) : "",
     updatedAt: toIsoString(row.updatedAt),
   }
 }
@@ -710,8 +718,20 @@ export async function handleAiChatHistoryListRequest({
       }),
       budgetSignal,
     )
+    // Re-check the dependency's filter before exposing any row (feat-363).
+    // Missing ownership fails closed; this read path drops and counts rather
+    // than aborting an otherwise useful page. No additional store reads.
+    const ownedThreads = result.threads.filter(
+      (thread) => thread.resourceId === body.resourceId,
+    )
+    const mismatchedRows = result.threads.length - ownedThreads.length
+    if (mismatchedRows > 0) {
+      console.warn(
+        `[ai-chat-history] event=history_filter_mismatch count=${mismatchedRows}`,
+      )
+    }
     return jsonOutcome(200, {
-      threads: result.threads.map(projectThreadRow),
+      threads: ownedThreads.map(projectThreadRow),
       page: result.page,
       perPage: result.perPage,
       total: result.total,

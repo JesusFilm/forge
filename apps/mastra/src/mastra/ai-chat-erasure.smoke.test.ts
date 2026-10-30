@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env, type LangfuseConfig } from "../config/env"
 
 import { AI_CHAT_SCHEMA_NAME } from "./ai-chat-memory"
+import { assertThrowawayDatabaseTarget } from "./ai-chat-smoke-target-guard"
 import {
   executeAiChatErasure,
   previewAiChatErasure,
@@ -94,51 +95,6 @@ const RUN_ID = randomUUID().slice(0, 8)
 const TARGET_RESOURCE = `user:erasure-smoke-${RUN_ID}-a`
 const NEIGHBOUR_RESOURCE = `user:erasure-smoke-${RUN_ID}-ab`
 
-/**
- * Refuse a target that does not look disposable, rather than only documenting
- * "use a throwaway database" in the header above. This suite SEEDS AND DELETES
- * rows, and the operator shell most likely to run it is the same one that
- * holds production credentials — the runbook's own sourcing idiom exports a
- * whole env group. A prose warning is not a control; this is.
- *
- * Accepted: a loopback host is treated as disposable on its own, and any host
- * is accepted when the database NAME says throwaway. A production database
- * called `..._test` would slip through, which is why this is a guard against
- * the realistic accident (a stale `DATABASE_URL` still exported from an
- * earlier task), not a claim of proof.
- */
-function assertThrowawayTarget(databaseUrl: string): void {
-  // Independent second axis beside the URL shape below: the Railway console
-  // sets NODE_ENV=production and vitest never overrides a pre-set value, so
-  // this refuses a production RUNTIME even if its database were named to
-  // slip the pattern. It cannot catch a laptop pointed at production — the
-  // URL check owns that side.
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "refusing to run the erasure smoke in a production runtime (NODE_ENV=production)",
-    )
-  }
-  const url = new URL(databaseUrl)
-  // Deny BEFORE the allowlist: Railway hostnames (railway.internal,
-  // railway.app, and the proxy domain rlwy.net) mark a real deployed
-  // database, and Railway's default database NAME is literally "railway" —
-  // a Railway DB named like a test database must still refuse.
-  if (/railway|rlwy/i.test(url.hostname)) {
-    throw new Error(
-      "refusing to run the erasure smoke against a Railway-hosted database (hostname matches railway/rlwy)",
-    )
-  }
-  const loopback = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(
-    url.hostname,
-  )
-  const database = url.pathname.replace(/^\/+/, "")
-  if (loopback || /(test|smoke|throwaway|scratch)/i.test(database)) return
-  throw new Error(
-    "refusing to run the erasure smoke against a target that does not look disposable: " +
-      "point DATABASE_URL at a loopback host, or name the database with test/smoke/throwaway/scratch",
-  )
-}
-
 let store: PostgresStore
 let memory: Memory
 let acquireMemory: () => { ok: true; memory: AiChatErasureMemory }
@@ -195,7 +151,7 @@ describe.skipIf(!RUN_SMOKE)(
           "AI_CHAT_ERASURE_SMOKE_TEST=1 requires a throwaway DATABASE_URL",
         )
       }
-      assertThrowawayTarget(env.DATABASE_URL)
+      assertThrowawayDatabaseTarget(env.DATABASE_URL, "erasure")
       store = new PostgresStore({
         id: "ai-chat-erasure-smoke",
         connectionString: env.DATABASE_URL,

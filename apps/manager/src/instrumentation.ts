@@ -1,5 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { startStudioRenderDispatcher } =
+      await import("@/services/studio-render-dispatch")
+    startStudioRenderDispatcher()
+    const { startStudioMuxDispatcher } =
+      await import("@/services/studio-mux-dispatch")
+    startStudioMuxDispatcher()
     // Warm read-heavy caches before first request arrives.
     // Railway rolling deploys give the Manager service a few seconds before traffic routes here.
     const { videoCache } = await import("@/app/api/videos/cache")

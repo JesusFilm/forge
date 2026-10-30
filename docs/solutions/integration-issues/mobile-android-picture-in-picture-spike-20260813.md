@@ -106,8 +106,8 @@ would have disabled the background pause for every video in the app.
   the latch it reads is `setPipHold` on the mini-player store. The latch is fed
   from the VIEW's `onPictureInPictureStart` / `onPictureInPictureStop`, exactly
   as the spike recommended, so the pause is skipped only while the operating
-  system's window is actually showing. See the open Android ordering question
-  under "Still unproven".
+  system's window is actually showing. The Android ordering question this raised
+  was answered on 2026-08-25 — see the note under "Still unproven".
 - Finding 4 became R14. The trailer surfaces were KEPT deliberately. Since the
   root playback host landed, the watch screen and the series-detail trailer
   share the app's ONE video view, so the host covers that pair; the two SDUI
@@ -117,8 +117,11 @@ would have disabled the background pause for every video in the app.
   below before relying on finding 4's stated mechanism.
 - Finding 3 still holds by construction. Home's hero views never reach the
   player adapter and carry no picture-in-picture prop.
-- Finding 1 and 2 are the reason KD4 chose SDK 57. Neither has been re-run on
-  hardware; the emulator remains the only Android evidence.
+- Finding 1 and 2 are the reason KD4 chose SDK 57. Superseded in part on
+  2026-08-25: finding 1 (the inline watch player auto-enters and plays live) is
+  now confirmed on a Galaxy Tab S8 and a Galaxy S20 (Android 13). Finding 2
+  (custom fullscreen keeps the window) has still not been re-run on hardware,
+  and the emulator remains its only evidence.
 
 ## Correction to finding 4's mechanism (2026-08-18, during U9)
 
@@ -165,7 +168,39 @@ introspect`, 1584 bytes either way, `UIBackgroundModes: ["audio"]`). The
 
 ## Still unproven
 
+> **Answered 2026-08-25 — the third bullet below.** The pause does arrive first,
+> exactly as this file predicted. The consequence was not the frozen window
+> predicted here: instead, pressing Home produced **no window at all**, because
+> the ordinary background pause stopped the very video the window was about to
+> carry. A second, unpredicted defect followed from the same ordering — the guard
+> meant to remember "we left under picture-in-picture" was armed inside the
+> AppState background branch, where on Android the latch is guaranteed clear, so
+> it never armed; closing the window and reopening the app then resumed a video
+> the viewer had dismissed.
+>
+> Confirmed on a Galaxy Tab S8 and a Galaxy S20 (Android 13); fixed in PR #2022,
+> open at the time of writing. Full write-up:
+> `docs/solutions/logic-errors/android-pip-appstate-latch-ordering-force-resume.md`.
+>
+> **The predicted remedy was close, but not what shipped.** This file predicted
+> "a second store field for 'armed for automatic entry' threaded into
+> `appStateBranchDecision`". What shipped is an adapter OPTION
+> (`armsPictureInPicture`), not a store field, and it feeds a NEW sibling
+> decision (`pipHoldTransitionDecision`) rather than being threaded into
+> `appStateBranchDecision`. The arming moved to the latch's `started` edge —
+> the moment the latch is guaranteed meaningful rather than guaranteed clear.
+>
+> Two bullets below remain genuinely open: iOS is still unverified on any
+> target, and finding 2 (custom fullscreen keeps the window) has still not been
+> re-run on hardware.
+>
+> One method note for whoever re-runs this: `mLastReportedPictureInPictureMode`
+> (used in finding 1 above) held on both devices, but the `pip_input_consumer`
+> window that appears on the Tab S8 does NOT appear on the S20 under Android 13.
+> Treat its absence as telling you nothing.
+
 - **Android hardware.** Everything above is one emulator, one device profile.
+  Partly superseded — see the note above; finding 1 now has hardware evidence.
 - **iOS.** Picture-in-picture has never been verified on this app on any iOS
   target, and it cannot be verified on an iPhone simulator. It needs an iPad
   simulator or hardware.

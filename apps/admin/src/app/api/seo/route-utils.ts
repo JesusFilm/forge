@@ -4,10 +4,9 @@ import {
   SeoAssertionConfigurationError,
   SeoAssertionInvalidError,
 } from "@/auth/seo-assertion-keyring"
-import {
-  SeoAssertionReplayError,
-  SeoLedgerConflictError,
-} from "@/services/seo-experiment.service"
+import { SeoLedgerConflictError } from "@/services/seo-experiment.service"
+import { SeoAssertionReplayError } from "@/auth/seo-assertion-ledger"
+import { WatchRouteAlertConflictError } from "@/services/watch-route-alert.service"
 
 export const SEO_ROUTE_BODY_LIMIT_BYTES = 1_000_000
 
@@ -66,6 +65,9 @@ export function seoRouteError(error: unknown) {
     )
   }
   if (error instanceof SeoLedgerConflictError) {
+    return NextResponse.json({ ok: false, error: error.code }, { status: 409 })
+  }
+  if (error instanceof WatchRouteAlertConflictError) {
     return NextResponse.json({ ok: false, error: error.code }, { status: 409 })
   }
   if (error instanceof SeoRouteBodyError || error instanceof z.ZodError) {

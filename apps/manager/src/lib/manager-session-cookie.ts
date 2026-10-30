@@ -1,6 +1,10 @@
 import { jwtVerify, SignJWT } from "jose"
 
 import { env } from "@/config/env"
+import {
+  parseReviewerLanguageGrants,
+  type ReviewerLanguageGrant,
+} from "@/lib/reviewer-session"
 
 export const MANAGER_SESSION_COOKIE = "manager-session"
 export const MANAGER_OAUTH_STATE_COOKIE = "manager-oauth-state"
@@ -14,11 +18,16 @@ export type ManagerSessionPrincipal = {
   subject: string
   email: string
   name?: string
-  managerRole: "OPERATOR"
+  managerRole: "OPERATOR" | "REVIEWER"
   scopes: string[]
+  reviewerLanguageGrants: ReviewerLanguageGrant[]
 }
 
-export function createManagerSessionCookie(principal: ManagerSessionPrincipal) {
+export function createManagerSessionCookie(
+  principal: Omit<ManagerSessionPrincipal, "reviewerLanguageGrants"> & {
+    reviewerLanguageGrants?: ReviewerLanguageGrant[]
+  },
+) {
   return new SignJWT(principal)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(`${maxAgeSeconds}s`)
@@ -35,20 +44,35 @@ export async function readManagerSessionCookie(
       algorithms: ["HS256"],
     })
 
+    const reviewerLanguageGrants = parseReviewerLanguageGrants(
+      payload.reviewerLanguageGrants ?? [],
+    )
     if (
       typeof payload.id !== "string" ||
       typeof payload.subject !== "string" ||
       typeof payload.email !== "string" ||
       (typeof payload.name !== "undefined" &&
         typeof payload.name !== "string") ||
-      payload.managerRole !== "OPERATOR" ||
+      (payload.managerRole !== "OPERATOR" &&
+        payload.managerRole !== "REVIEWER") ||
       !Array.isArray(payload.scopes) ||
-      !payload.scopes.every((scope) => typeof scope === "string")
+      !payload.scopes.every((scope) => typeof scope === "string") ||
+      !reviewerLanguageGrants ||
+      (payload.managerRole === "REVIEWER" &&
+        reviewerLanguageGrants.length === 0)
     ) {
       return null
     }
 
-    return payload as ManagerSessionPrincipal
+    return {
+      id: payload.id,
+      subject: payload.subject,
+      email: payload.email,
+      ...(typeof payload.name === "string" ? { name: payload.name } : {}),
+      managerRole: payload.managerRole,
+      scopes: payload.scopes,
+      reviewerLanguageGrants,
+    }
   } catch {
     return null
   }

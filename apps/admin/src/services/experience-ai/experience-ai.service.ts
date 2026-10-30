@@ -1,7 +1,8 @@
 import { Prisma, VideoLabel, type PrismaClient } from "@prisma/client"
 
 import { toPgVector } from "@/db/pgvector"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 
 import type { VideoCandidate } from "@forge/experience-schema"
 export {
@@ -14,9 +15,6 @@ export {
 const DEFAULT_CANDIDATE_LIMIT = 12
 const CANDIDATE_FETCH_WINDOW = 80
 const VECTOR_SEARCH_EF_SEARCH = 80
-const CONTENT_EMBEDDING_PROVIDER = "jesus-film-ai-gateway"
-const CONTENT_EMBEDDING_MODEL = "embeddings"
-const CONTENT_EMBEDDING_DIMENSIONS = 1536
 
 // Web's videoHero plays only the HLS streamingUrl baked into the block at
 // authoring time (apps/web VideoHero hides the player when src is empty), so
@@ -333,9 +331,11 @@ async function loadSemanticVideoCandidateIds(
     limit: number
   },
 ): Promise<string[]> {
-  let generated: Awaited<ReturnType<typeof generateExperienceEmbedding>>
+  let generated: Awaited<
+    ReturnType<typeof generateCurrentContentQueryEmbedding>
+  >
   try {
-    generated = await generateExperienceEmbedding(prompt)
+    generated = await generateCurrentContentQueryEmbedding(prisma, prompt)
   } catch (error) {
     console.warn(
       "[experience-ai] primary semantic video candidate search unavailable; falling back to catalog token ranking",
@@ -346,16 +346,6 @@ async function loadSemanticVideoCandidateIds(
 
   const pgVector = toPgVector(generated.embedding)
   const safeLimit = Math.max(1, Math.min(limit, CANDIDATE_FETCH_WINDOW))
-  const transcriptProvenanceFilter = Prisma.sql`
-          AND vt.embedding_provider = ${CONTENT_EMBEDDING_PROVIDER}
-          AND vt.model = ${CONTENT_EMBEDDING_MODEL}
-          AND vt.dimensions = ${CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_native_dimensions = ${CONTENT_EMBEDDING_DIMENSIONS}
-          AND vt.embedding_transform_version IS NULL
-          AND vtc.model = ${CONTENT_EMBEDDING_MODEL}
-          AND vtc.dimensions = ${CONTENT_EMBEDDING_DIMENSIONS}
-        `
-
   const hits = await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(
       `SET LOCAL hnsw.ef_search = ${VECTOR_SEARCH_EF_SEARCH}`,
@@ -370,7 +360,10 @@ async function loadSemanticVideoCandidateIds(
         JOIN video v ON v.id = vt.video_id
         WHERE vtc.embedding IS NOT NULL
           AND vtc.language = ${locale}
-          ${transcriptProvenanceFilter}
+          ${activeTranscriptContentEmbeddingWhere({
+            transcriptAlias: "vt",
+            chunkAlias: "vtc",
+          })}
           AND v.deleted_at IS NULL${Prisma.raw(PLAYABLE_CANDIDATE_VIDEO_SQL)}
         GROUP BY vt.video_id
       )

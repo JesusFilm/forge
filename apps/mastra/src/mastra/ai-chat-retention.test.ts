@@ -339,4 +339,104 @@ describe("startAiChatRetentionPurge", () => {
       vi.useRealTimers()
     }
   })
+
+  it("shared-memory mode skips before constructing the durable store", async () => {
+    vi.resetModules()
+    const env = {
+      MASTRA_STORAGE_BACKEND: "memory" as "postgres" | "memory",
+    }
+    const getAiChatStorage = vi.fn()
+    const memoryConstructor = vi.fn()
+
+    vi.doMock("../config/env", () => ({
+      env,
+      canAiChatDataPersist: () => env.MASTRA_STORAGE_BACKEND === "postgres",
+    }))
+    vi.doMock("./ai-chat-memory", () => ({ getAiChatStorage }))
+    vi.doMock("@mastra/memory", () => ({
+      Memory: class {
+        constructor(args: unknown) {
+          memoryConstructor(args)
+        }
+      },
+    }))
+
+    try {
+      const module = await import("./ai-chat-retention")
+      module.__resetAiChatRetentionMemoryForTesting()
+
+      expect(module.startAiChatRetentionPurge()).toBeNull()
+      expect(getAiChatStorage).not.toHaveBeenCalled()
+      expect(memoryConstructor).not.toHaveBeenCalled()
+    } finally {
+      vi.doUnmock("../config/env")
+      vi.doUnmock("./ai-chat-memory")
+      vi.doUnmock("@mastra/memory")
+      vi.resetModules()
+    }
+  })
+
+  it("shared-Postgres mode purges durable rows even when the seeker route is disabled", async () => {
+    vi.useFakeTimers()
+    vi.resetModules()
+    const env = {
+      MASTRA_STORAGE_BACKEND: "postgres" as "postgres" | "memory",
+      SEEKER_ROUTE_ENABLED: "false",
+    }
+    const storage = { id: "ai-chat-storage" }
+    const getAiChatStorage = vi.fn(() => storage)
+    const memoryConstructorArgs: unknown[] = []
+    const deleted: string[] = []
+    const old = {
+      id: "expired",
+      resourceId: "user:abc",
+      updatedAt: new Date(Date.now() - 26 * DAY_MS),
+    }
+
+    vi.doMock("../config/env", () => ({
+      env,
+      canAiChatDataPersist: () => env.MASTRA_STORAGE_BACKEND === "postgres",
+    }))
+    vi.doMock("./ai-chat-memory", () => ({ getAiChatStorage }))
+    vi.doMock("@mastra/memory", () => ({
+      Memory: class {
+        constructor(args: unknown) {
+          memoryConstructorArgs.push(args)
+        }
+
+        async listThreads() {
+          return { threads: [old], hasMore: false }
+        }
+
+        async getThreadById({ threadId }: { threadId: string }) {
+          return threadId === old.id
+            ? { resourceId: old.resourceId, updatedAt: old.updatedAt }
+            : null
+        }
+
+        async deleteThread(threadId: string) {
+          deleted.push(threadId)
+        }
+      },
+    }))
+
+    try {
+      const module = await import("./ai-chat-retention")
+      module.__resetAiChatRetentionMemoryForTesting()
+      const handle = module.startAiChatRetentionPurge({ intervalMs: 1000 })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(handle).not.toBeNull()
+      expect(getAiChatStorage).toHaveBeenCalledTimes(1)
+      expect(memoryConstructorArgs).toEqual([{ storage }])
+      expect(deleted).toEqual([old.id])
+      handle?.stop()
+    } finally {
+      vi.useRealTimers()
+      vi.doUnmock("../config/env")
+      vi.doUnmock("./ai-chat-memory")
+      vi.doUnmock("@mastra/memory")
+      vi.resetModules()
+    }
+  })
 })

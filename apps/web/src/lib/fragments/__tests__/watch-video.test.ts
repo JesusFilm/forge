@@ -8,6 +8,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -94,6 +95,9 @@ describe("WatchVideo split operation documents", () => {
     )
     expect(printed).toMatch(/downloads\s*\{/)
     expect(printed).toMatch(/documentId\s*:\s*id/)
+    expect(printed).toMatch(
+      /downloadableChildDubs\([^)]*\)\s*\{[\s\S]*?\bslug\b[\s\S]*?language\s*\{[\s\S]*?documentId\s*:\s*id/,
+    )
     expect(printed).toMatch(/\burl\b/)
   })
 
@@ -106,6 +110,18 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
     expect(printed).not.toMatch(/muxPlaybackId/)
     expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
+  })
+
+  it("derives a schema-lag projection without changing the prior fields", () => {
+    expect(print(getLegacyWatchVideoRouteSnapshotBySlugOperation)).not.toMatch(
+      /requestedLanguage/,
+    )
+    expect(print(getLegacyWatchVideoRouteSnapshotBySlugOperation)).toContain(
+      "preferredVariant",
+    )
+    expect(print(getLegacyWatchVideoRouteSnapshotBySlugOperation)).toContain(
+      "exactLocales",
+    )
   })
 
   it("uses the dedicated route snapshot field for the cold watch route", () => {
@@ -134,6 +150,7 @@ describe("WatchVideo split operation documents", () => {
     expect(printed).toMatch(/\bmuxPlaybackId\b/)
     expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
     expect(printed).toMatch(/\bpreferredVariant\b/)
+    expect(printed).toMatch(/requestedLanguage\s*\{\s*slug\s+name\s+bcp47\s*\}/)
     expect(parentAndChildProjection).toMatch(
       /children\s*\{\s*order\s+child\s*\{/,
     )

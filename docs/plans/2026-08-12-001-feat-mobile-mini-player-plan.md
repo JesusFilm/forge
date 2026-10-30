@@ -65,6 +65,7 @@ flowchart TB
 
 - R1. Pressing back from a video detail screen shrinks the player into a floating window in one smooth, continuous animation — the window never appears abruptly — and playback continues without a pause, a gap, or a black frame.
 - R2. The viewer can drag the window, which settles into one of the four screen corners.
+  - **Superseded in part 2026-10-12 by feat-695 R11:** in a right-to-left layout, the corner preference mirrors, so a new window starts at the bottom left. The window's controls (R5) and its snap stay physical, because the player layer is left-to-right (feat-695 KTD7).
 - R3. The window persists across tab changes and further route pushes until the viewer dismisses it, and playback continues while it is suppressed.
 - R4. Tapping the window returns to the full video screen at the position playback has reached.
 - R5. The window carries a play-pause control near its top-left corner, a dismiss control near its top-right corner, and a non-interactive playback-position indicator. Both controls render directly over the video with drop shadows and stay persistently visible. No scrim, backplate, blur, or translucent layer sits behind them.
@@ -78,6 +79,7 @@ flowchart TB
 - R9. Home's hero and the series-detail trailer each show their poster and stay silent while the window holds live playback, and resume their normal behaviour once the window stops holding a video surface or is dismissed.
 - R10. Exactly one video decoder is live at any moment, where live means a mounted video view rather than an unpaused player.
 - R11. The floating window hides while an in-app sheet is presented, and returns to the corner it occupied when that sheet closes. Suppression never applies to the full-screen view.
+  - **Superseded on iOS 2026-09-30 (owner):** on iOS the window stays under a sheet, darkened by the sheet's dimming. It still hides on Android, where the host draws over a sheet. See `apps/mobile/CLAUDE.md`, "Sheet suppression applies on Android only".
 - R12. Starting a different video replaces what the window is playing.
 
 **Native picture-in-picture**

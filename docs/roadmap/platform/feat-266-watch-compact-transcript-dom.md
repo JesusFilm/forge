@@ -16,6 +16,11 @@ tags:
   - "accessibility"
 ---
 
+> **Superseded in part, 2026-08-22 (PR #2007).** Step 1's "blank-line spacing"
+> is no longer the shipped behavior: cues are joined with a single newline and
+> the collapsed block is height-clamped with a gradient fade. The rest of this
+> ticket stands, including the no-timestamps / no-per-cue-elements constraint.
+
 ## Problem
 
 Watch renders every transcript cue as a list item, button, timestamp, and text

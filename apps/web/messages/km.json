@@ -39,9 +39,8 @@
     "posterAlt": "ផ្ទាំងរូបភាពវីដេអូ",
     "noDownloads": "មិនមានការទាញយកសម្រាប់វីដេអូនេះទេ។",
     "fileSizeLabel": "ជ្រើសទំហំឯកសារ",
-    "termsAgreementPrefix": "ខ្ញុំយល់ព្រមនឹង",
+    "termsAgreement": "ខ្ញុំយល់ព្រមនឹង<link>លក្ខខណ្ឌប្រើប្រាស់</link>",
     "termsOfUse": "លក្ខខណ្ឌប្រើប្រាស់",
-    "termsAgreementSuffix": "",
     "close": "បិទ",
     "download": "ទាញយក",
     "authRequiredTitle": "ចង់ទាញយកវីដេអូនេះទេ?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "ចែករំលែកលើ Facebook (មិនមាននៅក្នុងកំណែនេះ)",
     "shareOnX": "ចែករំលែកលើ X",
     "shareOnXUnavailable": "ចែករំលែកលើ X (មិនមាននៅក្នុងកំណែនេះ)",
+    "opensInNewTab": "{label} (បើកក្នុងផ្ទាំងថ្មី)",
     "shareDisabledHint": "ការចែករំលែកត្រូវការទំព័រដែលបានដាក់ដំណើរការ — នឹងដំណើរការពេលវីដេអូនេះស្ថិតក្នុង production។",
     "shareFormat": "ទម្រង់ការចែករំលែក",
     "shareLinkTab": "តំណចែករំលែក",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ប្ដូរភាសាសំឡេង",
     "home": "ទំព័រដើម JesusFilm",
     "closeSearch": "បិទការស្វែងរក",
-    "submitSearch": "ស្វែងរក"
+    "submitSearch": "ស្វែងរក",
+    "library": "បណ្ណាល័យ"
   },
   "SearchOverlay": {
     "dialogLabel": "ស្វែងរក និងរុករកវីដេអូ",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "មិនអាចផ្ទុកលទ្ធផលបន្ថែមបាន។",
     "searching": "កំពុងស្វែងរក...",
     "connectionHint": "សូមពិនិត្យការតភ្ជាប់របស់អ្នក ហើយព្យាយាមម្តងទៀត។",
+    "rateLimitHint": "មានសំណើច្រើនពេក។ សូមព្យាយាមម្ដងទៀតក្នុងរយៈពេលមួយនាទី។",
     "retrySearch": "ស្វែងរកម្តងទៀត",
     "retry": "ព្យាយាមម្តងទៀត",
     "noResults": "គ្មានលទ្ធផលសម្រាប់ \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "ស្វែងរក «{suggestion}» ជាភាសា {language}",
     "inLanguage": "ជា {language}",
     "browseByRegion": "រុករកតាមតំបន់",
+    "allVideosOnSinglePage": "វីដេអូទាំងអស់ក្នុងទំព័រតែមួយ",
     "clearLanguages": "លុប",
     "queryLanguageDetected": "រកឃើញ {language}",
     "searchInLanguage": "ស្វែងរកជាភាសា {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "មើលឥឡូវនេះ",
     "tapToUnmute": "ចុចដើម្បីបើកសំឡេង",
-    "nextEpisode": "វគ្គបន្ទាប់"
+    "nextEpisode": "វគ្គបន្ទាប់",
+    "audioTranslationCount": "{count, plural, one {# ភាសា} other {# ភាសា}}",
+    "subtitleCount": "ចំណងជើងរង: {count, plural, one {# ភាសា} other {# ភាសា}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "កំពុងផ្ទុកមាតិកា",
@@ -268,14 +273,183 @@
     "couldNotLoad": "មិនអាចផ្ទុកទម្រង់មតិយោបល់បាន។",
     "loadingForm": "កំពុងផ្ទុកទម្រង់មតិយោបល់…",
     "retry": "ព្យាយាមម្តងទៀត",
-    "openFormShort": "បើកទម្រង់",
     "cancel": "បោះបង់",
-    "title": "មតិយោបល់បេតា",
-    "description": "ចែករំលែកអ្វីដែលដំណើរការល្អ និងអ្វីដែលយើងអាចកែលម្អបាន។ ទម្រង់នេះផ្តល់ដោយ Google។",
-    "openInNewTab": "បើកទម្រង់ក្នុងផ្ទាំងថ្មី",
     "closeForm": "បិទទម្រង់មតិយោបល់",
-    "loadingGoogleForm": "កំពុងផ្ទុក Google Form…",
-    "iframeTitle": "ដាក់ស្នើមតិយោបល់បេតា"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "វីដេអូគ្រីស្ទានឥតគិតថ្លៃជា {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "កីឡា",
     "collections": "កម្រង",
     "subtitlesOnly": "មានតែចំណងជើងរង",
+    "backToTop": "ត្រឡប់ទៅលើ",
     "newlyAdded": "បានបន្ថែមថ្មីៗ",
     "newVideosTitle": "វីដេអូគ្រីស្ទានថ្មីជា {language}",
     "newestFirst": "ថ្មីបំផុតមុន",
@@ -324,7 +499,21 @@
     "standaloneVideos": "វីដេអូឯករាជ្យ",
     "videosFromCollection": "វីដេអូពី {collection}។",
     "standaloneDescription": "វីដេអូឯករាជ្យក្នុងភាសានេះ។",
-    "openCollection": "បើកកម្រង"
+    "openCollection": "បើកកម្រង",
+    "filters": "តម្រង",
+    "filterLength": "រយៈពេល",
+    "filterLength_under5": "តិចជាង ៥ នាទី",
+    "filterLength_5to10": "៥-១០ នាទី",
+    "filterLength_10to30": "១០-៣០ នាទី",
+    "filterLength_over30": "លើស ៣០ នាទី",
+    "filterType": "ប្រភេទ",
+    "clearFilters": "សម្អាតតម្រង",
+    "filterResults": "បង្ហាញ {count} ក្នុង {total}",
+    "noFilterResults": "គ្មានវីដេអូត្រូវនឹងតម្រងទាំងនេះទេ។ សូមព្យាយាមដកមួយចេញ។",
+    "filterAdded": "បានបញ្ចូល",
+    "filterAdded_60d": "៦០ ថ្ងៃចុងក្រោយ",
+    "filterAdded_6m": "៦ ខែចុងក្រោយ",
+    "filterAdded_12m": "១២ ខែចុងក្រោយ"
   },
   "WatchHome": {
     "pageTitle": "ទស្សនា Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "មើលវីដេអូមុនជាមុន",
     "nextVideoPreview": "មើលវីដេអូបន្ទាប់ជាមុន",
     "mediaCollection": "កម្រងមេឌៀ",
-    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}"
+    "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}",
+    "forYou": "សម្រាប់អ្នក"
   },
   "WatchFooter": {
     "home": "ទំព័រដើម Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "រីករាយបុណ្យណូអែល!",
     "daysUntilChristmas": "{count, plural, other {នៅសល់ # ថ្ងៃទៀតដល់បុណ្យណូអែល}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "រុករកបណ្ណាល័យ",
+    "title": "រុករកតាមប្រភេទ",
+    "description": "ចូលទៅកាន់ផ្នែកនៃបណ្ណាល័យដែលអ្នកត្រូវការភ្លាមៗ — ព្រះជន្មរបស់ព្រះយេស៊ូវ រដូវកាលនៃឆ្នាំព្រះវិហារ និងវីដេអូដែលបានធ្វើឡើងសម្រាប់គ្រួសារ សិស្សនិស្សិត និងក្រុមតូចៗ។",
+    "seeAll": "មើលវីដេអូទាំងអស់",
+    "previous": "ប្រភេទមុន",
+    "next": "ប្រភេទបន្ទាប់",
+    "categories": {
+      "jesus": "ខ្សែភាពយន្ត «ព្រះយេស៊ូវ»",
+      "gospels": "គម្ពីរដំណឹងល្អ",
+      "shortVideos": "វីដេអូខ្លីៗ",
+      "family": "គ្រួសារ",
+      "relationships": "ទំនាក់ទំនង",
+      "women": "សម្រាប់ស្ត្រី",
+      "students": "សម្រាប់សិស្សនិស្សិត",
+      "sports": "កីឡា",
+      "goodNews": "ដំណឹងល្អ",
+      "hope": "សេចក្តីសង្ឃឹម",
+      "training": "ការបណ្តុះបណ្តាល",
+      "easter": "បុណ្យប៉ាស្កា",
+      "christmas": "បុណ្យណូអែល"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ភាសា",
     "metadataDescription": "រុករកវីដេអូ JesusFilm តាមភាសា។",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "រកមិនឃើញទំព័រ៖",
     "title": "ឈុតនេះមិនមាននៅទីនេះទេ។",
     "description": "ទំព័រអាចនឹងបានផ្លាស់ទី ប៉ុន្តែរឿងរ៉ាវនៅតែបន្តទៅមុខ។",
+    "languageDescription": "យើងរកមិនឃើញទំព័រដែលអ្នកកំពុងស្វែងរកទេ ប៉ុន្តែរឿងរ៉ាវនៅតែបន្តទៅមុខក្នុងភាពយន្ត និងវីដេអូជាភាសានានាពីជុំវិញពិភពលោក។",
     "actionsLabel": "សកម្មភាពសម្រាប់ទំព័ររកមិនឃើញ",
     "backToWatch": "ត្រឡប់ទៅមើល",
     "browseVideos": "រុករកវីដេអូ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "មើលភាពយន្តខ្លី",
-    "actions": {
-      "joinUs": "ចូលរួមជាមួយយើង",
-      "shareMission": "ចែករំលែកក្នុងបេសកកម្មរបស់យើង"
-    },
-    "welcomeStart": {
-      "label": "ជំនឿ និងបទគម្ពីរ",
-      "title": "ជម្រើសវីដេអូថ្ងៃនេះ",
-      "description": "មាតិកាវីដេអូផ្តោតលើជំនឿពីបណ្ណាល័យរបស់យើង ដើម្បីលើកទឹកចិត្ត ប្រកួតប្រជែង និងជំរុញការពិចារណា។"
-    },
-    "welcomeMorning": {
-      "label": "ការបំផុសគំនិតពេលព្រឹក",
-      "title": "អរុណសួស្តី! ពេលវេលាព្រះគម្ពីរថ្ងៃនេះកំពុងរង់ចាំ។",
-      "description": "ចាប់ផ្តើមថ្ងៃរបស់អ្នកជាមួយនឹងពេលវេលាព្រះគម្ពីរដែលលើកទឹកចិត្ត រចនាឡើងដើម្បីបំផុស និងលើកស្ទួយវិញ្ញាណរបស់អ្នក។"
-    },
-    "welcomeAfternoon": {
-      "label": "ការបំផុសគំនិតពេលរសៀល",
-      "title": "រសៀលសួស្តី! ពេលវេលាព្រះគម្ពីរសម្រាប់ថ្ងៃរបស់អ្នក។",
-      "description": "មាតិកាព្រះគម្ពីរលើកទឹកចិត្ត ដែលសមស្របសម្រាប់ការសម្រាកពេលរសៀល ឬសម្រាប់ការបំផុសបន្ត។"
-    },
-    "welcomeEvening": {
-      "label": "ការបំផុសគំនិតពេលល្ងាច",
-      "title": "ល្ងាចសួស្តី! បន្ធូរអារម្មណ៍ជាមួយពេលវេលាព្រះគម្ពីរ។",
-      "description": "ពេលវេលាព្រះគម្ពីរដ៏ស្ងប់ស្ងាត់ ដើម្បីជួយឲ្យអ្នកពិចារណា និងរកបានការលួងលោម ខណៈថ្ងៃរបស់អ្នកកំពុងបញ្ចប់។"
-    },
-    "joinUs": {
-      "label": "ចូលរួមជាមួយយើង",
-      "title": "មនុស្សរាប់ពាន់លានកំពុងស្វែងរក",
-      "description": "ការច្រូតកាត់បានមកដល់ហើយ។ ចូលរួមជាមួយយើង ខណៈយើងចែកចាយដំណឹងល្អទៅកាន់ពិភពលោក ដោយប្រើមេឌៀឌីជីថល។"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "ទៅជាមួយគ្នា",
-      "title": "ប្រាប់រឿងរ៉ាវរបស់ព្រះយេស៊ូវ ជាមួយគ្នា",
-      "description": "ដើម្បីឲ្យពួកគេអាចឮ និងឃើញសេចក្តីស្រឡាញ់របស់ព្រះយេស៊ូវ ជាភាសារបស់ខ្លួន នៅកន្លែងដែលពួកគេនៅ។"
-    }
-  },
   "VideoRecommendations": {
     "match": "ត្រូវគ្នា {percent}%",
-    "none": "រកមិនឃើញវីដេអូណែនាំសម្រាប់វីដេអូនេះជាភាសានេះទេ។"
+    "none": "រកមិនឃើញវីដេអូណែនាំសម្រាប់វីដេអូនេះជាភាសានេះទេ។",
+    "heading": "វីដេអូណែនាំ",
+    "loadingLabel": "កំពុងផ្ទុកវីដេអូណែនាំ",
+    "openingTitle": "កំពុងបើក {title}",
+    "openingVideo": "កំពុងបើកវីដេអូ",
+    "activityNotRecorded": "មិនអាចកត់ត្រាសកម្មភាពនៃការណែនាំបានទេ។ តំណភ្ជាប់នៅតែដំណើរការ។",
+    "showingContextual": "កំពុងបង្ហាញការណែនាំតាមបរិបទ។",
+    "showingSaved": "កំពុងបង្ហាញការណែនាំដែលបានរក្សាទុក។",
+    "explanationCurated": "វីដេអូដែលបានជ្រើសរើសសម្រាប់ស្វែងរក។",
+    "explanationViewingMode": "បានណែនាំផ្អែកលើវីដេអូនេះ និងរបៀបដែលអ្នកមើល។",
+    "explanationCowatch": "បានណែនាំផ្អែកលើវីដេអូនេះ និងចំណាប់អារម្មណ៍របស់អ្នក។",
+    "explanationHybrid": "បានណែនាំផ្អែកលើវីដេអូនេះ និងចំណាប់អារម្មណ៍ដែលអ្នកបានជ្រើសរើសឱ្យចងចាំ។",
+    "explanationContextual": "បានណែនាំផ្អែកលើអ្វីដែលអ្នកកំពុងមើលឥឡូវនេះ។",
+    "explanationSemanticFallback": "បានណែនាំផ្អែកលើអ្វីដែលអ្នកកំពុងមើលឥឡូវនេះ ខណៈដែលការកំណត់ផ្ទាល់ខ្លួនមិនអាចប្រើបាន។",
+    "explanationProfileDurable": "បានកំណត់ផ្ទាល់ខ្លួនពីចំណាប់អារម្មណ៍ដែលអ្នកបានជ្រើសរើសឱ្យចងចាំ។",
+    "explanationProfileVisit": "បានកំណត់ផ្ទាល់ខ្លួនសម្រាប់ការចូលមកលើកនេះ។",
+    "personalizationLabel": "ការកំណត់ការណែនាំផ្ទាល់ខ្លួន",
+    "personalizationPrompt": "តើអ្នកចង់ផ្លាស់ប្តូររបៀបកំណត់ការណែនាំផ្ទាល់ខ្លួនដែរឬទេ?",
+    "openCookieSettings": "បើកការកំណត់ខូគី"
   },
   "BetaTesterModal": {
     "title": "ក្លាយជាអ្នកសាកល្បងបេតា",
@@ -538,16 +732,39 @@
     "retryFailed": "ព្យាយាមទាញយកវគ្គដែលបរាជ័យម្តងទៀត"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "មិនមានកំណែភាសានេះទេ",
+    "eyebrow": "មិនមានកំណែភាសានេះទេ",
+    "title": "<contentTitle>{title}</contentTitle> មិនមានជាភាសា <languageName>{language}</languageName> ទេ",
+    "actionsLabel": "ជម្រើសសម្រាប់មើលដែលមាន",
+    "browseInLanguage": "រកមើលវីដេអូជាភាសា {language}",
+    "backToSearch": "ត្រឡប់ទៅការស្វែងរក",
+    "audioVersionsTitle": "កំណែសំឡេងផ្សេងទៀត",
+    "audioVersionsDescription": "ជ្រើសរើសភាសាសំឡេង ដើម្បីបន្តមើលវីដេអូនេះ។",
+    "languageVersionLabel": "ភាសាសំឡេង",
+    "selectLanguageVersion": "ជ្រើសរើសកំណែភាសា",
+    "watchSelectedVersion": "មើលកំណែដែលបានជ្រើសរើស"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "ជម្រើសខូគី",
+    "bannerTitle": "ជម្រើសឯកជនភាពរបស់អ្នក",
+    "bannerDescription": "ខូគីចាំបាច់ជួយឱ្យ Watch មានសុវត្ថិភាព និងដំណើរការបានត្រឹមត្រូវ។ ដោយមានការអនុញ្ញាតពីអ្នក ខូគីជម្រើសពីភាគីទីមួយអាចចងចាំចំណាប់អារម្មណ៍រវាងការចូលមកប្រើប្រាស់ ដើម្បីកំណត់ការណែនាំឱ្យសមនឹងអ្នក។ ទោះជាជ្រើសរើសបែបណាក៏ដោយ ការណែនាំតាមបរិបទនៅតែអាចប្រើបាន។",
+    "acceptAll": "យល់ព្រមទាំងអស់",
+    "essentialOnly": "តែអ្វីដែលចាំបាច់",
+    "manageChoices": "គ្រប់គ្រងជម្រើស",
+    "savingChoice": "កំពុងរក្សាទុកជម្រើសខូគី",
+    "settings": "ការកំណត់ខូគី",
+    "settingsDescription": "ជ្រើសរើសថា Watch អាចចងចាំចំណាប់អារម្មណ៍សម្រាប់ការណែនាំរវាងការចូលមកប្រើប្រាស់បានឬអត់។ អ្នកអាចផ្លាស់ប្តូរវាបានគ្រប់ពេល។",
+    "essentialCookies": "ខូគីចាំបាច់",
+    "essentialDescription": "សុវត្ថិភាព ការចាក់播放 ការជ្រើសរើសឯកជនភាព និងការកំណត់ប្រភពសំណើការណែនាំ។",
+    "alwaysActive": "ដំណើរការជានិច្ច",
+    "personalization": "ការកំណត់ផ្ទាល់ខ្លួន",
+    "personalizationDescription": "ចងចាំចំណាប់អារម្មណ៍ដែលបានកំណត់រវាងការចូលមកប្រើប្រាស់។ ការបិទវានឹងនៅតែអនុញ្ញាតឱ្យប្រើការណែនាំតាមបរិបទបាន។",
+    "erasurePending": "ការលុបទិន្នន័យប្រវត្តិរូបកំពុងរង់ចាំដំណើរការ។ ការណែនាំតាមបរិបទបានដំណើរការរួចហើយ។",
+    "cancel": "បោះបង់",
+    "saveChoices": "រក្សាទុកជម្រើស",
+    "saving": "កំពុងរក្សាទុក…",
+    "loadError": "មិនអាចផ្ទុកជម្រើសរបស់អ្នកបានទេ។ អ្នកនៅតែអាចជ្រើសរើសខាងក្រោមបាន។",
+    "grantError": "មិនអាចបើកការកំណត់ផ្ទាល់ខ្លួនបានទេ។ ជម្រើសតែអ្វីដែលចាំបាច់នៅតែអាចប្រើបាន។",
+    "saveError": "មិនអាចរក្សាទុកជម្រើសរបស់អ្នកបានទេ។ សូមព្យាយាមម្តងទៀត។"
   }
 }

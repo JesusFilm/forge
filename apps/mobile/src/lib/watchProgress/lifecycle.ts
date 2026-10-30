@@ -3,6 +3,8 @@
  * (snapshot first for instant bars, then the fail-open server read) and
  * flushes the offline queue; signing out empties the store, the snapshot,
  * and the queue so the anonymous experience carries nothing over (R10).
+ * Signing out also clears the last-watched record through an injected
+ * dependency, so this module never names that record's own module.
  * Deps injected; the AuthProvider wires the real store/sync/storage.
  */
 
@@ -16,6 +18,10 @@ export type ProgressLifecycleDeps = {
   hydrateFromServer: () => Promise<void>
   flushQueue: () => Promise<void>
   resetStore: () => void
+  /** The last-watched record's own clear (R11). Injected, because that record
+   *  is for every user and owns storage this module must not reach into. It
+   *  resolves when its storage work lands, like the two removals below. */
+  clearLastWatched: () => Promise<void>
   removeStorageItem: (key: string) => Promise<void>
 }
 
@@ -35,6 +41,13 @@ export function attachProgressLifecycle(deps: ProgressLifecycleDeps) {
 
   async function onSignedOut() {
     deps.resetStore()
+    try {
+      // Awaited like the two keys below: a removal nobody waits for can fail
+      // unseen, and the next launch then reads the old account's video back.
+      await deps.clearLastWatched()
+    } catch {
+      // A failing record store must not cost the progress keys their removal.
+    }
     await deps
       .removeStorageItem(WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY)
       .catch(() => {})

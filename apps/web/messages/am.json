@@ -39,9 +39,8 @@
     "posterAlt": "የቪዲዮ ፖስተር",
     "noDownloads": "ለዚህ ቪዲዮ ምንም የሚወርዱ አይገኙም።",
     "fileSizeLabel": "የፋይል መጠን ይምረጡ",
-    "termsAgreementPrefix": "እኔ ለ ",
+    "termsAgreement": "<link>የአጠቃቀም ውሎችን</link> እቀበላለሁ",
     "termsOfUse": "የአጠቃቀም ውሎች",
-    "termsAgreementSuffix": "",
     "close": "ዝጋ",
     "download": "አውርድ",
     "authRequiredTitle": "ይህን ቪዲዮ ማውረድ ይፈልጋሉ?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "በFacebook አጋራ (በዚህ ስሪት አይገኝም)",
     "shareOnX": "በX አጋራ",
     "shareOnXUnavailable": "በX አጋራ (በዚህ ስሪት አይገኝም)",
+    "opensInNewTab": "{label} (በአዲስ ትር ይከፈታል)",
     "shareDisabledHint": "ማጋራት የተዘረጋ ገጽ ይፈልጋል — ይህ ቪዲዮ በምርት ላይ ከሆነ ብቻ ይሰራል።",
     "shareFormat": "የማጋራት ቅርጽ",
     "shareLinkTab": "አገናኝ አጋራ",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
     "closeSearch": "ፍለጋ ዝጋ",
-    "submitSearch": "ፈልግ"
+    "submitSearch": "ፈልግ",
+    "library": "ቤተ መጻሕፍት"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "ተጨማሪ ውጤቶችን መጫን አልተቻለም።",
     "searching": "በመፈለግ ላይ...",
     "connectionHint": "እባክዎን ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።",
+    "rateLimitHint": "ጥያቄዎች በዝተዋል። እባክዎ ከአንድ ደቂቃ በኋላ እንደገና ይሞክሩ።",
     "retrySearch": "ፍለጋ እንደገና ሞክር",
     "retry": "እንደገና ሞክር",
     "noResults": "ለ\"{query}\" ምንም ውጤት የለም",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "በ{language} «{suggestion}»ን ፈልግ",
     "inLanguage": "በ{language}",
     "browseByRegion": "በክልል አስስ",
+    "allVideosOnSinglePage": "ሁሉም ቪዲዮዎች በአንድ ገጽ",
     "clearLanguages": "አጥፋ",
     "queryLanguageDetected": "{language} ተገኝቷል",
     "searchInLanguage": "በ{language} ፈልግ",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "አሁን ይመልከቱ",
     "tapToUnmute": "ድምጽ ለማብራት ይንኩ",
-    "nextEpisode": "የሚቀጥለው ክፍል"
+    "nextEpisode": "የሚቀጥለው ክፍል",
+    "audioTranslationCount": "{count, plural, one {# ቋንቋ} other {# ቋንቋዎች}}",
+    "subtitleCount": "ንዑስ ጽሑፎች: {count, plural, one {# ቋንቋ} other {# ቋንቋዎች}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ይዘት በመጫን ላይ",
@@ -268,14 +273,183 @@
     "couldNotLoad": "የአስተያየት ቅጹን መጫን አልተቻለም።",
     "loadingForm": "የአስተያየት ቅጹ በመጫን ላይ ነው…",
     "retry": "እንደገና ሞክር",
-    "openFormShort": "ቅጽ ክፈት",
     "cancel": "ሰርዝ",
-    "title": "የቤታ አስተያየት",
-    "description": "የሚሰራውን እና ምን ማሻሻል እንደምንችል ያካፍሉ። ይህ ቅጽ በGoogle የቀረበ ነው።",
-    "openInNewTab": "ቅጹን በአዲስ ትር ክፈት",
     "closeForm": "የአስተያየት ቅጽ ዝጋ",
-    "loadingGoogleForm": "የGoogle ቅጽ በመጫን ላይ…",
-    "iframeTitle": "የቤታ አስተያየት አስገባ"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "በ{language} የነፃ ክርስቲያናዊ ቪዲዮዎች | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "ስፖርት",
     "collections": "ስብስቦች",
     "subtitlesOnly": "ንዑስ ጽሑፎች ብቻ",
+    "backToTop": "ወደ ላይ ተመለስ",
     "newlyAdded": "አዲስ የተጨመሩ",
     "newVideosTitle": "በ{language} አዲስ ክርስቲያናዊ ቪዲዮዎች",
     "newestFirst": "አዲሱ መጀመሪያ",
@@ -324,7 +499,21 @@
     "standaloneVideos": "ብቻውን ያሉ ቪዲዮዎች",
     "videosFromCollection": "ከ{collection} የተወሰዱ ቪዲዮዎች።",
     "standaloneDescription": "በዚህ ቋንቋ ብቻውን ያሉ ቪዲዮዎች።",
-    "openCollection": "ስብስብ ክፈት"
+    "openCollection": "ስብስብ ክፈት",
+    "filters": "አጣሪዎች",
+    "filterLength": "ርዝመት",
+    "filterLength_under5": "ከ5 ደቂቃ በታች",
+    "filterLength_5to10": "5-10 ደቂቃ",
+    "filterLength_10to30": "10-30 ደቂቃ",
+    "filterLength_over30": "ከ30 ደቂቃ በላይ",
+    "filterType": "ዓይነት",
+    "clearFilters": "አጣሪዎችን አጽዳ",
+    "filterResults": "ከ{total} ውስጥ {count} ይታያል",
+    "noFilterResults": "ከእነዚህ አጣሪዎች ጋር የሚዛመድ ቪዲዮ የለም። አንዱን ያስወግዱ።",
+    "filterAdded": "ተጨምሯል",
+    "filterAdded_60d": "ያለፉ 60 ቀናት",
+    "filterAdded_6m": "ያለፉ 6 ወራት",
+    "filterAdded_12m": "ያለፉ 12 ወራት"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ዋች",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "የቀደመ ቪዲዮ ቅድመ እይታ",
     "nextVideoPreview": "የሚቀጥለው ቪዲዮ ቅድመ እይታ",
     "mediaCollection": "የሚዲያ ስብስብ",
-    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ"
+    "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ",
+    "forYou": "ለእርስዎ"
   },
   "WatchFooter": {
     "home": "Jesus Film Project መነሻ",
@@ -404,6 +594,29 @@
     "merryChristmas": "መልካም ገና!",
     "daysUntilChristmas": "{count, plural, one {ገና ሊደርስ # ቀን ቀርቷል} other {ገና ሊደርስ # ቀናት ቀርተዋል}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "ቤተ መጻሕፍቱን አስስ",
+    "title": "በምድብ አስስ",
+    "description": "በቀጥታ ወደሚፈልጉት የቤተ መጻሕፍቱ ክፍል ይሂዱ፦ የኢየሱስ ሕይወት፣ የቤተ ክርስቲያን ዓመት ወቅቶች፣ እንዲሁም ለቤተሰቦች፣ ለተማሪዎች እና ለአነስተኛ ቡድኖች የተዘጋጁ ቪዲዮዎች።",
+    "seeAll": "ሁሉንም ቪዲዮዎች ተመልከት",
+    "previous": "የቀደሙት ምድቦች",
+    "next": "የሚቀጥሉት ምድቦች",
+    "categories": {
+      "jesus": "የኢየሱስ ፊልም",
+      "gospels": "ወንጌሎች",
+      "shortVideos": "አጫጭር ቪዲዮዎች",
+      "family": "ቤተሰብ",
+      "relationships": "ግንኙነቶች",
+      "women": "ለሴቶች",
+      "students": "ለተማሪዎች",
+      "sports": "ስፖርት",
+      "goodNews": "የምሥራች",
+      "hope": "ተስፋ",
+      "training": "ሥልጠና",
+      "easter": "ፋሲካ",
+      "christmas": "ገና"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "ቋንቋዎች",
     "metadataDescription": "የJesusFilm ቪዲዮዎችን በቋንቋ ያስሱ።",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "ገጽ አልተገኘም፦",
     "title": "ይህ ትዕይንት እዚህ የለም።",
     "description": "ገጹ ሊንቀሳቀስ ይችላል፣ ግን ታሪኩ ይቀጥላል።",
+    "languageDescription": "የሚፈልጉትን ገጽ ማግኘት አልቻልንም፣ ግን ታሪኩ በዓለም ዙሪያ ባሉ ቋንቋዎች በተዘጋጁ ፊልሞችና ቪዲዮዎች ውስጥ ይቀጥላል።",
     "actionsLabel": "የገጽ አልተገኘም እርምጃዎች",
     "backToWatch": "ወደ Watch ተመለስ",
     "browseVideos": "ቪዲዮዎችን አስስ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}፦ {title}",
-    "watchShortFilm": "አጭር ፊልም ይመልከቱ",
-    "actions": {
-      "joinUs": "ይቀላቀሉን",
-      "shareMission": "በተልዕኳችን ይካፈሉ"
-    },
-    "welcomeStart": {
-      "label": "እምነት እና ቅዱስ መጽሐፍ",
-      "title": "የዛሬ የቪዲዮ ምርጦች",
-      "description": "ከማዕከላችን የተመረጠ በእምነት ላይ ያተኮረ የቪዲዮ ይዘት፣ ለማነሳሳት፣ ለመፈተን እና ለማሰብ የሚያነሳሳ።"
-    },
-    "welcomeMorning": {
-      "label": "የጠዋት ማበረታቻ",
-      "title": "እንደምን አደሩ! የዛሬ የመጽሐፍ ቅዱስ አፍታዎች ይጠብቁዎታል።",
-      "description": "ቀንዎን ለማበረታታት እና መንፈስዎን ለማነሳሳት በተዘጋጁ አበረታች የመጽሐፍ ቅዱስ አፍታዎች ይጀምሩ።"
-    },
-    "welcomeAfternoon": {
-      "label": "የከሰዓት ማበረታቻ",
-      "title": "እንደምን አረፈዱ! ለቀንዎ የመጽሐፍ ቅዱስ አፍታዎች።",
-      "description": "ለከሰዓት እረፍትዎ ወይም ለቀጣይ ማበረታቻ ተመራጭ የሆነ አበረታች የመጽሐፍ ቅዱስ ይዘት።"
-    },
-    "welcomeEvening": {
-      "label": "የምሽት ማበረታቻ",
-      "title": "መልካም ምሽት! በመጽሐፍ ቅዱስ አፍታዎች ዘና ይበሉ።",
-      "description": "ቀንዎ ሲያበቃ እንዲያሰላስሉ እና መጽናናት እንዲያገኙ የሚረዱ የሰላም የመጽሐፍ ቅዱስ አፍታዎች።"
-    },
-    "joinUs": {
-      "label": "ይቀላቀሉን",
-      "title": "ቢሊዮኖች እየፈለጉ ነው",
-      "description": "መከሩ አሁን አለ። ከዓለም ጋር ወንጌልን በዲጂታል ሚዲያ ለማካፈል ይቀላቀሉን።"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "አብረን እንጓዝ",
-      "title": "የኢየሱስን ታሪክ በአንድነት መንገር",
-      "description": "እርሱ ባሉበት በራሳቸው ቋንቋ የኢየሱስን ፍቅር እንዲሰሙ እና እንዲያዩ ዘንድ።"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ይዛመዳል",
-    "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።"
+    "none": "ለዚህ ቪዲዮ በዚህ ቋንቋ ምንም የተመከሩ ቪዲዮዎች አልተገኙም።",
+    "heading": "የተመከሩ ቪዲዮዎች",
+    "loadingLabel": "የተመከሩ ቪዲዮዎችን በመጫን ላይ",
+    "openingTitle": "{title} በመክፈት ላይ",
+    "openingVideo": "ቪዲዮውን በመክፈት ላይ",
+    "activityNotRecorded": "የምክረ ሃሳብ እንቅስቃሴ ሊመዘገብ አልቻለም። አገናኞቹ አሁንም ይሠራሉ።",
+    "showingContextual": "በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች እየታዩ ነው።",
+    "showingSaved": "የተቀመጡ ምክረ ሃሳቦች እየታዩ ነው።",
+    "explanationCurated": "ለማሰስ የተመረጡ ቪዲዮዎች።",
+    "explanationViewingMode": "በዚህ ቪዲዮ እና እርስዎ በሚመለከቱበት መንገድ ላይ ተመሥርተው የተመከሩ።",
+    "explanationCowatch": "በዚህ ቪዲዮ እና በፍላጎቶችዎ ላይ ተመሥርተው የተመከሩ።",
+    "explanationHybrid": "በዚህ ቪዲዮ እና እንዲታወሱ በመረጧቸው ፍላጎቶች ላይ ተመሥርተው የተመከሩ።",
+    "explanationContextual": "አሁን በሚመለከቱት ላይ ተመሥርተው የተመከሩ።",
+    "explanationSemanticFallback": "ግላዊ ማበጀት በአሁኑ ጊዜ ስለማይገኝ አሁን በሚመለከቱት ላይ ተመሥርተው የተመከሩ።",
+    "explanationProfileDurable": "እንዲታወሱ በመረጧቸው ፍላጎቶች ላይ ተመሥርቶ ግላዊ የተደረገ።",
+    "explanationProfileVisit": "ለዚህ ጉብኝት ግላዊ የተደረገ።",
+    "personalizationLabel": "የምክረ ሃሳብ ግላዊ ማበጀት",
+    "personalizationPrompt": "ምክረ ሃሳቦች እንዴት ግላዊ እንደሚደረጉ መቀየር ይፈልጋሉ?",
+    "openCookieSettings": "የኩኪ ቅንብሮችን ክፈት"
   },
   "BetaTesterModal": {
     "title": "የቤታ ሞካሪ ይሁኑ",
@@ -538,16 +732,39 @@
     "retryFailed": "ያልተሳኩትን እንደገና ሞክር"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "የቋንቋ ስሪቱ አይገኝም",
+    "eyebrow": "የቋንቋ ስሪቱ አይገኝም",
+    "title": "<contentTitle>{title}</contentTitle> በ<languageName>{language}</languageName> አይገኝም",
+    "actionsLabel": "ያሉ የመመልከቻ አማራጮች",
+    "browseInLanguage": "በ{language} ቪዲዮዎችን ያስሱ",
+    "backToSearch": "ወደ ፍለጋ ተመለስ",
+    "audioVersionsTitle": "ሌሎች የድምፅ ስሪቶች",
+    "audioVersionsDescription": "ይህን ቪዲዮ መመልከት ለመቀጠል የድምፅ ቋንቋ ይምረጡ።",
+    "languageVersionLabel": "የድምፅ ቋንቋ",
+    "selectLanguageVersion": "የቋንቋ ስሪት ይምረጡ",
+    "watchSelectedVersion": "የተመረጠውን ስሪት ይመልከቱ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "የኩኪ ምርጫዎች",
+    "bannerTitle": "የእርስዎ የግላዊነት ምርጫዎች",
+    "bannerDescription": "አስፈላጊ ኩኪዎች Watch እንዲጠበቅ እና በትክክል እንዲሰራ ያግዛሉ። በእርስዎ ፈቃድ፣ አማራጭ የመጀመሪያ ወገን ኩኪ ለግል የተበጀ ምክረ ሃሳብ ለማቅረብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል ሊያስታውስ ይችላል። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች በማንኛውም ሁኔታ ይቀራሉ።",
+    "acceptAll": "ሁሉንም ተቀበል",
+    "essentialOnly": "አስፈላጊዎቹ ብቻ",
+    "manageChoices": "ምርጫዎችን አስተዳድር",
+    "savingChoice": "የኩኪ ምርጫ በማስቀመጥ ላይ",
+    "settings": "የኩኪ ቅንብሮች",
+    "settingsDescription": "Watch ለምክረ ሃሳብ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል እንዲያስታውስ ይፈቅዱ ወይም አይፈቅዱ። ይህን በማንኛውም ጊዜ መቀየር ይችላሉ።",
+    "essentialCookies": "አስፈላጊ ኩኪዎች",
+    "essentialDescription": "ደህንነት፣ መልሶ ማጫወት፣ የግላዊነት ምርጫዎች እና የምክረ ሃሳብ ጥያቄ ተያያዥነት።",
+    "alwaysActive": "ሁልጊዜ ንቁ",
+    "personalization": "ግላዊ ማበጀት",
+    "personalizationDescription": "የተገደቡ ፍላጎቶችን በተለያዩ ጉብኝቶች መካከል አስታውስ። ይህን ካጠፉት በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች እንደሚገኙ ይቀጥላሉ።",
+    "erasurePending": "የመገለጫ ስረዛ በመጠባበቅ ላይ ነው። በዐውድ ላይ የተመሠረቱ ምክረ ሃሳቦች አስቀድመው ንቁ ናቸው።",
+    "cancel": "ሰርዝ",
+    "saveChoices": "ምርጫዎችን አስቀምጥ",
+    "saving": "በማስቀመጥ ላይ…",
+    "loadError": "ምርጫዎ መጫን አልተቻለም። ከታች አሁንም መምረጥ ይችላሉ።",
+    "grantError": "ግላዊ ማበጀትን ማስነሳት አልተቻለም። አስፈላጊዎቹ ብቻ አሁንም ይገኛሉ።",
+    "saveError": "ምርጫዎ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
   }
 }

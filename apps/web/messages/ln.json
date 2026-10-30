@@ -39,9 +39,8 @@
     "posterAlt": "Affiche ya video",
     "noDownloads": "Téléchargement moko te ezali mpo na video oyo.",
     "fileSizeLabel": "Pona taille ya fichier",
-    "termsAgreementPrefix": "Nandimi ",
+    "termsAgreement": "Nandimi <link>Mibeko ya kosalela</link>",
     "termsOfUse": "Mibeko ya kosalela",
-    "termsAgreementSuffix": "",
     "close": "Kanga",
     "download": "Telecharger",
     "authRequiredTitle": "Olingi ko telecharger video oyo?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Kabola na Facebook (ezali te na version oyo)",
     "shareOnX": "Kabola na X",
     "shareOnXUnavailable": "Kabola na X (ezali te na version oyo)",
+    "opensInNewTab": "{label} (efungwamaka na onglet ya sika)",
     "shareDisabledHint": "Kokabola esengaka lokasa oyo etyami na internet — ekosala soki video oyo ekoti na production.",
     "shareFormat": "Format ya kokabola",
     "shareLinkTab": "Kabola lien",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Sosa"
+    "submitSearch": "Sosa",
+    "library": "Ebombelo ya mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ekokaki te ko charger bikokisami mosusu.",
     "searching": "Ezali koluka...",
     "connectionHint": "Svp tala connexion na yo mpe meka lisusu.",
+    "rateLimitHint": "Masengi eleki mingi. Meká lisusu nsima ya miniti moko.",
     "retrySearch": "Meka lisusu boluki",
     "retry": "Meka lisusu",
     "noResults": "Eloko moko te mpo na \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Sosa «{suggestion}» na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etúká",
+    "allVideosOnSinglePage": "Video nyonso na lokasa moko",
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} emonanaki",
     "searchInLanguage": "Sosa na {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kopesa mongongo",
-    "nextEpisode": "Épisode oyo ekolanda"
+    "nextEpisode": "Épisode oyo ekolanda",
+    "audioTranslationCount": "{count, plural, one {# monoko} other {# minoko}}",
+    "subtitleCount": "Ba sous-titres: {count, plural, one {# monoko} other {# minoko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ezali kocharger contenu",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Formulaire ya makanisi ekokaki te kofungwama.",
     "loadingForm": "Ezali kocharger formulaire ya makanisi…",
     "retry": "Meka lisusu",
-    "openFormShort": "Fungola formulaire",
     "cancel": "Kolongola",
-    "title": "Makanisi ya Beta",
-    "description": "Kabola oyo ezali kosala malamu mpe oyo tokoki kobongisa. Formulaire oyo epesami na Google.",
-    "openInNewTab": "Fungola formulaire na tab ya sika",
     "closeForm": "Kanga formulaire ya makanisi",
-    "loadingGoogleForm": "Ezali kocharger Google Form…",
-    "iframeTitle": "Tinda makanisi ya Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Ba video ya boklisto ya ofele na {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kaka ba sous-titres",
+    "backToTop": "Zonga likolo",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba video ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Ba video oyo etɛlɛmaka yango moko",
     "videosFromCollection": "Ba video oyo euti na {collection}.",
     "standaloneDescription": "Ba video oyo etɛlɛmaka yango moko na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Batalisi",
+    "filterLength": "Bolai",
+    "filterLength_under5": "Na nse ya miniti 5",
+    "filterLength_5to10": "Miniti 5-10",
+    "filterLength_10to30": "Miniti 10-30",
+    "filterLength_over30": "Koleka miniti 30",
+    "filterType": "Lolenge",
+    "clearFilters": "Longola batalisi",
+    "filterResults": "{count} na {total} elakisami",
+    "noFilterResults": "Vidéo moko te eyokani na batalisi oyo. Meka kolongola moko.",
+    "filterAdded": "Ebakisami",
+    "filterAdded_60d": "Mikolo 60 eleki",
+    "filterAdded_6m": "Basanza 6 eleki",
+    "filterAdded_12m": "Basanza 12 eleki"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Aperçu ya video ya liboso",
     "nextVideoPreview": "Aperçu ya video oyo ekolanda",
     "mediaCollection": "Collection ya média",
-    "scrollToVideo": "Kende na video ya {title}"
+    "scrollToVideo": "Kende na video ya {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Noɛl elamu!",
     "daysUntilChristmas": "{count, plural, one {Mokolo # etikali liboso ya Noɛl} other {Mikolo # etikali liboso ya Noɛl}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Tala librari",
+    "title": "Tala na ndenge ya catégorie",
+    "description": "Kende mbala moko na eteni ya librari oyo osengeli na yango — bomoi ya Yesu, bileko ya mbula ya Lingomba, mpe ba video oyo esalemi mpo na mabota, bayekoli, mpe masanga mike.",
+    "seeAll": "Tala ba video nyonso",
+    "previous": "Ba catégorie ya liboso",
+    "next": "Ba catégorie oyo ekolanda",
+    "categories": {
+      "jesus": "Film JESUS",
+      "gospels": "Ba Evanzile",
+      "shortVideos": "Ba video mikuse",
+      "family": "Libota",
+      "relationships": "Boyokani",
+      "women": "Mpo na basi",
+      "students": "Mpo na bayekoli",
+      "sports": "Masano",
+      "goodNews": "Nsango Malamu",
+      "hope": "Elikya",
+      "training": "Mateya",
+      "easter": "Pasika",
+      "christmas": "Noël"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Minoko",
     "metadataDescription": "Tala ba video ya JesusFilm na kolanda monoko.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Lokasa emonani te:",
     "title": "Esika oyo ezali awa te.",
     "description": "Lokasa ekoki kozala etambolaki, kasi lisolo ekobi.",
+    "languageDescription": "Tokoki te kozwa lokasa oyo ozali koluka, kasi lisolo ekobi na ba film mpe ba video ya minoko ya mokili mobimba.",
     "actionsLabel": "Misala ya lokasa emonani te",
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala ba video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Sangana na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondimi mpe Makomi",
-      "title": "Pik ya video ya lelo",
-      "description": "Ba video ya bondimi oyo euti na librari na biso mpo na kolendisa yo, kobenga yo na makanisi, mpe kolamusa botali."
-    },
-    "welcomeMorning": {
-      "label": "Kolendisa ya tongo",
-      "title": "Tongo malamu! Ba moments ya Biblia ya lelo bazali kozela yo.",
-      "description": "Bandá mokolo na yo na ba moments ya Biblia oyo ezali kolendisa mpo na kopesa yo mpiko mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Kolendisa ya midi",
-      "title": "Mwa butu malamu! Ba moments ya Biblia mpo na mokolo na yo.",
-      "description": "Contenu ya Biblia oyo ezali kolendisa, ebongi mpenza mpo na pause na yo ya midi to mpo na kobakisa kolendisa."
-    },
-    "welcomeEvening": {
-      "label": "Kolendisa ya mpokwa",
-      "title": "Mpokwa malamu! Pema na ba moments ya Biblia.",
-      "description": "Ba moments ya Biblia ya kimia mpo na kosalisa yo kotya makanisi mpe kozwa libondisi ntango mokolo na yo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Sangana na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Nguba ezali awa. Sangana na biso wana tozali kokabola Nsango Malamu na mokili na nzela ya média numérique."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Mpo bayoka mpe bámona bolingo ya Yesu na monoko na bango moko, wana bazali esika bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ekokani na {percent}%",
-    "none": "Ba video oyo tokoki kopesa yo mpo na video oyo na monoko oyo ezwami te."
+    "none": "Ba video oyo tokoki kopesa yo mpo na video oyo na monoko oyo ezwami te.",
+    "heading": "Ba video oyo epesami",
+    "loadingLabel": "Ba video oyo epesami ezali kocharger",
+    "openingTitle": "Kofungola {title}",
+    "openingVideo": "Kofungola video",
+    "activityNotRecorded": "Tokokaki te kokoma misala ya makanisi. Ba lien ezali kaka kosala.",
+    "showingContextual": "Tozali kolakisa makanisi oyo etali video oyo ozali kotala.",
+    "showingSaved": "Tozali kolakisa makanisi oyo ebombamaki.",
+    "explanationCurated": "Ba video oyo eponami mpo otala.",
+    "explanationViewingMode": "Epesami na kotalela video oyo mpe ndenge ozalaka kotala.",
+    "explanationCowatch": "Epesami na kotalela video oyo mpe makambo osepelaka na yango.",
+    "explanationHybrid": "Epesami na kotalela video oyo mpe makambo osepelaka na yango oyo oponaki ete ebatelama.",
+    "explanationContextual": "Epesami na kotalela oyo ozali kotala sikoyo.",
+    "explanationSemanticFallback": "Epesami na kotalela oyo ozali kotala sikoyo, mpo kobongisa mpo na yo ezali te sikoyo.",
+    "explanationProfileDurable": "Ebongisami mpo na yo na kotalela makambo osepelaka na yango oyo oponaki ete ebatelama.",
+    "explanationProfileVisit": "Ebongisami mpo na yo mpo na botali oyo kaka.",
+    "personalizationLabel": "Kobongisa makanisi mpo na yo",
+    "personalizationPrompt": "Olingi kobongola ndenge makanisi ebongisamaka mpo na yo?",
+    "openCookieSettings": "Fungola paramɛtrɛ ya cookie"
   },
   "BetaTesterModal": {
     "title": "Koma beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Meka lisusu oyo elongaki te"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Libongoli ya monɔkɔ ezali te",
+    "eyebrow": "Libongoli ya monɔkɔ ezali te",
+    "title": "<contentTitle>{title}</contentTitle> ezali te na <languageName>{language}</languageName>",
+    "actionsLabel": "Banzela ya kotala oyo ezali",
+    "browseInLanguage": "Talá bavideo na {language}",
+    "backToSearch": "Zongá na boluki",
+    "audioVersionsTitle": "Babongoli mosusu ya mongongo",
+    "audioVersionsDescription": "Poná monɔkɔ ya mongongo mpo na kokoba kotala video oyo.",
+    "languageVersionLabel": "Monɔkɔ ya mongongo",
+    "selectLanguageVersion": "Poná libongoli ya monɔkɔ",
+    "watchSelectedVersion": "Talá libongoli oyo oponi"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Maponi ya cookie",
+    "bannerTitle": "Maponi na yo ya bomoi ya sekele",
+    "bannerDescription": "Ba cookie ya ntina esalaka ete Watch ezala na bokengi mpe esala malamu. Soki opesi ndingisa, cookie moko ya kopona ekoki kobatela makambo oyo osepelaka na yango na botali ekeseni mpo na kopesa yo makanisi oyo ebongi na yo. Makanisi oyo etali makambo ozali kotala ezali kaka kozala mpo na yo ata ndenge nini.",
+    "acceptAll": "Ndima nyonso",
+    "essentialOnly": "Ya ntina kaka",
+    "manageChoices": "Bongisa maponi",
+    "savingChoice": "Kobomba liponi ya cookie",
+    "settings": "Paramɛtrɛ ya cookie",
+    "settingsDescription": "Pona soki Watch ekoki kobatela makambo ya maponi ya makanisi na botali ekeseni. Okoki kobongola yango tango nyonso.",
+    "essentialCookies": "Ba cookie ya ntina",
+    "essentialDescription": "Bokengi, kotala vidéo, maponi ya bomoi ya sekele, mpe kopesa elembo na bosengi ya makanisi.",
+    "alwaysActive": "Esalaka ntango nyonso",
+    "personalization": "Kobongisa mpo na yo",
+    "personalizationDescription": "Kobatela makambo ya moke oyo osepelaka na yango na botali ekeseni. Soki okangi yango, makanisi oyo etali makambo ozali kotala ekotikala kaka kozala.",
+    "erasurePending": "Bolongoli ya profil ezali naino kozela. Makanisi oyo etali makambo ozali kotala esili kozala kosala.",
+    "cancel": "Tika",
+    "saveChoices": "Bomba maponi",
+    "saving": "Kobomba…",
+    "loadError": "Liponi na yo ekokaki komonisama te. Kasi okoki kaka kopona awa na nse.",
+    "grantError": "Kobongisa mpo na yo ekokaki kofungolama te. Ya ntina kaka ezali naino kozala.",
+    "saveError": "Liponi na yo ekokaki kobombama te. Meka lisusu."
   }
 }

@@ -45,6 +45,14 @@ related_components: [apps/mobile, apps/web, packages/admin-graphql, apps/admin]
 > selects the rate-limit bucket identity (per-device vs per-IP), never admission.
 > The rest of this document's public-vs-editor-gated guidance stands unchanged.
 
+> **Qualified 2026-09-16 (feat-516).** "Never admission" holds for `watchSearch`
+> only. On the eight recommendation operations mobile sends
+> (`RECOMMENDATION_OPERATION_NAMES` in
+> `apps/mobile/src/lib/recommendations/operationNames.ts`),
+> Admin admits a fleet caller only with the bearer AND a proven viewer handle,
+> so a missing header there is `UNAUTHENTICATED`. The bearer stays
+> operation-scoped; see `apps/mobile/CLAUDE.md` "Recommendations API client".
+
 - **Editor-gated** (`authScopes: { hasPermission: "read:experiences" }`, which resolves to the `VIEWER` tier and up): the list/by-id fields `Query.experiences` and `Query.experience(id:)`. These can surface unpublished/draft content, so they are intentionally not public.
 
 The TV home had diverged from the mobile/web pattern: instead of rendering a single curated homepage Experience, it listed _every_ Experience as a launcher grid via `LIST_EXPERIENCES` (`Query.experiences`), and `SearchBrowse` showed a "Popular experiences" rail backed by the same gated field. **There is no public list-all-experiences query by design.**

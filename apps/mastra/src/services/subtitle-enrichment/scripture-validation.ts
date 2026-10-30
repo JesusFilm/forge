@@ -1,4 +1,8 @@
-import { requestOpenRouterChat } from "./openrouter"
+import {
+  requestOpenRouterChat,
+  type OpenRouterProviderCall,
+  type OpenRouterUsage,
+} from "./openrouter"
 import { cleanBibleReferences } from "./scripture-context"
 import type { SubtitleBiblePassage } from "./bible-source"
 import {
@@ -19,9 +23,13 @@ export type ValidateSubtitleScriptureAccuracyInput = {
   model: string
   apiKey?: string
   timeoutMs: number
+  deadlineAtMs?: number
   biblePassage?: SubtitleBiblePassage
   fallbackReason?: SubtitleScriptureValidationFallbackReason
   fetchImpl?: typeof fetch
+  onUsage?: (usage: OpenRouterUsage) => void
+  onUsageUnavailable?: () => void
+  onProviderCall?: (call: OpenRouterProviderCall) => void
 }
 
 const MAX_VALIDATION_TEXT_CHARS = 8_000
@@ -162,7 +170,11 @@ export async function validateSubtitleScriptureAccuracy(
     apiKey: input.apiKey,
     model: input.model,
     timeoutMs: input.timeoutMs,
+    deadlineAtMs: input.deadlineAtMs,
     fetchImpl: input.fetchImpl,
+    onUsage: input.onUsage,
+    onUsageUnavailable: input.onUsageUnavailable,
+    onProviderCall: input.onProviderCall,
     messages: [
       { role: "system", content: messages.system },
       { role: "user", content: messages.user },

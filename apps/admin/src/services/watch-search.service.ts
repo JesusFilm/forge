@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import type { PrismaClient } from "@prisma/client"
 import {
-  currentEmbeddingProviderIdentity,
+  currentContentQueryEmbeddingIdentity,
   EmbeddingsBatchError,
   generateExperienceEmbedding,
 } from "./embeddings.service"
@@ -24,6 +24,10 @@ import {
   type SearchLanguageSignalSource,
 } from "./search-language-resolution"
 import {
+  availabilityScoreForKind,
+  watchabilityRankForKind,
+} from "./watch-search-availability-score"
+import {
   SearchWatchabilityService,
   type SearchWatchability,
 } from "./search-watchability"
@@ -44,6 +48,8 @@ const MIN_METADATA_TOTAL_SCORE = 0.3
 const MIN_SEMANTIC_TOTAL_SCORE = 0.35
 const MIN_SEMANTIC_SOURCE_SCORE = 0.5
 const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 1_000
+export const WATCH_SEARCH_HARD_TIMEOUT_MS = 2_300
+const WATCH_SEARCH_FINAL_HYDRATION_RESERVE_MS = 400
 const QUERY_EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const WATCH_SEARCH_STARTER_QUERIES = [
   "bible stories",
@@ -60,6 +66,7 @@ export type WatchSearchAvailabilityKind =
   | "target_audio"
   | "target_subtitle"
   | "related_language"
+  | "container"
   | "unavailable"
 export type WatchSearchEvidenceKind =
   | "exact_title"
@@ -92,6 +99,7 @@ export type WatchSearchLaneName =
   | "metadata_retrieval"
   | "metadata_watchability"
   | "semantic_watchability"
+  | "final_hydration"
 
 export type WatchSearchInput = {
   query: string
@@ -196,9 +204,12 @@ export type WatchSearchLaneStatus = {
 export type WatchSearchRetrievalIdentity = {
   profile: "CURRENT" | "CANDIDATE"
   generationId: string | null
-  applicationRevision: string | null
+  indexContractRevision: string | null
+  contentEmbeddingContractId: string | null
+  transcriptChunkingVersion: string | null
   rankingRevision: string
   transcriptProjectionRevision: string | null
+  activeTranscriptProjectionRevision: string | null
   evaluationRevision: string | null
 }
 
@@ -240,6 +251,8 @@ export type WatchSearchServiceDeps = {
   logger?: Pick<Console, "warn">
   semanticEmbeddingTimeoutMs?: number
 }
+
+export type WatchSearchOptions = { hardTimeoutMs?: number }
 
 function normalizeLimit(value: number | null | undefined): number {
   if (value == null) return DEFAULT_LIMIT
@@ -289,8 +302,49 @@ export class WatchSearchService {
       deps.semanticEmbeddingTimeoutMs ?? DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS
   }
 
-  async search(input: WatchSearchInput): Promise<WatchSearchResponse> {
+  async search(
+    input: WatchSearchInput,
+    options: WatchSearchOptions = {},
+  ): Promise<WatchSearchResponse> {
     const startedAt = performance.now()
+    const hardTimeoutMs = options.hardTimeoutMs
+    const deadlineAtMs = hardTimeoutMs ? startedAt + hardTimeoutMs : null
+    const requestId = normalizeClientRequestId(input.clientRequestId)
+
+    try {
+      const search = this.searchWithinDeadline(
+        input,
+        startedAt,
+        deadlineAtMs,
+        requestId,
+      )
+      return hardTimeoutMs
+        ? await withTimeout(
+            search,
+            hardTimeoutMs,
+            "watch_search_deadline_exceeded",
+          )
+        : await search
+    } catch (error) {
+      if (
+        error instanceof WatchSearchTimeoutError &&
+        error.event === "watch_search_deadline_exceeded"
+      ) {
+        this.logger.warn(
+          `[watch-search] event=${error.event} request_id=${requestId} elapsed_ms=${Math.round(performance.now() - startedAt)}`,
+        )
+        throw error
+      }
+      throw error
+    }
+  }
+
+  private async searchWithinDeadline(
+    input: WatchSearchInput,
+    startedAt: number,
+    deadlineAtMs: number | null,
+    requestId: string,
+  ): Promise<WatchSearchResponse> {
     const query = input.query.trim().slice(0, MAX_QUERY_LENGTH)
     if (!query) {
       throw new WatchSearchValidationError("Search query is required")
@@ -298,12 +352,22 @@ export class WatchSearchService {
 
     const offset = normalizeOffset(input.offset)
     const limit = normalizeLimit(input.limit)
-    const requestId = normalizeClientRequestId(input.clientRequestId)
     validateResultTypes(input.resultTypes)
+    const requestBudgetMs =
+      deadlineAtMs == null ? null : deadlineAtMs - startedAt
+    const retrievalDeadlineAtMs =
+      deadlineAtMs == null || requestBudgetMs == null
+        ? null
+        : deadlineAtMs -
+          Math.min(
+            WATCH_SEARCH_FINAL_HYDRATION_RESERVE_MS,
+            requestBudgetMs * 0.3,
+          )
     const languageInterpretation = await resolveSearchLanguageSignals({
       prisma: this.prisma,
       input,
     })
+    assertBeforeDeadline(retrievalDeadlineAtMs)
     const wantsVideos =
       input.resultTypes == null ||
       input.resultTypes.length === 0 ||
@@ -314,6 +378,8 @@ export class WatchSearchService {
           limit,
           offset,
           languageInterpretation,
+          deadlineAtMs,
+          retrievalDeadlineAtMs,
         })
       : { results: [], hasMore: false, degraded: false, laneStatuses: [] }
 
@@ -336,11 +402,15 @@ export class WatchSearchService {
     limit,
     offset,
     languageInterpretation,
+    deadlineAtMs,
+    retrievalDeadlineAtMs,
   }: {
     query: string
     limit: number
     offset: number
     languageInterpretation: WatchSearchLanguageInterpretation
+    deadlineAtMs: number | null
+    retrievalDeadlineAtMs: number | null
   }): Promise<{
     results: WatchSearchResult[]
     hasMore: boolean
@@ -349,6 +419,11 @@ export class WatchSearchService {
   }> {
     const laneStatuses: WatchSearchLaneStatus[] = []
     const timelineStartedAt = nowMs()
+    const semanticStartedAt = nowMs()
+    const semanticDeadlineAtMs = retrievalDeadlineAtMs
+    const semanticLaneStatuses: WatchSearchLaneStatus[] = []
+    let semanticStage: "evidence_locales" | "embedding" | "retrieval" =
+      "evidence_locales"
     const displayLocale =
       localeForLanguageSlug(languageInterpretation.displayLanguageSlug) ??
       languageInterpretation.displayLanguageBcp47 ??
@@ -359,11 +434,17 @@ export class WatchSearchService {
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
     ])
-    const semanticSearchPromise = this.searchSemanticVideos({
+    const semanticSearchWork = this.searchSemanticVideos({
       query,
       languageInterpretation,
       timelineStartedAt,
+      deadlineAtMs: semanticDeadlineAtMs,
+      laneStatuses: semanticLaneStatuses,
+      setStage: (stage) => {
+        semanticStage = stage
+      },
     })
+    const semanticSearchPromise = semanticSearchWork
     const lexicalLimit = Math.max(
       offset + limit + 1,
       WATCHABILITY_RERANK_CANDIDATE_LIMIT,
@@ -387,7 +468,13 @@ export class WatchSearchService {
       locale: displayLocale,
       limit: lexicalLimit,
     })
+    let exactTitleForFallback: ExactTitleResult[] = []
+    let exactTitleRetrieved = false
+    let exactWatchabilityStarted = false
     const exactPipelinePromise = exactTitlePromise.then(async (exactTitle) => {
+      exactTitleForFallback = exactTitle
+      exactTitleRetrieved = true
+      assertBeforeDeadline(retrievalDeadlineAtMs)
       const exactTitleLaneStatus = laneStatus({
         lane: "exact_title",
         status: "fulfilled",
@@ -399,6 +486,7 @@ export class WatchSearchService {
         videoId: candidate.resultId,
       }))
       const exactWatchabilityStartedAt = nowMs()
+      exactWatchabilityStarted = exactWatchabilityCandidates.length > 0
       const exactWatchability =
         exactWatchabilityCandidates.length === 0
           ? new Map<string, SearchWatchability>()
@@ -429,8 +517,43 @@ export class WatchSearchService {
         ],
       }
     })
+    const exactPipelineWithBudget = withDeadlineFallback(
+      exactPipelinePromise,
+      retrievalDeadlineAtMs,
+      "exact_watchability",
+      (elapsed) => ({
+        exactTitle: [],
+        exactWatchability: new Map<string, SearchWatchability>(),
+        laneStatuses: [
+          laneStatus({
+            lane: "exact_title",
+            status: exactTitleRetrieved ? "fulfilled" : "degraded",
+            startedOffsetMs: exactTitleStartedAt - timelineStartedAt,
+            elapsedMs: elapsedMs(exactTitleStartedAt),
+            resultCount: exactTitleForFallback.length,
+            reason: exactTitleRetrieved ? null : "request_budget_exceeded",
+          }),
+          laneStatus({
+            lane: "exact_watchability",
+            status: exactWatchabilityStarted ? "degraded" : "skipped",
+            startedOffsetMs: exactTitleStartedAt - timelineStartedAt,
+            elapsedMs: elapsed,
+            resultCount: 0,
+            reason: exactWatchabilityStarted
+              ? "request_budget_exceeded"
+              : "lane_budget_exceeded_before_watchability",
+          }),
+        ],
+      }),
+    )
+    let metadataRetrievalCompleted = false
+    let metadataRetrievalResultCount = 0
+    let metadataWatchabilityStarted = false
     const metadataPipelinePromise = metadataRetrievalPromise.then(
       async ([keywordWeighted, trigram]) => {
+        assertBeforeDeadline(retrievalDeadlineAtMs)
+        metadataRetrievalCompleted = true
+        metadataRetrievalResultCount = keywordWeighted.length + trigram.length
         const metadataRetrievalLaneStatus = laneStatus({
           lane: "metadata_retrieval",
           status: "fulfilled",
@@ -438,23 +561,17 @@ export class WatchSearchService {
           elapsedMs: elapsedMs(metadataRetrievalStartedAt),
           resultCount: keywordWeighted.length + trigram.length,
         })
-        const exactTitle = await exactTitlePromise
-        const exactVideoIds = new Set(
-          exactTitle.map((candidate) => candidate.resultId),
-        )
         const metadataCandidates = fuseMetadataCandidates({
           keywordWeighted,
           trigram,
         })
-        const uniqueMetadataCandidates = metadataCandidates.filter(
-          (candidate) => !exactVideoIds.has(candidate.resultId),
-        )
-        const metadataWatchabilityCandidates = uniqueMetadataCandidates.map(
+        const metadataWatchabilityCandidates = metadataCandidates.map(
           (candidate) => ({
             videoId: candidate.resultId,
           }),
         )
         const metadataWatchabilityStartedAt = nowMs()
+        metadataWatchabilityStarted = metadataWatchabilityCandidates.length > 0
         const metadataWatchability =
           metadataWatchabilityCandidates.length === 0
             ? new Map<string, SearchWatchability>()
@@ -464,7 +581,7 @@ export class WatchSearchService {
               })
 
         return {
-          metadataCandidates: uniqueMetadataCandidates,
+          metadataCandidates,
           metadataWatchability,
           laneStatuses: [
             metadataRetrievalLaneStatus,
@@ -487,12 +604,50 @@ export class WatchSearchService {
         }
       },
     )
-    const semanticPipelinePromise = semanticSearchPromise.then(
+    const metadataPipelineWithBudget = withDeadlineFallback(
+      metadataPipelinePromise,
+      retrievalDeadlineAtMs,
+      "metadata_watchability",
+      (elapsed) => ({
+        metadataCandidates: [],
+        metadataWatchability: new Map<string, SearchWatchability>(),
+        laneStatuses: [
+          laneStatus({
+            lane: "metadata_retrieval",
+            status: metadataRetrievalCompleted ? "fulfilled" : "degraded",
+            startedOffsetMs: metadataRetrievalStartedAt - timelineStartedAt,
+            elapsedMs: elapsedMs(metadataRetrievalStartedAt),
+            resultCount: metadataRetrievalResultCount,
+            reason: metadataRetrievalCompleted
+              ? null
+              : "request_budget_exceeded",
+          }),
+          laneStatus({
+            lane: "metadata_watchability",
+            status: metadataWatchabilityStarted ? "degraded" : "skipped",
+            startedOffsetMs: metadataRetrievalStartedAt - timelineStartedAt,
+            elapsedMs: elapsed,
+            resultCount: 0,
+            reason: metadataWatchabilityStarted
+              ? "request_budget_exceeded"
+              : "lane_budget_exceeded_before_watchability",
+          }),
+        ],
+      }),
+    )
+    let semanticSearchForFallback: Awaited<
+      typeof semanticSearchPromise
+    > | null = null
+    let semanticWatchabilityStarted = false
+    const semanticPipelineWork = semanticSearchPromise.then(
       async (semanticSearch) => {
+        semanticSearchForFallback = semanticSearch
+        assertBeforeDeadline(semanticDeadlineAtMs)
         const semanticCandidates = semanticSearch.results.filter(
           (candidate) => candidate.similarity >= MIN_SEMANTIC_SOURCE_SCORE,
         )
         const semanticWatchabilityStartedAt = nowMs()
+        semanticWatchabilityStarted = semanticCandidates.length > 0
         const semanticWatchability =
           semanticCandidates.length === 0
             ? new Map<string, SearchWatchability>()
@@ -521,12 +676,91 @@ export class WatchSearchService {
         }
       },
     )
+    const semanticPipelinePromise = semanticDeadlineAtMs
+      ? withTimeout(
+          semanticPipelineWork,
+          Math.max(1, semanticDeadlineAtMs - performance.now()),
+          "semantic_request_budget_exceeded",
+        ).catch((error: unknown) => {
+          if (!(error instanceof WatchSearchTimeoutError)) throw error
+          const timedOutAt = nowMs()
+          const semanticSearch = semanticSearchForFallback
+          return {
+            results: semanticSearch?.results ?? [],
+            degraded: true,
+            laneStatuses: semanticSearch?.laneStatuses ?? [
+              ...semanticLaneStatuses,
+              ...(semanticStage === "evidence_locales"
+                ? [
+                    laneStatus({
+                      lane: "semantic_embedding",
+                      status: "skipped",
+                      startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                      elapsedMs: timedOutAt - semanticStartedAt,
+                      resultCount: 0,
+                      reason: "evidence_locale_budget_exceeded",
+                    }),
+                    laneStatus({
+                      lane: "semantic_retrieval",
+                      status: "skipped",
+                      startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                      elapsedMs: 0,
+                      resultCount: 0,
+                      reason: "evidence_locale_budget_exceeded",
+                    }),
+                  ]
+                : semanticStage === "embedding"
+                  ? [
+                      laneStatus({
+                        lane: "semantic_embedding",
+                        status: "degraded",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: timedOutAt - semanticStartedAt,
+                        resultCount: 0,
+                        reason: "request_budget_exceeded",
+                      }),
+                      laneStatus({
+                        lane: "semantic_retrieval",
+                        status: "skipped",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: 0,
+                        resultCount: 0,
+                        reason: "missing_query_embedding",
+                      }),
+                    ]
+                  : [
+                      laneStatus({
+                        lane: "semantic_retrieval",
+                        status: "degraded",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: timedOutAt - semanticStartedAt,
+                        resultCount: 0,
+                        reason: "request_budget_exceeded",
+                      }),
+                    ]),
+            ],
+            semanticCandidates: [],
+            semanticWatchability: new Map<string, SearchWatchability>(),
+            semanticWatchabilityLaneStatus: laneStatus({
+              lane: "semantic_watchability",
+              status: semanticWatchabilityStarted ? "degraded" : "skipped",
+              startedOffsetMs: semanticStartedAt - timelineStartedAt,
+              elapsedMs: timedOutAt - semanticStartedAt,
+              resultCount: 0,
+              reason: semanticWatchabilityStarted
+                ? "request_budget_exceeded"
+                : "semantic_request_budget_exceeded",
+            }),
+          }
+        })
+      : semanticPipelineWork
     const [exactPipeline, metadataPipeline, semanticPipeline] =
       await Promise.all([
-        exactPipelinePromise,
-        metadataPipelinePromise,
+        exactPipelineWithBudget,
+        metadataPipelineWithBudget,
         semanticPipelinePromise,
       ])
+    assertBeforeDeadline(deadlineAtMs)
     const { exactWatchability } = exactPipeline
     const { metadataWatchability } = metadataPipeline
     laneStatuses.push(
@@ -538,8 +772,12 @@ export class WatchSearchService {
       semanticPipeline.semanticWatchabilityLaneStatus,
     )
     const rawCandidates = exactPipeline.exactTitle
+    const exactCandidates = rawCandidates.filter(isExactTitleCandidate)
+    const curatedCandidates = rawCandidates
+      .filter((candidate) => candidate.curated === true)
+      .map(curatedCandidateFromExactTitle)
     const exactVideoIds = new Set(
-      rawCandidates.map((candidate) => candidate.resultId),
+      exactCandidates.map((candidate) => candidate.resultId),
     )
     const uniqueMetadataCandidates = metadataPipeline.metadataCandidates.filter(
       (candidate) => !exactVideoIds.has(candidate.resultId),
@@ -551,7 +789,14 @@ export class WatchSearchService {
     const uniqueSemanticCandidates = semanticPipeline.semanticCandidates.filter(
       (candidate) => !lexicalVideoIds.has(candidate.resultId),
     )
-    const rankedExactCandidates = rawCandidates
+    const organicVideoIds = new Set([
+      ...lexicalVideoIds,
+      ...uniqueSemanticCandidates.map((candidate) => candidate.resultId),
+    ])
+    const uniqueCuratedCandidates = curatedCandidates.filter(
+      (candidate) => !organicVideoIds.has(candidate.resultId),
+    )
+    const rankedExactCandidates = exactCandidates
       .map((candidate, index) => ({ candidate, index }))
       .sort((left, right) => {
         const availabilityDelta =
@@ -572,9 +817,13 @@ export class WatchSearchService {
         kind: "semantic" as const,
         candidate,
       })),
+      ...uniqueCuratedCandidates.map((candidate) => ({
+        kind: "curated" as const,
+        candidate,
+      })),
     ]
     const watchabilityFor = (entry: RankedWatchCandidate) => {
-      if (entry.kind === "exact") {
+      if (entry.kind === "exact" || entry.kind === "curated") {
         return exactWatchability.get(entry.candidate.resultId)
       }
       if (entry.kind === "metadata") {
@@ -582,7 +831,7 @@ export class WatchSearchService {
       }
       return semanticPipeline.semanticWatchability.get(entry.candidate.resultId)
     }
-    const rankedCandidates = mergedCandidates
+    const naturallyRankedCandidates = mergedCandidates
       .map((entry) => {
         const watchability = watchabilityFor(entry)
         const { rankingRelevance, scoreBreakdown } = candidateScores(
@@ -616,6 +865,18 @@ export class WatchSearchService {
 
         return left.candidate.resultId.localeCompare(right.candidate.resultId)
       })
+    const curatedPositions = new Map(
+      curatedCandidates.flatMap((candidate) => {
+        const watchability = exactWatchability.get(candidate.resultId)
+        return watchability && watchability.kind !== "unavailable"
+          ? [[candidate.resultId, candidate.curationPosition] as const]
+          : []
+      }),
+    )
+    const rankedCandidates = guaranteeCuratedDefaultFirstPage(
+      naturallyRankedCandidates,
+      curatedPositions,
+    )
     const candidates = rankedCandidates
       .slice(offset, offset + limit + 1)
       .map((entry) => entry)
@@ -635,16 +896,52 @@ export class WatchSearchService {
           watchability: entry.watchability,
         })
       }
+      if (entry.kind === "curated") {
+        return mapCuratedCandidate({
+          candidate: entry.candidate,
+          scoreBreakdown: entry.scoreBreakdown,
+          watchability: entry.watchability,
+        })
+      }
       return mapExactTitleCandidate({
         candidate: entry.candidate,
         scoreBreakdown: entry.scoreBreakdown,
         watchability: entry.watchability,
       })
     })
-    const [catalogByVideoId, imagesByVideoId] = await Promise.all([
+    const finalHydrationStartedAt = nowMs()
+    let finalHydrationDegraded = false
+    const finalHydrationPromise = Promise.all([
       this.catalogFieldsForResults(results),
       this.imagesForResults(results),
     ])
+    const [catalogByVideoId, imagesByVideoId] =
+      deadlineAtMs == null
+        ? await finalHydrationPromise
+        : await withTimeout(
+            finalHydrationPromise,
+            Math.max(1, deadlineAtMs - performance.now() - 100),
+            "final_hydration_budget_exceeded",
+          ).catch((error: unknown) => {
+            if (!(error instanceof WatchSearchTimeoutError)) throw error
+            finalHydrationDegraded = true
+            return [
+              new Map<string, WatchSearchResultCatalog>(),
+              new Map<string, WatchSearchResultImage>(),
+            ] as const
+          })
+    if (finalHydrationDegraded) {
+      laneStatuses.push(
+        laneStatus({
+          lane: "final_hydration",
+          status: "degraded",
+          startedOffsetMs: finalHydrationStartedAt - timelineStartedAt,
+          elapsedMs: elapsedMs(finalHydrationStartedAt),
+          resultCount: 0,
+          reason: "request_budget_exceeded",
+        }),
+      )
+    }
 
     return {
       results: results.map((result) =>
@@ -654,7 +951,10 @@ export class WatchSearchService {
         ),
       ),
       hasMore: candidates.length > limit,
-      degraded: semanticPipeline.degraded,
+      degraded:
+        semanticPipeline.degraded ||
+        finalHydrationDegraded ||
+        laneStatuses.some((lane) => lane.status === "degraded"),
       laneStatuses,
     }
   }
@@ -663,18 +963,24 @@ export class WatchSearchService {
     query,
     languageInterpretation,
     timelineStartedAt,
+    deadlineAtMs,
+    laneStatuses,
+    setStage,
   }: {
     query: string
     languageInterpretation: WatchSearchLanguageInterpretation
     timelineStartedAt: number
+    deadlineAtMs: number | null
+    laneStatuses: WatchSearchLaneStatus[]
+    setStage: (stage: "evidence_locales" | "embedding" | "retrieval") => void
   }): Promise<{
     results: SemanticVideoSearchResult[]
     degraded: boolean
     laneStatuses: WatchSearchLaneStatus[]
   }> {
-    const laneStatuses: WatchSearchLaneStatus[] = []
     const semanticStartedAt = nowMs()
     const evidenceLocales = await this.evidenceLocales(languageInterpretation)
+    assertBeforeDeadline(deadlineAtMs)
     if (evidenceLocales.length === 0) {
       laneStatuses.push(
         laneStatus({
@@ -698,6 +1004,7 @@ export class WatchSearchService {
     }
 
     let queryEmbedding: string
+    setStage("embedding")
     const embeddingStartedAt = nowMs()
     try {
       const embeddingResult = normalizeQueryEmbeddingResult(
@@ -719,6 +1026,7 @@ export class WatchSearchService {
         }),
       )
     } catch (error) {
+      assertBeforeDeadline(deadlineAtMs)
       const logFields = queryEmbeddingFailureLogFields(error)
       this.logger.warn(
         `[watch-search] event=${queryEmbeddingFailureReason(error)} error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}${logFields ? ` ${logFields}` : ""}`,
@@ -745,6 +1053,8 @@ export class WatchSearchService {
       return { results: [], degraded: true, laneStatuses }
     }
 
+    assertBeforeDeadline(deadlineAtMs)
+    setStage("retrieval")
     const retrievalStartedAt = nowMs()
     const retrievals = await Promise.all(
       evidenceLocales.map(async ({ languageSlug, locale }) => {
@@ -774,6 +1084,7 @@ export class WatchSearchService {
         }
       }),
     )
+    assertBeforeDeadline(deadlineAtMs)
     const rawSemanticResults = dedupeSemanticResults(
       retrievals.flatMap((retrieval) => retrieval.results),
     )
@@ -929,10 +1240,15 @@ type MetadataCandidate = FusedResult & {
   description: string | null
 }
 
+type CuratedCandidate = MetadataCandidate & {
+  curationPosition: number
+}
+
 type RankedWatchCandidate =
   | { kind: "exact"; candidate: ExactTitleCandidate }
   | { kind: "metadata"; candidate: MetadataCandidate }
   | { kind: "semantic"; candidate: SemanticVideoSearchResult }
+  | { kind: "curated"; candidate: CuratedCandidate }
 
 type EvidenceLocale = {
   languageSlug: string
@@ -1001,6 +1317,7 @@ type QueryEmbeddingCacheLookup =
     }
 
 type QueryEmbeddingCacheKey = {
+  contractId: string
   provider: string
   model: string
   dimensions: number
@@ -1011,9 +1328,13 @@ function normalizeEmbeddingCacheText(text: string): string {
   return text.replace(/\s+/g, " ").trim()
 }
 
-function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
-  const identity = currentEmbeddingProviderIdentity()
+async function queryEmbeddingCacheKey(
+  prisma: PrismaClient,
+  text: string,
+): Promise<QueryEmbeddingCacheKey> {
+  const identity = await currentContentQueryEmbeddingIdentity(prisma)
   const cacheIdentity = JSON.stringify({
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1021,6 +1342,7 @@ function queryEmbeddingCacheKey(text: string): QueryEmbeddingCacheKey {
   })
 
   return {
+    contractId: identity.contractId,
     provider: identity.provider,
     model: identity.model,
     dimensions: identity.dimensions,
@@ -1090,7 +1412,8 @@ async function deleteCachedQueryEmbedding(
 ): Promise<void> {
   await prisma.$executeRaw`
     DELETE FROM query_embedding_cache
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1105,7 +1428,8 @@ async function readCachedQueryEmbedding(
     UPDATE query_embedding_cache
     SET last_used_at = CURRENT_TIMESTAMP,
         updated_at = CURRENT_TIMESTAMP
-    WHERE provider = ${key.provider}
+    WHERE contract_id = ${key.contractId}
+      AND provider = ${key.provider}
       AND model = ${key.model}
       AND dimensions = ${key.dimensions}
       AND query_hash = ${key.queryHash}
@@ -1146,6 +1470,7 @@ async function rememberQueryEmbedding(
   await prisma.$executeRaw`
     INSERT INTO query_embedding_cache (
       id,
+      contract_id,
       provider,
       model,
       dimensions,
@@ -1158,6 +1483,7 @@ async function rememberQueryEmbedding(
     )
     VALUES (
       ${randomUUID()},
+      ${key.contractId},
       ${key.provider},
       ${key.model},
       ${key.dimensions},
@@ -1168,7 +1494,7 @@ async function rememberQueryEmbedding(
       CURRENT_TIMESTAMP,
       CURRENT_TIMESTAMP
     )
-    ON CONFLICT (provider, model, dimensions, query_hash)
+    ON CONFLICT (contract_id, provider, model, dimensions, query_hash)
     DO UPDATE SET
       embedding = EXCLUDED.embedding,
       expires_at = EXCLUDED.expires_at,
@@ -1181,7 +1507,7 @@ export async function defaultWatchSearchEmbedder(
   prisma: PrismaClient,
   text: string,
 ): Promise<WatchSearchQueryEmbeddingResult> {
-  const key = queryEmbeddingCacheKey(text)
+  const key = await queryEmbeddingCacheKey(prisma, text)
   const processCached = watchSearchQueryEmbeddingProcessCache.get(key)
   if (processCached != null) {
     return { embedding: processCached, detail: "cache_l1_hit" }
@@ -1254,10 +1580,16 @@ export async function prewarmWatchSearchQueryEmbeddings({
   )
 }
 
-class WatchSearchTimeoutError extends Error {
+export class WatchSearchTimeoutError extends Error {
   constructor(readonly event: string) {
-    super(event)
+    super("Watch search timed out")
     this.name = "WatchSearchTimeoutError"
+  }
+}
+
+function assertBeforeDeadline(deadlineAtMs: number | null): void {
+  if (deadlineAtMs != null && performance.now() >= deadlineAtMs) {
+    throw new WatchSearchTimeoutError("watch_search_deadline_exceeded")
   }
 }
 
@@ -1280,6 +1612,24 @@ async function withTimeout<T>(
   } finally {
     if (timeout) clearTimeout(timeout)
   }
+}
+
+function withDeadlineFallback<T>(
+  promise: Promise<T>,
+  deadlineAtMs: number | null,
+  event: string,
+  fallback: (elapsedMs: number) => T,
+): Promise<T> {
+  if (deadlineAtMs == null) return promise
+  const startedAt = performance.now()
+  return withTimeout(
+    promise,
+    Math.max(1, deadlineAtMs - performance.now()),
+    event,
+  ).catch((error: unknown) => {
+    if (!(error instanceof WatchSearchTimeoutError)) throw error
+    return fallback(performance.now() - startedAt)
+  })
 }
 
 function uniqueNonNull(values: ReadonlyArray<string | null | undefined>) {
@@ -1355,26 +1705,94 @@ function fuseMetadataCandidates({
   }))
 }
 
+function isExactTitleCandidate(candidate: ExactTitleCandidate): boolean {
+  return candidate.titleMatched !== false
+}
+
+function curatedCandidateFromExactTitle(
+  candidate: ExactTitleCandidate,
+): CuratedCandidate {
+  return {
+    resultType: "video",
+    resultId: candidate.resultId,
+    videoCoreId: candidate.videoCoreId,
+    videoSlug: candidate.videoSlug,
+    videoTitle: candidate.videoTitle,
+    imageUrl: null,
+    description: candidate.description,
+    score: 0,
+    curationPosition: candidate.curationPosition ?? 1,
+  }
+}
+
+function guaranteeCuratedDefaultFirstPage<
+  T extends { candidate: { resultId: string } },
+>(
+  candidates: readonly T[],
+  curatedPositions: ReadonlyMap<string, number>,
+): T[] {
+  const orderedIds = [...curatedPositions.entries()]
+    .sort(([leftId, leftPosition], [rightId, rightPosition]) =>
+      leftPosition === rightPosition
+        ? leftId.localeCompare(rightId)
+        : leftPosition - rightPosition,
+    )
+    .map(([videoId]) => videoId)
+  const idsToMove = orderedIds
+    .filter((videoId) => {
+      const index = candidates.findIndex(
+        (entry) => entry.candidate.resultId === videoId,
+      )
+      return index >= DEFAULT_LIMIT
+    })
+    .slice(0, DEFAULT_LIMIT)
+  if (idsToMove.length === 0) return [...candidates]
+
+  const moveIds = new Set(idsToMove)
+  const movingById = new Map(
+    candidates
+      .filter((entry) => moveIds.has(entry.candidate.resultId))
+      .map((entry) => [entry.candidate.resultId, entry] as const),
+  )
+  const moving = idsToMove.flatMap((videoId) => {
+    const entry = movingById.get(videoId)
+    return entry ? [entry] : []
+  })
+  const remaining = candidates.filter(
+    (entry) => !moveIds.has(entry.candidate.resultId),
+  )
+  const insertionIndex = Math.min(
+    Math.max(0, DEFAULT_LIMIT - moving.length),
+    remaining.length,
+  )
+
+  return [
+    ...remaining.slice(0, insertionIndex),
+    ...moving,
+    ...remaining.slice(insertionIndex),
+  ]
+}
+
 function resultCandidateScore(entry: RankedWatchCandidate): number {
   if (entry.kind === "semantic") return entry.candidate.similarity
-  if (entry.kind === "metadata") return entry.candidate.score
+  if (entry.kind === "metadata" || entry.kind === "curated") {
+    return entry.candidate.score
+  }
   return 1
 }
 
-function availabilityScore(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function availabilityScore(
   watchability: SearchWatchability | undefined,
 ): number {
-  if (watchability?.kind === "target_audio") return 0.25
-  if (watchability?.kind === "target_subtitle") return 0.18
-  if (watchability?.kind === "related_language") return 0.08
-  return 0
+  return availabilityScoreForKind(watchability?.kind)
 }
 
 function matchScore(entry: RankedWatchCandidate, query: string): number {
   if (entry.kind === "exact") {
     return isWholeTitleMatch(query, entry.candidate.videoTitle) ? 0.45 : 0.2
   }
-  if (entry.kind === "metadata") return 0.14
+  if (entry.kind === "metadata" || entry.kind === "curated") return 0.14
   return 0.08
 }
 
@@ -1422,9 +1840,17 @@ function candidateScores(
 }
 
 function passesMinimumConfidence(
-  entry: RankedWatchCandidate & { scoreBreakdown: WatchSearchScoreBreakdown },
+  entry: RankedWatchCandidate & {
+    scoreBreakdown: WatchSearchScoreBreakdown
+    watchability: SearchWatchability | undefined
+  },
 ) {
   if (entry.kind === "exact") return true
+  if (entry.kind === "curated") {
+    return (
+      entry.watchability != null && entry.watchability.kind !== "unavailable"
+    )
+  }
   if (entry.kind === "metadata") {
     return entry.scoreBreakdown.total >= MIN_METADATA_TOTAL_SCORE
   }
@@ -1469,21 +1895,22 @@ function toWholeStartSeconds(value: number | null): number | null {
   return Math.max(0, Math.floor(value))
 }
 
-function watchabilityRank(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function watchabilityRank(
   watchability: SearchWatchability | undefined,
 ): number {
-  if (watchability?.kind === "target_audio") return 0
-  if (watchability?.kind === "target_subtitle") return 1
-  if (watchability?.kind === "related_language") return 2
-  return 3
+  return watchabilityRankForKind(watchability?.kind)
 }
 
-function fallbackKindForWatchability(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function fallbackKindForWatchability(
   watchability: SearchWatchability | undefined,
 ): WatchSearchFallbackKind {
   if (!watchability || watchability.kind === "unavailable") return "unavailable"
   if (watchability.kind === "target_subtitle") return "subtitle"
   if (watchability.kind === "related_language") return "related_language"
+  // A container is not a playback fallback — it is browsable content in the
+  // requested language — so it takes "none" rather than a new fallback kind.
   return "none"
 }
 
@@ -1654,6 +2081,25 @@ function mapMetadataCandidate({
     fallback: {
       kind: fallbackKindForWatchability(watchability),
       message: fallbackMessageForWatchability(watchability),
+    },
+  }
+}
+
+function mapCuratedCandidate({
+  candidate,
+  scoreBreakdown,
+  watchability,
+}: {
+  candidate: CuratedCandidate
+  scoreBreakdown: WatchSearchScoreBreakdown
+  watchability: SearchWatchability | undefined
+}): WatchSearchResult {
+  return {
+    ...mapMetadataCandidate({ candidate, scoreBreakdown, watchability }),
+    evidence: {
+      kind: "metadata",
+      languageSlug: null,
+      label: "Editorial match",
     },
   }
 }

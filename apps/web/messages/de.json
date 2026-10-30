@@ -39,9 +39,8 @@
     "posterAlt": "Video-Vorschaubild",
     "noDownloads": "Für dieses Video sind keine Downloads verfügbar.",
     "fileSizeLabel": "Dateigröße auswählen",
-    "termsAgreementPrefix": "Ich stimme den ",
+    "termsAgreement": "Ich stimme den <link>Nutzungsbedingungen</link> zu",
     "termsOfUse": "Nutzungsbedingungen",
-    "termsAgreementSuffix": " zu",
     "close": "Schließen",
     "download": "Herunterladen",
     "authRequiredTitle": "Möchten Sie dieses Video herunterladen?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Auf Facebook teilen (in dieser Version nicht verfügbar)",
     "shareOnX": "Auf X teilen",
     "shareOnXUnavailable": "Auf X teilen (in dieser Version nicht verfügbar)",
+    "opensInNewTab": "{label} (öffnet in einem neuen Tab)",
     "shareDisabledHint": "Zum Teilen ist eine veröffentlichte Seite erforderlich — funktioniert, sobald dieses Video in Produktion ist.",
     "shareFormat": "Freigabeformat",
     "shareLinkTab": "Link teilen",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprache ändern",
     "home": "JesusFilm-Startseite",
     "closeSearch": "Suche schließen",
-    "submitSearch": "Suchen"
+    "submitSearch": "Suchen",
+    "library": "Mediathek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos suchen und entdecken",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Weitere Ergebnisse konnten nicht geladen werden.",
     "searching": "Suche läuft...",
     "connectionHint": "Bitte Verbindung prüfen und erneut versuchen.",
+    "rateLimitHint": "Zu viele Anfragen. Bitte versuche es in einer Minute erneut.",
     "retrySearch": "Suche erneut starten",
     "retry": "Erneut versuchen",
     "noResults": "Keine Ergebnisse für „{query}“",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Auf {language} nach „{suggestion}“ suchen",
     "inLanguage": "auf {language}",
     "browseByRegion": "Nach Region stöbern",
+    "allVideosOnSinglePage": "Alle Videos auf einer Seite",
     "clearLanguages": "Zurücksetzen",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Auf {language} suchen",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Jetzt ansehen",
     "tapToUnmute": "Ton einschalten",
-    "nextEpisode": "Nächste Folge"
+    "nextEpisode": "Nächste Folge",
+    "audioTranslationCount": "{count, plural, one {# Sprache} other {# Sprachen}}",
+    "subtitleCount": "Untertitel: {count, plural, one {# Sprache} other {# Sprachen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt wird geladen",
@@ -279,6 +284,7 @@
     "sports": "Sport",
     "collections": "Sammlungen",
     "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Nach oben",
     "newlyAdded": "Neu hinzugefügt",
     "newVideosTitle": "Neue christliche Videos in {language}",
     "newestFirst": "Neueste zuerst",
@@ -309,7 +315,21 @@
     "standaloneVideos": "Einzelvideos",
     "videosFromCollection": "Videos aus {collection}.",
     "standaloneDescription": "Einzelvideos in dieser Sprache.",
-    "openCollection": "Sammlung öffnen"
+    "openCollection": "Sammlung öffnen",
+    "filters": "Filter",
+    "filterLength": "Länge",
+    "filterLength_under5": "Unter 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter zurücksetzen",
+    "filterResults": "{count} von {total} angezeigt",
+    "noFilterResults": "Keine Videos entsprechen diesen Filtern. Entfernen Sie einen davon.",
+    "filterAdded": "Hinzugefügt",
+    "filterAdded_60d": "Letzte 60 Tage",
+    "filterAdded_6m": "Letzte 6 Monate",
+    "filterAdded_12m": "Letzte 12 Monate"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Videos ansehen",
@@ -323,7 +343,8 @@
     "nextVideoPreview": "Vorschau des nächsten Videos",
     "featured": "Empfohlen",
     "mediaCollection": "Mediensammlung",
-    "scrollToVideo": "Zum Video {title} scrollen"
+    "scrollToVideo": "Zum Video {title} scrollen",
+    "forYou": "Für dich empfohlen"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Sprachen",
@@ -369,6 +390,7 @@
     "screenReaderPrefix": "Seite nicht gefunden:",
     "title": "Diese Szene ist hier nicht.",
     "description": "Die Seite wurde vielleicht verschoben, aber die Geschichte geht weiter.",
+    "languageDescription": "Wir konnten die gesuchte Seite nicht finden, aber die Geschichte geht weiter – in Filmen und Videos in Sprachen aus aller Welt.",
     "actionsLabel": "Aktionen bei nicht gefundener Seite",
     "backToWatch": "Zurück zu Watch",
     "browseVideos": "Videos durchsuchen"
@@ -437,62 +459,234 @@
     "merryChristmas": "Frohe Weihnachten!",
     "daysUntilChristmas": "{count, plural, one {Noch # Tag bis Weihnachten} other {Noch # Tage bis Weihnachten}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Mediathek durchsuchen",
+    "title": "Nach Kategorie durchsuchen",
+    "description": "Springen Sie direkt zum gewünschten Teil der Mediathek – zum Leben Jesu, zu den Zeiten des Kirchenjahres und zu Videos für Familien, Studierende und Kleingruppen.",
+    "seeAll": "Alle Videos ansehen",
+    "previous": "Vorherige Kategorien",
+    "next": "Nächste Kategorien",
+    "categories": {
+      "jesus": "Der JESUS-Film",
+      "gospels": "Evangelien",
+      "shortVideos": "Kurzvideos",
+      "family": "Familie",
+      "relationships": "Beziehungen",
+      "women": "Für Frauen",
+      "students": "Für Studierende",
+      "sports": "Sport",
+      "goodNews": "Gute Nachricht",
+      "hope": "Hoffnung",
+      "training": "Schulung",
+      "easter": "Ostern",
+      "christmas": "Weihnachten"
+    }
+  },
   "Feedback": {
     "openForm": "Feedback-Formular öffnen",
     "label": "Rückmeldung",
     "couldNotLoad": "Feedback-Formular konnte nicht geladen werden.",
     "loadingForm": "Feedback-Formular wird geladen…",
     "retry": "Erneut versuchen",
-    "openFormShort": "Formular öffnen",
     "cancel": "Abbrechen",
-    "title": "Beta-Feedback",
-    "description": "Teilen Sie mit, was gut funktioniert und was wir verbessern können. Dieses Formular wird von Google bereitgestellt.",
-    "openInNewTab": "Formular in neuem Tab öffnen",
     "closeForm": "Feedback-Formular schließen",
-    "loadingGoogleForm": "Google-Formular wird geladen…",
-    "iframeTitle": "Beta-Feedback absenden"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurzfilm ansehen",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile unsere Mission"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
     },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Die heutigen Video-Empfehlungen",
-      "description": "Glaubenszentrierte Videoinhalte aus unserer Bibliothek, die inspirieren, herausfordern und zum Nachdenken anregen."
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
     },
-    "welcomeMorning": {
-      "label": "Morgendliche Inspiration",
-      "title": "Guten Morgen! Die heutigen Bibelmomente warten.",
-      "description": "Beginnen Sie Ihren Tag mit ermutigenden Bibelmomenten, die Ihren Geist inspirieren und erheben sollen."
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
     },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guten Nachmittag! Bibelmomente für Ihren Tag.",
-      "description": "Ermutigende Bibelinhalte, perfekt für Ihre Nachmittagsauszeit oder zur weiteren Inspiration."
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
     },
-    "welcomeEvening": {
-      "label": "Abendliche Inspiration",
-      "title": "Guten Abend! Lassen Sie den Tag mit Bibelmomenten ausklingen.",
-      "description": "Friedliche Bibelmomente, die Ihnen helfen, nachzudenken und Trost zu finden, wenn Ihr Tag zu Ende geht."
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
     },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarden suchen",
-      "description": "Die Ernte ist da. Machen Sie mit, wenn wir das Evangelium mit digitalen Medien in die Welt tragen."
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "Gehen wir gemeinsam",
-      "title": "Gemeinsam die Geschichte von Jesus erzählen",
-      "description": "Damit sie die Liebe Jesu in ihrer eigenen Sprache direkt dort hören und sehen können, wo sie sind."
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmung",
-    "none": "Für dieses Video wurden in dieser Sprache keine Empfehlungen gefunden."
+    "none": "Für dieses Video wurden in dieser Sprache keine Empfehlungen gefunden.",
+    "heading": "Empfohlene Videos",
+    "loadingLabel": "Empfohlene Videos werden geladen",
+    "openingTitle": "{title} wird geöffnet",
+    "openingVideo": "Video wird geöffnet",
+    "activityNotRecorded": "Die Empfehlungsaktivität konnte nicht erfasst werden. Links funktionieren weiterhin.",
+    "showingContextual": "Kontextbezogene Empfehlungen werden angezeigt.",
+    "showingSaved": "Gespeicherte Empfehlungen werden angezeigt.",
+    "explanationCurated": "Ausgewählte Videos zum Entdecken.",
+    "explanationViewingMode": "Empfohlen auf Grundlage dieses Videos und Ihrer Sehgewohnheiten.",
+    "explanationCowatch": "Empfohlen auf Grundlage dieses Videos und Ihrer Interessen.",
+    "explanationHybrid": "Empfohlen auf Grundlage dieses Videos und der Interessen, die Sie speichern lassen.",
+    "explanationContextual": "Empfohlen auf Grundlage dessen, was Sie gerade ansehen.",
+    "explanationSemanticFallback": "Empfohlen auf Grundlage dessen, was Sie gerade ansehen, da die Personalisierung derzeit nicht verfügbar ist.",
+    "explanationProfileDurable": "Personalisiert anhand der Interessen, die Sie speichern lassen.",
+    "explanationProfileVisit": "Für diesen Besuch personalisiert.",
+    "personalizationLabel": "Personalisierung der Empfehlungen",
+    "personalizationPrompt": "Möchten Sie ändern, wie Empfehlungen personalisiert werden?",
+    "openCookieSettings": "Cookie-Einstellungen öffnen"
   },
   "BetaTesterModal": {
     "title": "Beta-Tester werden",
@@ -538,16 +732,39 @@
     "retryFailed": "Fehlgeschlagene Downloads erneut versuchen"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sprachversion nicht verfügbar",
+    "eyebrow": "Sprachversion nicht verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> ist nicht auf <languageName>{language}</languageName> verfügbar",
+    "actionsLabel": "Verfügbare Wiedergabeoptionen",
+    "browseInLanguage": "Videos auf {language} durchsuchen",
+    "backToSearch": "Zurück zur Suche",
+    "audioVersionsTitle": "Andere Audioversionen",
+    "audioVersionsDescription": "Wähle eine Audiosprache aus, um dieses Video weiter anzusehen.",
+    "languageVersionLabel": "Audiosprache",
+    "selectLanguageVersion": "Sprachversion auswählen",
+    "watchSelectedVersion": "Ausgewählte Version ansehen"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Einstellungen",
+    "bannerTitle": "Ihre Datenschutzoptionen",
+    "bannerDescription": "Erforderliche Cookies sorgen dafür, dass Watch sicher ist und funktioniert. Mit Ihrer Zustimmung kann ein optionales First-Party-Cookie Interessen über mehrere Besuche hinweg speichern, um Empfehlungen zu personalisieren. Kontextbezogene Empfehlungen bleiben in jedem Fall verfügbar.",
+    "acceptAll": "Alle akzeptieren",
+    "essentialOnly": "Nur erforderliche",
+    "manageChoices": "Einstellungen verwalten",
+    "savingChoice": "Cookie-Auswahl wird gespeichert",
+    "settings": "Cookie-Einstellungen",
+    "settingsDescription": "Wählen Sie, ob Watch Empfehlungsinteressen über mehrere Besuche hinweg speichern darf. Sie können dies jederzeit ändern.",
+    "essentialCookies": "Erforderliche Cookies",
+    "essentialDescription": "Sicherheit, Wiedergabe, Datenschutzeinstellungen und Zuordnung von Empfehlungsanfragen.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierung",
+    "personalizationDescription": "Begrenzte Interessen über mehrere Besuche hinweg speichern. Wenn dies deaktiviert ist, bleiben kontextbezogene Empfehlungen verfügbar.",
+    "erasurePending": "Die Löschung des Profils steht noch aus. Kontextbezogene Empfehlungen sind bereits aktiv.",
+    "cancel": "Abbrechen",
+    "saveChoices": "Auswahl speichern",
+    "saving": "Wird gespeichert…",
+    "loadError": "Ihre Auswahl konnte nicht geladen werden. Sie können unten trotzdem eine Auswahl treffen.",
+    "grantError": "Personalisierung konnte nicht aktiviert werden. Nur erforderliche Cookies bleiben verfügbar.",
+    "saveError": "Ihre Auswahl konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
   }
 }

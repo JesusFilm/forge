@@ -172,6 +172,7 @@ function parseArtifactPath(
 }
 
 export type DevotionalArtifactsRouteOptions = {
+  isStopping?: () => boolean
   /** Backwards-compatible test injection. When supplied it drives both stores. */
   storage?: Storage
   workspaceStorage?: Storage
@@ -181,6 +182,7 @@ export type DevotionalArtifactsRouteOptions = {
 
 export function createDevotionalArtifactsRoute({
   storage,
+  isStopping = () => false,
   workspaceStorage = storage ?? createDevotionalStorage(),
   legacyStorage = storage ?? createStorage(),
   auth = {},
@@ -206,6 +208,10 @@ export function createDevotionalArtifactsRoute({
       const parsedPath = parseArtifactPath(url.pathname, "devotional-inputs")
       if (!parsedPath) return false
       if (!authorize(request, response)) return true
+      if (isStopping()) {
+        sendJson(response, 503, { error: "shutting_down" })
+        return true
+      }
       const allowed = inputArtifact(parsedPath.artifactType, parsedPath.ext)
       if (!allowed) {
         sendJson(response, 400, { error: "invalid_artifact" })
@@ -282,6 +288,10 @@ export function createDevotionalArtifactsRoute({
             )
       let ref: WorkspaceArtifactRef
       try {
+        if (isStopping()) {
+          sendJson(response, 503, { error: "shutting_down" })
+          return true
+        }
         ref = await workspaceStorage.writeWorkspaceArtifact({
           key,
           body: persisted,

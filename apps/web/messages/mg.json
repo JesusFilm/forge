@@ -39,9 +39,8 @@
     "posterAlt": "Sary afisy an'ny lahatsary",
     "noDownloads": "Tsy misy fampidinana azo alaina ho an'ity lahatsary ity.",
     "fileSizeLabel": "Safidio ny haben'ny rakitra",
-    "termsAgreementPrefix": "Manaiky ny ",
+    "termsAgreement": "Manaiky ny <link>Fepetra fampiasana</link> aho",
     "termsOfUse": "Fepetra fampiasana",
-    "termsAgreementSuffix": "",
     "close": "Hidio",
     "download": "Sintomy",
     "authRequiredTitle": "Te-hisintona ity lahatsary ity ve ianao?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Zarao amin'ny Facebook (tsy azo ampiasaina amin'ity kinova ity)",
     "shareOnX": "Zarao amin'ny X",
     "shareOnXUnavailable": "Zarao amin'ny X (tsy azo ampiasaina amin'ity kinova ity)",
+    "opensInNewTab": "{label} (misokatra amin'ny tab vaovao)",
     "shareDisabledHint": "Mila pejy efa napetraka ny fizarana — mandeha izany rehefa ao amin'ny famokarana ity lahatsary ity.",
     "shareFormat": "Endriky ny fizarana",
     "shareLinkTab": "Rohy fizarana",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ovay ny fitenin'ny feo",
     "home": "Pejy fandraisana JesusFilm",
     "closeSearch": "Hidio ny fikarohana",
-    "submitSearch": "Karohy"
+    "submitSearch": "Karohy",
+    "library": "Tranomboky"
   },
   "SearchOverlay": {
     "dialogLabel": "Karohy sy zaha lahatsary",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Tsy nahomby ny fampidirana valiny fanampiny.",
     "searching": "Mikaroka...",
     "connectionHint": "Hamarino ny fifandraisanao ary andramo indray.",
+    "rateLimitHint": "Be loatra ny fangatahana. Andramo indray afaka iray minitra.",
     "retrySearch": "Andramo indray ny fikarohana",
     "retry": "Andramo indray",
     "noResults": "Tsy nisy valiny ho an'ny \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Karohy amin'ny {language} ny “{suggestion}”",
     "inLanguage": "amin'ny {language}",
     "browseByRegion": "Zaha araka ny faritra",
+    "allVideosOnSinglePage": "Lahatsary rehetra ao amin’ny pejy iray",
     "clearLanguages": "Fafao",
     "queryLanguageDetected": "Hita fa {language}",
     "searchInLanguage": "Karohy amin'ny {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Jereo izao",
     "tapToUnmute": "Tsindrio mba hampandeha ny feo",
-    "nextEpisode": "Fizarana manaraka"
+    "nextEpisode": "Fizarana manaraka",
+    "audioTranslationCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "subtitleCount": "Dikanteny: {count, plural, one {# fiteny} other {# fiteny}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mampiditra votoaty",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Tsy afaka nampidirina ny taratasy fanehoan-kevitra.",
     "loadingForm": "Mampiditra ny taratasy fanehoan-kevitra…",
     "retry": "Andramo indray",
-    "openFormShort": "Sokafy ny taratasy",
     "cancel": "Foana",
-    "title": "Fanehoan-kevitra Beta",
-    "description": "Zarao izay mandeha tsara sy izay azontsika hatsaraina. Google no manome ity taratasy ity.",
-    "openInNewTab": "Sokafy amin'ny kiheba vaovao",
     "closeForm": "Hidio ny taratasy fanehoan-kevitra",
-    "loadingGoogleForm": "Mampiditra Google Form…",
-    "iframeTitle": "Alefaso ny fanehoan-kevitra Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Lahatsary kristianina maimaim-poana amin'ny {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Fanatanjahantena",
     "collections": "Fitambarana",
     "subtitlesOnly": "Dikanteny fotsiny",
+    "backToTop": "Hiverina eny ambony",
     "newlyAdded": "Nampidirina vao haingana",
     "newVideosTitle": "Lahatsary kristianina vaovao amin'ny {language}",
     "newestFirst": "Vaovao indrindra aloha",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Lahatsary misaraka",
     "videosFromCollection": "Lahatsary avy amin'ny {collection}.",
     "standaloneDescription": "Lahatsary misaraka amin'ity fiteny ity.",
-    "openCollection": "Sokafy ny fitambarana"
+    "openCollection": "Sokafy ny fitambarana",
+    "filters": "Sivana",
+    "filterLength": "Halavany",
+    "filterLength_under5": "Latsaky ny 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mihoatra ny 30 min",
+    "filterType": "Karazana",
+    "clearFilters": "Hanadio ny sivana",
+    "filterResults": "{count} amin'ny {total} no aseho",
+    "noFilterResults": "Tsy misy horonantsary mifanaraka amin'ireo sivana ireo. Andramo esorina ny iray.",
+    "filterAdded": "Nampiana",
+    "filterAdded_60d": "60 andro farany",
+    "filterAdded_6m": "6 volana farany",
+    "filterAdded_12m": "12 volana farany"
   },
   "WatchHome": {
     "pageTitle": "Fijerena Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Topimaso lahatsary teo aloha",
     "nextVideoPreview": "Topimaso lahatsary manaraka",
     "mediaCollection": "Fitambaran'ny media",
-    "scrollToVideo": "Tadiavo ny lahatsary {title}"
+    "scrollToVideo": "Tadiavo ny lahatsary {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Pejy fandraisana Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Tratry ny Krismasy!",
     "daysUntilChristmas": "{count, plural, one {# andro sisa hahatongavan'ny Krismasy} other {# andro sisa hahatongavan'ny Krismasy}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Zahao ny tranomboky",
+    "title": "Mizaha araka ny sokajy",
+    "description": "Mandehana mivantana any amin'ny ampahany ilainao ao amin'ny tranomboky – ny fiainan'i Jesoa, ny fotoana isan-taona ao amin'ny fiangonana, ary lahatsary natao ho an'ny fianakaviana, mpianatra ary vondrona kely.",
+    "seeAll": "Jereo ny lahatsary rehetra",
+    "previous": "Sokajy teo aloha",
+    "next": "Sokajy manaraka",
+    "categories": {
+      "jesus": "Ilay sarimihetsika JESOA",
+      "gospels": "Filazantsara",
+      "shortVideos": "Lahatsary fohy",
+      "family": "Fianakaviana",
+      "relationships": "Fifandraisana",
+      "women": "Ho an'ny vehivavy",
+      "students": "Ho an'ny mpianatra",
+      "sports": "Fanatanjahantena",
+      "goodNews": "Vaovao Mahafaly",
+      "hope": "Fanantenana",
+      "training": "Fiofanana",
+      "easter": "Paska",
+      "christmas": "Noely"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Fiteny",
     "metadataDescription": "Zaha lahatsary JesusFilm araka ny fiteny.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Tsy hita ny pejy:",
     "title": "Tsy eto ity sehatra ity.",
     "description": "Mety nifindra ilay pejy, saingy mitohy ny tantara.",
+    "languageDescription": "Tsy hitanay ilay pejy tadiavinao, saingy mitohy ny tantara amin'ny sarimihetsika sy lahatsary amin'ny fiteny maneran-tany.",
     "actionsLabel": "Hetsika raha tsy hita ny pejy",
     "backToWatch": "Miverina amin'ny Fijerena",
     "browseVideos": "Zaha lahatsary"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Jereo ny sarimihetsika fohy",
-    "actions": {
-      "joinUs": "Miaraha aminay",
-      "shareMission": "Anjara amin'ny iraka iombonana"
-    },
-    "welcomeStart": {
-      "label": "Finoana sy Soratra Masina",
-      "title": "Safidin'ny lahatsary anio",
-      "description": "Votoaty lahatsary mifototra amin'ny finoana avy amin'ny tranombokintsika hanentana, hanohitra, ary hamoha fandinihana."
-    },
-    "welcomeMorning": {
-      "label": "Fanentanana maraina",
-      "title": "Maraina tsara! Miandry anao ny fotoana ao amin'ny Baiboly anio.",
-      "description": "Atombohy amin'ny fotoana mampahery avy ao amin'ny Baiboly ny andronao, natao hanentana sy hampiakatra fanahy anao."
-    },
-    "welcomeAfternoon": {
-      "label": "Fanentanana hariva atoandro",
-      "title": "Hariva tsara! Fotoana ao amin'ny Baiboly ho an'ny andronao.",
-      "description": "Votoaty mampahery avy ao amin'ny Baiboly, mety tsara amin'ny fitsaharanao atoandro na hanohizana ny fanentanana anao."
-    },
-    "welcomeEvening": {
-      "label": "Fanentanana hariva",
-      "title": "Hariva tsara! Mialà sasatra miaraka amin'ny fotoana ao amin'ny Baiboly.",
-      "description": "Fotoana milamina ao amin'ny Baiboly hanampy anao handinika sy hahita fampiononana rehefa hifarana ny andronao."
-    },
-    "joinUs": {
-      "label": "Miaraha aminay",
-      "title": "Maro an'arivony tapitrisa no mitady",
-      "description": "Eto ny vokatra. Miaraha aminay amin'ny fizarana ny Filazantsara amin'izao tontolo izao amin'ny alalan'ny media nomerika."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Andao hiara-dia",
-      "title": "Mitantara ny tantaran'i Jesosy, miaraka",
-      "description": "Mba ho henony sy ho hitany amin'ny fiteniny manokana, eo amin'izay misy azy, ny fitiavan'i Jesosy."
-    }
-  },
   "VideoRecommendations": {
     "match": "Mifanentana {percent}%",
-    "none": "Tsy nahitana soso-kevitra ho an'ity lahatsary ity amin'ity fiteny ity."
+    "none": "Tsy nahitana soso-kevitra ho an'ity lahatsary ity amin'ity fiteny ity.",
+    "heading": "Lahatsary atolotra",
+    "loadingLabel": "Mampiditra ireo lahatsary atolotra",
+    "openingTitle": "Manokatra ny {title}",
+    "openingVideo": "Manokatra lahatsary",
+    "activityNotRecorded": "Tsy voarakitra ny hetsika momba ny soso-kevitra. Mbola mandeha ihany ireo rohy.",
+    "showingContextual": "Mampiseho soso-kevitra mifanaraka amin'ny lahatsary.",
+    "showingSaved": "Mampiseho soso-kevitra voatahiry.",
+    "explanationCurated": "Lahatsary voafantina hojerena.",
+    "explanationViewingMode": "Atolotra araka ity lahatsary ity sy ny fomba fijerinao.",
+    "explanationCowatch": "Atolotra araka ity lahatsary ity sy ireo zavatra mahaliana anao.",
+    "explanationHybrid": "Atolotra araka ity lahatsary ity sy ireo zavatra mahaliana nofidinao hotadidiana.",
+    "explanationContextual": "Atolotra araka izay jerenao ankehitriny.",
+    "explanationSemanticFallback": "Atolotra araka izay jerenao ankehitriny, satria tsy azo ampiasaina amin’izao ny fampanokanana manokana.",
+    "explanationProfileDurable": "Natokana ho anao araka ireo zavatra mahaliana nofidinao hotadidiana.",
+    "explanationProfileVisit": "Natokana ho anao ho an’ity fitsidihana ity.",
+    "personalizationLabel": "Fampanokanana manokana ny soso-kevitra",
+    "personalizationPrompt": "Te hanova ny fomba hampanokanana ny soso-kevitra ho anao ve ianao?",
+    "openCookieSettings": "Sokafy ny fikirana cookie"
   },
   "BetaTesterModal": {
     "title": "Lasa mpitsapa beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Andramo indray ireo tsy nahomby"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Tsy misy ity dikan-teny ity",
+    "eyebrow": "Tsy misy ity dikan-teny ity",
+    "title": "Tsy misy amin'ny teny <languageName>{language}</languageName> ny <contentTitle>{title}</contentTitle>",
+    "actionsLabel": "Safidy fijerena misy",
+    "browseInLanguage": "Hijery horonan-tsary amin'ny teny {language}",
+    "backToSearch": "Hiverina amin'ny fikarohana",
+    "audioVersionsTitle": "Dikan-peo hafa",
+    "audioVersionsDescription": "Misafidiana fiteny ho an'ny feo hanohizana ny fijerena ity horonan-tsary ity.",
+    "languageVersionLabel": "Fitenin'ny feo",
+    "selectLanguageVersion": "Misafidiana dikan-teny",
+    "watchSelectedVersion": "Hijery ny dikan-teny voafidy"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Safidy momba ny cookie",
+    "bannerTitle": "Ny safidinao momba ny tsiambaratelo",
+    "bannerDescription": "Ny cookie ilaina dia mitazona an’i Watch ho azo antoka sy hiasa tsara. Raha manome alalana ianao, dia afaka mitadidy ny zavatra mahaliana anao mandritra ny fitsidihana samihafa ny cookie an’ny tranonkala mba hanokana ny soso-kevitra ho anao. Mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra na izany aza.",
+    "acceptAll": "Ekeo daholo",
+    "essentialOnly": "Ny ilaina ihany",
+    "manageChoices": "Hitantana safidy",
+    "savingChoice": "Mitahiry ny safidy cookie",
+    "settings": "Fikirana cookie",
+    "settingsDescription": "Fidio raha azon’i Watch tehirizina mandritra ny fitsidihana samihafa ny zavatra mahaliana anao amin’ny soso-kevitra. Azonao ovaina amin’ny fotoana rehetra izany.",
+    "essentialCookies": "Cookie ilaina",
+    "essentialDescription": "Fiarovana, famerenana horonan-tsary, safidy momba ny tsiambaratelo, ary fanondroana ny fangatahana soso-kevitra.",
+    "alwaysActive": "Miasa hatrany",
+    "personalization": "Fampanokanana manokana",
+    "personalizationDescription": "Mitadidy ireo zavatra mahaliana voafetra mandritra ny fitsidihana samihafa. Raha vonoina ity dia mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "erasurePending": "Eo am-piandrasana ny famafana ny mombamomba anao. Efa mandeha ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "cancel": "Hanafoana",
+    "saveChoices": "Tehirizo ny safidy",
+    "saving": "Mitahiry…",
+    "loadError": "Tsy azo nalaina ny safidinao. Mbola afaka misafidy etsy ambany ianao.",
+    "grantError": "Tsy afaka navela ny fampanokanana manokana. Mbola azo ampiasaina ny safidy ilaina ihany.",
+    "saveError": "Tsy voatahiry ny safidinao. Andramo indray azafady."
   }
 }

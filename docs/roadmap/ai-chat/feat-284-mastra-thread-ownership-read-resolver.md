@@ -9,6 +9,7 @@ duration: 1
 depends_on: []
 blocks:
   - "feat-247"
+  - "feat-450"
 tags:
   - "ai-pipeline"
 ---

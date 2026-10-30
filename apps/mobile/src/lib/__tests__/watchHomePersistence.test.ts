@@ -234,6 +234,40 @@ describe("parseStoredHomeSnapshot", () => {
     expect(parseStoredHomeSnapshot(valid, NOW)?.blocks).toBeNull()
   })
 
+  // KTD16: the snapshot's text is in one locale, from one homepage.
+  it("reads a snapshot with no locale field as en from its own homepage", () => {
+    const parsed = parseStoredHomeSnapshot(valid, NOW)
+    expect(parsed?.locale).toBe("en")
+    expect(parsed?.homepageSource).toBe("locale")
+  })
+
+  it("round-trips the locale and the homepage source", () => {
+    const parsed = parseStoredHomeSnapshot(
+      serializeHomeSnapshotFromVideosJson(
+        JSON.stringify(videos),
+        NOW,
+        "null",
+        "[]",
+        { locale: "ru", homepageSource: "en-fallback" },
+      ),
+      NOW,
+    )
+    expect(parsed?.locale).toBe("ru")
+    expect(parsed?.homepageSource).toBe("en-fallback")
+    expect(parsed?.videos).toEqual(videos)
+  })
+
+  it("reads an unknown homepage source as the locale's own", () => {
+    const blob = JSON.stringify({
+      version: WATCH_HOME_SNAPSHOT_VERSION,
+      persistedAt: NOW.getTime(),
+      videos,
+      locale: "es",
+      homepageSource: "somewhere",
+    })
+    expect(parseStoredHomeSnapshot(blob, NOW)?.homepageSource).toBe("locale")
+  })
+
   it("discards an old v1 snapshot on migration day (version bump)", () => {
     const v1 = JSON.stringify({
       version: 1,

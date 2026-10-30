@@ -39,9 +39,8 @@
     "posterAlt": "Видео постер",
     "noDownloads": "Бу видеога хаччахтаах турулар суох.",
     "fileSizeLabel": "Файл кэлбэччитин тал",
-    "termsAgreementPrefix": "Мин ",
-    "termsOfUse": "Тутуу үлэлиир кэрэхсэтэлэрин",
-    "termsAgreementSuffix": "",
+    "termsAgreement": "Мин <link>туттуу усулуобуйаларын</link> ылынабын",
+    "termsOfUse": "Туттуу усулуобуйалара",
     "close": "Сап",
     "download": "Хаччахтаа",
     "authRequiredTitle": "Бу видеону хаччахтааһын баҕарар дуо?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook-ка тиэрдэ (бу сборкаҕа суох)",
     "shareOnX": "X-ка тиэрдэ",
     "shareOnXUnavailable": "X-ка тиэрдэ (бу сборкаҕа суох)",
+    "opensInNewTab": "{label} (саҥа вкладкаҕа арыллар)",
     "shareDisabledHint": "Тиэрдээһин тэҥҥэ ыытыллар сирэйи кэрэгэр — бу видео кутуһарга бэлэм буоллаххына сөп.",
     "shareFormat": "Тиэрдээһин форматы",
     "shareLinkTab": "Ссылканы тиэрдэ",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио тылын уларыт",
     "home": "JesusFilm бастыҥ сирэйи",
     "closeSearch": "Көрдөһүүни сап",
-    "submitSearch": "Көрдө"
+    "submitSearch": "Көрдө",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолары көрдө уонна көр",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Эбии харыйалар хостооботох.",
     "searching": "Көрдө…",
     "connectionHint": "Ситимнэри тиийэ көр уонна хатылаа.",
+    "rateLimitHint": "Ыйытыылар наһаа элбэх. Биир мүнүүтэн хатылаа.",
     "retrySearch": "Көрдөөһүөнү хатылаа",
     "retry": "Хатылаа",
     "noResults": "\"{query}\" туһунан көрдөбүт булуллубата",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} тылынан «{suggestion}» көрдө",
     "inLanguage": "{language}-та",
     "browseByRegion": "Улусаҕынан көр",
+    "allVideosOnSinglePage": "Бүтүн видео биир сирэйгэ",
     "clearLanguages": "Сот",
     "queryLanguageDetected": "{language} биллибит",
     "searchInLanguage": "{language} тылынан көрдө",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Быһа көр",
     "tapToUnmute": "Саҥаны арыйарга тык",
-    "nextEpisode": "Кэлэр эпизод"
+    "nextEpisode": "Кэлэр эпизод",
+    "audioTranslationCount": "{count, plural, one {# тыл} other {# тыллар}}",
+    "subtitleCount": "Субтитрдар: {count, plural, one {# тыл} other {# тыллар}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент хостообут",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Билэрии форма тохтооботох.",
     "loadingForm": "Билэрии форматын хостообут…",
     "retry": "Хатылаа",
-    "openFormShort": "Форманы арый",
     "cancel": "Түмүктээ",
-    "title": "Бета билэрии",
-    "description": "Түмсүйүнү, тугу ис бухатыырын уонна тугу эмиэ эҥэрдэрбитин бөллөөннөр. Бу форма Google-түн кытта биэриллэн турар.",
-    "openInNewTab": "Форманы саҥа кыһылга арый",
     "closeForm": "Билэрии форматын сап",
-    "loadingGoogleForm": "Google Form-атын хостообут…",
-    "iframeTitle": "Бета билэриини ыыт"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-та төлөнбүт христиан видеолар | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциялар",
     "subtitlesOnly": "Субтитр эрэ",
+    "backToTop": "Үөһээ төннүү",
     "newlyAdded": "Саҥа эбиллибит",
     "newVideosTitle": "{language}-та саҥа христиан видеолар",
     "newestFirst": "Илдьэ суохтан",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Бэйэ эрэ видеолар",
     "videosFromCollection": "{collection}-тан видеолар.",
     "standaloneDescription": "Бу тылга бэйэ эрэ видеолар.",
-    "openCollection": "Коллекцияны арый"
+    "openCollection": "Коллекцияны арый",
+    "filters": "Фильтрдар",
+    "filterLength": "Уһуна",
+    "filterLength_under5": "5 мүнүүтэттэн аҕыйах",
+    "filterLength_5to10": "5-10 мүнүүтэ",
+    "filterLength_10to30": "10-30 мүнүүтэ",
+    "filterLength_over30": "30 мүнүүтэттэн элбэх",
+    "filterType": "Көрүҥэ",
+    "clearFilters": "Фильтрдары сотуу",
+    "filterResults": "{total} иһиттэн {count} көрдөрүлүннэ",
+    "noFilterResults": "Бу фильтрдарга сөп түбэһэр видео суох. Биирдэрин сотон көрүҥ.",
+    "filterAdded": "Эбилиннэ",
+    "filterAdded_60d": "Бүтэһик 60 күн",
+    "filterAdded_6m": "Бүтэһик 6 ый",
+    "filterAdded_12m": "Бүтэһик 12 ый"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project көрүү",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Иннинээҕи видео дьылаһына",
     "nextVideoPreview": "Кэлэр видео дьылаһына",
     "mediaCollection": "Медиа коллекция",
-    "scrollToVideo": "{title} видеога төнн"
+    "scrollToVideo": "{title} видеога төнн",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Jesus Film Project бастыҥ сирэйи",
@@ -404,6 +594,29 @@
     "merryChristmas": "Христос төрөөбүт күнүнэн!",
     "daysUntilChristmas": "{count, plural, one {Христос төрөөбүт күнүгэр # күн хаалла} other {Христос төрөөбүт күнүгэр # күн хаалла}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Библиотеканы көр",
+    "title": "Категорияларынан көр",
+    "description": "Библиотекаҕа наадалаах салаатыгар тута киир — Иисус олоҕо, таҥара дьиэтин сылын кэмнэрэ, дьиэ кэргэттэргэ, устудьуоннарга уонна кыра бөлөхтөргө оҥоһуллубут видеолар.",
+    "seeAll": "Бары видеолары көр",
+    "previous": "Иннинээҕи категориялар",
+    "next": "Кэлэр категориялар",
+    "categories": {
+      "jesus": "«ИИСУС» киинэ",
+      "gospels": "Евангелиелар",
+      "shortVideos": "Кылгас видеолар",
+      "family": "Дьиэ кэргэн",
+      "relationships": "Сыһыаннар",
+      "women": "Дьахталларга",
+      "students": "Устудьуоннарга",
+      "sports": "Спорт",
+      "goodNews": "Үтүө сонун",
+      "hope": "Эрэл",
+      "training": "Үөрэтии",
+      "easter": "Пасха",
+      "christmas": "Рождество"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Тыллар",
     "metadataDescription": "JesusFilm видеоларын тылынан көр.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Сирэй булуллубата:",
     "title": "Бу сцена манна суох.",
     "description": "Сирэй көстүбүт буоллар да, ахсыы саҥа дьарыктаах сылдьар.",
+    "languageDescription": "Эн көрдүүр сирэйгин булбатыбыт, ол эрээри кэпсээн аан дойду тылларынан киинэлэргэ уонна видеоларга салгыы бара турар.",
     "actionsLabel": "Сирэй булуллубата буоллаҕына ыытыах тубэр күндэһиилэр",
     "backToWatch": "Көрөргө барыа",
     "browseVideos": "Видеолары көр"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Кыра кинону көр",
-    "actions": {
-      "joinUs": "Биһигиэхэ кыт",
-      "shareMission": "Миссиябыттан биир буол"
-    },
-    "welcomeStart": {
-      "label": "Итэҕэл уонна Сурах",
-      "title": "Бүгүнкү видео талбыттара",
-      "description": "Биһиги библиотекабыттан итэҕэлгэ сыһыаннаах видео контент, киниҥи умсугутар, харыһаллар уонна санааҕа төннөр."
-    },
-    "welcomeMorning": {
-      "label": "Түһүннэҕи умсугутуу",
-      "title": "Күн маңнайгы! Бүгүнкү Библия минуттара кэтэһэр.",
-      "description": "Күҥҥэ үрдүк санаа уонна бодорук иһин, үөрэтэр Библия минуттарын кытта бастакы ыксаллыы суолтуур."
-    },
-    "welcomeAfternoon": {
-      "label": "Күн урдугу умсугутуу",
-      "title": "Күндүзүө саҥаһыны! Күҥҥэ аналлаах Библия минуттара.",
-      "description": "Күн урдугу тыныгыы кэмҥэ эбэтэр умсугутууну саҕалыырга сөптөөх үөрэтэр Библия контента."
-    },
-    "welcomeEvening": {
-      "label": "Кэтээн умсугутуу",
-      "title": "Кэтээн сырыыга! Библия минуттарынан тыныг.",
-      "description": "Күнүн бүтэрдэҕинэ, санааҕа төннөр уонна ыарһыһыҥы барыан туһунан тынчтык Библия минуттара."
-    },
-    "joinUs": {
-      "label": "Биһигиэхэ кыт",
-      "title": "Билэриэхтэрэ миллиардтар",
-      "description": "Талыы кэлбитэ. Цифровой медиа туһунан дойдуга Евангелиени бэлиэтиэххэ биһигиэхэ кыт."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Кытта баралыа",
-      "title": "Иисустун ахсааны бииргэ кэпсиибэт",
-      "description": "Кинилэр бэйэлэрин тылларынан, бэйэлэрин сирдэринэн Иисустун тапталын иһиттэрин уонна көрдөрөрүн иһин."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% сөп түбэһэр",
-    "none": "Бу тылынан бу видеога сүбэлэнэр видео булуллубата."
+    "none": "Бу тылынан бу видеога сүбэлэнэр видео булуллубата.",
+    "heading": "Сүбэлэнэр видеолар",
+    "loadingLabel": "Сүбэлэнэр видеолар хачайданаллар",
+    "openingTitle": "{title} аһыллар",
+    "openingVideo": "Видео аһыллар",
+    "activityNotRecorded": "Сүбэлэр туһунан дьайыыны суруйар кыах суох буолла. Сигэлэр үлэлии тураллар.",
+    "showingContextual": "Контекстэҕэ сөп түбэһэр сүбэлэр көстөллөр.",
+    "showingSaved": "Ууруллубут сүбэлэр көстөллөр.",
+    "explanationCurated": "Билсэргэ талыллыбыт видеолар.",
+    "explanationViewingMode": "Бу видеоҕа уонна эн хайдах көрөргөр олоҕуран сүбэлэнэр.",
+    "explanationCowatch": "Бу видеоҕа уонна эн интэриэскэр олоҕуран сүбэлэнэр.",
+    "explanationHybrid": "Бу видеоҕа уонна өйдөнөргө талбыт интэриэскэр олоҕуран сүбэлэнэр.",
+    "explanationContextual": "Билигин көрөр видеоҕар олоҕуран сүбэлэнэр.",
+    "explanationSemanticFallback": "Билигин көрөр видеоҕар олоҕуран сүбэлэнэр, тоҕо диэтэххэ дьүөрэлээх көстүү билигин суох.",
+    "explanationProfileDurable": "Өйдөнөргө талбыт интэриэскэр сөп түбэһиннэриллибит.",
+    "explanationProfileVisit": "Бу киириигэ эрэ сөп түбэһиннэриллибит.",
+    "personalizationLabel": "Сүбэлэр дьүөрэлээх көстүүлэрэ",
+    "personalizationPrompt": "Сүбэлэр хайдах сөп түбэһиннэриллэллэрин уларытыаххын баҕараҕын дуо?",
+    "openCookieSettings": "Cookie туруорууларын арый"
   },
   "BetaTesterModal": {
     "title": "Бета-тестертэн буол",
@@ -538,16 +732,39 @@
     "retryFailed": "Сатамматахтары хатылаа"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тыл барыла суох",
+    "eyebrow": "Тыл барыла суох",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тылынан суох",
+    "actionsLabel": "Көрөр кыахтар",
+    "browseInLanguage": "{language} тылынан видеолары көр",
+    "backToSearch": "Көрдөөһүҥҥэ төнн",
+    "audioVersionsTitle": "Атын аудио барыллар",
+    "audioVersionsDescription": "Бу видеону салгыы көрөргө аудио тылы тал.",
+    "languageVersionLabel": "Аудио тыла",
+    "selectLanguageVersion": "Тыл барылын тал",
+    "watchSelectedVersion": "Талбыт барылы көр"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie талаллар",
+    "bannerTitle": "Эйиэхэ сыһыаннаах туһанар быһаарыылар",
+    "bannerDescription": "Сүрүн cookie-лар Watch куруук көмүскэһиннэрэр уонна үлэтин хааллараллар. Эйигин көрүүбүтүнэн, элбэх кэлиилэргэ сэһэн интэриэһи өйдөөн, дьүөрэлээх рекомендациялары биэрэргэ биир өрүт cookie туттуллар сөп. Манна да, онно да ситуативнай рекомендациялар баар буолуохтара.",
+    "acceptAll": "Барытын ыл",
+    "essentialOnly": "Сүрүн эрэ",
+    "manageChoices": "Талаллары салай",
+    "savingChoice": "Cookie талыытын бигэргэтии",
+    "settings": "Cookie туруоруулары",
+    "settingsDescription": "Watch кэлиилэр ардыларыгар рекомендация интэриэһин өйдүүрэри-көтөрүөхтээх дуо, ону тал. Бу туруорууну ханнык кэмнэ баҕараргар уларытар кыахтааххын.",
+    "essentialCookies": "Сүрүн cookie-лар",
+    "essentialDescription": "Көмүскэл, көрүү оонньотуута, тускул талаллара уонна рекомендация көрдөһүүтүн кимиттэн кэлбитин билсиитэ.",
+    "alwaysActive": "Куруук үлэлиир",
+    "personalization": "Дьүөрэлээх көстүү",
+    "personalizationDescription": "Кэлиилэр ардыларыгар чэктэммит интэриэһи өйдөө. Бука туруордаххыңа да, ситуативнай рекомендациялар баар буолуохтара.",
+    "erasurePending": "Профили сотуута салҕанар. Ситуативнай рекомендациялар хайыы-баҕарар үлэлииллэр.",
+    "cancel": "Салҕама",
+    "saveChoices": "Талаллары бигэргэт",
+    "saving": "Бигэргэтии…",
+    "loadError": "Талбыт быһаарыыҥ хачайдана илик. Ол гынан баран, алын аһылыгынан таларыҥ сөп.",
+    "grantError": "Дьүөрэлээх көстүүнү холобур гынары сатыан суох буолла. Сүрүн эрэ баар буолуо.",
+    "saveError": "Талбыт быһаарыыҥ бигэргэммэтэ. Хат гыныҥ."
   }
 }

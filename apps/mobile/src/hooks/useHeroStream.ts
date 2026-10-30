@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
-import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 import {
   checkHeroStreamCooldown,
@@ -46,7 +45,7 @@ const IDLE_STATE: HeroStreamState = {
  */
 export function useHeroStream(slug: string | null): HeroStreamState {
   const [state, setState] = useState<HeroStreamState>(IDLE_STATE)
-  // Stale-response guard (mirrors watch.tsx's search guard): a slide change
+  // Stale-response guard (mirrors Discover's search guard): a slide change
   // bumps the id so a superseded resolution can't land on the new slide.
   const requestIdRef = useRef(0)
 
@@ -70,7 +69,7 @@ export function useHeroStream(slug: string | null): HeroStreamState {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: HOME_LOCALE },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .then((result) => {
@@ -99,7 +98,7 @@ export function useHeroStream(slug: string | null): HeroStreamState {
 }
 
 // ── Next-slide prefetch ─────────────────────────────────────────────
-// Mirrors Discover's capped prefetch (app/(tabs)/watch.tsx): deduped by slug,
+// Mirrors Discover's capped prefetch (app/(tabs)/watch/index.tsx): deduped by slug,
 // capped in flight so fast swiping can't burst the per-video query. cache-first
 // makes a resolved slug a network no-op; a failed prefetch releases its slug.
 
@@ -126,7 +125,7 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: HOME_LOCALE },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .then(() => {

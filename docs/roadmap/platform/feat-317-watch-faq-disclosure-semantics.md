@@ -2,6 +2,7 @@
 id: "feat-317"
 title: "Watch FAQ disclosure semantics"
 owner: "vlad"
+linear_issue: "FGE-40"
 priority: "P2"
 status: "complete"
 start_date: "2026-07-25"
@@ -83,3 +84,36 @@ relationship needed to understand the interaction.
 
 Implementation plan:
 `docs/plans/2026-07-25-001-fix-watch-faq-disclosure-semantics-plan.md`
+
+## Superseded 2026-08-31
+
+The FAQ disclosure this ticket hardened now renders from the shared
+`apps/web/src/components/watch/WatchFaqList.tsx`, which both the authored
+Experience block and `/watch/whats-new` use. This note is additive; the record
+above stands as written.
+
+What changed against this ticket:
+
+- Constraint "Keep the current FAQ content, visual styling, and single-open
+  interaction" — visual styling was deliberately changed (hairline rows under
+  one section heading, replacing the centred, equally-padded card). Content and
+  the single-open interaction are preserved.
+- Constraint "Do not migrate the section to a different accordion
+  implementation" — the section did migrate, to native `<details>`/`<summary>`
+  inside the shared component.
+- Plan R2 (`aria-controls` on every trigger) — **still met.** `<details>` has no
+  native controls equivalent, so the relationship is set explicitly on each
+  `<summary>`.
+- Plan R3 (panel hidden from layout and assistive technology while collapsed) —
+  **no longer met, deliberately.** Closed `<details>` content stays in the DOM,
+  which is what gives the rows find-in-page expansion and puts FAQ answers in
+  the server-rendered markup.
+
+Measured in Chromium after the change: the row exposes role `DisclosureTriangle`,
+the question as its accessible name, and `expanded` moving false to true on
+toggle.
+
+The "Grep These" patterns below (`function QuestionItem`, `openIndex`,
+`aria-expanded`, `useId`) no longer match `RelatedQuestions.tsx`; `aria-controls`
+now matches `WatchFaqList.tsx` instead. The Entry Points resolve through the
+shared component.

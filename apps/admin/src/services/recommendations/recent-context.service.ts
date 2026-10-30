@@ -1,0 +1,153 @@
+import type { PrismaClient } from "@prisma/client"
+import { recentPlaybackCtes } from "./recent-playback.sql"
+export { MAX_RECENT_CONTEXT_EPISODES_PER_SESSION } from "./recent-playback.sql"
+import type {
+  RecommendationRecentSuppressionReason,
+  RecommendationSlateComposition,
+} from "./slate"
+
+const RECENT_CONTEXT_WINDOW_DAYS = 7
+// Bound ledger work before joining served items and lifecycle facts. A viewer
+// may accumulate arbitrarily many issued roots inside the seven-day window;
+// only the newest roots per authorized session can influence this request.
+export const MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION = 32
+const MAX_RECENT_CONTEXT_VIDEOS = 24
+const REPEATEDLY_SERVED_THRESHOLD = 2
+
+type RecentContextRow = Readonly<{
+  targetMediaId: string
+  videoCoreId?: string | null
+  videoTitle?: string | null
+  servedCount: number | bigint
+  selected: boolean
+  recentlyTried: boolean
+}>
+
+export type RecommendationRecentContext = Readonly<{
+  videos: NonNullable<RecommendationSlateComposition["recentVideos"]>
+}>
+
+/**
+ * Resolve only bounded facts from the recommendation-owned ledger. The
+ * Current operational session facts are the only source of recent context.
+ * Retired learned profiles never authorize cross-session history.
+ */
+export async function getRecommendationRecentContext(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+  input: {
+    sessionDigest: string
+    profileTokenDigest: string | null
+    allowDurableProfileLinks: boolean
+    locale: string
+    now: Date
+  },
+): Promise<RecommendationRecentContext> {
+  if (!/^[a-f0-9]{64}$/.test(input.sessionDigest)) return { videos: [] }
+  if (
+    input.profileTokenDigest != null &&
+    !/^[a-f0-9]{64}$/.test(input.profileTokenDigest)
+  ) {
+    return { videos: [] }
+  }
+  const windowStart = new Date(
+    input.now.getTime() - RECENT_CONTEXT_WINDOW_DAYS * 86_400_000,
+  )
+  const rows = await prisma.$queryRaw<RecentContextRow[]>`
+    WITH scoped_sessions AS MATERIALIZED (
+      SELECT ${input.sessionDigest}::text AS session_digest,
+        ${windowStart}::timestamptz AS authorization_start
+    ),
+    recent_requests AS MATERIALIZED (
+      SELECT request.id, request.created_at
+      FROM recommendation_request request
+      WHERE request.session_digest = ${input.sessionDigest}
+        AND request.state = 'issued'
+        AND request.result IN ('served', 'fallback')
+        AND request.created_at >= ${windowStart}
+        AND request.created_at <= ${input.now}
+      ORDER BY request.created_at DESC, request.id DESC
+      LIMIT ${MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION}
+    ),
+    selected_items AS MATERIALIZED (
+      SELECT DISTINCT selection.request_id, selection.item_id
+      FROM recent_requests request
+      JOIN recommendation_selection selection
+        ON selection.request_id = request.id
+        AND selection.attribution_eligible_at IS NOT NULL
+        AND selection.attribution_eligible_at <= ${input.now}
+        AND selection.occurred_at >= ${windowStart}
+        AND selection.occurred_at <= ${input.now}
+    ),
+    ${recentPlaybackCtes(input.now)},
+    served_videos AS MATERIALIZED (
+      SELECT
+        item.target_media_id AS "targetMediaId",
+        count(DISTINCT request.id)::int AS "servedCount",
+        bool_or(selected.item_id IS NOT NULL) AS selected,
+        false AS "recentlyTried",
+        max(request.created_at) AS latest_at
+      FROM recent_requests request
+      JOIN recommendation_served_item item ON item.request_id = request.id
+      LEFT JOIN selected_items selected
+        ON selected.request_id = item.request_id
+        AND selected.item_id = item.id
+      GROUP BY item.target_media_id
+    ),
+    recent_items AS MATERIALIZED (
+      SELECT
+        "targetMediaId",
+        sum("servedCount")::int AS "servedCount",
+        bool_or(selected) AS selected,
+        bool_or("recentlyTried") AS "recentlyTried",
+        max(latest_at) AS latest_at
+      FROM (
+        SELECT * FROM served_videos
+        UNION ALL
+        SELECT media_id, 0, false, true, latest_at FROM recent_playback
+      ) evidence
+      GROUP BY "targetMediaId"
+    )
+    SELECT
+      "targetMediaId",
+      video.core_id AS "videoCoreId",
+      localized.title AS "videoTitle",
+      "servedCount",
+      selected,
+      "recentlyTried"
+    FROM recent_items
+    LEFT JOIN video ON video.id = "targetMediaId"
+    LEFT JOIN video_locale localized ON localized.video_id = video.id AND localized.locale = ${input.locale}
+    WHERE "recentlyTried"
+      OR selected
+      OR "servedCount" >= ${REPEATEDLY_SERVED_THRESHOLD}
+    ORDER BY
+      "recentlyTried" DESC,
+      selected DESC,
+      "servedCount" DESC,
+      latest_at DESC,
+      "targetMediaId"
+    LIMIT ${MAX_RECENT_CONTEXT_VIDEOS}
+  `
+
+  const seen = new Set<string>()
+  const videos: RecommendationRecentContext["videos"][number][] = []
+  for (const row of rows) {
+    const targetMediaId = row.targetMediaId.trim().slice(0, 191)
+    if (!targetMediaId || seen.has(targetMediaId)) continue
+    const reasonCodes: RecommendationRecentSuppressionReason[] = []
+    if (row.recentlyTried) reasonCodes.push("recently_tried")
+    if (row.selected) reasonCodes.push("recent_selection")
+    if (Number(row.servedCount) >= REPEATEDLY_SERVED_THRESHOLD) {
+      reasonCodes.push("repeatedly_served")
+    }
+    if (reasonCodes.length === 0) continue
+    seen.add(targetMediaId)
+    videos.push({
+      targetMediaId,
+      reasonCodes,
+      ...(row.videoCoreId ? { videoCoreId: row.videoCoreId } : {}),
+      ...(row.videoTitle ? { videoTitle: row.videoTitle } : {}),
+    })
+  }
+  return { videos }
+}

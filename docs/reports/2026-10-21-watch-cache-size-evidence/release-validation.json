@@ -1,0 +1,81 @@
+{
+  "verified_at_utc": "2026-10-21T00:41:30.077670+00:00",
+  "base_commit": "4fe360bf6c89cdaa8499679e9063cb16ffccf578",
+  "branch": "codex/watch-cache-size-serialization",
+  "patch_hash": "d775pmxr7lcqy4djkbxhcf2kxi",
+  "node": "v24.20.0",
+  "portable_resource_policy": "Owner requested native checkout/temp free-space and inode checks; optional guard resolved from PATH. Missing optional tool alone is not a blocker.",
+  "resource_headroom": {
+    "checkout_free_gib": 90,
+    "temporary_free_gib": 23,
+    "checkout_inode_free_percent": 75,
+    "temporary_inode_free_percent": 43
+  },
+  "checks": [
+    {
+      "command": "pnpm --filter @forge/web... --filter @forge/admin... install --frozen-lockfile",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter @forge/web build",
+      "result": "passed",
+      "includes": [
+        "Next Turbopack production build",
+        "TypeScript",
+        "admission worker compilation",
+        "ISR output pruning"
+      ]
+    },
+    {
+      "command": "pnpm --filter @forge/web run test --maxWorkers=4",
+      "result": "passed",
+      "files_passed": 318,
+      "files_skipped": 3,
+      "tests_passed": 5502,
+      "tests_skipped": 13,
+      "tests_todo": 1,
+      "duration_seconds": 176.28,
+      "includes": "five actual Next cache-runtime regressions run before Vitest"
+    },
+    {
+      "command": "pnpm --filter @forge/web run lint --max-warnings=0",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter @forge/web run typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "pnpm --filter @forge/admin exec vitest run src/app/api/health/route.test.ts",
+      "result": "passed",
+      "tests_passed": 7,
+      "duration_seconds": 1.32
+    },
+    {
+      "command": "node apps/web/scripts/probe-inventory-request-memoization.mjs",
+      "result": "passed",
+      "scope": "real inventory route source, controlled data/views; production Next HTTP server; default handler"
+    },
+    {
+      "command": "node apps/web/scripts/probe-inventory-request-memoization.mjs --custom-cache-handler",
+      "result": "passed",
+      "scope": "same route/source and checks; custom per-process memory fixture shared across request instances"
+    },
+    {
+      "command": "node scripts/check-patched-deps.mjs",
+      "result": "passed",
+      "patch_keys": 8
+    },
+    {
+      "command": "node scripts/check-patched-deps.test.mjs",
+      "result": "passed"
+    }
+  ],
+  "limitations": [
+    "HTTP route fixtures substitute view/data dependencies and do not model actual Watch home/detail rendering with live Redis.",
+    "Synthetic timing evidence is not production HTTP TTFB or incident recovery.",
+    "Other Next applications were not fully built locally; default-handler runtime checks and Admin readiness were exercised.",
+    "Normal PR checks and sustained production acceptance remain required."
+  ],
+  "production_mutations": false
+}

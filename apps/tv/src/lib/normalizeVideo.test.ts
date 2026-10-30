@@ -131,6 +131,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         published: true,
         hls: "https://stream.mux.com/abc123.m3u8",
         duration: 725,
+        videoEdition: { id: "edition-original" },
         language: {
           coreId: "529",
           bcp47: "en",
@@ -145,6 +146,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         published: true,
         hls: "https://stream.mux.com/def456.m3u8",
         duration: 730,
+        videoEdition: { id: "edition-original" },
         language: {
           coreId: "21028",
           bcp47: "es",
@@ -159,6 +161,7 @@ function makeRawVideo(overrides: Record<string, unknown> = {}) {
         published: false,
         hls: null,
         duration: null,
+        videoEdition: null,
         language: null,
         muxVideo: null,
       },
@@ -256,6 +259,16 @@ describe("normalizeVideo — base record", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.variants).toHaveLength(2)
     expect(result.variants.every((v) => v.published)).toBe(true)
+  })
+
+  it("carries canonical edition identity without inventing missing identity", () => {
+    const raw = makeRawVideo()!
+    const variants = raw.variants!.map((variant, index) =>
+      index === 0 ? { ...variant, videoEdition: null } : variant,
+    )
+    const result = normalizeVideo({ ...raw, variants })!
+    expect(result.variants[0].editionId).toBeNull()
+    expect(result.variants[1].editionId).toBe("edition-original")
   })
 
   it("does not project per-dub downloads/subtitles onto bulk variants", () => {

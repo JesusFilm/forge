@@ -1,0 +1,159 @@
+{
+  "from": "2026-09-16T01:49:00Z",
+  "to": "2026-09-16T02:04:00Z",
+  "rows": 38,
+  "events": [
+    {
+      "timestamp": "2026-09-16T01:49:30.097021327Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:49:30.097033034Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:49:31.117539149Z",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:49:44.327990480Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:49:45.157315666Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:51:14.309474315Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:51:14.421307001Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:51:14.498964066Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3"
+    },
+    {
+      "timestamp": "2026-09-16T01:52:15.087370940Z",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:52:35.008918689Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:53:00.222068714Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:53:01.462430011Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:53:34.846618251Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:55:09.622673647Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:55:10.367981758Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:55:18.420771350Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:56:43.978996759Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:56:44.074287089Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:33.652874030Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:36.629647875Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:37.653044699Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:58:08.083312959Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:58:44.247516027Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:58:44.247523035Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:58:44.353942320Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3"
+    },
+    {
+      "timestamp": "2026-09-16T01:58:56.462644944Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:59:25.907057136Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:59:26.520805549Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T01:59:33.985953702Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:59:43.777635986Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T01:59:52.747105954Z",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T02:00:57.162927193Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T02:00:57.162932700Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T02:00:57.162946043Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3"
+    },
+    {
+      "timestamp": "2026-09-16T02:01:47.373167717Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T02:01:47.559346519Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2"
+    },
+    {
+      "timestamp": "2026-09-16T02:02:02.814284027Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    },
+    {
+      "timestamp": "2026-09-16T02:02:59.753768656Z",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1"
+    }
+  ]
+}

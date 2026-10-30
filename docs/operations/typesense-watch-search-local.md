@@ -35,6 +35,11 @@ TYPESENSE_HOST=http://127.0.0.1:8108
 TYPESENSE_API_KEY=forge-typesense-local-key
 ```
 
+Hosted operator keys used for publication must grant the Typesense v30
+`curation_sets:upsert` and `curation_sets:delete` actions in addition to the
+existing collection, document, and alias actions. Search-only keys do not need
+curation write access.
+
 ## Prepare PostgreSQL
 
 Create a local database, apply Admin migrations, then restore the latest
@@ -61,7 +66,7 @@ direct bucket variables can use the same command with `RAILWAY_S3_*` variables.
 ```bash
 DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
 TYPESENSE_HOST=http://127.0.0.1:8108 \
-TYPESENSE_API_KEY=forge-typesense-local-key \
+TYPESENSE_OPERATOR_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search
 ```
 
@@ -94,19 +99,45 @@ The command holds a dedicated-session PostgreSQL advisory lock from before the
 build starts through alias publication and old-collection retirement. A
 concurrent release fails fast instead of racing aliases or cleanup.
 
+Enabled Watch Search curations are loaded from PostgreSQL and compiled against
+the localized lexical documents during every build. The indexer creates a
+versioned Typesense curation set before its linked lexical collection, moves
+the lexical alias only after import succeeds, and retires the previous set only
+after its old lexical collection is deleted. A rollback that cannot restore the
+lexical alias preserves both the new collection and its curation set.
+
+Refresh the reviewed recovery copy after an editorial change, then commit it:
+
+```bash
+DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
+  pnpm --filter @forge/admin watch-search-curations:export
+```
+
+`watch-search-curations:check` compares PostgreSQL with the committed manifest
+without writing. Machine aliases in the manifest retain model, source-digest,
+and generation-time provenance; native-language review should replace or
+deactivate a questionable alias in PostgreSQL before the next export.
+
 Force a new transcript generation only when transcript vectors, visibility,
 model dimensions, or the transcript schema need to change:
 
 ```bash
 DATABASE_URL=postgresql://forge@127.0.0.1:5434/forge_admin_typesense \
 TYPESENSE_HOST=http://127.0.0.1:8108 \
-TYPESENSE_API_KEY=forge-typesense-local-key \
+TYPESENSE_OPERATOR_API_KEY=forge-typesense-local-key \
   pnpm --filter @forge/admin index:typesense-watch-search -- \
   --rebuild-transcripts
 ```
 
 The CLI rejects unknown or misspelled arguments instead of silently falling
 back to transcript reuse.
+
+An explicit transcript rebuild resolves one active embedding-contract and
+chunking-version tuple before it reads the first page. Every page is filtered
+by that exact contract id, and the tuple is checked again before any alias
+moves. If compatibility changes during the build, the new collections are
+discarded and the active aliases remain unchanged; rerun after the contract
+rotation is complete.
 
 If the final JSON reports `hybridReady: false`, the active alias still points at
 a legacy vector-only schema. Admin retains its bounded compatibility path, but

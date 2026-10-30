@@ -10,9 +10,16 @@ export type CastMediaInput = {
   title: string | null
   posterUrl: string | null
   startPositionSeconds: number | null
+  /** R15: the session speed a starting cast load inherits — a pure input the
+   *  route reads at call time, never a subscription. */
+  playbackRate: number | null
 }
 
 export const CAST_CONTENT_TYPE = "application/x-mpegURL"
+
+/** The SDK's documented setPlaybackRate/MediaLoadRequest band. */
+export const CAST_MIN_PLAYBACK_RATE = 0.5
+export const CAST_MAX_PLAYBACK_RATE = 2
 
 export type CastMedia = {
   contentUrl: string
@@ -20,6 +27,7 @@ export type CastMedia = {
   title: string | null
   posterUrl: string | null
   startPositionSeconds: number
+  playbackRate: number
 }
 
 // A cast receiver fetches the URL itself, so only https can work; this also
@@ -42,6 +50,7 @@ export function resolveCastMedia(input: CastMediaInput): CastMedia | null {
   const contentUrl = cleanStreamUrl(candidate)
   if (contentUrl == null || !isRemoteHttpsUrl(contentUrl)) return null
   const start = input.startPositionSeconds
+  const rate = input.playbackRate
   return {
     contentUrl,
     contentType: CAST_CONTENT_TYPE,
@@ -49,5 +58,14 @@ export function resolveCastMedia(input: CastMediaInput): CastMedia | null {
     posterUrl: input.posterUrl,
     startPositionSeconds:
       start != null && Number.isFinite(start) && start > 0 ? start : 0,
+    // Default to normal speed, never clamp: an out-of-band rate here means a
+    // caller bug, and 1 is the only always-safe receiver rate.
+    playbackRate:
+      rate != null &&
+      Number.isFinite(rate) &&
+      rate >= CAST_MIN_PLAYBACK_RATE &&
+      rate <= CAST_MAX_PLAYBACK_RATE
+        ? rate
+        : 1,
   }
 }

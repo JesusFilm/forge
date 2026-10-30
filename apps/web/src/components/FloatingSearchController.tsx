@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
+import type { Route } from "next"
 import { usePathname } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 
@@ -28,12 +29,18 @@ import {
   type SearchLanguageOption,
 } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
-import { searchWatchDirect } from "@/lib/watch-search-client"
+import {
+  searchWatchDirect,
+  watchSearchErrorKind,
+  type WatchSearchErrorKind,
+} from "@/lib/watch-search-client"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
+import { searchLanguageOptionsCacheKey } from "@/lib/search-language-cache"
 import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
   type FloatingSearchResultAnalyticsContext,
+  type FloatingSearchResultPage,
   useWatchRouteSurface,
 } from "./FloatingSearchContext"
 
@@ -41,7 +48,6 @@ import { SearchOverlay } from "./SearchOverlay"
 
 const SEARCH_PAGE_SIZE = 10
 const SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS = 1200
-const DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY = "__default__"
 const WATCH_SEARCH_RESULT_SOURCE: SearchActionResultSource = "watch-search"
 
 type SearchLanguageOptionsResponse = Awaited<
@@ -89,6 +95,7 @@ export type FloatingSearchControllerProps = {
   headerLanguageSwitcherVisible?: boolean
   headerLanguageCode?: string | null
   headerPinned?: boolean
+  languageVideosHref?: Route | null
   resetToken?: number
   pendingSubmitIntent?: PendingSearchSubmitIntent | null
   onReady?: () => void
@@ -104,6 +111,7 @@ export function FloatingSearchController({
   headerLanguageSwitcherVisible = false,
   headerLanguageCode = null,
   headerPinned = false,
+  languageVideosHref = null,
   resetToken = 0,
   pendingSubmitIntent = null,
   onReady,
@@ -118,6 +126,9 @@ export function FloatingSearchController({
 
   const [results, setResults] = useState<SearchResult[]>([])
   const [displayResults, setDisplayResults] = useState<SearchResult[]>([])
+  const [displayResultPages, setDisplayResultPages] = useState<
+    FloatingSearchResultPage[]
+  >([])
   const [exiting, setExiting] = useState(false)
   const [resultsKey, setResultsKey] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -125,6 +136,7 @@ export function FloatingSearchController({
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<WatchSearchErrorKind | null>(null)
   const [searched, setSearched] = useState(false)
   const [submittedQuery, setSubmittedQuery] = useState<string | null>(null)
   const [resultSource, setResultSource] =
@@ -260,7 +272,10 @@ export function FloatingSearchController({
     async (
       availableLanguageFacets?: Record<string, number>,
     ): Promise<SearchLanguageOption[]> => {
-      const cacheKey = searchLanguageOptionsCacheKey(availableLanguageFacets)
+      const cacheKey = searchLanguageOptionsCacheKey(
+        availableLanguageFacets,
+        uiLocale,
+      )
       const thisRequest = ++languageOptionsRequestIdRef.current
       const cachedResponse = searchLanguageOptionsCache.get(cacheKey)
 
@@ -282,6 +297,7 @@ export function FloatingSearchController({
         if (responsePromise == null) {
           responsePromise = getSearchLanguageOptions({
             availableLanguageFacets,
+            uiLocale,
           })
           searchLanguageOptionsPromiseCache.set(cacheKey, responsePromise)
         }
@@ -316,7 +332,7 @@ export function FloatingSearchController({
         }
       }
     },
-    [applyLanguageOptionsResponse],
+    [applyLanguageOptionsResponse, uiLocale],
   )
 
   useEffect(() => {
@@ -377,9 +393,11 @@ export function FloatingSearchController({
         if (requestIdRef.current !== thisRequest) return
         setResults([])
         setDisplayResults([])
+        setDisplayResultPages([])
         setHasMore(false)
         setSearched(false)
         setError(null)
+        setErrorKind(null)
         setResultSource(null)
         activeSearchSignatureRef.current = null
         setSearchResultAnalytics(null)
@@ -396,10 +414,12 @@ export function FloatingSearchController({
         if (requestIdRef.current !== thisRequest) return
         setExiting(false)
         setDisplayResults([])
+        setDisplayResultPages([])
       }
 
       setLoading(true)
       setError(null)
+      setErrorKind(null)
       setSearched(true)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
       skeletonTimerRef.current = setTimeout(() => {
@@ -472,6 +492,14 @@ export function FloatingSearchController({
         const responseSearchRequestId = data.requestId ?? searchRequestId
         setResults(newResults)
         setDisplayResults(newResults)
+        setDisplayResultPages([
+          {
+            key: `${thisRequest}:0`,
+            startIndex: 0,
+            results: newResults,
+            surfaceManifest: data.surfaceManifest ?? null,
+          },
+        ])
         setResultsKey((k) => k + 1)
         setHasMore(data.hasMore)
         setResultSource(WATCH_SEARCH_RESULT_SOURCE)
@@ -510,11 +538,12 @@ export function FloatingSearchController({
           searchLanguageSlug: completedTargetLanguageSlug,
           searchRequestId: responseSearchRequestId,
         })
-      } catch {
+      } catch (searchError) {
         if (requestIdRef.current === thisRequest) {
           activeSearchSignatureRef.current = null
           setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
+          setErrorKind(watchSearchErrorKind(searchError))
         }
       } finally {
         // Only clear loading state for the winning request — otherwise a
@@ -548,6 +577,7 @@ export function FloatingSearchController({
     const thisLoadMoreRun = ++loadMoreRunIdRef.current
     setLoadingMore(true)
     setError(null)
+    setErrorKind(null)
     // Capture the current search's request id; bail out of the append if a
     // new search supersedes us mid-fetch.
     const thisRequest = requestIdRef.current
@@ -586,6 +616,18 @@ export function FloatingSearchController({
       if (requestIdRef.current !== thisRequest) return
       setResults((prev) => [...prev, ...data.results])
       setDisplayResults((prev) => [...prev, ...data.results])
+      setDisplayResultPages((prev) => [
+        ...prev,
+        {
+          key: `${thisRequest}:${thisLoadMoreRun}`,
+          startIndex: prev.reduce(
+            (total, page) => total + page.results.length,
+            0,
+          ),
+          results: data.results,
+          surfaceManifest: data.surfaceManifest ?? null,
+        },
+      ])
       setHasMore(data.hasMore)
       setResultSource(WATCH_SEARCH_RESULT_SOURCE)
       activeSearchSignatureRef.current = {
@@ -600,9 +642,10 @@ export function FloatingSearchController({
         searchLanguageSlug: expectedSignature.searchLanguageSlug,
         searchRequestId: expectedSignature.searchRequestId,
       })
-    } catch {
+    } catch (searchError) {
       if (requestIdRef.current === thisRequest) {
         setError(tSearchOverlay("loadMoreFailed"))
+        setErrorKind(watchSearchErrorKind(searchError))
       }
     } finally {
       if (loadMoreRunIdRef.current === thisLoadMoreRun) {
@@ -714,6 +757,7 @@ export function FloatingSearchController({
       submittedQuery,
       results,
       displayResults,
+      displayResultPages,
       exiting,
       resultsKey,
       hasMore,
@@ -721,6 +765,7 @@ export function FloatingSearchController({
       showSkeleton,
       loadingMore,
       error,
+      errorKind,
       searched,
       resultSource,
       languageOptions,
@@ -738,6 +783,7 @@ export function FloatingSearchController({
       headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
+      languageVideosHref,
       setOpen,
       setQuery,
       search,
@@ -754,6 +800,7 @@ export function FloatingSearchController({
       submittedQuery,
       results,
       displayResults,
+      displayResultPages,
       exiting,
       resultsKey,
       hasMore,
@@ -761,6 +808,7 @@ export function FloatingSearchController({
       showSkeleton,
       loadingMore,
       error,
+      errorKind,
       searched,
       resultSource,
       languageOptions,
@@ -778,6 +826,7 @@ export function FloatingSearchController({
       headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
+      languageVideosHref,
       setOpen,
       setQuery,
       search,
@@ -865,20 +914,4 @@ function defaultSearchLanguageOption({
   if (recommendedLanguage?.publicSlug) return recommendedLanguage
 
   return findSearchLanguageOptionByPublicSlug("english", options)
-}
-
-function searchLanguageOptionsCacheKey(
-  availableLanguageFacets?: Record<string, number>,
-): string {
-  if (
-    availableLanguageFacets == null ||
-    Object.keys(availableLanguageFacets).length === 0
-  ) {
-    return DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY
-  }
-
-  return Object.entries(availableLanguageFacets)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([language, count]) => `${language}:${count}`)
-    .join("|")
 }

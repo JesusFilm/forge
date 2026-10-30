@@ -38,6 +38,7 @@ function buildPrisma() {
   const tx = {}
   return {
     tx,
+    watchCatalogPublication: { upsert: vi.fn().mockResolvedValue({}) },
     video: {
       findMany: vi.fn(),
     },
@@ -139,6 +140,7 @@ describe("backfill-video-localized-metadata args", () => {
       batchSize: 10,
     })
 
+    expect(prisma.watchCatalogPublication.upsert).not.toHaveBeenCalled()
     expect(summary).toMatchObject({
       dryRun: true,
       selected: 1,
@@ -228,7 +230,8 @@ describe("backfill-video-localized-metadata args", () => {
         where: { published: true, ids: ["core-video-2"] },
       }),
     )
-    expect(assertLockActive).toHaveBeenCalledTimes(4)
+    expect(prisma.watchCatalogPublication.upsert).toHaveBeenCalledOnce()
+    expect(assertLockActive).toHaveBeenCalledTimes(5)
     expect(onProgress).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({

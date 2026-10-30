@@ -39,9 +39,8 @@
     "posterAlt": "Póster di vídeu",
     "noDownloads": "Ka tene downloads disponivel pa es vídeu.",
     "fileSizeLabel": "Skolhi tamanhu di ficheiru",
-    "termsAgreementPrefix": "N'konkorda ku ",
+    "termsAgreement": "N'konkorda ku <link>Termus di Uzu</link>",
     "termsOfUse": "Termus di Uzu",
-    "termsAgreementSuffix": "",
     "close": "Fixa",
     "download": "Fasi download",
     "authRequiredTitle": "Bu misti fasi download di es vídeu?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Partilha na Facebook (ka disponivel na es versão)",
     "shareOnX": "Partilha na X",
     "shareOnXUnavailable": "Partilha na X (ka disponivel na es versão)",
+    "opensInNewTab": "{label} (ta abri na un tab nobu)",
     "shareDisabledHint": "Partilha mesti un pájina já publíkadu — ta funsiona dipus ki es vídeu staba na produçon.",
     "shareFormat": "Formatu di partilha",
     "shareLinkTab": "Partilha Link",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda língua di áudio",
     "home": "Inisiu di JesusFilm",
     "closeSearch": "Fixa buska",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Kaŋ kayiti"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Ka n'pudi kariga mas resultadus.",
     "searching": "Ta buska...",
     "connectionHint": "Pur favor, odja bu konekson i tenta di novu.",
+    "rateLimitHint": "Pidi dimás. Pur favor, tenta di novu dipus di un minutu.",
     "retrySearch": "Tenta buska di novu",
     "retry": "Tenta di novu",
     "noResults": "Ka tene resultadu pa \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Buska \"{suggestion}\" na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Navega pa região",
+    "allVideosOnSinglePage": "Todus vídeus na un pájina",
     "clearLanguages": "Limpa",
     "queryLanguageDetected": "{language} detetadu",
     "searchInLanguage": "Buska na {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Odja agora",
     "tapToUnmute": "Toká pa pô son",
-    "nextEpisode": "Prósimu Episódiu"
+    "nextEpisode": "Prósimu Episódiu",
+    "audioTranslationCount": "{count, plural, one {# língua} other {# línguas}}",
+    "subtitleCount": "Legendas: {count, plural, one {# língua} other {# línguas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ta kariga konteúdu",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Formuláriu di feedback ka pudi kariga.",
     "loadingForm": "Ta kariga formuláriu di feedback…",
     "retry": "Tenta di novu",
-    "openFormShort": "Abri formuláriu",
     "cancel": "Kansela",
-    "title": "Feedback Beta",
-    "description": "Partilha kuza ku ta funsiona i kuza ku nu pudi midjora. Es formuláriu ben di Google.",
-    "openInNewTab": "Abri formuláriu na aba nova",
     "closeForm": "Fixa formuláriu di feedback",
-    "loadingGoogleForm": "Ta kariga Formuláriu Google…",
-    "iframeTitle": "Mandá Feedback Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeus kriston grátis na {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Sportis",
     "collections": "Kolesons",
     "subtitlesOnly": "Só legendas",
+    "backToTop": "Fandiŋ jeegi",
     "newlyAdded": "Adisionadu resenti",
     "newVideosTitle": "Vídeus kriston novos na {language}",
     "newestFirst": "Mas novu primeru",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Vídeus independente",
     "videosFromCollection": "Vídeus di {collection}.",
     "standaloneDescription": "Vídeus independente na es língua.",
-    "openCollection": "Abri koleson"
+    "openCollection": "Abri koleson",
+    "filters": "Ñoolaani",
+    "filterLength": "Ndooli",
+    "filterLength_under5": "Reki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopi 30 min",
+    "filterType": "Kaŋami",
+    "clearFilters": "Feesi ñoolaani",
+    "filterResults": "{count} ca {total} a woni",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaani yii. Feesi kenn.",
+    "filterAdded": "A yokki",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Odja Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Prévia di vídeu anterior",
     "nextVideoPreview": "Prévia di prósimu vídeu",
     "mediaCollection": "Koleson di média",
-    "scrollToVideo": "Rol pa vídeu {title}"
+    "scrollToVideo": "Rol pa vídeu {title}",
+    "forYou": "Recommended for You"
   },
   "WatchFooter": {
     "home": "Inisiu di Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Bon Natal!",
     "daysUntilChristmas": "{count, plural, one {Falta # dia pa Natal} other {Falta # dias pa Natal}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Navega bibliotéka",
+    "title": "Navega pa kategoria",
+    "description": "Bai diretu pa parti di bibliotéka ku bu mesti — vida di Jesus, tempus di anu di igreja, ku vídeus fasidu pa famílias, studantis ku grupus pikininu.",
+    "seeAll": "Odja tudu vídeus",
+    "previous": "Kategorias anterior",
+    "next": "Kategorias prósimu",
+    "categories": {
+      "jesus": "Filmi JESUS",
+      "gospels": "Evangelhus",
+      "shortVideos": "Vídeus kurtu",
+      "family": "Família",
+      "relationships": "Relasons",
+      "women": "Pa mindjeris",
+      "students": "Pa studantis",
+      "sports": "Sportis",
+      "goodNews": "Bon Notísia",
+      "hope": "Speransa",
+      "training": "Formason",
+      "easter": "Páskua",
+      "christmas": "Natal"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Línguas",
     "metadataDescription": "Navega vídeus JesusFilm pa língua.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Pájina ka atxadu:",
     "title": "Es sena ka sta li.",
     "description": "Pájina pudi ten muda, ma stória ta kontinua.",
+    "languageDescription": "No ka atxa pájina ku bu na buska, ma stória ta kontinua na filmis ku vídeus di línguas di mundu interu.",
     "actionsLabel": "Asons pa pájina ka atxadu",
     "backToWatch": "Volta pa Watch",
     "browseVideos": "Navega vídeus"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Odja filmi kurtu",
-    "actions": {
-      "joinUs": "Junta ku nu",
-      "shareMission": "Partilha na n'sa mison"
-    },
-    "welcomeStart": {
-      "label": "Fé i Skritura",
-      "title": "N'sa skolta di vídeus pa oji",
-      "description": "Kontéudu di vídeu ku fé di n'sa biblioteka pa inspirá, desafiá i desparta meditación."
-    },
-    "welcomeMorning": {
-      "label": "Inspirason di manhan",
-      "title": "Bon dia! Momentus di Bíblia pa oji sta ta spera.",
-      "description": "Bia di dia ku momentus di Bíblia pa inspirá i levantá bu espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirason di tardi",
-      "title": "Bon tardi! Momentus di Bíblia pa bu dia.",
-      "description": "Kontéudu di Bíblia pa animá, prudu pa bu pausa di tardi ou pa kontinua ta inspirá."
-    },
-    "welcomeEvening": {
-      "label": "Inspirason di noti",
-      "title": "Bon noti! Deskança ku momentus di Bíblia.",
-      "description": "Momentus di Bíblia pa trankilidá ta ajuda-bu medita i atxa konsolu na fin di dia."
-    },
-    "joinUs": {
-      "label": "Junta ku nu",
-      "title": "Milhoris ta buska",
-      "description": "Kosecha li. Junta ku nu enkuantu nu ta partilha evangelhu ku mundu pa média dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bai juntus",
-      "title": "Ta konta istória di Jesus, juntus",
-      "description": "Pa ki elis pudi obi i odja amor di Jesus na ses propi língua li ki elis sta."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% di korespondénsia",
-    "none": "Ka atxadu rekomendasons pa es vídeu na es língua."
+    "none": "Ka atxadu rekomendasons pa es vídeu na es língua.",
+    "heading": "Vídeus rekomendadu",
+    "loadingLabel": "Ta kariga vídeus rekomendadu",
+    "openingTitle": "Ta abri {title}",
+    "openingVideo": "Ta abri vídeu",
+    "activityNotRecorded": "Atividadi di rekomendason ka pudi registradu. Linkis inda ta funsiona.",
+    "showingContextual": "Ta mostra rekomendasons kontekstual.",
+    "showingSaved": "Ta mostra rekomendasons gardadu.",
+    "explanationCurated": "Vídeus skojidu pa bu splora.",
+    "explanationViewingMode": "Rekomendadu a partir di e vídeu i di manera ku bu ta odja.",
+    "explanationCowatch": "Rekomendadu a partir di e vídeu i di bu interesis.",
+    "explanationHybrid": "Rekomendadu a partir di e vídeu i di interesis ku bu skoji pa lembra.",
+    "explanationContextual": "Rekomendadu a partir di kil ku bu sta odja gosi.",
+    "explanationSemanticFallback": "Rekomendadu a partir di kil ku bu sta odja gosi, pabia personalisason ka sta disponivel.",
+    "explanationProfileDurable": "Personalizadu a partir di interesis ku bu skoji pa lembra.",
+    "explanationProfileVisit": "Personalizadu pa e bisita.",
+    "personalizationLabel": "Personalisason di rekomendasons",
+    "personalizationPrompt": "Bu misti muda manera ku rekomendasons ta personalizadu?",
+    "openCookieSettings": "Abri konfigurasons di cookie"
   },
   "BetaTesterModal": {
     "title": "Bira testador beta",
@@ -538,16 +732,39 @@
     "retryFailed": "Tenta downloads falhadu di novu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versaun di língua ka sta dispunível",
+    "eyebrow": "Versaun di língua ka sta dispunível",
+    "title": "<contentTitle>{title}</contentTitle> ka sta dispunível na <languageName>{language}</languageName>",
+    "actionsLabel": "Opsons dispunível pa odja",
+    "browseInLanguage": "Navega vídeus na {language}",
+    "backToSearch": "Riturna pa buska",
+    "audioVersionsTitle": "Otus versaun di áudiu",
+    "audioVersionsDescription": "Skolhi un língua di áudiu pa kontinua odja es vídeu.",
+    "languageVersionLabel": "Língua di áudiu",
+    "selectLanguageVersion": "Skolhi un versaun di língua",
+    "watchSelectedVersion": "Odja versaun skolhidu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Njagui yi cookie",
+    "bannerTitle": "Njagui sa sutura",
+    "bannerDescription": "Cookie yi a bega a yir Watch a ka suru te a ka liga. Bu nuyit, cookie ya m’bulu m’bulu ya baax maŋ a tigi fisaŋ visita yi ngir a personálisa recomendation yi. Recomendation yi contextual a ka mana de iwa, masi bulo.",
+    "acceptAll": "Nangu yépp",
+    "essentialOnly": "Yi mu soxla doŋ",
+    "manageChoices": "Saytu njagui yi",
+    "savingChoice": "Denc njagui cookie",
+    "settings": "Parameetar yi cookie",
+    "settingsDescription": "Tann bu Watch man a faatliku interes yi recomendation ci visita yi. Man nga ko soppi saa su nekk.",
+    "essentialCookies": "Cookie yi mu soxla",
+    "essentialDescription": "Suru, playback, njagui sa sutura, ak attribution bu laaj recomendation.",
+    "alwaysActive": "Dafa dox bepp saa",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Faatliku interes yi ñu digle ci visita yi. Su nga ko fey, recomendation yi contextual dinañu des disponibles.",
+    "erasurePending": "Far sa profil mungi ci yoon. Recomendation yi contextual dañu ba noppi di dox.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc njagui yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënuñu a yebbi sa njagui. Waaye man nga a tann ci suuf.",
+    "grantError": "Mënuñu a dogal personalisasion. Yi mu soxla rekk la fi des.",
+    "saveError": "Mënuñu a denc sa njagui. Jéemaatal."
   }
 }

@@ -1,9 +1,10 @@
+import { WorkerCleanupError } from "./errors.js"
 import { createHash } from "node:crypto"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { createJobDeadline, JobDeadlineExceededError } from "./deadline.js"
 import {
   DEVOTIONAL_INPUT_ARTIFACT_TYPE,
@@ -16,7 +17,7 @@ import {
 } from "./devotional-render.js"
 import type { DevotionalWorkspaceTransfer } from "./devotional-transfer.js"
 import type { RunCommand } from "./ffmpeg.js"
-import type { RenderEngine } from "./render.js"
+import type { RenderEngine } from "./render-engine.js"
 import {
   createStorage,
   devotionalAttemptToken,
@@ -28,6 +29,7 @@ import {
 
 const roots: string[] = []
 afterEach(async () => {
+  vi.useRealTimers()
   await Promise.all(
     roots.splice(0).map((root) => rm(root, { recursive: true })),
   )
@@ -219,6 +221,7 @@ function fakeEngine(
     onRender?: () => void
   } = {},
 ) {
+  let finishRender: (() => void) | undefined
   const calls = { bundle: 0, renders: [] as string[], closes: 0 }
   const engine: RenderEngine = {
     async bundle({ outDir }) {
@@ -229,6 +232,7 @@ function fakeEngine(
       return {
         async close() {
           calls.closes += 1
+          finishRender?.()
         },
       }
     },
@@ -244,7 +248,10 @@ function fakeEngine(
     async renderMedia({ composition, outputLocation }) {
       calls.renders.push(composition.id)
       options.onRender?.()
-      if (options.hang) return new Promise(() => {})
+      if (options.hang)
+        return new Promise<void>((resolve) => {
+          finishRender = resolve
+        })
       if (options.failWide && composition.id === "devotional-wide") {
         throw new Error("wide renderer failed")
       }
@@ -255,6 +262,45 @@ function fakeEngine(
 }
 
 describe("runDevotionalRender", () => {
+  it("serves job media at the baked composition public URLs", async () => {
+    const { storage } = await setup()
+    const { engine, calls } = fakeEngine()
+    const bundleDir = await mkdtemp(join(tmpdir(), "devotional-baked-test-"))
+    roots.push(bundleDir)
+    await writeFile(join(bundleDir, "index.html"), "baked composition")
+    const select = engine.selectComposition
+    engine.selectComposition = async (options) => {
+      expect(readFileSync(join(options.serveUrl, "index.html"), "utf8")).toBe(
+        "baked composition",
+      )
+      expect(
+        readFileSync(join(options.serveUrl, "public", "bg.mp4")).byteLength,
+      ).toBeGreaterThan(0)
+      expect(
+        readFileSync(join(options.serveUrl, "public", "clip.mp4")).byteLength,
+      ).toBeGreaterThan(0)
+      return select(options)
+    }
+    await runDevotionalRender({
+      runId: "run-1",
+      inputAssetId: "input-1",
+      outputAssetId: "output-1",
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir,
+      },
+    })
+    expect(existsSync(join(bundleDir, "public", "bg.mp4"))).toBe(false)
+    expect(calls.bundle).toBe(0)
+    expect(calls.renders).toEqual(["devotional", "devotional-wide"])
+  })
+
   it("prepares media, bundles once, and persists both aspect outputs", async () => {
     const { storage } = await setup()
     const { engine, calls } = fakeEngine()
@@ -631,7 +677,13 @@ describe("runDevotionalRender", () => {
     })
     await openStarted
     controller.abort()
-    await expect(render).rejects.toBeInstanceOf(DevotionalRenderCancelledError)
+    let settled = false
+    const observed = render.finally(() => {
+      settled = true
+    })
+    void observed.catch(() => {})
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(settled).toBe(false)
 
     resolveBrowser({
       async close() {
@@ -639,7 +691,250 @@ describe("runDevotionalRender", () => {
       },
     })
     await openingBrowser
+    await expect(observed).rejects.toBeInstanceOf(
+      DevotionalRenderCancelledError,
+    )
+    expect(calls.closes).toBe(1)
+  })
+  it.each(["cancel", "deadline"])(
+    "bounds unconfirmed browser startup cleanup after ordinary %s",
+    async (mode) => {
+      const { storage } = await setup()
+      const { engine } = fakeEngine()
+      let started!: () => void
+      const opened = new Promise<void>((resolve) => {
+        started = resolve
+      })
+      engine.openBrowser = async () => {
+        started()
+        return new Promise(() => {})
+      }
+      const controller = new AbortController()
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] })
+      const render = runDevotionalRender({
+        runId: "run-1",
+        inputAssetId: "input-1",
+        outputAssetId: "output-1",
+        inputHash: "a".repeat(64),
+        deps: {
+          storage,
+          engine,
+          runCommand: fakeRunCommand(),
+          fetchImpl: fakeFetch(),
+          allowedHosts: ["cdn.example.org"],
+          nodeEnv: "production",
+          bundleDir: undefined,
+          signal: controller.signal,
+          deadline: createJobDeadline(1000),
+        },
+      })
+      let outcome: unknown
+      void render.catch((error) => {
+        outcome = error
+      })
+      await opened
+      if (mode === "cancel") controller.abort()
+      else await vi.advanceTimersByTimeAsync(1000)
+      await vi.advanceTimersByTimeAsync(4999)
+      expect(outcome).toBeUndefined()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(outcome).toBeInstanceOf(WorkerCleanupError)
+    },
+  )
+
+  it("does not swallow browser close rejection", async () => {
+    const { storage } = await setup()
+    const { engine } = fakeEngine()
+    engine.openBrowser = async () => ({
+      close: async () => {
+        throw new Error("close failed")
+      },
+    })
+    await expect(
+      runDevotionalRender({
+        runId: "run-1",
+        inputAssetId: "input-1",
+        outputAssetId: "output-1",
+        inputHash: "a".repeat(64),
+        deps: {
+          storage,
+          engine,
+          runCommand: fakeRunCommand(),
+          fetchImpl: fakeFetch(),
+          allowedHosts: ["cdn.example.org"],
+          nodeEnv: "production",
+          bundleDir: undefined,
+        },
+      }),
+    ).rejects.toBeInstanceOf(WorkerCleanupError)
+  })
+
+  it("retains ownership of a raced encoder until it actually settles", async () => {
+    const { storage } = await setup()
+    const { engine, calls } = fakeEngine()
+    let started!: () => void
+    let finished!: () => void
+    const rendering = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const encoding = new Promise<void>((resolve) => {
+      finished = resolve
+    })
+    engine.renderMedia = async () => {
+      started()
+      await encoding
+    }
+    const controller = new AbortController()
+    const render = runDevotionalRender({
+      runId: "run-1",
+      inputAssetId: "input-1",
+      outputAssetId: "output-1",
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+        signal: controller.signal,
+      },
+    })
+    let settled = false
+    void render.catch(() => {
+      settled = true
+    })
+    await rendering
+    controller.abort()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(calls.closes).toBe(1)
+    expect(settled).toBe(false)
+    finished()
+    await expect(render).rejects.toBeInstanceOf(DevotionalRenderCancelledError)
+  })
+
+  it("owns a raced bundle until bounded cleanup confirms settlement", async () => {
+    const { storage } = await setup()
+    const { engine } = fakeEngine()
+    let started!: () => void
+    const entered = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    engine.bundle = async () => {
+      started()
+      return new Promise(() => {})
+    }
+    const controller = new AbortController()
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const render = runDevotionalRender({
+      runId: "run-1",
+      inputAssetId: "input-1",
+      outputAssetId: "output-1",
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+        signal: controller.signal,
+      },
+    })
+    let outcome: unknown
+    void render.catch((error) => {
+      outcome = error
+    })
+    await entered
+    controller.abort()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(outcome).toBeInstanceOf(WorkerCleanupError)
+  })
+
+  it("bounds rollback deletion inside the same cleanup window", async () => {
+    const { storage } = await setup()
+    const { engine } = fakeEngine()
+    const write = storage.writeArtifact.bind(storage)
+    storage.writeArtifact = async (options) => {
+      if (options.artifactType === DEVOTIONAL_RENDER_META_ARTIFACT_TYPE)
+        throw new Error("metadata write failed")
+      return write(options)
+    }
+    let started!: () => void
+    const entered = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    storage.deleteArtifact = async () => {
+      started()
+      return new Promise(() => {})
+    }
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const render = runDevotionalRender({
+      runId: "run-1",
+      inputAssetId: "input-1",
+      outputAssetId: "output-1",
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+      },
+    })
+    let outcome: unknown
+    void render.catch((error) => {
+      outcome = error
+    })
+    await entered
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(outcome).toBeInstanceOf(WorkerCleanupError)
+  })
+
+  it("does not settle cancellation ahead of late bundle completion", async () => {
+    const { storage } = await setup()
+    const { engine } = fakeEngine()
+    let started!: () => void
+    let finish!: (path: string) => void
+    const entered = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    engine.bundle = async () => {
+      started()
+      return new Promise<string>((resolve) => {
+        finish = resolve
+      })
+    }
+    const controller = new AbortController()
+    const render = runDevotionalRender({
+      runId: "run-1",
+      inputAssetId: "input-1",
+      outputAssetId: "output-1",
+      inputHash: "a".repeat(64),
+      deps: {
+        storage,
+        engine,
+        runCommand: fakeRunCommand(),
+        fetchImpl: fakeFetch(),
+        allowedHosts: ["cdn.example.org"],
+        nodeEnv: "production",
+        bundleDir: undefined,
+        signal: controller.signal,
+      },
+    })
+    let outcome: unknown
+    void render.catch((error) => {
+      outcome = error
+    })
+    await entered
+    controller.abort()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(outcome).toBeUndefined()
+    finish("/unused-owned-bundle")
+    await expect(render).rejects.toBeInstanceOf(DevotionalRenderCancelledError)
   })
 })

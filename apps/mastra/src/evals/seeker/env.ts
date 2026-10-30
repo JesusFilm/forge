@@ -116,7 +116,7 @@ export function keyHelpText(): string {
  * 3-bytes-per-UTF-16-code-unit worst case that is well under 100 KiB, so the
  * 2 MiB default carries >20x headroom while still bounding a misbehaving
  * upstream. Env knob is OPTIONAL (never required at boot or run) and capped
- * at 16 MiB, mirroring `JESUSFILM_RAG_MAX_RESPONSE_BYTES`.
+ * at 16 MiB, mirroring `SEEKER_RAG_MAX_RESPONSE_BYTES`.
  */
 export const DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 const MAX_RESPONSE_BYTES_CEILING = 16 * 1024 * 1024

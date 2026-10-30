@@ -6,7 +6,19 @@ import { ENGLISH_LANGUAGE_SLUG, HOME_LOCALE } from "./config"
 import { GET_WATCH_HOME_VIDEOS } from "./homeQueries"
 import type { WatchHomeVideoInput } from "./model"
 
-export type FetchPolicy = "cache-first" | "network-only"
+export type FetchPolicy = "cache-first" | "network-only" | "no-cache"
+export type HomeQueryContext = {
+  queryDeduplication: false
+  fetchOptions: { signal: AbortSignal }
+}
+
+export function homeFetchPolicy(
+  platform: string,
+  mode: "initial" | "refresh",
+): FetchPolicy {
+  if (platform === "android") return "no-cache"
+  return mode === "initial" ? "cache-first" : "network-only"
+}
 
 // Type-only reference to the app's Apollo client — erased at runtime, so this
 // module stays free of the client's (native-adjacent) import graph.
@@ -32,6 +44,7 @@ export async function fetchTopUpVideos(
   client: TopUpApolloClient,
   coreIds: readonly string[],
   fetchPolicy: FetchPolicy,
+  context?: HomeQueryContext,
 ): Promise<WatchHomeVideoInput[]> {
   const batches = await Promise.all(
     chunk(coreIds, VIDEOS_BY_CORE_IDS_MAX).map((ids) =>
@@ -43,6 +56,7 @@ export async function fetchTopUpVideos(
           languageSlug: ENGLISH_LANGUAGE_SLUG,
         },
         fetchPolicy,
+        ...(context ? { context } : {}),
       }),
     ),
   )

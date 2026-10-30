@@ -1,7 +1,16 @@
 "use client"
 
+import { z } from "zod"
+import {
+  watchSurfaceManifestSchema,
+  watchSurfaceItemPath,
+  type SignedWatchSurfaceManifest,
+} from "./watch-surface-manifest"
+import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
+
 import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
+  adminWatchSearchLegacyQuery,
   adminWatchSearchOperation,
   adminWatchSearchQuery,
   adminWatchSearchSuggestionsOperation,
@@ -24,7 +33,11 @@ import type {
 } from "./search"
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-const WATCH_SEARCH_TIMEOUT_MS = 45_000
+// One wall-clock budget for the whole search, including the legacy-schema
+// retry. Admin bounds the search itself to 2.3s (#2671), but that clock starts
+// after DNS/TLS, Cloudflare, cold start and GraphQL parsing. 12s keeps ~9.7s
+// of headroom for those on a slow link without a near-minute spinner.
+export const WATCH_SEARCH_TIMEOUT_MS = 12_000
 const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 12
 const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
@@ -41,7 +54,64 @@ type WatchSearchSuggestionsResult = AdminResultOf<
 
 type GraphqlResponse<TData> = {
   data?: TData
-  errors?: Array<{ message?: string | null }>
+  errors?: Array<{
+    message?: string | null
+    extensions?: {
+      code?: unknown
+      http?: { statusCode?: unknown }
+    }
+  }>
+}
+
+export type WatchSearchErrorKind =
+  | "rate_limited"
+  | "server_error"
+  | "network_error"
+  | "unknown"
+
+export class WatchSearchRequestError extends Error {
+  constructor(
+    message: string,
+    readonly kind: WatchSearchErrorKind,
+  ) {
+    super(message)
+    this.name = "WatchSearchRequestError"
+  }
+}
+
+export function watchSearchErrorKind(error: unknown): WatchSearchErrorKind {
+  return error instanceof WatchSearchRequestError ? error.kind : "unknown"
+}
+
+function watchSearchStatusErrorKind(status: unknown): WatchSearchErrorKind {
+  if (status === 429) return "rate_limited"
+  if (typeof status === "number" && status >= 500) return "server_error"
+  return "unknown"
+}
+
+function watchSearchGraphqlErrorKind(
+  error: NonNullable<GraphqlResponse<unknown>["errors"]>[number],
+): WatchSearchErrorKind {
+  const statusKind = watchSearchStatusErrorKind(
+    error.extensions?.http?.statusCode,
+  )
+  if (statusKind !== "unknown") return statusKind
+  return error.extensions?.code === "INTERNAL_SERVER_ERROR"
+    ? "server_error"
+    : "unknown"
+}
+
+function watchSearchFetchErrorKind(error: unknown): WatchSearchErrorKind {
+  const name =
+    typeof error === "object" && error != null && "name" in error
+      ? error.name
+      : null
+  if (name === "TimeoutError" || name === "AbortError") return "server_error"
+  // A rejected fetch also covers CORS/WAF blocks, so only blame the user's
+  // connection when the browser itself reports being offline.
+  return typeof navigator !== "undefined" && navigator.onLine === false
+    ? "network_error"
+    : "unknown"
 }
 
 export type DirectWatchSearchInput = {
@@ -212,6 +282,55 @@ export async function fetchWatchSearchSuggestions({
   }
 }
 
+const signedSearchManifestSchema = z
+  .object({
+    manifest: watchSurfaceManifestSchema,
+    signature: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  })
+  .strict()
+
+/** Client validation checks mapping parity; only the Web issuer verifies authority. */
+export function parseWatchSearchSurfaceManifest(
+  raw: unknown,
+  results: readonly SearchResult[],
+  targetLanguageSlug: string | null,
+): SignedWatchSurfaceManifest | null {
+  const parsed = signedSearchManifestSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const { manifest } = parsed.data
+  if (
+    manifest.surface !== "watch-search" ||
+    manifest.block !== "results" ||
+    manifest.presentation !== "result-list" ||
+    manifest.placement !== "search-results" ||
+    manifest.items.length !== results.length
+  )
+    return null
+  const matches = results.every((result, position) => {
+    if (result.type !== "video" || !/^[a-z0-9_-]+$/.test(result.slug))
+      return false
+    const language =
+      result.availabilityKind === "unavailable"
+        ? targetLanguageSlug
+        : (result.languageSlug ?? "english")
+    if (!language || !/^[a-z0-9-]+$/.test(language)) return false
+    if (
+      result.availabilityKind === "target_subtitle" &&
+      (!result.languageSlug || !result.subtitleLanguageSlug)
+    )
+      return false
+    const path =
+      result.availabilityKind === "unavailable"
+        ? `/${result.slug}.html/${language}.html`
+        : buildCanonicalWatchVideoPath(result.slug, language)
+    return (
+      manifest.items[position]?.position === position &&
+      manifest.items[position]?.itemPath === watchSurfaceItemPath(path)
+    )
+  })
+  return matches ? parsed.data : null
+}
+
 export async function searchWatchDirect({
   query,
   limit = 20,
@@ -240,26 +359,52 @@ export async function searchWatchDirect({
       resultTypes,
     },
   }
-  const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      query: adminWatchSearchQuery,
-      variables,
-    }),
-    signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Watch search failed with HTTP ${response.status}`)
+  // Shared by both attempts so the legacy retry cannot restart the clock.
+  const signal = timeoutSignal(WATCH_SEARCH_TIMEOUT_MS)
+  const requestPage = async (
+    document: string,
+  ): Promise<GraphqlResponse<WatchSearchGraphqlResult>> => {
+    let response: Response
+    try {
+      response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: document, variables }),
+        signal,
+      })
+    } catch (error) {
+      throw new WatchSearchRequestError(
+        "Watch search request failed",
+        watchSearchFetchErrorKind(error),
+      )
+    }
+    if (!response.ok)
+      throw new WatchSearchRequestError(
+        `Watch search failed with HTTP ${response.status}`,
+        watchSearchStatusErrorKind(response.status),
+      )
+    return (await response.json()) as GraphqlResponse<WatchSearchGraphqlResult>
   }
-
-  const payload =
-    (await response.json()) as GraphqlResponse<WatchSearchGraphqlResult>
+  let payload = await requestPage(adminWatchSearchQuery)
+  // Only a receiver missing this additive field permits a single legacy retry.
+  if (
+    payload.errors?.length &&
+    payload.errors.every(
+      (error) =>
+        error.extensions?.code === "GRAPHQL_VALIDATION_FAILED" &&
+        /Cannot query field ["']surfaceManifest["'] on type ["']WatchSearchResponse["']/.test(
+          error.message ?? "",
+        ),
+    )
+  ) {
+    payload = await requestPage(adminWatchSearchLegacyQuery)
+  }
   if (payload.errors?.length) {
-    throw new Error(payload.errors[0]?.message ?? "Watch search failed")
+    const error = payload.errors[0]!
+    throw new WatchSearchRequestError(
+      error.message ?? "Watch search failed",
+      watchSearchGraphqlErrorKind(error),
+    )
   }
 
   const watchSearch = payload.data?.watchSearch
@@ -275,6 +420,11 @@ export async function searchWatchDirect({
   })
 
   return {
+    surfaceManifest: parseWatchSearchSurfaceManifest(
+      watchSearch.surfaceManifest,
+      results,
+      watchSearch.languageInterpretation?.targetLanguageSlug ?? null,
+    ),
     results,
     hasMore: watchSearch.hasMore ?? false,
     query: watchSearch.query ?? truncatedQuery,
@@ -367,6 +517,7 @@ function mapWatchSearchAvailabilityKind(
   if (kind === "TARGET_AUDIO") return "target_audio"
   if (kind === "TARGET_SUBTITLE") return "target_subtitle"
   if (kind === "RELATED_LANGUAGE") return "related_language"
+  if (kind === "CONTAINER") return "container"
   if (kind === "UNAVAILABLE") return "unavailable"
   return null
 }

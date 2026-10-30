@@ -15,7 +15,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prebundle": "tsx scripts/prebundle.ts",
-    "smoke": "tsx scripts/smoke.ts",
     "devo:video": "node scripts/render-devotional-video.mjs",
     "devo:detect-snippet": "node scripts/detect-and-trim-snippet.mjs"
   },
@@ -36,6 +35,7 @@
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "playwright": "1.61.1"
   }
 }

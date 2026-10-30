@@ -295,7 +295,7 @@ function targetCompatibilitySql(tables: readonly string[]): string {
 }
 
 function sourceProfileCompatibilitySql(): string {
-  return "SELECT json_build_object('externalSocialImageReferences', COUNT(*) FILTER (WHERE social_image_asset_id IS NOT NULL))::text FROM public.video_locale;"
+  return "SELECT json_build_object('externalSocialImageReferences', COUNT(*) FILTER (WHERE social_image_asset_id IS NOT NULL))::text AS compatibility FROM public.video_locale;"
 }
 
 const PRISMA_ONLY_POSTGRES_QUERY_KEYS = [
@@ -408,7 +408,7 @@ export function buildBackupPlan(
     preflightCommands: [
       {
         check: "source-profile-compatibility",
-        command: "psql",
+        command: "source-compatibility-check",
         args: [
           "--no-align",
           "--tuples-only",

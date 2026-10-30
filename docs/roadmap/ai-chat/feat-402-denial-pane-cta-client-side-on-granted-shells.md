@@ -3,7 +3,7 @@ id: "feat-402"
 title: "Denial pane CTA: client-side New on granted shells, reload only on real denials"
 owner: "jian wei"
 priority: "P3"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-01"
 duration: 1
 depends_on:
@@ -12,6 +12,16 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-28 via [PR #2088](https://github.com/JesusFilm/forge/pull/2088) (`feat(chat): denial pane CTA is a client-side New on granted shells (feat-402)`).
+
+**What landed.** Build, not drop: the reach argument held (mobile has no visible rail escape), and the change is one presence-branch. `DenialScreen` gained the optional `onStartNew`, threaded into `UnavailableScreen` only; `AppShell` passes it gated on the existing `grantedShell` belt exactly as the brief prescribed. The accepted `<button>` trade-off (no open-in-new-tab) was kept as specified — no `preventDefault` anchor variant. All four Verification rows ran, including the browser network-panel pair (no document request on the granted path; full load on the denial path) and the scoped sabotage falsification (exactly the two unavailable-arm anchor guards went red). Both granted arms got click-and-release coverage, not just the element assertion.
+
+**Compound docs.** None — the change applied already-documented patterns (the two-axis-gate belt, synthetic-fixture labeling).
+
+**Residual risk / follow-ups.** One prose correction to this ticket's Constraints, found in review: revocation surfaces as the KTD8 401/403 revert on the HISTORY paths, but on the SEND path of a never-persisted conversation `gate_denied` rebuilds the inline stub (feat-281 Ruling 3) rather than the access-changed copy — still fail-closed at the API, and no new capability (the rail's New was already a client-side button on these shells). Also noted, accepted: Tailwind v4 preflight gives the button `cursor: default` while the anchor keeps the pointer, matching the existing `NewConversationButton` precedent.
 
 ## Problem
 

@@ -40,6 +40,8 @@ const ShareModal = dynamic(
   { ssr: false },
 )
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
+import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { WatchEventRecorder } from "@/components/watch/WatchEventRecorder"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchSectionRenderer } from "@/components/watch/WatchSectionRenderer"
@@ -72,6 +74,8 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
+import { markWatchUrlAsShared } from "@/lib/playback-discovery"
+import { recordWatchShareAction } from "@/lib/recommendation-content-actions"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
@@ -124,6 +128,7 @@ export type WatchModalCallbacks = {
   openLanguage: () => void
   openShare: () => void
   closeModal: () => void
+  cancelPendingLanguage?: () => void
 }
 
 function isPendingChapterStillRoutable(
@@ -167,7 +172,11 @@ function isPendingChapterStillRoutable(
   return false
 }
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
+
 type WatchPageClientProps = {
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadSequence?: DownloadSequence | null
   mergedBlocks: MergedWatchBlock[]
@@ -187,6 +196,8 @@ type WatchPageClientProps = {
    * Bible passage translation selection is resolved by Admin before render.
    */
   locale?: string
+  audienceEnabled?: boolean
+  audience?: WatchAudienceResolution
   hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
@@ -254,10 +265,13 @@ function buildShareFallbackHref({
     videoSlug,
     languageSlug: currentLanguageSlug,
   })
-  return shareableUrl ? buildFbShareUrl(shareableUrl) : undefined
+  return shareableUrl
+    ? buildFbShareUrl(markWatchUrlAsShared(shareableUrl))
+    : undefined
 }
 
 export function WatchPageClient({
+  surfaceManifests,
   downloadButtonLabel,
   downloadSequence = null,
   mergedBlocks,
@@ -266,6 +280,9 @@ export function WatchPageClient({
   languageSlug,
   subtitleLanguageSlug = null,
   collectionSlug = null,
+  locale,
+  audienceEnabled = false,
+  audience,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -274,8 +291,10 @@ export function WatchPageClient({
   // Lifted so LanguagePickerModal can read `currentTime` for the `?t=` clamp
   // on language switches.
   const playerRef = useRef<MuxPlayerRef | null>(null)
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const handlePlayerReady = useCallback((player: MuxPlayerRef | null) => {
     playerRef.current = player
+    setPlayer((current) => (current === player ? current : player))
   }, [])
 
   // LOCALE_RESOLVED_PARAM is the server's URL-resolved sentinel — see
@@ -302,6 +321,24 @@ export function WatchPageClient({
   const routeWarmPromisesRef = useRef(new Map<string, Promise<void>>())
   const pendingChapterHrefRef = useRef<string | null>(null)
   const [chapterAutoplayEnabled, setChapterAutoplayEnabled] = useState(false)
+  const [playerActivation, setPlayerActivation] = useState<{
+    mediaId: string
+    initiation: "manual" | "automatic"
+  } | null>(null)
+  const [playerViewability, setPlayerViewability] = useState<{
+    mediaId: string
+    visible: boolean
+  } | null>(null)
+  const handlePlayerViewabilityChange = useCallback(
+    (visible: boolean) => {
+      setPlayerViewability((previous) =>
+        previous?.mediaId === video.documentId && previous.visible === visible
+          ? previous
+          : { mediaId: video.documentId, visible },
+      )
+    },
+    [video.documentId],
+  )
   const [pendingChapter, setPendingChapter] =
     useState<WatchChapterNavigationIntent | null>(null)
   const validPendingChapter =
@@ -325,12 +362,20 @@ export function WatchPageClient({
     return promise
   }, [])
 
-  const handlePlayerActivated = useCallback(() => {
-    setChapterAutoplayEnabled(true)
-  }, [])
+  const handlePlayerActivated = useCallback(
+    (initiation: "manual" | "automatic") => {
+      setChapterAutoplayEnabled(true)
+      setPlayerActivation({ mediaId: video.documentId, initiation })
+    },
+    [video.documentId],
+  )
 
   const handleChapterNavigateIntent = useCallback(
     (intent: WatchChapterNavigationIntent) => {
+      dispatchPlaybackNavigationIntent({
+        mediaId: video.documentId,
+        action: "manual_skip",
+      })
       pendingChapterHrefRef.current = intent.href
       setPendingChapter(intent)
       const routeWarmPromise = warmChapterRoute(intent.href)
@@ -361,7 +406,7 @@ export function WatchPageClient({
         })
       })
     },
-    [chapterAutoplayEnabled, router, warmChapterRoute],
+    [chapterAutoplayEnabled, router, video.documentId, warmChapterRoute],
   )
 
   const coverBlackoutKey = null
@@ -564,6 +609,29 @@ export function WatchPageClient({
       status: "idle",
       variants: [],
     })
+  const [languageComponentError, setLanguageComponentError] = useState(false)
+  const languageComponentErrorMessage =
+    useTranslations("SearchOverlay")("connectionHint")
+  const languageOpenIntentRef = useRef(0)
+  const languageComponentPendingRef = useRef(false)
+  const cancelLanguageOpen = useCallback(() => {
+    languageOpenIntentRef.current += 1
+    languageComponentPendingRef.current = false
+    setLanguageComponentError(false)
+  }, [])
+  useEffect(() => {
+    cancelLanguageOpen()
+    return () => {
+      languageOpenIntentRef.current += 1
+      languageComponentPendingRef.current = false
+    }
+  }, [
+    cancelLanguageOpen,
+    collectionSlug,
+    currentLanguageSlug,
+    video.documentId,
+    videoSlug,
+  ])
   const languageOptionsPendingRef = useRef(false)
   const beginDownloadSessionRequest = useCallback(() => {
     downloadSessionRequestVersionRef.current += 1
@@ -680,6 +748,7 @@ export function WatchPageClient({
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
+    cancelLanguageOpen()
     reportGoogleAnalyticsEvent("watch_download_intent", {
       language_slug: currentLanguageSlug,
       video_id: video.documentId,
@@ -716,6 +785,7 @@ export function WatchPageClient({
     }
   }, [
     beginDownloadSessionRequest,
+    cancelLanguageOpen,
     currentLanguageSlug,
     downloadSessionErrorMessage,
     isCurrentDownloadSessionRequest,
@@ -723,15 +793,35 @@ export function WatchPageClient({
     videoSlug,
   ])
   const openLanguage = useCallback(() => {
+    if (languageComponentPendingRef.current) return
     cancelDownloadSessionRequest()
     reportGoogleAnalyticsEvent("watch_language_picker_opened", {
       language_slug: currentLanguageSlug,
       video_id: video.documentId,
       video_slug: videoSlug,
     })
-    setEnabledModalChunks((prev) => ({ ...prev, language: true }))
-    void loadWatchInteraction("language").catch(() => {})
-    setModalState("language")
+    const intent = ++languageOpenIntentRef.current
+    languageComponentPendingRef.current = true
+    setLanguageComponentError(false)
+    setModalState("none")
+    // Keep the component and options requests parallel, but never let a failed
+    // preload poison next/dynamic's persistent React.lazy payload.
+    void loadWatchInteraction("language")
+      .then(() => {
+        if (languageOpenIntentRef.current !== intent) return
+        setEnabledModalChunks((prev) => ({ ...prev, language: true }))
+        setModalState("language")
+      })
+      .catch(() => {
+        if (languageOpenIntentRef.current === intent) {
+          setLanguageComponentError(true)
+        }
+      })
+      .finally(() => {
+        if (languageOpenIntentRef.current === intent) {
+          languageComponentPendingRef.current = false
+        }
+      })
     void loadLanguageOptions()
   }, [
     cancelDownloadSessionRequest,
@@ -742,6 +832,7 @@ export function WatchPageClient({
   ])
   const openShare = useCallback(() => {
     cancelDownloadSessionRequest()
+    cancelLanguageOpen()
     reportGoogleAnalyticsEvent("watch_share_opened", {
       language_slug: currentLanguageSlug,
       video_id: video.documentId,
@@ -752,20 +843,23 @@ export function WatchPageClient({
     setModalState("share")
   }, [
     cancelDownloadSessionRequest,
+    cancelLanguageOpen,
     currentLanguageSlug,
     video.documentId,
     videoSlug,
   ])
   const closeModal = useCallback(() => {
     cancelDownloadSessionRequest()
+    cancelLanguageOpen()
     setModalState("none")
-  }, [cancelDownloadSessionRequest])
+  }, [cancelDownloadSessionRequest, cancelLanguageOpen])
 
   const modalCallbacks: WatchModalCallbacks = {
     openDownload,
     openLanguage,
     openShare,
     closeModal,
+    cancelPendingLanguage: cancelLanguageOpen,
   }
 
   return (
@@ -778,8 +872,40 @@ export function WatchPageClient({
           : ""
       }`}
     >
+      {languageComponentError ? (
+        <p
+          data-testid="watch-language-component-error"
+          role="status"
+          className="fixed inset-x-4 top-24 z-[70] mx-auto max-w-md rounded-xl bg-stone-900/95 p-4 text-center text-sm text-white shadow-lg ring-1 ring-white/20"
+        >
+          {languageComponentErrorMessage}
+        </p>
+      ) : null}
       <WatchSectionRenderer
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         blocks={mergedBlocks}
+        shareFilm={
+          audienceEnabled
+            ? {
+                slug: videoSlug,
+                title: video.title ?? videoSlug,
+                languageSlug: currentLanguageSlug,
+                languageName: variant.language?.name ?? null,
+                runtimeMinutes: variant.duration
+                  ? Math.round(variant.duration / 60)
+                  : null,
+                studyQuestions: (video.studyQuestions ?? []).flatMap(
+                  (question) =>
+                    question.value?.trim() ? [question.value.trim()] : [],
+                ),
+                languageVariants: languageOptionsState.variants,
+                languageOptionsStatus: languageOptionsState.status,
+              }
+            : undefined
+        }
+        onRequestShareLanguages={loadLanguageOptions}
+        surfaceManifests={surfaceManifests}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
         downloadHref={downloadHref}
@@ -787,7 +913,9 @@ export function WatchPageClient({
         modalCallbacks={modalCallbacks}
         onPlayerReady={handlePlayerReady}
         onPlayerActivated={handlePlayerActivated}
+        onPlayerViewabilityChange={handlePlayerViewabilityChange}
         languageSlug={currentLanguageSlug}
+        locale={locale}
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
@@ -803,6 +931,23 @@ export function WatchPageClient({
         playerRef={playerRef}
         videoId={video.documentId}
         videoDubId={variant.documentId}
+        durationSeconds={variant.duration ?? null}
+      />
+
+      <RecommendationPlaybackRecorder
+        key={video.documentId}
+        player={player}
+        viewable={
+          playerViewability?.mediaId === video.documentId
+            ? playerViewability.visible
+            : null
+        }
+        initiation={
+          playerActivation?.mediaId === video.documentId
+            ? playerActivation.initiation
+            : null
+        }
+        mediaId={video.documentId}
         durationSeconds={variant.duration ?? null}
       />
 
@@ -859,6 +1004,9 @@ export function WatchPageClient({
           videoDescription={video.snippet ?? video.description ?? null}
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
+          onShareAction={(detail) =>
+            recordWatchShareAction(video.documentId, detail)
+          }
           onClose={closeModal}
         />
       ) : null}

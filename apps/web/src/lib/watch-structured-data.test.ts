@@ -235,7 +235,6 @@ describe("collection structured data", () => {
             ],
           },
         ],
-        muxInserts: [],
       },
       missingData: [],
     } as never
@@ -299,7 +298,7 @@ describe("collection structured data", () => {
       model: {
         heroSlides: [],
         sections: [],
-        carousel: { pools: [], muxInserts: [] },
+        carousel: { pools: [] },
         missingData: [],
       } as never,
       blocks: [
@@ -462,5 +461,39 @@ describe("watchRelatedItemListStructuredDataJson", () => {
       url: "https://www.jesusfilm.org/watch/episode-0.html",
     })
     expect(json).not.toContain("VideoObject")
+  })
+
+  it("emits one caption track per language, keeping the first", () => {
+    const payload = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        captions: [
+          { contentUrl: "https://cdn.example/a-fr.vtt", inLanguage: "fr" },
+          { contentUrl: "https://cdn.example/b-fr.vtt", inLanguage: "FR" },
+          { contentUrl: "https://cdn.example/a-id.vtt", inLanguage: "id" },
+          { contentUrl: "https://cdn.example/a-id2.vtt", inLanguage: "id" },
+        ],
+      })!,
+    )
+    expect(
+      payload.caption.map((c: { contentUrl: string }) => c.contentUrl),
+    ).toEqual(["https://cdn.example/a-fr.vtt", "https://cdn.example/a-id.vtt"])
+  })
+
+  it("does not let an invalid caption row consume its language slot", () => {
+    const payload = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        captions: [
+          {
+            contentUrl: "https://cdn.example/a-fr.vtt?token=x",
+            inLanguage: "fr",
+          },
+          { contentUrl: "https://cdn.example/b-fr.vtt", inLanguage: "fr" },
+        ],
+      })!,
+    )
+    expect(payload.caption).toHaveLength(1)
+    expect(payload.caption[0].contentUrl).toBe("https://cdn.example/b-fr.vtt")
   })
 })

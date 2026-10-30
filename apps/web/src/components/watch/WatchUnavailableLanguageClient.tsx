@@ -69,9 +69,14 @@ export function WatchUnavailableLanguageClient({
   const requestedLanguageBcp47 = parsed
     ? slugToBcp47Tag(parsed.requestedLanguageSlug)
     : null
+  const approvedRequestedLanguage =
+    initialResolution.requestedLanguage?.publicSlug ===
+    parsed?.requestedLanguageSlug
+      ? initialResolution.requestedLanguage
+      : null
   const languageName = parsed
     ? localizedSearchLanguageName(
-        {
+        approvedRequestedLanguage ?? {
           englishName: fallbackLanguageName,
           nativeName: null,
           bcp47: requestedLanguageBcp47,
@@ -80,6 +85,7 @@ export function WatchUnavailableLanguageClient({
         },
         uiLocale,
         fallbackLanguageName,
+        approvedRequestedLanguage ? "catalog-identity" : "standalone",
       )
     : fallbackLanguageName
   const requestedLanguage = parsed
@@ -167,7 +173,7 @@ export function WatchUnavailableLanguageClient({
               >
                 {t("audioVersionsTitle")}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-stone-300">
+              <p className="mt-1 text-base sm:text-sm leading-6 text-stone-300">
                 {t("audioVersionsDescription")}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

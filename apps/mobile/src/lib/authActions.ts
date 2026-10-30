@@ -7,14 +7,19 @@
  * Each action resolves to a typed outcome the caller renders: success, a
  * quiet cancel, or a retryable error. R15's new-account signal is NOT an
  * outcome variant — a blocking interstitial was rejected — it raises the
- * Profile notice in newAccountNotice.ts instead.
+ * My Watch header notice in newAccountNotice.ts instead.
  */
 
+import {
+  clearAccountDeletedNotice,
+  noteAccountDeleted,
+} from "./accountDeletedNotice"
 import {
   outcomeFromDeleteResult,
   type DeleteAccountOutcome,
 } from "./accountDeletion"
 import { classifySignInFailure, type SignInFailureKind } from "./authFlows"
+import { JFP_MOBILE_PROVIDER_ID } from "./authProvider"
 import {
   authFetchOptions,
   deleteFetchOptions,
@@ -43,22 +48,19 @@ function toSignInOutcome(error: unknown): SignInOutcome {
   return OUTCOME_BY_FAILURE[classifySignInFailure(error)]
 }
 
-/**
- * Hosted-page sign-in (F2): the jfp self-RP flow. The Expo client opens
- * the browser sheet itself and captures the session cookie from the
- * forgemobile:// callback; afterwards an outcome-reporting session read
- * (KTD6) determines who — if anyone — signed in.
- */
+// Hosted-page sign-in (F2): the jfp self-RP flow. The Expo client opens the sheet
+// and captures the cookie off the forgemobile:// callback; a session read (KTD6)
+// then says who signed in. `signIn.social`: 1.7 removed `/sign-in/oauth2` (404).
 async function runHostedSignIn(): Promise<SignInOutcome> {
   const store = getAuthSession()
   const before = store.getSnapshot()
   try {
-    const result = await getAuthClient().signIn.oauth2({
-      providerId: "jfp",
+    const result = await getAuthClient().signIn.social({
+      provider: JFP_MOBILE_PROVIDER_ID,
       callbackURL: "/",
-      // Bounds only the pre-browser authorize-URL POST: better-fetch clears
-      // its abort timer before onSuccess, where the expo plugin opens the
-      // sheet (dists verified 2026-08-11, expo 1.6.2 + better-fetch 1.1.21).
+      // Bounds only the pre-browser authorize-URL POST: better-fetch clears its
+      // abort timer before onSuccess, where the expo plugin opens the sheet
+      // (dists verified 2026-08-28: @better-auth/expo 1.7.1, better-fetch 1.3.1).
       ...authFetchOptions(),
     })
     if (result.error) return { status: "error" }
@@ -107,6 +109,7 @@ async function runHostedSignIn(): Promise<SignInOutcome> {
     if (wasAccountCreatedThisSignIn(user.createdAt, user.sessionCreatedAt)) {
       noteAccountCreated(user.id)
     }
+    clearAccountDeletedNotice()
   } catch {
     // Total-catch: a throwing notice subscriber must not reject the shared
     // single-flight promise the UI awaits without .catch — the sign-in itself
@@ -140,6 +143,16 @@ export async function signOut(): Promise<void> {
   await getAuthSession().signOut()
 }
 
+/** Total-catch: a throwing notice subscriber must not reject a completed
+ *  deletion that the UI awaits. */
+function raiseAccountDeletedNotice() {
+  try {
+    noteAccountDeleted()
+  } catch {
+    // The deletion itself succeeded; only the notice is lost.
+  }
+}
+
 /**
  * Delete the account (U7): no verification email exists platform-wide, so
  * a stale session asks for SSO re-auth first (the fresh-session check);
@@ -168,6 +181,8 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
       return { status: "unconfirmed" }
     }
     if (signedIn) return { status: "error" }
+    // The probe has already committed the signed-out state.
+    raiseAccountDeletedNotice()
     try {
       await store.signOut()
     } catch {
@@ -176,6 +191,8 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
     return { status: "deleted" }
   }
   if (outcome.status === "deleted") {
+    // KTD8: raise the notice before the sign-out closes the Account screen.
+    raiseAccountDeletedNotice()
     // The account is gone; signOut's remote leg fails harmlessly and the
     // local clear + progress lifecycle run off the signed-out transition.
     // Guard it: commit() invokes subscribers synchronously, so a throwing

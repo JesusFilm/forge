@@ -13,6 +13,7 @@ import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   card,
   carousel,
@@ -55,6 +56,8 @@ export function MediaCollectionRenderer({
 }: MediaCollectionRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Sections")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
   const { getVideoThumbnail, getVideoTitle } = useExperienceContext()
 
@@ -104,7 +107,7 @@ export function MediaCollectionRenderer({
       <PressableCard
         onPress={handlePress}
         accessibilityLabel={`${label ?? ""} ${title}`.trim()}
-        accessibilityHint="Opens this video"
+        accessibilityHint={t("opensVideoAriaHint")}
         style={[card.surface, { width: cardWidth }]}
         surfaceStyle={[styles.cardInner, { aspectRatio: cardAspect }]}
         background={
@@ -147,7 +150,10 @@ export function MediaCollectionRenderer({
   }
 
   return (
-    <View style={[layout.sectionOuter, styles.localContainer]}>
+    <View
+      testID="sdui-media-collection"
+      style={[layout.sectionOuter, styles.localContainer]}
+    >
       {categoryLabel != null && (
         <Text style={[text.eyebrow, styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}
@@ -180,6 +186,7 @@ export function MediaCollectionRenderer({
       <FlatList
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, index) => `mc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -187,7 +194,7 @@ export function MediaCollectionRenderer({
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${items.length} media items`}
+        accessibilityLabel={t("mediaItemsAriaLabel", { count: items.length })}
       />
     </View>
   )
@@ -221,7 +228,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: "rgba(255, 255, 255, 0.90)",
-    fontFamily: "System",
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -229,7 +235,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
 })

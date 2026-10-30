@@ -7,12 +7,38 @@ describe("Auth scopes", () => {
     expect(isKnownScope("openid")).toBe(true)
     expect(isKnownScope("offline_access")).toBe(true)
     expect(isKnownScope("admin:access")).toBe(true)
+    expect(isKnownScope("admin:manager-backend")).toBe(true)
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
     expect(isKnownScope("experience:publish")).toBe(true)
     expect(isKnownScope("experience:create")).toBe(true)
     expect(isKnownScope("experience:generate")).toBe(true)
+    expect(isKnownScope("changelog:read")).toBe(true)
+    expect(isKnownScope("changelog:submit")).toBe(true)
+    expect(isKnownScope("changelog:admin")).toBe(true)
     expect(isKnownScope("made:up")).toBe(false)
+  })
+
+  it("describes Changelog scopes with their exact consent copy", () => {
+    expect(
+      describeScopes(["changelog:admin", "changelog:read", "changelog:submit"]),
+    ).toEqual([
+      {
+        key: "changelog:read",
+        label: "Read Changelog",
+        description: "View and filter published Changelog entries.",
+      },
+      {
+        key: "changelog:submit",
+        label: "Submit Changelog entries",
+        description: "Submit entries and manage entries created by the caller.",
+      },
+      {
+        key: "changelog:admin",
+        label: "Administer Changelog",
+        description: "Manage all Changelog entries and products.",
+      },
+    ])
   })
 
   it("rejects a typo'd experience-level scope", () => {
@@ -76,6 +102,27 @@ describe("Auth scopes", () => {
         key: "experience:publish",
         label: "Publish experience locales",
       }),
+    ])
+  })
+
+  it("recognizes the push campaign scopes and describes them for consent screens", () => {
+    expect(isKnownScope("push:campaign:read")).toBe(true)
+    expect(isKnownScope("push:campaign:draft")).toBe(true)
+    expect(
+      describeScopes(["push:campaign:draft", "push:campaign:read"]),
+    ).toEqual([
+      {
+        key: "push:campaign:read",
+        label: "Read push campaigns",
+        description:
+          "Read push campaigns and their reports, languages, destinations, and audience counts.",
+      },
+      {
+        key: "push:campaign:draft",
+        label: "Draft push campaigns",
+        description:
+          "Create and edit push campaign drafts. Cannot test, schedule, or send.",
+      },
     ])
   })
 

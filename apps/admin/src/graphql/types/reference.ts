@@ -82,6 +82,9 @@ export const LocaleStatusEnum = builder.enumType("LocaleStatus", {
 /** @classification public-shape */
 builder.prismaObject("Language", {
   description: "A spoken/written language synced from JesusFilm Core.",
+  // Nested subtitle lists usually need only slug/BCP-47. Avoid expanding every
+  // language's compatibility map and timestamps into each Prisma result row.
+  select: { id: true },
   fields: (t) => ({
     id: t.exposeID("id"),
     coreId: t.exposeString("coreId"),
@@ -91,6 +94,7 @@ builder.prismaObject("Language", {
      */
     name: t.field({
       type: "JSON",
+      select: { name: true },
       resolve: (row) => row.name,
     }),
     bcp47: t.exposeString("bcp47", { nullable: true }),
@@ -102,6 +106,7 @@ builder.prismaObject("Language", {
     }),
     audioPreviewSize: t.string({
       nullable: true,
+      select: { audioPreviewSize: true },
       resolve: (row) =>
         row.audioPreviewSize == null ? null : row.audioPreviewSize.toString(),
     }),
@@ -114,8 +119,14 @@ builder.prismaObject("Language", {
     locales: t.relation("locales", {
       query: { where: { deletedAt: null }, orderBy: { locale: "asc" } },
     }),
-    createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
-    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+    createdAt: t.string({
+      select: { createdAt: true },
+      resolve: (row) => row.createdAt.toISOString(),
+    }),
+    updatedAt: t.string({
+      select: { updatedAt: true },
+      resolve: (row) => row.updatedAt.toISOString(),
+    }),
   }),
 })
 

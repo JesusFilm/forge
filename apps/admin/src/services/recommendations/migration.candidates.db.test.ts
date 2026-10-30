@@ -1,0 +1,1034 @@
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { Client } from "pg"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { env } from "@/config/env"
+import {
+  adaptSemanticCandidates,
+  type RecommendationCandidateContext,
+} from "./candidate"
+import { evaluateShadowProjection } from "./shadow-evaluation/projection"
+import { shadowSlateProvenanceSql } from "./admin-ops/shadow-slate-provenance"
+
+const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
+const migrationSql = [
+  "0052_production_semantic_recommendation_tracer",
+  "0053_recommendation_active_playback_proxy",
+  "0054_recommendation_mission_value_actions",
+  "0055_recommendation_integrity_eligibility",
+  "0056_consent_aware_recommendation_profile",
+  "0057_semantic_control_readiness",
+  "0058_recommendation_candidate_platform",
+  "0059_recommendation_shadow_candidate_evaluation",
+  "0060_recommendation_experiment_spine",
+  "0061_recommendation_hybrid_promotion",
+  "0062_recommendation_multi_interest_profile_shadow",
+  "0063_recommendation_live_profile_pilot",
+  "0064_recommendation_governance_review_guards",
+  "0065_recommendation_strategy_manifest_immutability",
+  "0066_recommendation_playback_finalization_repair",
+  "0067_recommendation_episode_submission_budget_repair",
+  "0068_recommendation_trace_actor_digest_repair",
+  "0069_recommendation_hybrid_composition",
+  "0070_recommendation_consent_receipts",
+  "0071_recommendation_assignment_generation_key",
+  "0072_recommendation_source_neutral_playback_episodes",
+  "0100_recommendation_candidate_compact_trace",
+  "0101_recommendation_candidate_compact_trace_validate",
+  "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0118_recommendation_candidate_stage_expiry_index_drop",
+].map((migration) =>
+  readFileSync(
+    new URL(
+      `../../../prisma/migrations/${migration}/migration.sql`,
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+)
+
+function digest(value: string): string {
+  return createHash("sha256").update(value).digest("hex")
+}
+
+describe.skipIf(!RUN_REAL_DB_TEST)(
+  "recommendation tracer migration against real PostgreSQL",
+  () => {
+    const schemaName = `recommendation_u1_${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}`
+    let client: Client
+    let databaseUrl: string
+    // Relative to now, not a fixed date. `recommendation_request_expiry_check`
+    // is CHECK (expires_at > created_at) and created_at defaults to now(), so a
+    // hardcoded timestamp silently becomes a time bomb: this suite passed until
+    // wall-clock reached the literal, then failed for every PR. Never asserted
+    // on -- it is only ever insert data.
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString()
+
+    // Keep creation on the fixed fixture timeline instead of the database clock.
+    async function insertRequest(id: string, expectedItemCount: number) {
+      await client.query(
+        `INSERT INTO "recommendation_request" (
+          "id", "contract_version", "surface_version", "manifest_id",
+          "strategy_version", "classifier_version", "session_digest",
+          "seed_media_id", "locale", "expected_item_count", "result", "expires_at", "created_at"
+        ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+          'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
+          'legacy-position-v0', $2, 'seed-video', 'en', $3, 'served', $4, '2026-08-19T00:00:00.000Z')`,
+        [id, "a".repeat(64), expectedItemCount, expiresAt],
+      )
+    }
+
+    async function insertItem(
+      id: string,
+      requestId: string,
+      position: number,
+      childExpiresAt = expiresAt,
+      capabilityJti: string | null = null,
+    ) {
+      await client.query(
+        `INSERT INTO "recommendation_served_item" (
+          "id", "request_id", "position", "target_media_id", "canonical_href",
+          "candidate_generator", "candidate_provenance", "expires_at",
+          "capability_jti"
+        ) VALUES ($1, $2, $3, $4, $5, 'semantic', '{}'::jsonb, $6, $7)`,
+        [
+          id,
+          requestId,
+          position,
+          `video-${position}`,
+          `/watch/video-${position}`,
+          childExpiresAt,
+          capabilityJti,
+        ],
+      )
+    }
+
+    async function insertLifecycleGraph(prefix: string) {
+      const requestId = `${prefix}-request`
+      const itemId = `${prefix}-item`
+      const selectionId = `${prefix}-selection`
+      const episodeId = `${prefix}-episode`
+      await insertRequest(requestId, 1)
+      await insertItem(itemId, requestId, 0)
+      await client.query(
+        `INSERT INTO recommendation_selection (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, claim_nonce_digest, handoff_expires_at,
+          occurred_at, expires_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7,
+          '2026-08-19T03:05:00.000Z', '2026-08-19T03:00:00.000Z', $8)`,
+        [
+          selectionId,
+          requestId,
+          itemId,
+          `${prefix}-selection-jti`,
+          `${prefix}-selection-event`,
+          "b".repeat(64),
+          digest(`${prefix}-claim-nonce`),
+          expiresAt,
+        ],
+      )
+      await client.query(
+        `INSERT INTO recommendation_playback_episode (
+          id, request_id, item_id, selection_id, media_id, session_digest,
+          state, capability_jti, signing_kid, active_until, hard_until,
+          generation, claimed_at, expires_at
+        ) VALUES ($1, $2, $3, $4, 'video-0', $5, 'claimed', $6, 'kid-1',
+          '2026-08-19T07:00:00.000Z', '2026-08-19T09:00:00.000Z', 1,
+          '2026-08-19T03:00:00.000Z', $7)`,
+        [
+          episodeId,
+          requestId,
+          itemId,
+          selectionId,
+          "a".repeat(64),
+          `${prefix}-episode-jti`,
+          expiresAt,
+        ],
+      )
+      return { requestId, itemId, selectionId, episodeId }
+    }
+
+    beforeAll(async () => {
+      databaseUrl = env.DATABASE_URL
+      client = new Client({ connectionString: databaseUrl })
+      await client.connect()
+      await client.query(`CREATE SCHEMA "${schemaName}"`)
+      await client.query(`SET search_path TO "${schemaName}", public`)
+      for (const migration of migrationSql) await client.query(migration)
+    })
+
+    it("bounds stage evidence, shares request expiry, and cascades the complete run", async () => {
+      await insertRequest("candidate-run-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, baseline_digest,
+          platform_digest, nominated_count, canonicalized_count,
+          deduplicated_count, rejected_count, scored_count, ordered_count,
+          composed_count, evidence_complete, expires_at
+        ) VALUES (
+          'candidate-run-1', 'candidate-run-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', $1, $1, 1, 1, 1, 0, 1, 1, 1, true, $2
+        )`,
+        ["c".repeat(64), expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_candidate_stage_evidence (
+          id, run_id, stage, ordinal, candidate_key, target_media_id,
+          source_generator, source_rank, source_score, normalized_score,
+          rrf_score, deterministic_score, final_position, reason_codes,
+          source_evidence, expires_at
+        ) VALUES (
+          'candidate-stage-1', 'candidate-run-1', 'composed', 0,
+          'video-a', 'video-a', 'semantic', 1, 0.9, 1, 0.016393,
+          1, 0, ARRAY['playable_localized_deduplicated'],
+          '[{"generator":"semantic","rank":1,"score":0.9}]'::jsonb, $1
+        )`,
+        [expiresAt],
+      )
+      const stored = await client.query(
+        `SELECT run.evidence_complete, run.candidate_eligibility_parity,
+          stage.stage, jsonb_array_length(stage.source_evidence) AS sources
+         FROM recommendation_candidate_run run
+         JOIN recommendation_candidate_stage_evidence stage
+           ON stage.run_id = run.id
+         WHERE run.id = 'candidate-run-1'`,
+      )
+      expect(stored.rows).toEqual([
+        {
+          evidence_complete: true,
+          candidate_eligibility_parity: "passed",
+          stage: "composed",
+          sources: 1,
+        },
+      ])
+
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_candidate_stage_evidence (
+            id, run_id, stage, ordinal, candidate_key, source_evidence,
+            expires_at
+          ) VALUES ('candidate-stage-too-many', 'candidate-run-1',
+            'nominated', 1, 'video-b',
+            (SELECT jsonb_agg(value) FROM generate_series(1, 17) value), $1)`,
+          [expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23514" })
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_candidate_stage_evidence (
+            id, run_id, stage, ordinal, candidate_key, expires_at
+          ) VALUES ('candidate-stage-extended', 'candidate-run-1',
+            'nominated', 1, 'video-b', '2026-09-18T00:00:00.000Z')`,
+        ),
+      ).rejects.toThrow("recommendation candidate stage expiry")
+
+      await client.query(
+        `DELETE FROM recommendation_request WHERE id = 'candidate-run-request'`,
+      )
+      const remaining = await client.query(
+        `SELECT
+          (SELECT count(*)::int FROM recommendation_candidate_run
+            WHERE id = 'candidate-run-1') AS runs,
+          (SELECT count(*)::int FROM recommendation_candidate_stage_evidence
+            WHERE run_id = 'candidate-run-1') AS stages`,
+      )
+      expect(remaining.rows).toEqual([{ runs: 0, stages: 0 }])
+    })
+
+    it("keeps the unique stage index and enforces complete compact traces", async () => {
+      const indexes = await client.query<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes
+         WHERE schemaname = $1 AND tablename = 'recommendation_candidate_stage_evidence'`,
+        [schemaName],
+      )
+      expect(indexes.rows.map((row) => row.indexname)).toContain(
+        "recommendation_candidate_stage_ordinal_key",
+      )
+      expect(indexes.rows.map((row) => row.indexname)).not.toContain(
+        "recommendation_candidate_stage_run_stage_idx",
+      )
+      expect(indexes.rows.map((row) => row.indexname)).not.toContain(
+        "recommendation_candidate_stage_expiry_idx",
+      )
+
+      await insertRequest("compact-trace-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count,
+          scored_count, ordered_count, composed_count, evidence_complete,
+          trace_format_version, trace_payload, expires_at
+        ) VALUES (
+          'compact-trace-run', 'compact-trace-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 0, 0, 0, 0, 0, 0, 0, true,
+          1, '{"stages":[]}'::jsonb, $1
+        )`,
+        [expiresAt],
+      )
+      const stage = {
+        id: "compact-stage-1",
+        stage: "composed",
+        ordinal: 0,
+        candidateKey: "video-a",
+        targetMediaId: "video-a",
+        sourceGenerator: "semantic",
+        sourceRank: 1,
+        sourceScore: 0.9,
+        normalizedScore: 1,
+        rrfScore: null,
+        deterministicScore: 0.9,
+        finalPosition: 0,
+        reasonCodes: ["playable_localized_deduplicated"],
+        sourceEvidence: [{ generator: "semantic", rank: 1, score: 0.9 }],
+        createdAt: "2026-09-28T00:00:00.000Z",
+      }
+      const update = (payload: unknown, version: number | null = 1) =>
+        client.query(
+          `UPDATE recommendation_candidate_run
+           SET trace_format_version = $1, trace_payload = $2::jsonb
+           WHERE id = 'compact-trace-run'`,
+          [version, JSON.stringify(payload)],
+        )
+      await update({ stages: [stage] })
+      const fullTrace = [
+        "nominated",
+        "canonicalized",
+        "deduplicated",
+        "rejected",
+        "scored",
+        "ordered",
+        "composed",
+      ].flatMap((stageName) =>
+        Array.from({ length: 64 }, (_, ordinal) => ({
+          ...stage,
+          id: `compact-${stageName}-${ordinal}`,
+          stage: stageName,
+          ordinal,
+          finalPosition: stageName === "composed" ? ordinal : null,
+        })),
+      )
+      await update({ stages: fullTrace })
+      await expect(
+        update({ stages: [...fullTrace, { ...stage, id: "overflow" }] }),
+      ).rejects.toMatchObject({ code: "23514" })
+      for (const payload of [
+        { stages: [{ ...stage, sourceScore: 2 }] },
+        { stages: [{ ...stage, sourceEvidence: Array(17).fill({}) }] },
+        { stages: [{ ...stage, ordinal: 64 }] },
+        { stages: [{ ...stage, reasonCodes: [null] }] },
+        { stages: [stage, { ...stage, id: "compact-stage-2" }] },
+        { stages: [stage, { ...stage, id: "compact-stage-2", ordinal: 0.0 }] },
+        { stages: [{ ...stage, createdAt: "2026-99-99T00:00:00.000Z" }] },
+        { stages: [{ ...stage, reasonCodes: "not-an-array" }] },
+        { stages: [{ ...stage, sourceEvidence: "not-an-array" }] },
+        { stages: [{ ...stage, targetMediaId: undefined }] },
+        { stages: [{ ...stage, unboundedExtra: "unexpected" }] },
+      ]) {
+        await expect(update(payload)).rejects.toMatchObject({ code: "23514" })
+      }
+      await expect(update({ stages: [] }, null)).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(update({ stages: "not-an-array" })).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(
+        update({ stages: [], unboundedExtra: true }),
+      ).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(update({ stages: [] }, 2)).rejects.toMatchObject({
+        code: "23514",
+      })
+      const stored = await client.query(
+        `SELECT trace_format_version, trace_payload
+         FROM recommendation_candidate_run WHERE id = 'compact-trace-run'`,
+      )
+      expect(stored.rows).toEqual([
+        { trace_format_version: 1, trace_payload: { stages: fullTrace } },
+      ])
+      await client.query(
+        `DELETE FROM recommendation_request WHERE id = 'compact-trace-request'`,
+      )
+      const remaining = await client.query(
+        `SELECT count(*)::int AS count FROM recommendation_candidate_run
+         WHERE id = 'compact-trace-run'`,
+      )
+      expect(remaining.rows).toEqual([{ count: 0 }])
+    })
+
+    it("fails a contended duplicate-index drop promptly and succeeds on retry", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes(
+          'DROP INDEX "recommendation_candidate_stage_run_stage_idx"',
+        ),
+      )!
+      await client.query(
+        `CREATE INDEX recommendation_candidate_stage_run_stage_idx
+         ON recommendation_candidate_stage_evidence (run_id, stage, ordinal)`,
+      )
+      const blocker = new Client({ connectionString: databaseUrl })
+      await blocker.connect()
+      try {
+        await blocker.query(`SET search_path TO "${schemaName}", public`)
+        await blocker.query("BEGIN")
+        await blocker.query(
+          "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
+        )
+        await expect(client.query(dropSql)).rejects.toMatchObject({
+          code: "55P03",
+        })
+        await client.query("ROLLBACK")
+        const blockedIndex = await client.query<{ indexname: string }>(
+          `SELECT indexname FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_run_stage_idx'`,
+          [schemaName],
+        )
+        expect(blockedIndex.rows).toHaveLength(1)
+      } finally {
+        await blocker.query("ROLLBACK")
+        await blocker.end()
+      }
+      await client.query(dropSql)
+      const removedIndex = await client.query<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes WHERE schemaname = $1
+         AND indexname = 'recommendation_candidate_stage_run_stage_idx'`,
+        [schemaName],
+      )
+      expect(removedIndex.rows).toHaveLength(0)
+    }, 10_000)
+
+    it("keeps shadow output offline, bounded, immutable, and request-owned", async () => {
+      await insertRequest("shadow-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count, scored_count,
+          ordered_count, composed_count, evidence_complete, expires_at
+        ) VALUES (
+          'shadow-live-run', 'shadow-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 1, 1, 1, 0, 1, 1, 1, true, $1
+        )`,
+        [expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_shadow_evaluation (
+          id, manifest_id, generator_version, sampling_version,
+          context_version, eligibility_version, retention_policy_version,
+          generation, window_start, window_end, requested_sample_size,
+          sampled_count, expires_at
+        ) VALUES (
+          'shadow-evaluation-1', 'semantic-candidate-platform-v1',
+          'profile-v1', 'stable-request-hash-v1',
+          'recommendation-context-v1', 'watch-playable-locale-v1',
+          'request-root-29d-aggregate-365d-v1', 3,
+          '2026-08-24T00:00:00.000Z', '2026-08-25T00:00:00.000Z',
+          10, 1, '2027-08-25T00:00:00.000Z'
+        )`,
+      )
+      await client.query(
+        `INSERT INTO recommendation_shadow_run (
+          id, evaluation_id, request_id, live_candidate_run_id,
+          sample_ordinal, sampling_digest, context_projection_ref,
+          context_projection_version, context_projection_digest,
+          eligibility_version, retention_policy_version, state, generation,
+          claim_id, claimed_at, heartbeat_at, input_captured_at, expires_at
+        ) VALUES (
+          'shadow-run-1', 'shadow-evaluation-1', 'shadow-request',
+          'shadow-live-run', 0, $1, 'shadow-live-run',
+          'recommendation-context-v1', $2, 'watch-playable-locale-v1',
+          'request-root-29d-aggregate-365d-v1', 'claimed', 3,
+          '11111111-1111-4111-8111-111111111111',
+          '2026-08-25T00:00:00.000Z', '2026-08-25T00:00:00.000Z',
+          '2026-08-24T23:59:00.000Z', $3
+        )`,
+        ["d".repeat(64), "e".repeat(64), expiresAt],
+      )
+      const context: RecommendationCandidateContext = {
+        surface: "watch-below-player-v1",
+        purpose: "watch",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }
+      const nominations = adaptSemanticCandidates(
+        [
+          {
+            videoId: "video-a",
+            videoSlug: "video-a",
+            videoTitle: "Video A",
+            imageUrl: "https://images.example/a.jpg",
+            sceneIndex: 0,
+            description: "",
+            startSeconds: 0,
+            endSeconds: null,
+            themes: [],
+            demographics: [],
+            spiritualContext: [],
+            playbackId: "playback-a",
+            similarity: 0.9,
+          },
+        ],
+        context,
+      ).nominations.map((nomination) => ({
+        ...nomination,
+        source: {
+          ...nomination.source,
+          evidence: {
+            interestOrdinal: 1,
+            ...Object.fromEntries(
+              Array.from({ length: 15 }, (_, index) => [
+                `evidence${index}`,
+                "界".repeat(128),
+              ]),
+            ),
+          },
+        },
+      }))
+      const projection = evaluateShadowProjection({
+        context,
+        liveOrder: ["video-a"],
+        nominations,
+        limit: 6,
+        projectionCapturedAt: null,
+        evaluatedAt: new Date("2026-08-25T00:00:00.000Z"),
+        latencyMs: 1,
+        cohortQuality: null,
+      })
+      const provenance = projection.nominations[0]!.provenance
+      await client.query(
+        `INSERT INTO recommendation_shadow_nomination (
+          id, run_id, ordinal, candidate_key, target_media_id, generator,
+          generator_version, source_rank, source_score, eligible,
+          shadow_position, overlaps_live, provenance, expires_at
+        ) VALUES (
+          'shadow-nomination-1', 'shadow-run-1', 0, 'video-a', 'video-a',
+          'profile', 'profile-v1', 1, 0.9, true, 0, true,
+          $2::jsonb, $1
+        )`,
+        [expiresAt, JSON.stringify(provenance)],
+      )
+      const stored =
+        await client.query(`SELECT pg_column_size(provenance) AS bytes, provenance
+        FROM recommendation_shadow_nomination WHERE id = 'shadow-nomination-1'`)
+      expect(stored.rows[0].bytes).toBeLessThanOrEqual(2048)
+      expect(stored.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+      })
+      const inspected =
+        await client.query(`SELECT ${shadowSlateProvenanceSql.text} AS provenance
+        FROM recommendation_shadow_nomination nomination WHERE id = 'shadow-nomination-1'`)
+      expect(inspected.rows[0].provenance).toMatchObject({
+        slateDecision: "pending",
+        slateRank: 0,
+        slatePosition: 0,
+        slateHistory: "unavailable",
+        slateEditorial: "adapter_pending",
+      })
+      expect(inspected.rows[0].provenance).not.toHaveProperty("evidence0")
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_shadow_nomination (
+            id, run_id, ordinal, candidate_key, target_media_id, generator,
+            generator_version, source_rank, source_score, eligible,
+            overlaps_live, provenance, expires_at
+          ) VALUES (
+            'shadow-nomination-vector', 'shadow-run-1', 1, 'video-b',
+            'video-b', 'profile', 'profile-v1', 2, 0.8, true, false,
+            '{"rawProfileVector":"secret"}'::jsonb, $1
+          )`,
+          [expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23514" })
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_shadow_nomination (
+            id, run_id, ordinal, candidate_key, target_media_id, generator,
+            generator_version, source_rank, source_score, eligible,
+            overlaps_live, expires_at
+          ) VALUES (
+            'shadow-nomination-expiry', 'shadow-run-1', 1, 'video-b',
+            'video-b', 'profile', 'profile-v1', 2, 0.8, true, false,
+            '2026-09-18T00:00:00.000Z'
+          )`,
+        ),
+      ).rejects.toThrow("shadow nomination expiry")
+
+      await client.query(
+        `INSERT INTO recommendation_shadow_decision (
+          id, evaluation_id, decision, reason_code, reevaluation_condition,
+          input_digest, decided_at, expires_at
+        ) VALUES (
+          'shadow-decision-1', 'shadow-evaluation-1', 'inconclusive',
+          'insufficient_shadow_samples', 'collect_at_least_10_runs', $1,
+          '2026-08-25T00:01:00.000Z', '2027-08-25T00:00:00.000Z'
+        )`,
+        ["f".repeat(64)],
+      )
+      await client.query(
+        `UPDATE recommendation_shadow_evaluation
+         SET state = 'terminal' WHERE id = 'shadow-evaluation-1'`,
+      )
+      await expect(
+        client.query(
+          `UPDATE recommendation_shadow_decision SET reason_code = 'changed'
+           WHERE id = 'shadow-decision-1'`,
+        ),
+      ).rejects.toThrow("terminal decisions are immutable")
+      await expect(
+        client.query(
+          `UPDATE recommendation_shadow_evaluation SET coverage = 1
+           WHERE id = 'shadow-evaluation-1'`,
+        ),
+      ).rejects.toThrow("shadow evaluations are immutable")
+
+      await client.query(
+        `DELETE FROM recommendation_request WHERE id = 'shadow-request'`,
+      )
+      const retained = await client.query(
+        `SELECT
+          (SELECT count(*)::int FROM recommendation_shadow_run
+            WHERE id = 'shadow-run-1') AS runs,
+          (SELECT count(*)::int FROM recommendation_shadow_nomination
+            WHERE run_id = 'shadow-run-1') AS nominations,
+          (SELECT count(*)::int FROM recommendation_shadow_evaluation
+            WHERE id = 'shadow-evaluation-1') AS evaluations,
+          (SELECT count(*)::int FROM recommendation_shadow_decision
+            WHERE id = 'shadow-decision-1') AS decisions`,
+      )
+      expect(retained.rows).toEqual([
+        { runs: 0, nominations: 0, evaluations: 1, decisions: 1 },
+      ])
+    })
+
+    it("issues unavailable roots without inventing a delivery capability", async () => {
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_request (
+            id, contract_version, surface_version, manifest_id,
+            strategy_version, classifier_version, session_digest,
+            seed_media_id, locale, expected_item_count, state, result,
+            signing_kid, issued_at, expires_at, created_at
+          ) VALUES (
+            'issued-unavailable', 'semantic-recommendation-v1',
+            'watch-below-player-v1', 'semantic-transcript-pgvector-v1',
+            'semantic-transcript-pgvector-v1', 'legacy-position-v0', $1,
+            'seed-video', 'en', 0, 'issued', 'unavailable', 'kid-1',
+            '2026-08-24T00:00:00.000Z', $2, '2026-08-24T00:00:00.000Z'
+          )`,
+          ["a".repeat(64), expiresAt],
+        ),
+      ).resolves.toBeDefined()
+      const unavailable = await client.query(
+        `SELECT expected_item_count, delivery_jti, signing_kid
+         FROM recommendation_request WHERE id = 'issued-unavailable'`,
+      )
+      expect(unavailable.rows).toEqual([
+        {
+          expected_item_count: 0,
+          delivery_jti: null,
+          signing_kid: "kid-1",
+        },
+      ])
+
+      const insertInvalidIssuedRoot = (
+        id: string,
+        result: "served" | "unavailable",
+        expectedItemCount: number,
+        deliveryJti: string | null,
+      ) =>
+        client.query(
+          `INSERT INTO recommendation_request (
+            id, contract_version, surface_version, manifest_id,
+            strategy_version, classifier_version, session_digest,
+            seed_media_id, locale, expected_item_count, state, result,
+            delivery_jti, signing_kid, issued_at, expires_at, created_at
+          ) VALUES (
+            $1, 'semantic-recommendation-v1', 'watch-below-player-v1',
+            'semantic-transcript-pgvector-v1',
+            'semantic-transcript-pgvector-v1', 'legacy-position-v0', $2,
+            'seed-video', 'en', $3, 'issued', $4, $5, 'kid-1',
+            '2026-08-24T00:00:00.000Z', $6, '2026-08-24T00:00:00.000Z'
+          )`,
+          [
+            id,
+            "a".repeat(64),
+            expectedItemCount,
+            result,
+            deliveryJti,
+            expiresAt,
+          ],
+        )
+
+      await expect(
+        insertInvalidIssuedRoot(
+          "issued-unavailable-with-item",
+          "unavailable",
+          1,
+          null,
+        ),
+      ).rejects.toMatchObject({ code: "23514" })
+      await expect(
+        insertInvalidIssuedRoot(
+          "issued-unavailable-with-capability",
+          "unavailable",
+          0,
+          "unavailable-jti",
+        ),
+      ).rejects.toMatchObject({ code: "23514" })
+      await expect(
+        insertInvalidIssuedRoot(
+          "issued-served-without-capability",
+          "served",
+          0,
+          null,
+        ),
+      ).rejects.toMatchObject({ code: "23514" })
+    })
+
+    it("rejects a partial request at commit and leaves no parent or orphan item", async () => {
+      await client.query("BEGIN")
+      await insertRequest("partial-request", 2)
+      await insertItem("partial-item", "partial-request", 0)
+      await expect(client.query("COMMIT")).rejects.toThrow(
+        "recommendation request item set is incomplete",
+      )
+      await client.query("ROLLBACK")
+
+      const result = await client.query(
+        `SELECT
+          (SELECT count(*)::int FROM recommendation_request WHERE id = 'partial-request') requests,
+          (SELECT count(*)::int FROM recommendation_served_item WHERE request_id = 'partial-request') items`,
+      )
+      expect(result.rows[0]).toEqual({ requests: 0, items: 0 })
+    })
+
+    it("accepts a complete contiguous set and rejects child-extended retention", async () => {
+      await client.query("BEGIN")
+      await insertRequest("complete-request", 2)
+      await insertItem("complete-item-0", "complete-request", 0)
+      await insertItem("complete-item-1", "complete-request", 1)
+      await expect(client.query("COMMIT")).resolves.toBeDefined()
+
+      await client.query("BEGIN")
+      await insertRequest("expiry-request", 1)
+      await expect(
+        insertItem(
+          "expiry-item",
+          "expiry-request",
+          0,
+          // Deliberately not the request root's expiry. Derived from it so it
+          // stays a guaranteed-different future instant rather than a literal
+          // that could drift into the past or coincide with the root.
+          new Date(Date.parse(expiresAt) + 1_000).toISOString(),
+        ),
+      ).rejects.toThrow("child expiry must match request root")
+      await client.query("ROLLBACK")
+    })
+
+    it("enforces same-request lineage across lifecycle children", async () => {
+      await client.query("BEGIN")
+      await insertRequest("lineage-a-request", 1)
+      await insertItem("lineage-a-item", "lineage-a-request", 0)
+      await insertRequest("lineage-b-request", 1)
+      await insertItem("lineage-b-item", "lineage-b-request", 0)
+      await client.query("COMMIT")
+
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_rendered_fact (
+            id, request_id, item_id, capability_jti, event_id,
+            payload_digest, occurred_at, expires_at
+          ) VALUES ('lineage-render', 'lineage-a-request', 'lineage-b-item',
+            'lineage-render-jti', 'lineage-render-event', $1,
+            '2026-08-19T03:00:00.000Z', $2)`,
+          ["1".repeat(64), expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_impression (
+            id, request_id, item_id, capability_jti, event_id,
+            payload_digest, visibility_policy, occurred_at, expires_at
+          ) VALUES ('lineage-impression', 'lineage-a-request', 'lineage-b-item',
+            'lineage-impression-jti', 'lineage-impression-event', $1,
+            'intersection-v1', '2026-08-19T03:00:00.000Z', $2)`,
+          ["2".repeat(64), expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_selection (
+            id, request_id, item_id, capability_jti, event_id,
+            payload_digest, claim_nonce_digest, handoff_expires_at,
+            occurred_at, expires_at
+          ) VALUES ('lineage-selection-cross', 'lineage-a-request',
+            'lineage-b-item', 'lineage-selection-cross-jti',
+            'lineage-selection-cross-event', $1, $2,
+            '2026-08-19T03:05:00.000Z', '2026-08-19T03:00:00.000Z', $3)`,
+          ["3".repeat(64), digest("lineage-selection-cross"), expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+
+      await client.query(
+        `INSERT INTO recommendation_selection (
+          id, request_id, item_id, capability_jti, event_id,
+          payload_digest, claim_nonce_digest, handoff_expires_at,
+          occurred_at, expires_at
+        ) VALUES ('lineage-b-selection', 'lineage-b-request',
+          'lineage-b-item', 'lineage-b-selection-jti',
+          'lineage-b-selection-event', $1, $2,
+          '2026-08-19T03:05:00.000Z', '2026-08-19T03:00:00.000Z', $3)`,
+        ["4".repeat(64), digest("lineage-b-selection"), expiresAt],
+      )
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_playback_episode (
+            id, request_id, item_id, selection_id, media_id, session_digest,
+            active_until, hard_until, expires_at
+          ) VALUES ('lineage-episode-cross', 'lineage-a-request',
+            'lineage-a-item', 'lineage-b-selection', 'video-0', $1,
+            '2026-08-19T07:00:00.000Z', '2026-08-19T09:00:00.000Z', $2)`,
+          ["5".repeat(64), expiresAt],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+
+      await client.query("BEGIN")
+      const graphA = await insertLifecycleGraph("lineage-graph-a")
+      const graphB = await insertLifecycleGraph("lineage-graph-b")
+      await client.query("COMMIT")
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_playback_fact (
+            id, request_id, item_id, episode_id, capability_jti, event_id,
+            payload_digest, sequence, kind, occurred_at, expires_at
+          ) VALUES ('lineage-fact-cross', $1, $2, $3,
+            'lineage-fact-cross-jti', 'lineage-fact-cross-event', $4, 1,
+            'playback_start', '2026-08-19T03:01:00.000Z', $5)`,
+          [
+            graphA.requestId,
+            graphA.itemId,
+            graphB.episodeId,
+            "6".repeat(64),
+            expiresAt,
+          ],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, qualified_view,
+            view_quality_weight_reason, generation, expires_at
+          ) VALUES ('lineage-outcome-cross', $1, $2, $3,
+            'legacy-position-v0', 0, $4, 1, false,
+            'continuous_weight_not_available', 1, $5)`,
+          [
+            graphA.requestId,
+            graphA.itemId,
+            graphB.episodeId,
+            "7".repeat(64),
+            expiresAt,
+          ],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+
+      await client.query(
+        `INSERT INTO recommendation_outcome_revision (
+          id, request_id, item_id, episode_id, classifier_version,
+          fact_watermark, input_digest, revision, qualified_view,
+          view_quality_weight_reason, generation, expires_at
+        ) VALUES ('lineage-a-outcome', $1, $2, $3,
+          'legacy-position-v0', 0, $4, 1, false,
+          'continuous_weight_not_available', 1, $5)`,
+        [
+          graphA.requestId,
+          graphA.itemId,
+          graphA.episodeId,
+          "8".repeat(64),
+          expiresAt,
+        ],
+      )
+      await expect(
+        client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, supersedes_id,
+            qualified_view, view_quality_weight_reason, generation, expires_at
+          ) VALUES ('lineage-b-outcome', $1, $2, $3,
+            'legacy-position-v0', 0, $4, 1, 'lineage-a-outcome', false,
+            'continuous_weight_not_available', 1, $5)`,
+          [
+            graphB.requestId,
+            graphB.itemId,
+            graphB.episodeId,
+            "9".repeat(64),
+            expiresAt,
+          ],
+        ),
+      ).rejects.toMatchObject({ code: "23503" })
+    })
+
+    it("checks both request roots when an item moves", async () => {
+      await client.query("BEGIN")
+      await insertRequest("move-source-request", 1)
+      await insertItem("move-item", "move-source-request", 0)
+      await insertRequest("move-target-request", 0)
+      await client.query("COMMIT")
+
+      await client.query("BEGIN")
+      await client.query(
+        `UPDATE recommendation_request SET expected_item_count = 1
+         WHERE id = 'move-target-request'`,
+      )
+      await client.query(
+        `UPDATE recommendation_served_item SET request_id = 'move-target-request'
+         WHERE id = 'move-item'`,
+      )
+      await expect(client.query("COMMIT")).rejects.toThrow(
+        "recommendation request item set is incomplete",
+      )
+      await client.query("ROLLBACK")
+
+      const roots = await client.query(
+        `SELECT request_id FROM recommendation_served_item WHERE id = 'move-item'`,
+      )
+      expect(roots.rows).toEqual([{ request_id: "move-source-request" }])
+    })
+
+    it("indexes submission budgets by their retention-owning request", async () => {
+      const index = await client.query(
+        `SELECT indexdef FROM pg_indexes
+         WHERE schemaname = current_schema()
+           AND indexname = 'recommendation_capability_submission_budget_request_idx'`,
+      )
+      expect(index.rows).toHaveLength(1)
+      expect(index.rows[0]?.indexdef).toContain("(request_id)")
+    })
+
+    it("indexes only episodes with pending finalization work", async () => {
+      const index = await client.query(
+        `SELECT indexdef FROM pg_indexes
+         WHERE schemaname = current_schema()
+           AND indexname = 'recommendation_episode_finalization_due_idx'`,
+      )
+      expect(index.rows).toHaveLength(1)
+      expect(index.rows[0]?.indexdef).toContain(
+        "(finalization_due_at, id) INCLUDE (generation, active_until, expires_at)",
+      )
+      expect(index.rows[0]?.indexdef).toContain(
+        "WHERE (finalization_due_at IS NOT NULL)",
+      )
+    })
+
+    it("leaves stage evidence and its index intact on a contended drop, then succeeds", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes('DROP INDEX "recommendation_candidate_stage_expiry_idx"'),
+      )!
+      await insertRequest("expiry-index-retained-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count,
+          scored_count, ordered_count, composed_count, evidence_complete,
+          expires_at
+        ) VALUES (
+          'expiry-index-retained-run', 'expiry-index-retained-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 1, 1, 1, 0, 1, 1, 1, true, $1
+        )`,
+        [expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_candidate_stage_evidence
+          (id, run_id, stage, ordinal, candidate_key, expires_at)
+         VALUES ('expiry-index-retained-stage', 'expiry-index-retained-run',
+           'nominated', 0, 'video-a', $1)`,
+        [expiresAt],
+      )
+      await client.query(
+        `CREATE INDEX recommendation_candidate_stage_expiry_idx
+         ON recommendation_candidate_stage_evidence (expires_at, id)`,
+      )
+      const other = new Client({ connectionString: databaseUrl })
+      await other.connect()
+      try {
+        await other.query(`SET search_path TO "${schemaName}", public`)
+        await client.query("BEGIN")
+        await client.query(
+          "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
+        )
+        await expect(other.query(dropSql)).rejects.toMatchObject({
+          code: "55P03",
+        })
+        await other.query("ROLLBACK")
+        const retained = await client.query(
+          `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+        )
+        expect(retained.rows[0]?.stages).toBeGreaterThan(0)
+        const index = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(index.rows).toHaveLength(1)
+        await client.query("COMMIT")
+        await other.query(dropSql)
+        const dropped = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(dropped.rows).toHaveLength(0)
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+            )
+          ).rows[0]?.stages,
+        ).toBe(retained.rows[0]?.stages)
+        await client.query(
+          "DELETE FROM recommendation_request WHERE id = 'expiry-index-retained-request'",
+        )
+        const cascaded = await client.query(
+          `SELECT 1 FROM recommendation_candidate_stage_evidence
+           WHERE run_id = 'expiry-index-retained-run'`,
+        )
+        expect(cascaded.rows).toHaveLength(0)
+      } finally {
+        await client.query("ROLLBACK")
+        await other.end()
+      }
+    })
+
+    afterAll(async () => {
+      if (!client) return
+      await client.query("RESET search_path")
+      await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await client.end()
+    })
+  },
+)

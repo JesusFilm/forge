@@ -1,3 +1,5 @@
+import { miniPlayerPresentation } from "../presentation"
+import { createMiniPlayerStore } from "../store"
 import {
   IN_APP_SHEET_ROUTE_PATTERNS,
   createNonRouteSheetCounter,
@@ -22,16 +24,54 @@ describe("isInAppSheetRoute", () => {
     expect(isInAppSheetRoute(pattern.split("/"))).toBe(true)
   })
 
-  it("covers exactly the six group sheets", () => {
-    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(6)
+  it("covers the six group sheets, the three reader sheets, and feedback", () => {
+    expect(IN_APP_SHEET_ROUTE_PATTERNS).toHaveLength(10)
+  })
+
+  // feat-553 U10: root-stack routes, so each pattern is one bare segment.
+  it.each(["reader-passage", "reader-translation", "reader-settings"])(
+    "treats the reader's %s sheet as a sheet",
+    (name) => {
+      expect(isInAppSheetRoute([name])).toBe(true)
+    },
+  )
+
+  it("hides the mini player while a reader sheet shows", () => {
+    const store = createMiniPlayerStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      originPattern: "watch/[slug]",
+    })
+    for (const name of [
+      "reader-passage",
+      "reader-translation",
+      "reader-settings",
+    ]) {
+      expect(miniPlayerPresentation(store.getSnapshot(), [name])).toBe("hidden")
+    }
+    // The Bible tab itself keeps the window.
+    expect(
+      miniPlayerPresentation(store.getSnapshot(), ["(tabs)", "bible"]),
+    ).toBe("floating")
+  })
+
+  // A ROOT route, so its pattern is one bare segment — the list is not
+  // "everything under watch/ and series/".
+  it("treats the root feedback sheet as a sheet", () => {
+    expect(isInAppSheetRoute(["feedback"])).toBe(true)
+    expect(isSuppressedBySheet(["feedback"], 0)).toBe(true)
   })
 
   it.each([
     [["watch", "[slug]"]],
     [["series", "[slug]"]],
     [["(tabs)", "watch"]],
-    [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["experience", "[slug]"]],
+    [["reader"]],
+    [["(tabs)", "bible"]],
   ])("does not treat %s as a sheet", (segments) => {
     expect(isInAppSheetRoute(segments)).toBe(false)
   })
@@ -49,13 +89,13 @@ describe("non-route sheet counter", () => {
 
     counter.open("libraryDeleteConfirm")
     expect(counter.count()).toBe(1)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       true,
     )
 
     counter.close("libraryDeleteConfirm")
     expect(counter.count()).toBe(0)
-    expect(isSuppressedBySheet(["(tabs)", "library"], counter.count())).toBe(
+    expect(isSuppressedBySheet(["(tabs)", "profile"], counter.count())).toBe(
       false,
     )
 
@@ -93,6 +133,60 @@ describe("non-route sheet counter", () => {
     expect(counter.count()).toBe(1)
   })
 
+  it("suppresses while the player settings sheet is open and restores at zero", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    expect(counter.count()).toBe(1)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(true)
+
+    counter.close("playerSettings")
+    expect(counter.count()).toBe(0)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(
+      false,
+    )
+  })
+
+  it("suppresses while the player-door feedback sheet is open", () => {
+    // The More door is the ROUTE above; this id covers the modal the player
+    // door mounts, which cannot be a route (KTD4).
+    const counter = createNonRouteSheetCounter()
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(1)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(true)
+
+    counter.close("feedbackModal")
+    expect(counter.count()).toBe(0)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(
+      false,
+    )
+  })
+
+  it("counts the settings sheet and the feedback sheet apart", () => {
+    // The player door opens the second from inside the first, so one id
+    // releasing must not uncover the window while the other is still up.
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(2)
+    counter.close("playerSettings")
+    expect(counter.isPresented()).toBe(true)
+    counter.close("feedbackModal")
+    expect(counter.isPresented()).toBe(false)
+  })
+
+  it("cannot underflow on a double close of the settings sheet", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    counter.close("playerSettings")
+    counter.close("playerSettings")
+    expect(counter.count()).toBe(0)
+
+    counter.open("sduiQuiz")
+    expect(counter.isPresented()).toBe(true)
+    counter.close("sduiQuiz")
+    expect(counter.isPresented()).toBe(false)
+  })
+
   it("notifies subscribers on a real change only", () => {
     const counter = createNonRouteSheetCounter()
     const listener = jest.fn()
@@ -108,6 +202,53 @@ describe("non-route sheet counter", () => {
     unsubscribe()
     counter.open("sduiQuiz")
     expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  // The delete confirm draws inside its route, under the host on every
+  // platform; the other two are Modals, which iOS presents above the host.
+  it("counts only the inline sheets in inlineCount", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("sduiQuiz")
+    counter.open("playerSettings")
+    // An RN Modal, so iOS draws it over the host: it must never count inline.
+    counter.open("feedbackModal")
+    expect(counter.count()).toBe(3)
+    expect(counter.inlineCount()).toBe(0)
+
+    counter.open("libraryDeleteConfirm")
+    expect(counter.count()).toBe(4)
+    expect(counter.inlineCount()).toBe(1)
+
+    counter.close("libraryDeleteConfirm")
+    expect(counter.inlineCount()).toBe(0)
+  })
+
+  // feat-705 U12: iOS draws the native action sheet above the host, as it
+  // draws a Modal, so the window stays in its corner under the dim.
+  it("counts the native delete sheet as open but not inline", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("libraryDeleteActionSheet")
+    expect(counter.count()).toBe(1)
+    expect(counter.inlineCount()).toBe(0)
+
+    const store = createMiniPlayerStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      originPattern: "watch/[slug]",
+    })
+    const iosPresentation = miniPlayerPresentation(
+      store.getSnapshot(),
+      ["downloads"],
+      counter.count(),
+      true,
+      counter.inlineCount(),
+    )
+    expect(iosPresentation).toBe("floating")
+
+    counter.close("libraryDeleteActionSheet")
+    expect(counter.count()).toBe(0)
   })
 })
 

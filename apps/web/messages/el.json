@@ -39,9 +39,8 @@
     "posterAlt": "Αφίσα βίντεο",
     "noDownloads": "Δεν υπάρχουν διαθέσιμες λήψεις για αυτό το βίντεο.",
     "fileSizeLabel": "Επιλέξτε μέγεθος αρχείου",
-    "termsAgreementPrefix": "Συμφωνώ με τα ",
+    "termsAgreement": "Συμφωνώ με τους <link>Όρους χρήσης</link>",
     "termsOfUse": "Όροι χρήσης",
-    "termsAgreementSuffix": "",
     "close": "Κλείσιμο",
     "download": "Λήψη",
     "authRequiredTitle": "Θέλετε να κατεβάσετε αυτό το βίντεο;",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Κοινοποίηση στο Facebook (μη διαθέσιμη σε αυτή την έκδοση)",
     "shareOnX": "Κοινοποίηση στο X",
     "shareOnXUnavailable": "Κοινοποίηση στο X (μη διαθέσιμη σε αυτή την έκδοση)",
+    "opensInNewTab": "{label} (ανοίγει σε νέα καρτέλα)",
     "shareDisabledHint": "Η κοινοποίηση απαιτεί δημοσιευμένη σελίδα — λειτουργεί μόλις αυτό το βίντεο τεθεί σε παραγωγή.",
     "shareFormat": "Μορφή κοινοποίησης",
     "shareLinkTab": "Κοινοποίηση συνδέσμου",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "home": "Αρχική JesusFilm",
     "closeSearch": "Κλείσιμο αναζήτησης",
-    "submitSearch": "Αναζήτηση"
+    "submitSearch": "Αναζήτηση",
+    "library": "Βιβλιοθήκη"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "Απέτυχε η φόρτωση περισσότερων αποτελεσμάτων.",
     "searching": "Αναζήτηση...",
     "connectionHint": "Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.",
+    "rateLimitHint": "Υπερβολικά πολλά αιτήματα. Δοκιμάστε ξανά σε ένα λεπτό.",
     "retrySearch": "Επανάληψη αναζήτησης",
     "retry": "Επανάληψη",
     "noResults": "Δεν βρέθηκαν αποτελέσματα για το \"{query}\"",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "Αναζήτηση για «{suggestion}» στα {language}",
     "inLanguage": "στα {language}",
     "browseByRegion": "Περιήγηση ανά περιοχή",
+    "allVideosOnSinglePage": "Όλα τα βίντεο σε μία σελίδα",
     "clearLanguages": "Εκκαθάριση",
     "queryLanguageDetected": "Ανιχνεύτηκε {language}",
     "searchInLanguage": "Αναζήτηση στα {language}",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "Παρακολουθήστε τώρα",
     "tapToUnmute": "Πατήστε για κατάργηση σίγασης",
-    "nextEpisode": "Επόμενο επεισόδιο"
+    "nextEpisode": "Επόμενο επεισόδιο",
+    "audioTranslationCount": "{count, plural, one {# γλώσσα} other {# γλώσσες}}",
+    "subtitleCount": "Υπότιτλοι: {count, plural, one {# γλώσσα} other {# γλώσσες}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Φόρτωση περιεχομένου",
@@ -268,14 +273,183 @@
     "couldNotLoad": "Δεν ήταν δυνατή η φόρτωση της φόρμας σχολίων.",
     "loadingForm": "Φόρτωση φόρμας σχολίων…",
     "retry": "Επανάληψη",
-    "openFormShort": "Άνοιγμα φόρμας",
     "cancel": "Ακύρωση",
-    "title": "Σχόλια Beta",
-    "description": "Μοιραστείτε τι λειτουργεί και τι μπορούμε να βελτιώσουμε. Αυτή η φόρμα παρέχεται από τη Google.",
-    "openInNewTab": "Άνοιγμα φόρμας σε νέα καρτέλα",
     "closeForm": "Κλείσιμο φόρμας σχολίων",
-    "loadingGoogleForm": "Φόρτωση Google Form…",
-    "iframeTitle": "Υποβολή σχολίων Beta"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
   },
   "LanguageInventory": {
     "metadataTitle": "Δωρεάν χριστιανικά βίντεο στα {language} | Jesus Film Project",
@@ -294,6 +468,7 @@
     "sports": "Αθλητισμός",
     "collections": "Συλλογές",
     "subtitlesOnly": "Μόνο υπότιτλοι",
+    "backToTop": "Επιστροφή στην αρχή",
     "newlyAdded": "Νέα προσθήκη",
     "newVideosTitle": "Νέα χριστιανικά βίντεο στα {language}",
     "newestFirst": "Τα νεότερα πρώτα",
@@ -324,7 +499,21 @@
     "standaloneVideos": "Αυτόνομα βίντεο",
     "videosFromCollection": "Βίντεο από τη συλλογή {collection}.",
     "standaloneDescription": "Αυτόνομα βίντεο σε αυτή τη γλώσσα.",
-    "openCollection": "Άνοιγμα συλλογής"
+    "openCollection": "Άνοιγμα συλλογής",
+    "filters": "Φίλτρα",
+    "filterLength": "Διάρκεια",
+    "filterLength_under5": "Κάτω από 5 λεπτά",
+    "filterLength_5to10": "5-10 λεπτά",
+    "filterLength_10to30": "10-30 λεπτά",
+    "filterLength_over30": "Πάνω από 30 λεπτά",
+    "filterType": "Τύπος",
+    "clearFilters": "Καθαρισμός φίλτρων",
+    "filterResults": "Εμφανίζονται {count} από {total}",
+    "noFilterResults": "Κανένα βίντεο δεν ταιριάζει με αυτά τα φίλτρα. Δοκιμάστε να αφαιρέσετε ένα.",
+    "filterAdded": "Προστέθηκε",
+    "filterAdded_60d": "Τελευταίες 60 ημέρες",
+    "filterAdded_6m": "Τελευταίοι 6 μήνες",
+    "filterAdded_12m": "Τελευταίοι 12 μήνες"
   },
   "WatchHome": {
     "pageTitle": "Παρακολούθηση Jesus Film Project",
@@ -338,7 +527,8 @@
     "previousVideoPreview": "Προεπισκόπηση προηγούμενου βίντεο",
     "nextVideoPreview": "Προεπισκόπηση επόμενου βίντεο",
     "mediaCollection": "Συλλογή πολυμέσων",
-    "scrollToVideo": "Κύλιση στο βίντεο {title}"
+    "scrollToVideo": "Κύλιση στο βίντεο {title}",
+    "forYou": "Για εσάς"
   },
   "WatchFooter": {
     "home": "Αρχική Jesus Film Project",
@@ -404,6 +594,29 @@
     "merryChristmas": "Καλά Χριστούγεννα!",
     "daysUntilChristmas": "{count, plural, one {Απομένει # ημέρα μέχρι τα Χριστούγεννα} other {Απομένουν # ημέρες μέχρι τα Χριστούγεννα}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Περιήγηση στη βιβλιοθήκη",
+    "title": "Περιήγηση ανά κατηγορία",
+    "description": "Μεταβείτε κατευθείαν στο τμήμα της βιβλιοθήκης που χρειάζεστε — τη ζωή του Ιησού, τις περιόδους του εκκλησιαστικού έτους και βίντεο για οικογένειες, φοιτητές και μικρές ομάδες.",
+    "seeAll": "Δείτε όλα τα βίντεο",
+    "previous": "Προηγούμενες κατηγορίες",
+    "next": "Επόμενες κατηγορίες",
+    "categories": {
+      "jesus": "Η ταινία JESUS",
+      "gospels": "Ευαγγέλια",
+      "shortVideos": "Σύντομα βίντεο",
+      "family": "Οικογένεια",
+      "relationships": "Σχέσεις",
+      "women": "Για γυναίκες",
+      "students": "Για φοιτητές",
+      "sports": "Αθλητισμός",
+      "goodNews": "Καλά Νέα",
+      "hope": "Ελπίδα",
+      "training": "Εκπαίδευση",
+      "easter": "Πάσχα",
+      "christmas": "Χριστούγεννα"
+    }
+  },
   "WatchLanguageIndex": {
     "metadataTitle": "Γλώσσες",
     "metadataDescription": "Περιηγηθείτε σε βίντεο του JesusFilm ανά γλώσσα.",
@@ -448,51 +661,32 @@
     "screenReaderPrefix": "Η σελίδα δεν βρέθηκε:",
     "title": "Αυτή η σκηνή δεν υπάρχει εδώ.",
     "description": "Η σελίδα μπορεί να έχει μετακινηθεί, αλλά η ιστορία συνεχίζεται.",
+    "languageDescription": "Δεν μπορέσαμε να βρούμε τη σελίδα που αναζητάτε, αλλά η ιστορία συνεχίζεται σε ταινίες και βίντεο σε γλώσσες από όλο τον κόσμο.",
     "actionsLabel": "Ενέργειες για τη σελίδα που δεν βρέθηκε",
     "backToWatch": "Επιστροφή στην Παρακολούθηση",
     "browseVideos": "Περιήγηση σε βίντεο"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Παρακολουθήστε μικρού μήκους ταινία",
-    "actions": {
-      "joinUs": "Ελάτε μαζί μας",
-      "shareMission": "Συμμετέχετε στην αποστολή μας"
-    },
-    "welcomeStart": {
-      "label": "Πίστη & Γραφή",
-      "title": "Οι σημερινές προτάσεις βίντεο",
-      "description": "Περιεχόμενο βίντεο με επίκεντρο την πίστη από τη βιβλιοθήκη μας, για έμπνευση, πρόκληση και προβληματισμό."
-    },
-    "welcomeMorning": {
-      "label": "Πρωινή έμπνευση",
-      "title": "Καλημέρα! Σας περιμένουν οι σημερινές στιγμές της Βίβλου.",
-      "description": "Ξεκινήστε τη μέρα σας με ενθαρρυντικές στιγμές από τη Βίβλο, σχεδιασμένες να εμπνεύσουν και να αναζωογονήσουν το πνεύμα σας."
-    },
-    "welcomeAfternoon": {
-      "label": "Απογευματινή έμπνευση",
-      "title": "Καλό απόγευμα! Στιγμές από τη Βίβλο για τη μέρα σας.",
-      "description": "Ενθαρρυντικό περιεχόμενο από τη Βίβλο, ιδανικό για το απογευματινό σας διάλειμμα ή για συνεχή έμπνευση."
-    },
-    "welcomeEvening": {
-      "label": "Βραδινή έμπνευση",
-      "title": "Καλησπέρα! Χαλαρώστε με στιγμές από τη Βίβλο.",
-      "description": "Ήρεμες στιγμές από τη Βίβλο, για να σας βοηθήσουν να συλλογιστείτε και να βρείτε παρηγοριά καθώς κλείνει η μέρα σας."
-    },
-    "joinUs": {
-      "label": "Ελάτε μαζί μας",
-      "title": "Δισεκατομμύρια αναζητούν",
-      "description": "Ο θερισμός είναι εδώ. Ελάτε μαζί μας καθώς μοιραζόμαστε το ευαγγέλιο με τον κόσμο μέσω ψηφιακών μέσων."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Πάμε μαζί",
-      "title": "Αφηγούμαστε μαζί την ιστορία του Ιησού",
-      "description": "Για να μπορούν να ακούσουν και να δουν την αγάπη του Ιησού στη δική τους γλώσσα, εκεί όπου βρίσκονται."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% αντιστοιχία",
-    "none": "Δεν βρέθηκαν προτάσεις για αυτό το βίντεο σε αυτή τη γλώσσα."
+    "none": "Δεν βρέθηκαν προτάσεις για αυτό το βίντεο σε αυτή τη γλώσσα.",
+    "heading": "Προτεινόμενα βίντεο",
+    "loadingLabel": "Φόρτωση προτεινόμενων βίντεο",
+    "openingTitle": "Άνοιγμα: {title}",
+    "openingVideo": "Άνοιγμα βίντεο",
+    "activityNotRecorded": "Δεν ήταν δυνατή η καταγραφή της δραστηριότητας προτάσεων. Οι σύνδεσμοι εξακολουθούν να λειτουργούν.",
+    "showingContextual": "Εμφανίζονται προτάσεις βάσει περιεχομένου.",
+    "showingSaved": "Εμφανίζονται αποθηκευμένες προτάσεις.",
+    "explanationCurated": "Επιλεγμένα βίντεο για να εξερευνήσετε.",
+    "explanationViewingMode": "Προτείνονται βάσει αυτού του βίντεο και του τρόπου που παρακολουθείτε.",
+    "explanationCowatch": "Προτείνονται βάσει αυτού του βίντεο και των ενδιαφερόντων σας.",
+    "explanationHybrid": "Προτείνονται βάσει αυτού του βίντεο και των ενδιαφερόντων που επιλέξατε να απομνημονεύονται.",
+    "explanationContextual": "Προτείνονται βάσει αυτού που παρακολουθείτε τώρα.",
+    "explanationSemanticFallback": "Προτείνονται βάσει αυτού που παρακολουθείτε τώρα, ενώ η εξατομίκευση δεν είναι διαθέσιμη.",
+    "explanationProfileDurable": "Εξατομικευμένα βάσει των ενδιαφερόντων που επιλέξατε να απομνημονεύονται.",
+    "explanationProfileVisit": "Εξατομικευμένα για αυτήν την επίσκεψη.",
+    "personalizationLabel": "Εξατομίκευση προτάσεων",
+    "personalizationPrompt": "Θέλετε να αλλάξετε τον τρόπο εξατομίκευσης των προτάσεων;",
+    "openCookieSettings": "Άνοιγμα ρυθμίσεων cookie"
   },
   "BetaTesterModal": {
     "title": "Γίνετε beta tester",
@@ -538,16 +732,39 @@
     "retryFailed": "Επανάληψη αποτυχημένων λήψεων"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Η γλωσσική έκδοση δεν είναι διαθέσιμη",
+    "eyebrow": "Η γλωσσική έκδοση δεν είναι διαθέσιμη",
+    "title": "Το <contentTitle>{title}</contentTitle> δεν είναι διαθέσιμο στα <languageName>{language}</languageName>",
+    "actionsLabel": "Διαθέσιμες επιλογές προβολής",
+    "browseInLanguage": "Περιήγηση σε βίντεο στα {language}",
+    "backToSearch": "Επιστροφή στην αναζήτηση",
+    "audioVersionsTitle": "Άλλες εκδόσεις ήχου",
+    "audioVersionsDescription": "Επιλέξτε γλώσσα ήχου για να συνεχίσετε να βλέπετε αυτό το βίντεο.",
+    "languageVersionLabel": "Γλώσσα ήχου",
+    "selectLanguageVersion": "Επιλέξτε γλωσσική έκδοση",
+    "watchSelectedVersion": "Παρακολούθηση επιλεγμένης έκδοσης"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Επιλογές cookie",
+    "bannerTitle": "Οι επιλογές απορρήτου σας",
+    "bannerDescription": "Τα απαραίτητα cookie διατηρούν το Watch ασφαλές και σε λειτουργία. Με την άδειά σας, ένα προαιρετικό cookie πρώτου μέρους μπορεί να θυμάται τα ενδιαφέροντά σας μεταξύ επισκέψεων, ώστε να εξατομικεύει τις προτάσεις. Οι προτάσεις βάσει περιεχομένου παραμένουν διαθέσιμες σε κάθε περίπτωση.",
+    "acceptAll": "Αποδοχή όλων",
+    "essentialOnly": "Μόνο τα απαραίτητα",
+    "manageChoices": "Διαχείριση επιλογών",
+    "savingChoice": "Αποθήκευση επιλογής cookie",
+    "settings": "Ρυθμίσεις cookie",
+    "settingsDescription": "Επιλέξτε αν το Watch μπορεί να θυμάται τα ενδιαφέροντά σας για προτάσεις μεταξύ επισκέψεων. Μπορείτε να το αλλάξετε αυτό οποιαδήποτε στιγμή.",
+    "essentialCookies": "Απαραίτητα cookie",
+    "essentialDescription": "Ασφάλεια, αναπαραγωγή, επιλογές απορρήτου και απόδοση αιτημάτων προτάσεων.",
+    "alwaysActive": "Πάντα ενεργά",
+    "personalization": "Εξατομίκευση",
+    "personalizationDescription": "Απομνημόνευση συγκεκριμένων ενδιαφερόντων μεταξύ επισκέψεων. Αν το απενεργοποιήσετε, οι προτάσεις βάσει περιεχομένου θα παραμείνουν διαθέσιμες.",
+    "erasurePending": "Εκκρεμεί διαγραφή προφίλ. Οι προτάσεις βάσει περιεχομένου είναι ήδη ενεργές.",
+    "cancel": "Ακύρωση",
+    "saveChoices": "Αποθήκευση επιλογών",
+    "saving": "Αποθήκευση…",
+    "loadError": "Δεν ήταν δυνατή η φόρτωση της επιλογής σας. Μπορείτε ακόμη να επιλέξετε παρακάτω.",
+    "grantError": "Δεν ήταν δυνατή η ενεργοποίηση της εξατομίκευσης. Παραμένει διαθέσιμη μόνο η βασική λειτουργία.",
+    "saveError": "Δεν ήταν δυνατή η αποθήκευση της επιλογής σας. Παρακαλούμε δοκιμάστε ξανά."
   }
 }

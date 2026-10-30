@@ -1,3 +1,4 @@
+import { isPublicWatchLanguageSlug } from "./locale"
 import { logWatchServerEvent } from "./watch-observability"
 
 export type WatchRouteManifest = {
@@ -290,6 +291,30 @@ function isEpisodeAudioLanguageAdmitted(
   return index.audioLanguageSlugs.has(audioLanguageSlug)
 }
 
+/**
+ * Whether a public URL segment names an audio language, for route-shape
+ * disambiguation (`/{content}.html/{language}.html` vs
+ * `/{series}.html/{episode}.html`).
+ *
+ * The compiled `PUBLIC_WATCH_LANGUAGE_SLUGS` corpus is a generated snapshot
+ * and is only the synchronous fallback here. The live manifest is the
+ * authority for languages admin published after that snapshot: before this
+ * helper existed, 58 newly published languages (e.g. `german-pennsylvania`)
+ * were reinterpreted as implicit-English episode slugs and 404'd even though
+ * the same manifest already admitted them (Linear FGE-81).
+ *
+ * A `null` manifest (fetch failed or not configured) degrades to the corpus
+ * alone, so an unavailable manifest never widens the namespace.
+ */
+export function isWatchAudioLanguageSlug(
+  slug: string,
+  manifest: WatchRouteManifest | null,
+): boolean {
+  if (isPublicWatchLanguageSlug(slug)) return true
+  if (!manifest) return false
+  return getManifestIndex(manifest).audioLanguageSlugs.has(slug)
+}
+
 export function isWatchRouteAdmittedByManifest(
   manifest: WatchRouteManifest,
   route: WatchRouteManifestRoute,
@@ -520,12 +545,23 @@ export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null
   if (manifestCache.expiresAt > now) return manifestCache.manifest
   if (manifestCache.inFlight) return manifestCache.inFlight
 
-  manifestCache.inFlight = fetchWatchRouteManifest().then((manifest) => {
+  // Release the single-flight slot on BOTH settlement paths. `.then(ok, err)`
+  // rather than `.finally`, which would re-throw into an unhandled rejection.
+  // `fetchWatchRouteManifest` swallows its own failures today, so the reject
+  // arm is a guard rather than a live path — but a rejection that escaped it
+  // would otherwise pin this slot to a rejected promise for the life of the
+  // process, and every caller that degrades on a null manifest would degrade
+  // forever rather than for one TTL.
+  const inFlight = fetchWatchRouteManifest().then((manifest) => {
     manifestCache.manifest = manifest
     manifestCache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
-    manifestCache.inFlight = null
     return manifest
   })
+  const release = () => {
+    if (manifestCache.inFlight === inFlight) manifestCache.inFlight = null
+  }
+  void inFlight.then(release, release)
+  manifestCache.inFlight = inFlight
 
-  return manifestCache.inFlight
+  return inFlight
 }

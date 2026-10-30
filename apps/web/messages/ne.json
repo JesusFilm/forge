@@ -39,9 +39,8 @@
     "posterAlt": "भिडियो पोस्टर",
     "noDownloads": "यस भिडियोका लागि कुनै डाउनलोड उपलब्ध छैन।",
     "fileSizeLabel": "फाइल आकार छान्नुहोस्",
-    "termsAgreementPrefix": "म ",
+    "termsAgreement": "म <link>प्रयोगका सर्तहरू</link> स्वीकार गर्छु",
     "termsOfUse": "प्रयोगका सर्तहरू",
-    "termsAgreementSuffix": " स्वीकार गर्छु",
     "close": "बन्द गर्नुहोस्",
     "download": "डाउनलोड गर्नुहोस्",
     "authRequiredTitle": "यो भिडियो डाउनलोड गर्न चाहनुहुन्छ?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Facebook मा शेयर गर्नुहोस् (यो बिल्डमा उपलब्ध छैन)",
     "shareOnX": "X मा शेयर गर्नुहोस्",
     "shareOnXUnavailable": "X मा शेयर गर्नुहोस् (यो बिल्डमा उपलब्ध छैन)",
+    "opensInNewTab": "{label} (नयाँ ट्याबमा खुल्छ)",
     "shareDisabledHint": "शेयर गर्न प्रकाशित पृष्ठ चाहिन्छ — यो भिडियो उत्पादनमा पुगेपछि यसले काम गर्छ।",
     "shareFormat": "शेयर ढाँचा",
     "shareLinkTab": "लिङ्क शेयर गर्नुहोस्",
@@ -180,7 +180,8 @@
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "home": "JesusFilm गृहपृष्ठ",
     "closeSearch": "खोज बन्द गर्नुहोस्",
-    "submitSearch": "खोज्नुहोस्"
+    "submitSearch": "खोज्नुहोस्",
+    "library": "पुस्तकालय"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -191,6 +192,7 @@
     "loadMoreFailed": "थप नतिजा लोड गर्न सकिएन।",
     "searching": "खोजिँदै...",
     "connectionHint": "आफ्नो जडान जाँचेर फेरि प्रयास गर्नुहोस्।",
+    "rateLimitHint": "धेरै अनुरोधहरू भए। कृपया एक मिनेटपछि फेरि प्रयास गर्नुहोस्।",
     "retrySearch": "खोज फेरि प्रयास गर्नुहोस्",
     "retry": "फेरि प्रयास गर्नुहोस्",
     "noResults": "“{query}” का लागि कुनै नतिजा छैन",
@@ -213,6 +215,7 @@
     "searchSuggestionWithLanguage": "{language} मा “{suggestion}” खोज्नुहोस्",
     "inLanguage": "{language} मा",
     "browseByRegion": "क्षेत्रअनुसार ब्राउज गर्नुहोस्",
+    "allVideosOnSinglePage": "सबै भिडियोहरू एउटै पृष्ठमा",
     "clearLanguages": "खाली गर्नुहोस्",
     "queryLanguageDetected": "{language} पत्ता लाग्यो",
     "searchInLanguage": "{language} मा खोज्नुहोस्",
@@ -225,7 +228,9 @@
   "HeroPlayer": {
     "playWithSound": "अहिले हेर्नुहोस्",
     "tapToUnmute": "आवाज खोल्नुहोस्",
-    "nextEpisode": "अर्को एपिसोड"
+    "nextEpisode": "अर्को एपिसोड",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषाहरू}}",
+    "subtitleCount": "उपशीर्षकहरू: {count, plural, one {# भाषा} other {# भाषाहरू}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड हुँदैछ",
@@ -279,6 +284,7 @@
     "sports": "खेलकुद",
     "collections": "संग्रहहरू",
     "subtitlesOnly": "उपशीर्षक मात्र",
+    "backToTop": "माथि फर्कनु",
     "newlyAdded": "नयाँ थपिएको",
     "newVideosTitle": "{language} मा नयाँ ख्रिस्टियन भिडियोहरू",
     "newestFirst": "सबैभन्दा नयाँ पहिले",
@@ -309,7 +315,21 @@
     "standaloneVideos": "स्वतन्त्र भिडियोहरू",
     "videosFromCollection": "{collection} बाट भिडियोहरू।",
     "standaloneDescription": "यस भाषाका स्वतन्त्र भिडियोहरू।",
-    "openCollection": "संग्रह खोल्नुहोस्"
+    "openCollection": "संग्रह खोल्नुहोस्",
+    "filters": "फिल्टर",
+    "filterLength": "अवधि",
+    "filterLength_under5": "5 मिनेटभन्दा कम",
+    "filterLength_5to10": "5-10 मिनेट",
+    "filterLength_10to30": "10-30 मिनेट",
+    "filterLength_over30": "30 मिनेटभन्दा बढी",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर हटाउनु",
+    "filterResults": "{total} मध्ये {count} देखाइएको",
+    "noFilterResults": "यी फिल्टरसँग कुनै भिडियो मेल खाँदैन। एउटा हटाउनुहोस्।",
+    "filterAdded": "थपिएको",
+    "filterAdded_60d": "पछिल्ला 60 दिन",
+    "filterAdded_6m": "पछिल्ला 6 महिना",
+    "filterAdded_12m": "पछिल्ला 12 महिना"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project हेर्नुहोस्",
@@ -323,7 +343,8 @@
     "nextVideoPreview": "अर्को भिडियो पूर्वावलोकन",
     "featured": "विशेष",
     "mediaCollection": "मिडिया संग्रह",
-    "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्"
+    "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्",
+    "forYou": "तपाईंको लागि"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "भाषाहरू",
@@ -369,6 +390,7 @@
     "screenReaderPrefix": "पृष्ठ भेटिएन:",
     "title": "यो दृश्य यहाँ छैन।",
     "description": "पृष्ठ सरेको हुन सक्छ, तर कथा जारी छ।",
+    "languageDescription": "तपाईंले खोजिरहेको पृष्ठ हामीले भेट्टाउन सकेनौं, तर कथा संसारभरिका भाषाहरूका फिल्म र भिडियोहरूमा जारी छ।",
     "actionsLabel": "पृष्ठ भेटिएन कार्यहरू",
     "backToWatch": "Watch मा फर्कनुहोस्",
     "browseVideos": "भिडियोहरू ब्राउज गर्नुहोस्"
@@ -437,62 +459,234 @@
     "merryChristmas": "शुभ क्रिसमस!",
     "daysUntilChristmas": "{count, plural, one {क्रिसमस आउन # दिन बाँकी} other {क्रिसमस आउन # दिन बाँकी}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "पुस्तकालय ब्राउज गर्नुहोस्",
+    "title": "श्रेणीअनुसार ब्राउज गर्नुहोस्",
+    "description": "पुस्तकालयको तपाईंलाई चाहिएको भागमा सिधै जानुहोस् — येशूको जीवन, मण्डलीको वर्षका ऋतुहरू, र परिवार, विद्यार्थी तथा साना समूहहरूका लागि बनाइएका भिडियोहरू।",
+    "seeAll": "सबै भिडियोहरू हेर्नुहोस्",
+    "previous": "अघिल्ला श्रेणीहरू",
+    "next": "अर्का श्रेणीहरू",
+    "categories": {
+      "jesus": "‘येशू’ चलचित्र",
+      "gospels": "सुसमाचारहरू",
+      "shortVideos": "छोटा भिडियोहरू",
+      "family": "परिवार",
+      "relationships": "सम्बन्धहरू",
+      "women": "महिलाहरूका लागि",
+      "students": "विद्यार्थीहरूका लागि",
+      "sports": "खेलकुद",
+      "goodNews": "शुभ सन्देश",
+      "hope": "आशा",
+      "training": "तालिम",
+      "easter": "इस्टर",
+      "christmas": "क्रिसमस"
+    }
+  },
   "Feedback": {
     "openForm": "प्रतिक्रिया फाराम खोल्नुहोस्",
     "label": "प्रतिक्रिया",
     "couldNotLoad": "प्रतिक्रिया फाराम लोड गर्न सकिएन।",
     "loadingForm": "प्रतिक्रिया फाराम लोड हुँदैछ…",
     "retry": "फेरि प्रयास गर्नुहोस्",
-    "openFormShort": "फाराम खोल्नुहोस्",
     "cancel": "रद्द गर्नुहोस्",
-    "title": "बीटा प्रतिक्रिया",
-    "description": "के काम गरिरहेको छ र के सुधार गर्न सकिन्छ भन्ने साझा गर्नुहोस्। यो फाराम Google ले उपलब्ध गराएको हो।",
-    "openInNewTab": "नयाँ ट्याबमा फाराम खोल्नुहोस्",
     "closeForm": "प्रतिक्रिया फाराम बन्द गर्नुहोस्",
-    "loadingGoogleForm": "Google फाराम लोड हुँदैछ…",
-    "iframeTitle": "बीटा प्रतिक्रिया पेश गर्नुहोस्"
-  },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "छोटो फिल्म हेर्नुहोस्",
-    "actions": {
-      "joinUs": "हामीसँग जोडिनुहोस्",
-      "shareMission": "हाम्रो मिसनमा सहभागी हुनुहोस्"
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
     },
-    "welcomeStart": {
-      "label": "विश्वास र धर्मशास्त्र",
-      "title": "आजका भिडियो छनोटहरू",
-      "description": "हाम्रो पुस्तकालयबाट विश्वासकेन्द्रित भिडियो सामग्री, जसले प्रेरित गर्न, चुनौती दिन, र चिन्तन जगाउन मद्दत गर्छ।"
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
     },
-    "welcomeMorning": {
-      "label": "बिहानी प्रेरणा",
-      "title": "शुभ प्रभात! आजका बाइबल क्षणहरू तपाईंको प्रतीक्षामा छन्।",
-      "description": "तपाईंको दिन सुरु गर्न प्रेरणादायी बाइबल क्षणहरूसँग शुरुआत गर्नुहोस्, जसले तपाईंलाई उत्साहित र सशक्त पार्न डिजाइन गरिएको छ।"
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
     },
-    "welcomeAfternoon": {
-      "label": "दिउँसो प्रेरणा",
-      "title": "शुभ अपराह्न! तपाईंको दिनका लागि बाइबल क्षणहरू।",
-      "description": "दिउँसोको विश्राम वा निरन्तर प्रेरणाका लागि उपयुक्त प्रेरणादायी बाइबल सामग्री।"
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
     },
-    "welcomeEvening": {
-      "label": "साँझ प्रेरणा",
-      "title": "शुभ साँझ! बाइबल क्षणहरूसँग विश्राम लिनुहोस्।",
-      "description": "तपाईंको दिन समाप्त हुँदै गर्दा मनन गर्न र सान्त्वना पाउन मद्दत गर्ने शान्त बाइबल क्षणहरू।"
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
     },
-    "joinUs": {
-      "label": "हामीसँग जोडिनुहोस्",
-      "title": "अरबौँ मानिसहरू खोजिरहेका छन्",
-      "description": "फसल तयार छ। डिजिटल मिडिया प्रयोग गरेर संसारसँग सुसमाचार बाँड्न हामीसँग सामेल हुनुहोस्।"
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
     },
-    "tellingTheStoryOfJesus": {
-      "label": "साथै अघि बढौँ",
-      "title": "येशूको कथा, सँगै सुनाउँदै",
-      "description": "ताकि उनीहरूले जहाँ छन् त्यहीँ आफ्नै भाषामा येशूको प्रेम सुन्न र देख्न सकून्।"
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "VideoRecommendations": {
     "match": "{percent}% मिल्दो",
-    "none": "यो भिडियोका लागि यस भाषामा कुनै सिफारिस भेटिएन।"
+    "none": "यो भिडियोका लागि यस भाषामा कुनै सिफारिस भेटिएन।",
+    "heading": "सिफारिस गरिएका भिडियोहरू",
+    "loadingLabel": "सिफारिस गरिएका भिडियोहरू लोड हुँदै",
+    "openingTitle": "{title} खोल्दै",
+    "openingVideo": "भिडियो खोल्दै",
+    "activityNotRecorded": "सिफारिस गतिविधि रेकर्ड गर्न सकिएन। लिङ्कहरू अझै काम गर्छन्।",
+    "showingContextual": "सन्दर्भअनुसारका सिफारिसहरू देखाउँदै।",
+    "showingSaved": "सुरक्षित गरिएका सिफारिसहरू देखाउँदै।",
+    "explanationCurated": "अन्वेषण गर्न छानिएका भिडियोहरू।",
+    "explanationViewingMode": "यो भिडियो र तपाईं हेर्ने तरिकाका आधारमा सिफारिस गरिएको।",
+    "explanationCowatch": "यो भिडियो र तपाईंका रुचिहरूका आधारमा सिफारिस गरिएको।",
+    "explanationHybrid": "यो भिडियो र तपाईंले सम्झन रोज्नुभएका रुचिहरूका आधारमा सिफारिस गरिएको।",
+    "explanationContextual": "तपाईंले अहिले हेरिरहेको भिडियोका आधारमा सिफारिस गरिएको।",
+    "explanationSemanticFallback": "व्यक्तिकरण उपलब्ध नभएकाले, तपाईंले अहिले हेरिरहेको भिडियोका आधारमा सिफारिस गरिएको।",
+    "explanationProfileDurable": "तपाईंले सम्झन रोज्नुभएका रुचिहरूका आधारमा व्यक्तिकृत।",
+    "explanationProfileVisit": "यो भ्रमणका लागि व्यक्तिकृत।",
+    "personalizationLabel": "सिफारिस व्यक्तिकरण",
+    "personalizationPrompt": "सिफारिसहरू कसरी व्यक्तिकृत हुन्छन् भन्ने परिवर्तन गर्न चाहनुहुन्छ?",
+    "openCookieSettings": "कुकी सेटिङहरू खोल्नुहोस्"
   },
   "BetaTesterModal": {
     "title": "बीटा परीक्षक बन्नुहोस्",
@@ -538,16 +732,39 @@
     "retryFailed": "असफल डाउनलोडहरू फेरि प्रयास गर्नुहोस्"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा संस्करण उपलब्ध छैन",
+    "eyebrow": "भाषा संस्करण उपलब्ध छैन",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> भाषामा उपलब्ध छैन",
+    "actionsLabel": "उपलब्ध हेर्ने विकल्पहरू",
+    "browseInLanguage": "{language} भाषाका भिडियोहरू ब्राउज गर्नुहोस्",
+    "backToSearch": "खोजमा फर्कनुहोस्",
+    "audioVersionsTitle": "अन्य अडियो संस्करणहरू",
+    "audioVersionsDescription": "यो भिडियो हेर्न जारी राख्न अडियो भाषा छान्नुहोस्।",
+    "languageVersionLabel": "अडियो भाषा",
+    "selectLanguageVersion": "भाषा संस्करण छान्नुहोस्",
+    "watchSelectedVersion": "छानिएको संस्करण हेर्नुहोस्"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी छनोटहरू",
+    "bannerTitle": "तपाईंका गोपनीयता छनोटहरू",
+    "bannerDescription": "आवश्यक कुकीहरूले Watch लाई सुरक्षित र सही रूपमा चलिरहन मद्दत गर्छन्। तपाईंको अनुमतिसँग, वैकल्पिक पहिलो-पक्षको कुकीले सिफारिसहरूलाई व्यक्तिगत बनाउन भ्रमणहरूबीच तपाईंका रुचिहरू सम्झन सक्छ। सन्दर्भअनुसारका सिफारिसहरू भने दुवै अवस्थामा उपलब्ध रहन्छन्।",
+    "acceptAll": "सबै स्वीकार गर्नुहोस्",
+    "essentialOnly": "आवश्यक मात्र",
+    "manageChoices": "छनोटहरू व्यवस्थापन गर्नुहोस्",
+    "savingChoice": "कुकी छनोट सुरक्षित गर्दै",
+    "settings": "कुकी सेटिङहरू",
+    "settingsDescription": "Watch ले भ्रमणहरूबीच सिफारिससम्बन्धी रुचिहरू सम्झन पाउने वा नपाउने छनोट गर्नुहोस्। तपाईंले यो कुनै पनि समयमा परिवर्तन गर्न सक्नुहुन्छ।",
+    "essentialCookies": "आवश्यक कुकीहरू",
+    "essentialDescription": "सुरक्षा, प्लेब्याक, गोपनीयता छनोटहरू, र सिफारिस अनुरोधको श्रेयांकन।",
+    "alwaysActive": "सधैँ सक्रिय",
+    "personalization": "व्यक्तिकरण",
+    "personalizationDescription": "भ्रमणहरूबीच सीमित रुचिहरू सम्झनुहोस्। यसलाई बन्द गर्दा पनि सन्दर्भअनुसारका सिफारिसहरू उपलब्ध रहन्छन्।",
+    "erasurePending": "प्रोफाइल मेटाउने प्रक्रिया बाँकी छ। सन्दर्भअनुसारका सिफारिसहरू पहिले नै सक्रिय छन्।",
+    "cancel": "रद्द गर्नुहोस्",
+    "saveChoices": "छनोटहरू सुरक्षित गर्नुहोस्",
+    "saving": "सुरक्षित गर्दै…",
+    "loadError": "तपाईंको छनोट लोड गर्न सकिएन। तपाईं अझै तल छनोट गर्न सक्नुहुन्छ।",
+    "grantError": "व्यक्तिकरण सक्षम गर्न सकिएन। आवश्यक मात्र विकल्प उपलब्ध छ।",
+    "saveError": "तपाईंको छनोट सुरक्षित गर्न सकिएन। कृपया फेरि प्रयास गर्नुहोस्।"
   }
 }

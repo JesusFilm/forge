@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  AccessibilityInfo,
   Alert,
-  Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Pressable,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -13,31 +11,31 @@ import {
   View,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
-import { GET_VIDEO_BY_SLUG } from "../../src/lib/queries"
+import { GET_VIDEO_BY_SLUG, GET_VIDEO_TEXT } from "../../src/lib/queries"
+import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { useT } from "../../src/i18n/useT"
+import { useUiTag } from "../../src/hooks/useUiTag"
+import { videoTextVariables } from "../../src/lib/videoText"
 import { datadogLog } from "../../src/lib/datadog"
 import {
-  consumeDeepLinkEntry,
+  consumeDeepLinkArrival,
   whenDeepLinkOriginsReady,
 } from "../../src/lib/deepLinkOrigin"
 import { schedulePersist } from "../../src/lib/cachePersistence"
 import type { AdminBlock } from "../../src/lib/queries"
 import {
   normalizeVideo,
+  type VideoTextInput,
   type WatchBibleCitation,
+  type WatchVariant,
 } from "../../src/lib/normalizeVideo"
 import { isSeriesRecord } from "../../src/lib/isSeriesRecord"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
-import {
-  ACCENT_ON_DARK,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_PRIMARY,
-  hexToRgba,
-} from "../../src/lib/color"
+import { ACCENT_ON_DARK } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useCastPlayback } from "../../src/hooks/useCastPlayback"
@@ -49,32 +47,53 @@ import {
 } from "../../src/lib/cast/castMediaResolver"
 import type { ProgressFeed } from "../../src/lib/miniPlayer/playbackRequest"
 import {
+  effectivePlayerSettings,
+  getPlayerSettingsStore,
+} from "../../src/lib/miniPlayer/playerSettings"
+import {
   isRemoteCastPhase,
   isRemotePlayingState,
   releaseTriggersSwap,
   type CastRecovery,
 } from "../../src/lib/playbackTarget"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
-import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
+import {
+  usePlaybackFrameVisible,
+  usePlaybackPlaying,
+} from "../../src/hooks/usePlaybackFrame"
+import { seekPlayback } from "../../src/lib/playbackInterruption"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { resolvePlayerSource } from "../../src/lib/playerSource"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
+import { rawModeLabel } from "../../src/lib/rawModeLabel"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+import { presentActionMenu } from "../../src/lib/actionMenu"
 import { SignInPrompt } from "../../src/components/watch/SignInPrompt"
+import {
+  KeepWatchingOffer,
+  offerResumeSeconds,
+} from "../../src/components/watch/KeepWatchingOffer"
+import { ScrollTopButton } from "../../src/components/watch/ScrollTopButton"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
+import {
+  exportControls,
+  useExportEntry,
+} from "../../src/hooks/useExportSession"
 import {
   progressBarState,
   resumePositionSeconds,
 } from "../../src/lib/watchProgress/thresholds"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
-import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
 import { useBibleVerses } from "../../src/hooks/useBibleVerses"
+import { readerHref } from "../../src/lib/bible/routes/readerRoute"
+import type { VerseRef } from "../../src/lib/bible/versification/convert"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
 import {
@@ -83,15 +102,28 @@ import {
 } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
 import { buildSubtitlePath } from "../../src/lib/offlineFiles"
+import { markPlaybackDiscovery } from "../../src/lib/recommendations/playbackDiscovery"
 import {
   resolveActiveSubtitle,
   resolveSubtitleActionLabel,
 } from "../../src/lib/subtitleSelection"
+import {
+  advanceKeepWatching,
+  getWatchIntentStore,
+  keepWatchingAfterChoice,
+  keepWatchingLanguages,
+  keepWatchingProgressHold,
+  keepWatchingStateFor,
+  rankStartSeconds,
+} from "../../src/lib/explore/watchIntent"
+import { trackExploreFullPlay } from "../../src/lib/explore/fullPlayTracking"
 
 const EMPTY_CITATIONS: WatchBibleCitation[] = []
+const EMPTY_VARIANTS: WatchVariant[] = []
 
 export default function WatchVideoPage() {
   const { slug, seed: seedParam } = useLocalSearchParams<{
@@ -100,6 +132,11 @@ export default function WatchVideoPage() {
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const scrollViewRef = useRef<ScrollView>(null)
+  const t = useT("Watch")
+  const tCast = useT("Cast")
+  const tCommon = useT("Common")
+  const tSheet = useT("DownloadSheet")
+  const uiTag = useUiTag()
 
   const router = useRouter()
   const {
@@ -107,36 +144,13 @@ export default function WatchVideoPage() {
     deleteDownload,
     pauseDownload,
     resumeDownload,
-    committedFor,
+    committedCopyFor,
     isReady: downloadsReady,
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const playerFrameVisible = usePlaybackFrameVisible()
   const insets = useSafeAreaInsets()
-  // Honor reduce-motion for the scroll-to-top FAB, the way the player's
-  // chrome/subtitles already do — snap instead of fading.
-  const reduceMotionRef = useRef(false)
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      reduceMotionRef.current = v
-    })
-    const sub = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      (v) => {
-        reduceMotionRef.current = v
-      },
-    )
-    return () => {
-      try {
-        sub.remove()
-      } catch {
-        // noop
-      }
-    }
-  }, [])
 
   const {
     video,
@@ -149,11 +163,55 @@ export default function WatchVideoPage() {
     preferredSubtitleName,
     snackbarMessage,
     setSnackbarMessage,
+    setSessionIntent,
   } = useWatchSession()
 
+  // KTD11: only this route reads a "Keep watching" intent. A StrictMode render
+  // runs twice, so the render only peeks; the effect below consumes it.
+  const [keepWatchingState, setKeepWatchingState] = useState(() =>
+    keepWatchingStateFor(getWatchIntentStore().peek(decodedSlug)),
+  )
+  const keepWatching =
+    keepWatchingState?.intent.videoSlug === decodedSlug
+      ? keepWatchingState
+      : null
+  const keepWatchingIntent = keepWatching?.intent ?? null
+  useEffect(() => {
+    if (keepWatchingIntent == null) return
+    getWatchIntentStore().consume(keepWatchingIntent)
+    setSessionIntent(keepWatchingLanguages(keepWatchingIntent))
+    return () => setSessionIntent(null)
+  }, [keepWatchingIntent, setSessionIntent])
+
+  // R17's offer (KTD12). The host is a Stack sibling, so its play flag is the
+  // first-frame signal this page can read.
+  const playbackPlaying = usePlaybackPlaying()
+  const exploreIntent =
+    keepWatchingIntent?.origin === "explore" ? keepWatchingIntent : null
+  useEffect(() => {
+    if (exploreIntent != null && playbackPlaying)
+      trackExploreFullPlay(exploreIntent)
+  }, [exploreIntent, playbackPlaying])
+  const [offerExpired, setOfferExpired] = useState(false)
+  const expireOffer = useCallback(() => setOfferExpired(true), [])
+  // A choice ends the hold and replaces a live start, so a canonical load
+  // still to come lands on the choice (KTD11).
+  const chooseOfferPosition = useCallback((seconds: number) => {
+    seekPlayback(seconds)
+    setKeepWatchingState(
+      (state) => state && keepWatchingAfterChoice(state, seconds),
+    )
+  }, [])
+
+  // KTD16: the Admin language forms this screen reads with, captured at mount
+  // (or the floating session's, on an expand). Every Admin reader below takes
+  // them; none reads the locale store, so a live change moves no text here.
+  const adminForms = useScreenAdminForms(decodedSlug)
+
   const apolloClient = useApolloClient()
+  // KTD10: language-free, so a UI language change never refetches it.
   const { data, loading, error, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
-    variables: { slug: decodedSlug, locale: "en" },
+    variables: { slug: decodedSlug },
     skip: !decodedSlug,
     // cache-first, NOT cache-and-network: payload is huge (~9.5MB / 2,259 dubs)
     // and cache-and-network re-parsed it per re-entry, freezing JS. NOTE: if cache
@@ -162,6 +220,21 @@ export default function WatchVideoPage() {
     // Render whatever the cache holds (prefetch) the moment it exists.
     returnPartialData: true,
   })
+  // The text companion: Home's rows for this video are a cache hit for it.
+  const {
+    data: textData,
+    dataState: textDataState,
+    error: textError,
+    refetch: refetchText,
+  } = useQuery(GET_VIDEO_TEXT, {
+    variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
+    returnPartialData: true,
+  })
+  // A failed load keeps a partial cached row (a Home title with no
+  // description), so the text is missing unless the data is complete.
+  const textFailed = textError != null && textDataState !== "complete"
 
   const normalized = useMemo(
     // returnPartialData widens videoBySlug to a deep-partial type; normalizeVideo
@@ -170,8 +243,10 @@ export default function WatchVideoPage() {
     () =>
       normalizeVideo(
         (data?.videoBySlug ?? null) as Parameters<typeof normalizeVideo>[0],
+        adminForms,
+        (textData?.videoBySlug ?? null) as VideoTextInput | null,
       ),
-    [data],
+    [data, textData, adminForms],
   )
 
   // A series reached via /watch redirects to the series page. Detection is
@@ -220,7 +295,46 @@ export default function WatchVideoPage() {
     }
   }, [decodedSlug, video, normalized, setVideo])
 
-  const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
+  // Keyed on the ROUTE slug, not the session video id: the session trails
+  // navigation by a commit, and the companion query's variable must match the
+  // player-gating query's for the cache write to normalize onto it (KTD2).
+  //
+  // The citations are gated on the same route the drop effect above uses. The
+  // session still holds the PREVIOUS video for one commit after a push, so
+  // without this a video with no citations of its own would fire a passage
+  // request for the last one's — and paint its references for a frame.
+  const routeCitations =
+    video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
+  // The cards' reader translation reads what the reader reads (KTD3, KTD11).
+  const quotesFocused = useIsFocused()
+  const { audioLanguageIso3, isReady: preferencesReady } = useWatchPreferences()
+  // Threaded from here: the hook's only call site, and the only place the dubs
+  // and authored image are in scope. `loading` is the settled signal — the
+  // query returns partial cached data with neither runtime nor playback id.
+  const bibleQuotes = useBibleVerses(
+    decodedSlug,
+    routeCitations,
+    {
+      variants: video?.slug === decodedSlug ? video.variants : EMPTY_VARIANTS,
+      authoredImageUrl: video?.slug === decodedSlug ? video.posterUrl : null,
+      primaryLanguageCoreId:
+        video?.slug === decodedSlug ? video.primaryLanguageCoreId : null,
+      payloadSettled: !loading,
+    },
+    // KTD16: the route's captured forms, so a live change moves no passage.
+    adminForms,
+    {
+      audioLanguage: audioLanguageIso3,
+      audioReady: preferencesReady,
+      focused: quotesFocused,
+    },
+  )
+
+  // KD3: no pause. The video keeps playing while the reader covers this screen.
+  const openBibleReader = useCallback(
+    (start: VerseRef) => router.push(readerHref(start, "quote")),
+    [router],
+  )
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
@@ -228,32 +342,51 @@ export default function WatchVideoPage() {
     if (subtitleEnabled) ensureActiveVariantMedia()
   }, [subtitleEnabled, ensureActiveVariantMedia])
 
-  // Offline: when a committed local copy exists (manifest hydrated), play it
-  // from disk ahead of the GraphQL source chain. The local URI is validated
-  // against the offline root before it reaches the player / subtitle reader.
-  const offlineRecord = downloadsReady ? getRecord(decodedSlug) : null
-  const offlineCommitted = downloadsReady ? committedFor(decodedSlug) : null
+  // The download record is keyed on the record's slug (the download sheet's
+  // key), which the pill and the language sheet also read; the route's slug
+  // only stands in until the record lands.
+  const offlineSlug = video?.slug ?? decodedSlug
+  // `committedCopyFor` pairs the file with ITS dub and subtitle: mid-swap the
+  // record already names the incoming ones while the old file still plays.
+  // The URI is validated against the offline root before the player reads it.
+  const offlineCopy = downloadsReady ? committedCopyFor(offlineSlug) : null
   const offlineSource =
-    offlineCommitted && validateLocalMediaUrl(offlineCommitted, OFFLINE_ROOT)
-      ? offlineCommitted
+    offlineCopy && validateLocalMediaUrl(offlineCopy.path, OFFLINE_ROOT)
+      ? offlineCopy.path
       : null
   const offlineSubtitle =
-    offlineSource && offlineRecord?.subtitleLanguageSlug
+    offlineSource && offlineCopy?.subtitleLanguageSlug
       ? (() => {
           const path = buildSubtitlePath(
             OFFLINE_ROOT,
-            decodedSlug,
-            offlineRecord.subtitleLanguageSlug,
+            offlineSlug,
+            offlineCopy.subtitleLanguageSlug,
           )
           return validateLocalMediaUrl(path, OFFLINE_ROOT) ? path : null
         })()
       : null
 
+  // The source precedence (and why the record fallback waits for the dub
+  // selection to settle) lives in resolvePlayerSource. A download is one dub:
+  // a pick of another language streams that dub instead of the file on disk.
+  const playerSource = resolvePlayerSource({
+    offlineSource,
+    offlineDubDocumentId: offlineCopy?.dubDocumentId ?? null,
+    activeVariantHls: activeVariant?.hls ?? null,
+    activeVariantDocumentId: activeVariant?.documentId ?? null,
+    variantSettled: activeVariant != null,
+    // R16 plays the clip's dub: the intent names it, so the file waits.
+    awaitsNamedDub: keepWatchingIntent != null,
+    recordStreamingUrl: video?.streamingUrl ?? null,
+    seedStreamingUrl,
+  })
+  const playingOffline = playerSource != null && playerSource === offlineSource
+
   const subtitleVttSrc = useMemo(() => {
     // Offline playback reads the locally-saved subtitle from disk, but still
     // honors the subtitles toggle: the track is always bundled at download
     // time, yet only shown when captions are on — matching online playback.
-    if (offlineSource) return subtitleEnabled ? offlineSubtitle : null
+    if (playingOffline) return subtitleEnabled ? offlineSubtitle : null
     if (!subtitleEnabled || !activeSubtitleSlug || !activeVariantMedia)
       return null
     return (
@@ -261,7 +394,7 @@ export default function WatchVideoPage() {
         ?.vttSrc ?? null
     )
   }, [
-    offlineSource,
+    playingOffline,
     offlineSubtitle,
     subtitleEnabled,
     activeSubtitleSlug,
@@ -277,13 +410,26 @@ export default function WatchVideoPage() {
   // auto-seek and autostart.
   const progressEntry = useWatchProgressEntry(video?.documentId)
   const progressState = progressBarState(progressEntry)
-  const resumeAtSeconds =
+  // R16: a raw export outranks the offline state on this video's control.
+  const exportEntry = useExportEntry(video?.slug)
+  const savedResumeSeconds =
     progressEntry && progressState.resumeEligible
       ? resumePositionSeconds(
           progressEntry.positionSeconds,
           progressEntry.durationSeconds,
         )
       : null
+  const resumeAtSeconds = rankStartSeconds(
+    keepWatching?.start ?? null,
+    savedResumeSeconds,
+  )
+  // R17 names the saved place as it was when the record landed. After the
+  // hold ends, this page's own writes move the entry to the tap point.
+  const [offerSaved, setOfferSaved] = useState<{
+    seconds: number | null
+  } | null>(null)
+  if (keepWatching != null && offerSaved == null && video?.slug === decodedSlug)
+    setOfferSaved({ seconds: savedResumeSeconds })
   const subtitleActionLabel = resolveSubtitleActionLabel(
     subtitleEnabled,
     activeSubtitleSlug,
@@ -297,17 +443,9 @@ export default function WatchVideoPage() {
   const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
-  // content. The source precedence (and why the record fallback waits for the
-  // dub selection to settle) lives in resolvePlayerSource.
+  // content.
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
-  const playerSource = resolvePlayerSource({
-    offlineSource,
-    activeVariantHls: activeVariant?.hls ?? null,
-    variantSettled: activeVariant != null,
-    recordStreamingUrl: video?.streamingUrl ?? null,
-    seedStreamingUrl,
-  })
 
   // ---- Cast session lifecycle (U4: KTD4/KTD7) ----
   // The hook owns the KTD7 end triggers (slug change + unmount) internally.
@@ -332,6 +470,16 @@ export default function WatchVideoPage() {
     ? pinnedCastSourceRef.current
     : playerSource
 
+  // Set during render, so no request ever pairs a later dub's URL with the
+  // intent start. Returns the same state when nothing moved.
+  if (keepWatching != null) {
+    const advanced = advanceKeepWatching(keepWatching, {
+      url: effectivePlayerSource,
+      settled: activeVariant != null,
+    })
+    if (advanced !== keepWatching) setKeepWatchingState(advanced)
+  }
+
   // KTD5: the resolver input is this screen's source chain MINUS the
   // offlineSource prefix — a receiver can only fetch remote https.
   // U5: the last load's start position seeds the load-time progress tick
@@ -346,11 +494,24 @@ export default function WatchVideoPage() {
         title: displayTitle,
         posterUrl: displayPoster,
         startPositionSeconds,
+        // R15: read at call time — keyed on decodedSlug, the videoSlug this
+        // route's session descriptor hands the host as its videoKey.
+        playbackRate: effectivePlayerSettings(
+          getPlayerSettingsStore().getSnapshot(),
+          decodedSlug,
+        ).speed,
       })
       if (media != null) castLoadStartRef.current = media.startPositionSeconds
       return media
     },
-    [activeVariant, video, seedStreamingUrl, displayTitle, displayPoster],
+    [
+      activeVariant,
+      video,
+      seedStreamingUrl,
+      displayTitle,
+      displayPoster,
+      decodedSlug,
+    ],
   )
 
   const handleCastPress = useCallback(() => {
@@ -426,12 +587,12 @@ export default function WatchVideoPage() {
   const castReset = cast.reset
   useEffect(() => {
     if (castSessionState.phase === "failed") {
-      setSnackbarMessage("Casting failed. Playback continues on your phone.")
+      setSnackbarMessage(tCast("failedMessage"))
       castReset()
     } else if (castSessionState.phase === "ended") {
       castReset()
     }
-  }, [castSessionState, castReset, setSnackbarMessage])
+  }, [castSessionState, castReset, setSnackbarMessage, tCast])
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -444,19 +605,6 @@ export default function WatchVideoPage() {
     },
     [],
   )
-
-  useEffect(() => {
-    const to = showScrollTop ? 1 : 0
-    if (reduceMotionRef.current) {
-      scrollTopOpacity.setValue(to)
-      return
-    }
-    Animated.timing(scrollTopOpacity, {
-      toValue: to,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [showScrollTop, scrollTopOpacity])
 
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
@@ -487,12 +635,26 @@ export default function WatchVideoPage() {
     let cancelled = false
     void whenDeepLinkOriginsReady().then(() => {
       if (cancelled || deepLinkEmittedRef.current.has(decodedSlug)) return
-      const entry = consumeDeepLinkEntry(decodedSlug)
-      if (entry == null) return
+      const arrival = consumeDeepLinkArrival(decodedSlug)
+      if (arrival == null) return
       deepLinkEmittedRef.current.add(decodedSlug)
+      // Only a URL arrival is a shared link (feat-516); a reminder tap reaches
+      // this effect too and falls through to `direct` (the union has no
+      // `reminder` source). Reminder returns stay attributable via `origin`.
+      if (arrival.origin === "url") markPlaybackDiscovery(decodedSlug, "share")
+      // KTD8's direct handoff: a campaign tap on a VIDEO carries the delivery
+      // nonce, so admin can join this playback back to the campaign.
+      if (arrival.origin === "campaign" && arrival.campaign != null) {
+        markPlaybackDiscovery(decodedSlug, "acquisition", {
+          campaign: arrival.campaign,
+        })
+      }
+      // Built inline: the reserved-attribute sweep only reads an object
+      // literal written AT the call site.
       datadogLog.info("content.deep_link_open", {
         content_id: decodedSlug,
-        entry,
+        entry: arrival.entry,
+        origin: arrival.origin,
       })
     })
     return () => {
@@ -567,17 +729,19 @@ export default function WatchVideoPage() {
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
         <View style={layout.centered}>
-          <Text style={text.errorTitle}>Video Not Found</Text>
-          <Text style={text.errorMessage}>
-            {error?.message ?? "This video could not be loaded."}
-          </Text>
+          <Text style={text.errorTitle}>{t("notFoundTitle")}</Text>
+          <Text style={text.errorMessage}>{t("loadError")}</Text>
           <Text
             style={styles.retryLink}
-            onPress={() => void refetch()}
+            onPress={() => {
+              void refetch()
+              void refetchText()
+            }}
             accessibilityRole="button"
-            accessibilityLabel="Retry loading video"
+            accessibilityLabel={t("retryAriaLabel")}
+            {...{ "dd-action-name": "watch-load-retry" }}
           >
-            Retry
+            {tCommon("retry")}
           </Text>
         </View>
         <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
@@ -589,7 +753,7 @@ export default function WatchVideoPage() {
     hasVideo && video.studyQuestions.length > 0
       ? {
           __typename: "RelatedQuestionsBlock",
-          heading: "Study Questions",
+          heading: t("studyQuestionsHeading"),
           questions: video.studyQuestions.map((q) => ({
             question: q.value,
             answer: "",
@@ -600,16 +764,16 @@ export default function WatchVideoPage() {
       : null
 
   const bibleCitationsBlock: AdminBlock | null =
-    hasVideo && video.bibleCitations.length > 0
+    hasVideo && routeCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
-          heading: "Bible Quotes",
-          quotes: bibleQuotes,
+          heading: t("bibleQuotesHeading"),
+          quotes: bibleQuotes.cards,
         }
       : null
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-watch" style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
       {/* Sibling of the player dock, NOT a child: the dock carries
@@ -640,6 +804,7 @@ export default function WatchVideoPage() {
             redirect, an Up Next replace, no variant in this language): dropping
             it hands the player to the route beneath and reads as a back press. */}
         <PlayerSlot
+          page="watch"
           // The cast pin (KTD4), not the live chain: a dub chosen mid-session
           // reaches the player only when the session releases it.
           streamingUrl={effectivePlayerSource}
@@ -664,6 +829,9 @@ export default function WatchVideoPage() {
             videoId: video?.documentId ?? null,
             videoSlug: decodedSlug,
             title: displayTitle ?? "",
+            // The seed half of displayTitle is deep-link input, so it may
+            // paint here but must never persist into a notification body.
+            titleFromRecord: video?.title != null,
             posterUrl: displayPoster,
             languageSlug: activeVariant?.languageSlug ?? null,
             originPattern: "watch/[slug]",
@@ -681,6 +849,8 @@ export default function WatchVideoPage() {
                 : null
           }
           resumeAtSeconds={resumeAtSeconds}
+          // KTD12: null unless this page took a "Keep watching" intent.
+          progressHold={keepWatchingProgressHold(keepWatching)}
           autostart
         />
       </View>
@@ -696,12 +866,28 @@ export default function WatchVideoPage() {
         <VideoMetadata
           label={video?.label ?? null}
           title={displayTitle}
+          titleLang={video?.title != null ? video.titleLang : null}
           subtitle={null}
         />
 
         {hasVideo ? (
           <>
+            {textFailed && (
+              <View style={styles.inlineError}>
+                <Text style={text.errorMessage}>{t("detailsLoadError")}</Text>
+                <Text
+                  style={styles.retryLink}
+                  onPress={() => void refetchText()}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("retryDetailsAriaLabel")}
+                  {...{ "dd-action-name": "watch-text-retry" }}
+                >
+                  {tCommon("retry")}
+                </Text>
+              </View>
+            )}
             <ActionButtonRow
+              exportEntry={exportEntry}
               downloadState={getRecord(video.slug)?.state ?? null}
               downloadProgress={(() => {
                 const record = getRecord(video.slug)
@@ -710,60 +896,117 @@ export default function WatchVideoPage() {
                   : null
               })()}
               onDownload={() => {
+                // An export outranks every offline state (R16), so it is tested
+                // FIRST. Falling through would pause the offline download of a
+                // video that is being exported over an existing transfer.
+                if (exportEntry) {
+                  if (exportEntry.paused) {
+                    Alert.alert(
+                      t("savingToFilesTitle"),
+                      t("exportPausedMessage"),
+                      [
+                        {
+                          text: t("stopDownload"),
+                          style: "destructive",
+                          onPress: () => {
+                            exportControls.stop(video.slug)
+                          },
+                        },
+                        {
+                          text: t("resume"),
+                          onPress: () => {
+                            exportControls.resume(video.slug)
+                          },
+                        },
+                        { text: t("cancel"), style: "cancel" },
+                      ],
+                    )
+                  } else {
+                    // Running → the ring's pause glyph pauses it immediately,
+                    // mirroring the offline control.
+                    exportControls.pause(video.slug)
+                  }
+                  return
+                }
                 const state = getRecord(video.slug)?.state
                 if (state === "downloaded") {
                   // Saved: offer a non-destructive quality/language swap or a
                   // delete (the current copy stays playable during a swap).
-                  Alert.alert(
-                    "Offline download",
-                    "This video is saved for offline viewing.",
-                    [
+                  // Four options outrun Android's three-button dialog, so the
+                  // menu goes through presentActionMenu rather than Alert.
+                  presentActionMenu({
+                    title: t("offlineDownloadTitle"),
+                    message: t("savedOfflineMessage"),
+                    ios: "alert",
+                    actions: [
                       {
-                        text: "Change quality / language",
+                        text: t("changeQualityOrLanguage"),
                         onPress: () => router.push("/watch/download?swap=1"),
                       },
+                      // R33's switch removes the whole export feature, so the
+                      // option goes with it rather than opening a sheet that
+                      // cannot offer the mode. It routes to the sheet instead
+                      // of exporting straight away, because the Terms gate is
+                      // the consent surface and lives there.
+                      ...(RAW_EXPORT_ENABLED
+                        ? [
+                            {
+                              text: rawModeLabel(Platform.OS, tSheet),
+                              onPress: () =>
+                                router.push("/watch/download?mode=raw"),
+                            },
+                          ]
+                        : []),
                       {
-                        text: "Remove download",
+                        text: t("removeDownload"),
+                        style: "destructive" as const,
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
+                      },
+                      { text: t("cancel"), style: "cancel" as const },
+                    ],
+                  })
+                } else if (state === "paused") {
+                  // Paused (mirrors the series ring): resume, or remove entirely.
+                  Alert.alert(
+                    t("offlineDownloadTitle"),
+                    t("downloadPausedMessage"),
+                    [
+                      {
+                        text: t("removeDownload"),
                         style: "destructive",
                         onPress: () => {
                           void deleteDownload(video.slug)
                         },
                       },
-                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: t("resume"),
+                        onPress: () => void resumeDownload(video.slug),
+                      },
+                      { text: t("cancel"), style: "cancel" },
                     ],
                   )
-                } else if (state === "paused") {
-                  // Paused (mirrors the series ring): resume, or remove entirely.
-                  Alert.alert("Offline download", "This download is paused.", [
-                    {
-                      text: "Remove download",
-                      style: "destructive",
-                      onPress: () => {
-                        void deleteDownload(video.slug)
-                      },
-                    },
-                    {
-                      text: "Resume",
-                      onPress: () => void resumeDownload(video.slug),
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ])
                 } else if (state === "downloading") {
                   // In flight → the ring's pause glyph pauses it immediately.
                   void pauseDownload(video.slug)
                 } else if (state === "queued") {
                   // Queued in a series batch — no live transfer to pause yet, so
                   // offer to remove it from the download.
-                  Alert.alert("Offline download", "This download is queued.", [
-                    {
-                      text: "Remove download",
-                      style: "destructive",
-                      onPress: () => {
-                        void deleteDownload(video.slug)
+                  Alert.alert(
+                    t("offlineDownloadTitle"),
+                    t("downloadQueuedMessage"),
+                    [
+                      {
+                        text: t("removeDownload"),
+                        style: "destructive",
+                        onPress: () => {
+                          void deleteDownload(video.slug)
+                        },
                       },
-                    },
-                    { text: "Cancel", style: "cancel" },
-                  ])
+                      { text: t("cancel"), style: "cancel" },
+                    ],
+                  )
                 } else {
                   // Idle / failed / canceled → the download picker (retry included).
                   router.push("/watch/download")
@@ -779,7 +1022,10 @@ export default function WatchVideoPage() {
 
             <SignInPrompt />
 
-            <VideoDescription description={video.description} />
+            <VideoDescription
+              description={video.description}
+              descriptionLang={video.descriptionLang}
+            />
 
             {video.siblings.length > 0 && (
               <View style={styles.sectionGap}>
@@ -792,13 +1038,28 @@ export default function WatchVideoPage() {
 
             {studyQuestionsBlock != null && (
               <View style={styles.sectionGap}>
-                <RelatedQuestionsRenderer section={studyQuestionsBlock} />
+                <RelatedQuestionsRenderer
+                  section={studyQuestionsBlock}
+                  headingLang={uiTag}
+                  questionsLang={video.studyQuestionsLang}
+                />
               </View>
             )}
 
             {bibleCitationsBlock != null && (
               <View style={styles.sectionGap}>
-                <BibleQuotesCarouselRenderer section={bibleCitationsBlock} />
+                {/* Keyed per video: Up Next replaces the route params rather
+                    than remounting, and a stale prefetch-gate latch would let
+                    the next video skip the wait. */}
+                <BibleQuotesCarouselRenderer
+                  key={decodedSlug}
+                  section={bibleCitationsBlock}
+                  onOpenReader={openBibleReader}
+                  onArtworkFailed={bibleQuotes.reportArtworkFailure}
+                  videoSlug={decodedSlug}
+                  showShareButton={false}
+                  headingLang={uiTag}
+                />
               </View>
             )}
           </>
@@ -806,16 +1067,18 @@ export default function WatchVideoPage() {
           <>
             {error != null && (
               <View style={styles.inlineError}>
-                <Text style={text.errorMessage}>
-                  Couldn&apos;t load full details.
-                </Text>
+                <Text style={text.errorMessage}>{t("detailsLoadError")}</Text>
                 <Text
                   style={styles.retryLink}
-                  onPress={() => void refetch()}
+                  onPress={() => {
+                    void refetch()
+                    void refetchText()
+                  }}
                   accessibilityRole="button"
-                  accessibilityLabel="Retry loading video details"
+                  accessibilityLabel={t("retryDetailsAriaLabel")}
+                  {...{ "dd-action-name": "watch-details-retry" }}
                 >
-                  Retry
+                  {tCommon("retry")}
                 </Text>
               </View>
             )}
@@ -832,22 +1095,21 @@ export default function WatchVideoPage() {
         <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       )}
 
-      {showScrollTop && (
-        <Animated.View
-          style={[
-            styles.scrollTopFab,
-            { bottom: insets.bottom + 16, opacity: scrollTopOpacity },
-          ]}
-        >
-          <Pressable
-            onPress={handleScrollToTop}
-            style={styles.scrollTopButton}
-            accessibilityRole="button"
-            accessibilityLabel="Scroll to top"
-          >
-            <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
-          </Pressable>
-        </Animated.View>
+      <ScrollTopButton visible={showScrollTop} onPress={handleScrollToTop} />
+
+      {/* Hidden while casting (a seek moves the local player, not the TV), but
+          never unmounted: a remount would restart its clock after the hold ended. */}
+      {keepWatching?.holdActive === true && !offerExpired && (
+        <KeepWatchingOffer
+          resumeAtSeconds={offerResumeSeconds(
+            offerSaved?.seconds ?? null,
+            keepWatching.intent.startSeconds,
+          )}
+          clockStarted={playbackPlaying}
+          hidden={isFullscreen || castRemoteActive}
+          onChoose={chooseOfferPosition}
+          onExpire={expireOffer}
+        />
       )}
 
       <Snackbar
@@ -883,27 +1145,9 @@ const styles = StyleSheet.create({
   retryLink: {
     // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
     color: ACCENT_ON_DARK,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,
     textAlign: "center",
-  },
-  scrollTopFab: {
-    position: "absolute",
-    right: 16,
-  },
-  scrollTopButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: hexToRgba(SURFACE_COLOR, 0.85),
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
 })

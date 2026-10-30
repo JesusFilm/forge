@@ -44,7 +44,7 @@ If you do proceed with the raw host, run the four checks below before merging. A
 
 ### 1. Exposure is conditional on what the origin serves — and it is an ongoing invariant, not a pre-merge gate
 
-Publishing the URL only widens the audience for what the origin actually serves an unauthenticated caller. Chat's expensive surface (the Seeker → Mastra proxy) refuses server-side: `apps/chat/src/app/api/seeker/route.ts` gates in order "enable flag → config present → SSRF" and emits a terminal `fail("config_missing")` frame when the flag is off — so a scraper who finds the URL and POSTs directly to `/api/seeker` gets a dead end, not a paid Mastra generation. The flag is a string-boolean: `isSeekerChatEnabled()` in `apps/chat/src/config/env.ts` returns true only for the literal `"true"`.
+Publishing the URL only widens the audience for what the origin actually serves an unauthenticated caller. Chat's expensive surface (the Seeker → Mastra proxy) refuses server-side: `apps/chat/src/app/api/seeker/route.ts` gates in order "kill switch + per-user gate → config present → SSRF" (the per-user `SEEKER_ALLOWED_EMAILS` layer joined the kill switch after this doc's date, feat-233) and emits a terminal `fail("config_missing")` frame when the flag is off — so a scraper who finds the URL and POSTs directly to `/api/seeker` gets a dead end, not a paid Mastra generation. The flag is a string-boolean: `isSeekerChatEnabled()` in `apps/chat/src/config/env.ts` returns true only for the literal `"true"`.
 
 Three disciplines follow:
 
@@ -109,7 +109,7 @@ The cost-risk profile is otherwise asymmetric. Present-day cost of publishing is
 
 ## Examples
 
-The worked instance is chat's production environment in `CHAT_APP_SEED` (`apps/auth/src/domain/apps.ts`):
+The worked instance is chat's production environment in `CHAT_APP_SEED` (`apps/auth/src/domain/apps.ts`) **as it stood pre-DNS**. The Check-4 follow-up has since landed: the seeded production redirect is now the Cloudflare-fronted `https://chat.jesusfilm.ai/api/auth/callback`, and a comment in `apps.ts` narrates the cutover and cites this doc. The snippet below is the historical pre-cutover state the calculus was run against; the framework applies unchanged to the next pre-DNS service:
 
 ```ts
 {
@@ -156,7 +156,7 @@ const clientIds = FIRST_PARTY_APP_SEEDS.flatMap((app) =>
 expect(new Set(clientIds).size).toBe(clientIds.length)
 ```
 
-Registration proof: the seed script prints a receipt on deploy — `Seeded 5 first-party apps, 18 environments, 22 OAuth clients, and 10 scopes.` The counts confirm chat's two environments (local + production) landed: 18 environments across the five apps, plus manager's four session-service clients making 22 OAuth clients. Note the same upsert-only script that prints this receipt is the one that cannot _remove_ a client — the receipt only ever grows or holds steady.
+Registration proof: the seed script prints a receipt on deploy — at the time, `Seeded 5 first-party apps, 18 environments, 22 OAuth clients, and 10 scopes.` The counts confirmed chat's two environments (local + production) landed. (The seed has since grown to 9 apps — Changelog, Admin MCP, Mobile, and TV joined — and the receipt gained public-MCP repair stats; the counts here are the 2026-07-06 snapshot.) Note the same upsert-only script that prints this receipt is the one that cannot _remove_ a client — the receipt only ever grows or holds steady.
 
 ## Related
 
