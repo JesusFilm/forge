@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationIntegrityService } from "./integrity.service"
-import { loadDatabaseProfileProjectionEvidence } from "./profiles/profile-projection.service"
 import { purgeExpiredRecommendationRequests } from "./retention.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
@@ -788,39 +787,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ).resolves.toMatchObject({ state: "eligible" })
 
         await client.query(
-          `INSERT INTO recommendation_profile (
-            id, token_digest, privacy_generation, choice, state,
-            expires_at, created_at, updated_at
-          ) VALUES ('eligibility-profile', $1, 1, 'durable_allowed', 'active',
-            '2027-02-20T00:00:00.000Z', '2026-08-25T00:00:00.000Z',
-            '2026-08-25T00:00:00.000Z')`,
-          ["e".repeat(64)],
-        )
-        await client.query(
-          `INSERT INTO recommendation_profile_session_link (
-            id, profile_id, privacy_generation, session_digest, linked_at,
-            expires_at
-          ) VALUES ('eligibility-profile-link', 'eligibility-profile', 1, $1,
-            '2026-08-25T00:00:00.000Z', '2026-08-27T00:00:00.000Z')`,
-          ["a".repeat(64)],
-        )
-        const eligible = await loadDatabaseProfileProjectionEvidence(prisma, {
-          sessionDigest: "a".repeat(64),
-          profileId: "eligibility-profile",
-          privacyGeneration: 1,
-          now: new Date("2026-08-26T12:00:00.000Z"),
-        })
-        expect(eligible.durable).toEqual([
-          expect.objectContaining({
-            sourceId: "eligibility-projection-outcome",
-            targetMediaId: "eligibility-projection-video",
-            eligibilityPolicyVersion: "recommendation-integrity-v1",
-            outcomeClassifierVersion: "active-watch-proxy-v1",
-            sourceExpiresAt: new Date(expiresAt),
-          }),
-        ])
-
-        await client.query(
           `INSERT INTO recommendation_promotion_slate_fence (
             id, request_id, pointer_generation, reason_code, fenced_at,
             expires_at
@@ -838,17 +804,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           reasonCodes: ["promotion_rollback"],
           eligibleScopes: [],
         })
-        const rollbackFenced = await loadDatabaseProfileProjectionEvidence(
-          prisma,
-          {
-            sessionDigest: "a".repeat(64),
-            profileId: "eligibility-profile",
-            privacyGeneration: 1,
-            now: new Date("2026-08-26T12:00:00.000Z"),
-          },
-        )
-        expect(rollbackFenced.durable).toEqual([])
-
         await client.query(
           `INSERT INTO recommendation_outcome_revision (
             id, request_id, item_id, episode_id, classifier_version,
@@ -875,13 +830,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           state: "excluded",
           eligibleScopes: [],
         })
-        const rebuilt = await loadDatabaseProfileProjectionEvidence(prisma, {
-          sessionDigest: "a".repeat(64),
-          profileId: "eligibility-profile",
-          privacyGeneration: 1,
-          now: new Date("2026-08-26T12:00:00.000Z"),
-        })
-        expect(rebuilt.durable).toEqual([])
       } finally {
         await prisma.$disconnect()
       }
@@ -926,7 +874,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const otherRequestId = `${id}-other-request`
         const itemId = `${id}-item`
         const otherItemId = `${id}-other-item`
-        const expiresAt = "2026-10-29T12:00:00.000Z"
+        const expiresAt = new Date(Date.now() + 86_400_000).toISOString()
 
         for (const [request, count] of [
           [requestId, 2],

@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type MutableRefObject,
   type ReactNode,
   type RefObject,
@@ -22,7 +23,10 @@ import { Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
-import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
+import {
+  useIsWatchModalActive,
+  usePauseForWatchModal,
+} from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -121,8 +125,9 @@ export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
 /**
  * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
  * rather than a shared import: the two surfaces have different dwell
- * profiles and should be able to move independently. The values match today
- * because the reasoning does.
+ * profiles and should be able to move independently. The buffer values match
+ * because the reasoning does. The hero also measures bandwidth before picking
+ * its first rendition (`lib/hls-start-level.ts`); this intro does not yet.
  *
  * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
  * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
@@ -1090,6 +1095,13 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   )
 })
 
+/**
+ * Anything inside the hero frame that owns its own click. A frame click that
+ * lands on one of these is that control's, never an unmute.
+ */
+const WATCH_HOME_HERO_CONTROL_SELECTOR =
+  "a[href], button, input, select, textarea, [role='button'], [role='link']"
+
 export function WatchHomeTvCarousel({
   heroManifestCatalog,
   exposurePlacement,
@@ -1101,6 +1113,7 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  const watchModalActive = useIsWatchModalActive()
   const {
     activeIndex,
     activeSlide,
@@ -1124,7 +1137,9 @@ export function WatchHomeTvCarousel({
     slides: timelineSlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    playbackHeld: watchModalActive,
+  })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   // Separate from wrapperRef: that one is on the media layer, which reaches
@@ -1144,6 +1159,24 @@ export function WatchHomeTvCarousel({
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
     setPlayer((current) => (current === next ? current : next))
   }, [])
+  // The whole muted intro is an unmute target, the way the watch-page hero's
+  // pre-reveal click surface is, and it unmutes through the button's own
+  // handler. Delegated from the frame rather than a transparent layer because
+  // the title copy sits above the media and would swallow a layer's clicks.
+  // An unmuted intro ignores frame clicks so a stray tap can't silence it.
+  const handleHeroFrameClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!isMuted) return
+      if (
+        event.target instanceof Element &&
+        event.target.closest(WATCH_HOME_HERO_CONTROL_SELECTOR)
+      ) {
+        return
+      }
+      toggleMuted()
+    },
+    [isMuted, toggleMuted],
+  )
   // Chrome visibility is shell-level state that survives client-side
   // navigation, so arriving from a watch page whose player hid the header has
   // to restore it explicitly.
@@ -1170,6 +1203,7 @@ export function WatchHomeTvCarousel({
           drops that overlap to zero. */}
       <div
         ref={heroFrameRef}
+        onClick={handleHeroFrameClick}
         style={
           {
             // Measured fit wins once hydrated; the classes below are the
@@ -1182,6 +1216,7 @@ export function WatchHomeTvCarousel({
         }
         className={cn(
           "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isMuted && "cursor-pointer",
           isMuted
             ? // Short enough for the categories rail to sit fully inside the
               // first viewport, floored so a squat window keeps a usable intro

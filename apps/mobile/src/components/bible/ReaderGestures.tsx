@@ -181,6 +181,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

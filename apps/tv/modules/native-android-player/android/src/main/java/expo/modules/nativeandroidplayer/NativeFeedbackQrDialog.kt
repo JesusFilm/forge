@@ -78,13 +78,15 @@ internal class NativeFeedbackQrDialog(
     update(emptyList(), null, loading = true, error = false)
   }
 
-  fun update(rows: List<String>, code: String?, loading: Boolean, error: Boolean) {
+  fun update(rows: List<String>, code: String?, loading: Boolean, error: Boolean, simulator: Boolean = false, hostedSimulator: Boolean = false) {
     image.setImageBitmap(qrBitmap(rows))
-    reference.text = code?.let { "Reference $it" }.orEmpty()
+    reference.text = if (simulator) (if (hostedSimulator) "Simulator test" else "Simulator test · LOCAL-PREVIEW") else code?.let { "Reference $it" }.orEmpty()
     retry.visibility = if (error) View.VISIBLE else View.GONE
     message.text = when {
-      error -> "Verified feedback is unavailable. Please try again."
+      error -> if (simulator) (if (hostedSimulator) "Simulator feedback is unavailable. Check the signed link." else "Local feedback is unavailable. Check the simulator configuration.") else "Verified feedback is unavailable. Please try again."
       loading || image.drawable == null -> "Verifying this TV…"
+      simulator && hostedSimulator -> "Simulator test — feedback goes to the TV beta team. Scan with your phone to send a report."
+      simulator -> "Scan with your phone. Reports save locally; sending to Linear is optional."
       else -> "Scan with your phone to report an issue or share an idea."
     }
   }

@@ -8,10 +8,10 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (October 8, 2026)
+## Status (October 23, 2026)
 
-- **Total tickets:** 52
-- **Complete:** 35
+- **Total tickets:** 53
+- **Complete:** 36
 - **In progress:** 1
 - **Not started:** 16
 - **Blocked:** 0
@@ -23,6 +23,8 @@ suggestion intake, decision gates and success criteria.
 
 | Forge ID                                                          | Historical issue                                              | Feature                                                               | Status      | Forge PR                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [feat-783](feat-783-rag-credential-cutover.md)                    | —                                                             | Coordinate RAG credential rotation through PR-to-main                 | complete    | [#2862](https://github.com/JesusFilm/forge/pull/2862), [#2869](https://github.com/JesusFilm/forge/pull/2869)                                                                                                                                                                                                                             |
+| [feat-788](feat-788-rag-github-runtime-token.md)                  | —                                                             | Rotate the portal GitHub runtime credential                           | in-progress | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-610](feat-610-rag-static-bearer-retirement.md)              | —                                                             | Retire Forge RAG static Railway bearer tokens                         | complete    | [#2582](https://github.com/JesusFilm/forge/pull/2582), [#2586](https://github.com/JesusFilm/forge/pull/2586)                                                                                                                                                                                                                             |
 | [feat-605](feat-605-rag-safe-search-diagnostics.md)               | —                                                             | Classify intermittent RAG search failures safely                      | complete    | [#2564](https://github.com/JesusFilm/forge/pull/2564)                                                                                                                                                                                                                                                                                    |
 | [feat-606](feat-606-rag-post-migration-workflow-validation.md)    | —                                                             | Verify acquisition and ingestion after the environment-name migration | not-started | —                                                                                                                                                                                                                                                                                                                                        |

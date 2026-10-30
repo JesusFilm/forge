@@ -183,3 +183,57 @@ after its thin visit link expires, so a late private event cannot silently
 become ordinary public evidence. Accepted receipt times and delivery summary
 writes are clipped at the declared late-event cutoff. These compact rows are
 deleted with the experiment at its configured retention horizon.
+
+## Playback engagement alongside CTR
+
+New report revisions include the optional `engagement` block, version
+`observed-active-watch-v1`. Admin shows it on the public control page and the
+saved/private report page; the authenticated JSON reader returns the same data.
+Save a fresh revision to include retained playback from an existing cohort. This
+does not restart assignment, regenerate a catalog, or change the frozen CTR rule.
+The ordinary public A/B launched through `start_ab` is an observed comparison;
+the stricter certification sections above apply to the separate qualified path.
+
+| Measure                                      | Numerator                                                                                  | Denominator                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Visit CTR                                    | Eligible visits with at least one accepted recommendation selection                        | All eligible visits                      |
+| Engaged-view rate                            | Eligible visits with at least one recommendation-attributed qualified active-watch outcome | All eligible visits                      |
+| Active watch minutes per 100 eligible visits | Observed active playback milliseconds / 60,000 × 100                                       | All eligible visits                      |
+| Click-to-playback capture                    | Claimed recommendation playback episodes                                                   | Accepted selections                      |
+| Active-time capture                          | Claimed episodes with complete or partial active-time evidence                             | Claimed recommendation playback episodes |
+
+A qualified view uses the existing `active-watch-proxy-v1` rule: at least 30
+seconds of foreground playing time **or** 25% of known duration. Hidden time,
+pauses, and seeking are not active watch time. Empty and failed deliveries remain
+in the visit denominator. Each visit counts once for engaged-view rate; distinct
+claimed episodes contribute their observed active time. The report uses exact
+visit → request → accepted selection → claimed episode lineage and the latest
+outcome revision published by the report cutoff. Unattributed/direct playback,
+conflicted episodes, and mismatched generations do not contribute engagement.
+
+Read coverage before comparing variants. Outcomes are asynchronous: pending
+claims can mature in later revisions. Complete/partial capture, absent outcomes,
+missing active-time evidence, invalid episodes, and pending episodes are shown
+separately; pending is an overlapping diagnostic, not an additional total.
+Partial capture contributes an observed lower bound. A click without a claim may
+mean navigation was abandoned or capture failed. These counters do not prove
+that all client/network events arrived.
+
+Engaged-view uplift includes an approximate 95% browser-clustered interval using
+the existing visit-ratio method. Active minutes are descriptive. Engagement is a
+secondary observed comparison, not a replacement stopping policy or automatic
+winner. Compare all three measures together once capture has matured in both arms.
+
+The archive-before-delete transaction retains engagement totals and per-browser
+engaged counts. Archives written before migration `0162` have zero
+`engagement_measured_visits`, meaning unknown, not measured zero. Any unmeasured
+archived visits withhold full-cohort engagement rates and intervals. Entirely
+missing playback evidence after accepted clicks also yields unavailable rates;
+a cohort with no accepted clicks has a known zero engagement numerator. Older
+immutable report revisions remain readable with engagement unavailable.
+
+Deploy verification: confirm `0162_precomputed_playback_engagement` is applied,
+save one fresh revision for the running experiment, inspect all three measures
+and capture details, and confirm the serving pointer/version and cohort dates
+are unchanged. Rolling back application code may leave these additive columns
+in place; do not delete existing immutable report revisions.

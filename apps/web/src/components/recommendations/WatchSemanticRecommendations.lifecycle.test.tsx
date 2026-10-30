@@ -43,7 +43,10 @@ vi.mock("@/components/recommendations/WatchRecommendationVerification", () => ({
   ),
 }))
 
+import { setRequestLocale } from "next-intl/server"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import enMessages from "../../../messages/en.json"
+import ruMessages from "../../../messages/ru.json"
 import {
   completeRecommendationConsentBootstrap,
   startRecommendationConsentBootstrap,
@@ -485,6 +488,64 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(container.innerHTML).not.toContain("capability-secret")
   })
 
+  it("announces the opening video title from the active locale catalog", async () => {
+    let resolveSelection!: (response: Response) => void
+    // Hold the selection open so the busy announcement stays visible.
+    const selectionResponse = new Promise<Response>((resolve) => {
+      resolveSelection = resolve
+    })
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/api/recommendations")) {
+        return Promise.resolve(jsonResponse({ delivery }))
+      }
+      if (url.endsWith("/select")) return selectionResponse
+      return Promise.resolve(jsonResponse({ receipts: [] }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const openingTitle = ruMessages.VideoRecommendations.openingTitle
+    expect(openingTitle).not.toBe(enMessages.VideoRecommendations.openingTitle)
+
+    setRequestLocale("ru")
+    try {
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="ru"
+            audioLanguageSlug="russian"
+            navigate={vi.fn()}
+          />,
+        )
+      })
+      await flush()
+      const card = container.querySelector("a")!
+      act(() => {
+        card.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+      })
+
+      expect(card.getAttribute("aria-busy")).toBe("true")
+      expect(container.textContent).toContain(
+        openingTitle.replace("{title}", "Target video"),
+      )
+      expect(container.textContent).not.toContain("Opening Target video")
+    } finally {
+      resolveSelection(
+        jsonResponse({
+          claimNonce: requestBodies(fetchMock).find(
+            (body) => body.eventId != null,
+          )?.claimNonce,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        }),
+      )
+      await flush()
+      setRequestLocale("en")
+    }
+  })
+
   it.each([
     { name: "control-click", type: "click", button: 0, ctrlKey: true },
     { name: "middle-click", type: "auxclick", button: 1, ctrlKey: false },
@@ -664,17 +725,19 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
   it("fails open to the token-free trusted href on the short selection deadline without double navigation", async () => {
     let resolveSelectionBody!: (body: unknown) => void
+    let selectionSignal: AbortSignal | undefined
     const selectionBody = new Promise<unknown>((resolve) => {
       resolveSelectionBody = resolve
     })
     vi.stubGlobal(
       "fetch",
-      vi.fn((input: RequestInfo | URL) => {
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
         if (url.endsWith("/api/recommendations")) {
           return Promise.resolve(jsonResponse({ delivery }))
         }
         if (url.endsWith("/select")) {
+          selectionSignal = init?.signal ?? undefined
           return Promise.resolve({
             ok: true,
             json: () => selectionBody,
@@ -706,6 +769,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     await act(async () => vi.advanceTimersByTime(800))
     expect(navigate).toHaveBeenCalledOnce()
     expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+    expect(selectionSignal?.aborted).toBe(false)
+    act(() => root.render(<div>replacement</div>))
+    expect(selectionSignal?.aborted).toBe(false)
 
     resolveSelectionBody({
       claimNonce: "late_claim_nonce_1234567890",

@@ -147,6 +147,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "HomepageRecommendationsBlock",
   "WatchHomeHeroBlock",
   "WatchHomeCategoryRailBlock",
+  "WatchAudienceBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -332,6 +333,11 @@ function renderAdminBlock(
     case "WatchHomeHeroBlock":
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.
+      return null
+    case "WatchAudienceBlock":
+      // Pure configuration: the questionnaire is the shared audience frame,
+      // fed through WatchSetting.watchAudience. Mounting it again here would
+      // render it twice (and a draft would show where only published belongs).
       return null
     case "HomepageRecommendationsBlock":
       if (!languageSlug) return null

@@ -3,6 +3,7 @@ import type { Principal } from "@/auth/principal"
 
 import {
   PUBLIC_LANGUAGE_SLUG_SQL_PATTERN,
+  notRestrictedFromWatchSql,
   notRestrictedFromWatchWhere,
   SearchWatchabilityService,
   watchVisibilityWhere,
@@ -22,6 +23,22 @@ describe("notRestrictedFromWatchWhere", () => {
     expect(notRestrictedFromWatchWhere()).toEqual({
       NOT: { restrictViewPlatforms: { has: "watch" } },
     })
+  })
+})
+
+describe("notRestrictedFromWatchSql", () => {
+  it("renders the restriction check for the given video alias", () => {
+    const fragment = notRestrictedFromWatchSql("child")
+    expect(fragment.sql).toBe(
+      "NOT ('watch' = ANY(child.restrict_view_platforms))",
+    )
+    expect(fragment.values).toEqual([])
+  })
+
+  it("refuses an alias that is not a plain identifier", () => {
+    for (const alias of ["", "v; DROP TABLE video", "Parent", "v.x", "1v"]) {
+      expect(() => notRestrictedFromWatchSql(alias)).toThrow(TypeError)
+    }
   })
 })
 

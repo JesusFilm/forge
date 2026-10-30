@@ -24,6 +24,29 @@ const NATIVE_STRINGS = {
 // quote, a backslash, a line break, or the ICU apostrophe escape ''.
 const UNSAFE_STRINGS_TEXT = /["\\\p{Cc}]|''/u
 
+// App Store Connect refuses these as .lproj names (ITMS-90176, build 16). No
+// local locale data predicts Apple's list, so add a tag when an email names it.
+// iOS then shows that language the Info.plist English.
+const IOS_REJECTED_LPROJ_TAGS = new Set([
+  "bjt",
+  "caa",
+  "hak-Hant",
+  "iu-Latn",
+  "ixl",
+  "knf",
+  "lbe",
+  "mey-Latn",
+  "mfv",
+  "nan-Hant",
+  "quv",
+  "sav",
+  "snf",
+  "tnr",
+  "tsg",
+  "usp",
+  "xin",
+])
+
 class NativeStringsError extends Error {}
 
 function parseArgs(argv) {
@@ -76,7 +99,10 @@ function localeValues({ messagesDir, nativeLocales }) {
   }
   const english = readJson(path.join(messagesDir, `${SOURCE_LOCALE}.json`))
   const byTag = {}
-  for (const tag of declared.filter((tag) => tag !== SOURCE_LOCALE)) {
+  const tags = declared.filter(
+    (tag) => tag !== SOURCE_LOCALE && !IOS_REJECTED_LPROJ_TAGS.has(tag),
+  )
+  for (const tag of tags) {
     const catalogFile = path.join(messagesDir, `${tag}.json`)
     const catalog = fs.existsSync(catalogFile) ? readJson(catalogFile) : {}
     const ios = {}

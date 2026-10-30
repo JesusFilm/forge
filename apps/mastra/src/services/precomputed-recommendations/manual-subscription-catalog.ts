@@ -135,6 +135,8 @@ export type ManualSubscriptionCatalogPorts = {
 }
 
 export type ManualSubscriptionCatalogOptions = {
+  /** Must match the account reader and per-call model admission policy. */
+  minimumRemainingPercent?: 0 | 25
   /** Independent profiles/source pairs; calls within one profile stay ordered. */
   concurrency?: number
   /** Stop new work and drain dispatched calls before closing the attempt. */
@@ -610,6 +612,9 @@ export async function runManualSubscriptionCatalog(
   ports: ManualSubscriptionCatalogPorts,
   options: ManualSubscriptionCatalogOptions = {},
 ): Promise<ManualSubscriptionCatalogResult> {
+  const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
+  if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
+    throw new ManualSubscriptionCatalogError("input_invalid")
   const concurrency = options.concurrency ?? 1
   if (
     !Number.isSafeInteger(concurrency) ||
@@ -814,11 +819,12 @@ export async function runManualSubscriptionCatalog(
       },
     ) ||
     !Number.isFinite(attestation.allowance.weeklyRemainingPercent) ||
-    attestation.allowance.weeklyRemainingPercent <= 25 ||
+    attestation.allowance.weeklyRemainingPercent <= minimumRemainingPercent ||
     attestation.allowance.weeklyRemainingPercent > 100 ||
     (attestation.allowance.fiveHour.kind === "limited" &&
       (!Number.isFinite(attestation.allowance.fiveHour.remainingPercent) ||
-        attestation.allowance.fiveHour.remainingPercent <= 25 ||
+        attestation.allowance.fiveHour.remainingPercent <=
+          minimumRemainingPercent ||
         attestation.allowance.fiveHour.remainingPercent > 100))
   )
     throw new ManualSubscriptionCatalogError("admission_refused")

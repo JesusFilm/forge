@@ -1,0 +1,183 @@
+class StudioCompositionError extends Error {}
+const OUTPUT_MAX_BYTES = 134217728
+import { parallelRender as renderMedia } from "/runtime/parallel-render.mjs"
+import { createReadStream } from "node:fs"
+import { execFileSync } from "node:child_process"
+import { readFile as read, stat } from "node:fs/promises"
+import { createServer } from "node:http"
+import { pipeline } from "node:stream/promises"
+import { resolve } from "node:path"
+// Opt in before importing the pinned SDK: intermediate audio mixers bypass
+// renderMedia's encoder override and must obey the same fixed task budget.
+process.env.FORGE_STUDIO_CODEC_THREADS = "1"
+// The SDK otherwise accumulates every JPEG under its >2GB-free heuristic.
+// The paired opt-in streams frames with backpressure inside the same hard caps.
+process.env.FORGE_STUDIO_STREAM_FRAMES = "1"
+// Avoid Chromium surface-copy GPU crashes under the fixed contained profile.
+// The SDK preserves exact dimensions below 8192px; Studio admits at most 7680px.
+process.env.DISABLE_FROM_SURFACE = "1"
+const { selectComposition } = await import("/runtime/renderer.cjs")
+const input = JSON.parse(await read("/input/input.json", "utf8"))
+const served = new Map()
+const mediaUrls = {}
+let sourceIndex = 0
+for (const media of Object.values(input.media)) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(media.file))
+    throw new StudioCompositionError("Invalid retained media filename")
+  if (media.kind !== "hls") {
+    served.set(media.file, resolve("/input", media.file))
+    continue
+  }
+  // Remotion downloads an HLS playlist without its relative segments. Remux
+  // admitted local bytes before executing any composition code. The private
+  // namespace has no external network, and FFmpeg permits only local files.
+  const playlist = await read(resolve("/input", media.file), "utf8")
+  if (
+    playlist.length > 262144 ||
+    !playlist.startsWith("#EXTM3U\n") ||
+    !playlist.includes("#EXT-X-ENDLIST")
+  )
+    throw new StudioCompositionError("Invalid retained HLS")
+  for (const raw of playlist.split("\n")) {
+    const line = raw.trim()
+    if (!line) continue
+    if (line.startsWith("#")) {
+      if (
+        !/^#(?:EXTM3U|EXTINF:|EXT-X-(?:VERSION:|TARGETDURATION:|MEDIA-SEQUENCE:|PLAYLIST-TYPE:|ENDLIST$|DISCONTINUITY$|INDEPENDENT-SEGMENTS$))/.test(
+          line,
+        ) ||
+        line.includes("URI=")
+      )
+        throw new StudioCompositionError("Unsupported retained HLS directive")
+    } else if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(line)) {
+      throw new StudioCompositionError(
+        "HLS must reference admitted local segment names",
+      )
+    }
+  }
+  const name = `studio-source-${sourceIndex++}.mp4`
+  const output = resolve("/tmp", name)
+  execFileSync(
+    "/codec/ffmpeg",
+    [
+      "-v",
+      "error",
+      "-xerror",
+      "-nostdin",
+      "-protocol_whitelist",
+      "file",
+      "-i",
+      resolve("/input", media.file),
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-c",
+      "copy",
+      "-movflags",
+      "+faststart",
+      output,
+    ],
+    { timeout: 30000, maxBuffer: 65536 },
+  )
+  media.file = name
+  served.set(name, output)
+  // Generated ASCII names refer only to this job's admitted remuxes. The paired
+  // SDK policy reuses these native files instead of copying them over HTTP.
+  mediaUrls[name] = `file://${output}`
+}
+const server = createServer((req, res) => {
+  const name = (req.url ?? "").slice(1)
+  if (!/^[a-zA-Z0-9._-]{1,160}$/.test(name)) {
+    res.writeHead(404).end()
+    return
+  }
+  const file = served.get(name)
+  if (!file) {
+    res.writeHead(404).end()
+    return
+  }
+  res.setHeader("Access-Control-Allow-Origin", "*")
+  const stream = createReadStream(file)
+  stream.on("error", () => res.writeHead(404).end())
+  stream.pipe(res)
+})
+await new Promise((done) => server.listen(0, "127.0.0.1", done))
+try {
+  const options = {
+    serveUrl: "/bundle",
+    inputProps: {
+      input,
+      mode: "render",
+      mediaBaseUrl: `http://127.0.0.1:${server.address().port}/`,
+      mediaUrls,
+    },
+    browserExecutable: "/runtime/chrome-launcher",
+    // Remotion reserves 2s of this limit for reporting, so 7s allowed only 5s
+    // for a cold retained-video seek. Use its normal 30s frame allowance;
+    // the native guard and host watchdog still enforce the original job end.
+    timeoutInMilliseconds: 30000,
+    logLevel: "error",
+  }
+  const composition = await selectComposition({ ...options, id: "Studio" })
+  // Budget the complete video before encoding. Default CRF18 can exceed the
+  // fixed output cap even when streaming keeps individual frames bounded.
+  // Reserve 16MiB for mux overhead/variation and two seconds of VBV capacity.
+  const durationSeconds = composition.durationInFrames / composition.fps
+  const audioBitsPerSecond = 320000
+  const maximumVideoKbps = Math.floor(
+    Math.min(
+      25000000,
+      ((OUTPUT_MAX_BYTES - 16 * 1024 * 1024) * 8 -
+        audioBitsPerSecond * durationSeconds) /
+        (durationSeconds + 2),
+    ) / 1000,
+  )
+  const targetVideoKbps = Math.floor(maximumVideoKbps * 0.9)
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0 ||
+    !Number.isSafeInteger(targetVideoKbps) ||
+    targetVideoKbps < 1
+  )
+    throw new StudioCompositionError("Duration cannot fit the output budget")
+  await renderMedia({
+    ...options,
+    composition,
+    codec: "h264",
+    audioCodec: "aac",
+    enforceAudioTrack: true,
+    sampleRate: 48000,
+    audioBitrate: "320k",
+    videoBitrate: `${targetVideoKbps}k`,
+    encodingMaxRate: `${maximumVideoKbps}k`,
+    encodingBufferSize: `${maximumVideoKbps * 2}k`,
+    // One continuous CPU encoder retains the complete timeline bitrate budget.
+    x264Preset: "veryfast",
+    concurrency: 1,
+    // Pin all encoder/decoder/filter pools inside the fixed aggregate PID cap.
+    // This exact override completed the retained 231-second validation fixture.
+    ffmpegOverride: ({ args }) => [
+      "-threads",
+      "1",
+      "-filter_threads",
+      "1",
+      "-filter_complex_threads",
+      "1",
+      ...args.slice(0, -1),
+      "-threads",
+      "1",
+      args.at(-1),
+    ],
+    outputLocation: "/tmp/output.mp4",
+    offthreadVideoCacheSizeInBytes: 33554432,
+    offthreadVideoThreads: 1,
+  })
+  const size = (await stat("/tmp/output.mp4")).size
+  if (size < 1 || size > OUTPUT_MAX_BYTES)
+    throw new StudioCompositionError("Output size rejected")
+  await pipeline(createReadStream("/tmp/output.mp4"), process.stdout)
+} finally {
+  server.closeAllConnections()
+  server.close()
+}

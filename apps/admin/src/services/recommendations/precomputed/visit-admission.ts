@@ -411,6 +411,18 @@ export async function admitPrivatePrecomputedVisit(
 
 export async function recordPrivatePrecomputedVisitDelivery(
   prisma: PrismaClient,
+  input: Parameters<typeof recordPrecomputedVisitDelivery>[1],
+): Promise<"recorded" | "conflict" | "unavailable"> {
+  assertWebRecommendationCaller(input.caller)
+  if (env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED !== "1")
+    throw new RecommendationAuthenticationError()
+  return recordPrecomputedVisitDelivery(prisma, input)
+}
+
+/** Public and private visits use the same durable delivery binding. Public
+ * admission is controlled by the saved serving pointer, not the private flag. */
+export async function recordPrecomputedVisitDelivery(
+  prisma: PrismaClient,
   input: {
     visitId: string
     browserDigest: string
@@ -423,8 +435,6 @@ export async function recordPrivatePrecomputedVisitDelivery(
   },
 ): Promise<"recorded" | "conflict" | "unavailable"> {
   assertWebRecommendationCaller(input.caller)
-  if (env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED !== "1")
-    throw new RecommendationAuthenticationError()
   if (
     !UUID_V4.test(input.visitId) ||
     !HEX_DIGEST.test(input.browserDigest) ||
@@ -449,6 +459,7 @@ export async function recordPrivatePrecomputedVisitDelivery(
             experiment: {
               select: {
                 id: true,
+                state: true,
                 endsAt: true,
                 ctrPolicy: { select: { lateEventCutoffHours: true } },
               },
@@ -464,6 +475,7 @@ export async function recordPrivatePrecomputedVisitDelivery(
             experiment: {
               select: {
                 id: true,
+                state: true,
                 endsAt: true,
                 ctrPolicy: { select: { lateEventCutoffHours: true } },
               },
@@ -472,6 +484,8 @@ export async function recordPrivatePrecomputedVisitDelivery(
         })
         if (
           !visit ||
+          (visit.experiment.state !== "public_ready" &&
+            env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED !== "1") ||
           (visit.experiment.ctrPolicy &&
             now >=
               new Date(

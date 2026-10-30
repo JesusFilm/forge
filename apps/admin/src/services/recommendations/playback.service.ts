@@ -6,7 +6,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
-import { env } from "@/config/env"
+
 import { prisma as defaultPrisma } from "@/db/client"
 import {
   isTerminalRecommendationFactKind,
@@ -42,7 +42,6 @@ import {
   RecommendationTokenInvalidError,
   type EpisodeCapabilityBinding,
 } from "./token.service"
-import { projectViewingModeEvidence } from "./viewing-mode.service"
 
 const FACT_LIMITS: Readonly<
   Record<RecommendationPlaybackEvent["kind"], number>
@@ -516,15 +515,6 @@ export class RecommendationPlaybackService {
                     data: replayReceipts,
                   },
                 )
-              }
-              if (
-                env.RECOMMENDATION_VIEWING_MODE_ENABLED !== "false" &&
-                pending.some(
-                  ({ event }) => event.kind === "playback_viewing_mode",
-                ) &&
-                conflictCount === 0
-              ) {
-                await projectViewingModeEvidence(tx, locked, now)
               }
               return {
                 receipts: parsed.events.map(

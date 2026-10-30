@@ -53,6 +53,7 @@ export function HomeHeader({
         style={styles.glassButton}
         glassEffectStyle="regular"
         colorScheme="dark"
+        isInteractive
       >
         <Ionicons name="search" size={22} color={ACCENT} />
       </GlassView>
@@ -70,6 +71,7 @@ export function HomeHeader({
         style={styles.glassButton}
         glassEffectStyle="regular"
         colorScheme="dark"
+        isInteractive
       >
         <Ionicons name="person" size={16} color={ACCENT} />
       </GlassView>
@@ -145,7 +147,6 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontSize: 17,
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   slot: {

@@ -27,6 +27,11 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0076_recommendation_profile_eligibility_reconciliation",
+  "0104_recommendation_cowatch_shadow",
+  "0158_recommendation_content_action_eligibility_index",
+  "0159_recommendation_cowatch_outcome_cascade_indexes",
+  "0160_recommendation_projection_run_reference_index",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -144,6 +149,283 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query(`SET search_path TO "${schemaName}", public`)
       for (const migration of migrationSql) await client.query(migration)
     })
+
+    it("indexes empty content-action cascades and deletes every eligibility revision", async () => {
+      await client.query("BEGIN")
+      try {
+        const graph = await insertLifecycleGraph("retention-index")
+        await client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, qualified_view,
+            view_quality_weight_reason, learning_eligible, generation, expires_at
+          ) VALUES ('retention-index-outcome', $1, $2, $3,
+            'legacy-position-v0', 0, $4, 1, false,
+            'continuous_weight_not_available', false, 1, $5)`,
+          [
+            graph.requestId,
+            graph.itemId,
+            graph.episodeId,
+            "3".repeat(64),
+            expiresAt,
+          ],
+        )
+        // Match the production failure: a large eligibility table with no
+        // content-action children still needs an index for each FK cascade.
+        await client.query(
+          `INSERT INTO recommendation_eligibility_decision (
+            id, source_type, source_key, outcome_id, policy_version, revision,
+            actor_class, state, contribution_weight, contribution_ordinal,
+            distinct_support, identity_concentration, expires_at, input_digest
+          ) SELECT 'retention-background-' || n, 'playback_outcome',
+            'retention-background-' || n, 'retention-index-outcome',
+            'retention-index-test', 1, 'human_anonymous', 'eligible', 1, 1, 1, 0, $1, repeat('7', 64)
+          FROM generate_series(1, 250000) n`,
+          [expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_content_action (
+            id, contract_version, session_digest, event_id, payload_digest,
+            action_class, action_kind, actor_class, purpose, target_media_id,
+            occurred_at, expires_at
+          ) SELECT 'retention-action-' || n, 'content-action-v1', $1,
+            'retention-action-' || n, $1, 'human_action', 'share',
+            'human_anonymous', 'watch', 'seed-video', '2026-08-19', $2
+          FROM generate_series(1, 101) n`,
+          ["4".repeat(64), expiresAt],
+        )
+        await client.query("ANALYZE recommendation_eligibility_decision")
+        const plan = await client.query(
+          `EXPLAIN (FORMAT JSON) DELETE FROM recommendation_eligibility_decision
+           WHERE content_action_id = $1`,
+          ["retention-action-1"],
+        )
+        expect(JSON.stringify(plan.rows)).toContain(
+          '"Index Name":"recommendation_eligibility_content_action_idx"',
+        )
+
+        // Cover current and historical revisions too: a current-only partial
+        // index would not serve the unfiltered FK lookup above.
+        await client.query(
+          `INSERT INTO recommendation_eligibility_decision (
+            id, source_type, source_key, content_action_id, policy_version,
+            revision, is_current, actor_class, state, contribution_weight,
+            contribution_ordinal, distinct_support, identity_concentration, expires_at, input_digest
+          ) SELECT 'retention-action-decision-' || n || '-' || r, 'content_action',
+            'retention-action-' || n, 'retention-action-' || n,
+            'retention-index-test', r, r = 2, 'human_anonymous', 'eligible',
+            1, 1, 1, 0, $1, repeat('7', 64)
+          FROM generate_series(1, 2) r CROSS JOIN (VALUES (1), (101)) actions(n)`,
+          [expiresAt],
+        )
+        // The loaded production phase had about 2.5 seconds left. The query
+        // plan assertion is deterministic; this deadline also bounds the cascade.
+        await client.query("SET LOCAL statement_timeout = '2500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_content_action WHERE id = ANY($1::text[])`,
+          [Array.from({ length: 100 }, (_, i) => `retention-action-${i + 1}`)],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT content_action_id, count(*)::int AS count
+               FROM recommendation_eligibility_decision
+               GROUP BY content_action_id ORDER BY content_action_id NULLS LAST`,
+            )
+          ).rows,
+        ).toEqual([
+          { content_action_id: "retention-action-101", count: 2 },
+          { content_action_id: null, count: 250000 },
+        ])
+        expect(
+          (
+            await client.query(
+              `SELECT id FROM recommendation_content_action WHERE id LIKE 'retention-action-%'`,
+            )
+          ).rows,
+        ).toEqual([{ id: "retention-action-101" }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
+
+    it("indexes both outcome cascades across unrelated co-watch generations", async () => {
+      await client.query("BEGIN")
+      try {
+        const graph = await insertLifecycleGraph("cowatch-retention-index")
+        await client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, qualified_view,
+            view_quality_weight_reason, learning_eligible, generation, expires_at
+          ) SELECT 'cowatch-retention-outcome-' || n, $1, $2, $3,
+            'legacy-position-v0', n, $4, n, false,
+            'continuous_weight_not_available', false, 1, $5
+          FROM generate_series(1, 2601) n`,
+          [
+            graph.requestId,
+            graph.itemId,
+            graph.episodeId,
+            "5".repeat(64),
+            expiresAt,
+          ],
+        )
+        await client.query(
+          `INSERT INTO recommendation_cowatch_generation (
+            id, projection_version, feature_version, source_count,
+            contribution_count, edge_count, distinct_viewer_count,
+            window_end, terminal_decision, decision_reason, expires_at
+          ) SELECT repeat(md5('retention-generation-' || n), 2), 'fixture',
+            'fixture', 2501, 2500, 1, 1, '2026-08-19', 'accepted', 'fixture', $1
+          FROM generate_series(1, 100) n`,
+          [expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_cowatch_contribution (
+            id, generation_id, source_outcome_id, target_outcome_id,
+            source_media_id, target_media_id, session_digest, viewer_key_digest,
+            gap_ms, quality_weight, recency_weight, effective_weight, expires_at
+          ) SELECT 'cowatch-retention-pair-' || g || '-' || n,
+            repeat(md5('retention-generation-' || g), 2),
+            'cowatch-retention-outcome-1', 'cowatch-retention-outcome-' || n,
+            'fixture-source', 'fixture-target', $1, $1, 1000, 1, 1, 1, $2
+          FROM generate_series(1, 100) g CROSS JOIN generate_series(2, 2501) n`,
+          ["6".repeat(64), expiresAt],
+        )
+        await client.query("ANALYZE recommendation_cowatch_contribution")
+        for (const side of ["source", "target"] as const) {
+          const plan = await client.query(
+            `EXPLAIN (FORMAT JSON) DELETE FROM recommendation_cowatch_contribution
+             WHERE ${side}_outcome_id = $1`,
+            ["cowatch-retention-outcome-2601"],
+          )
+          expect(JSON.stringify(plan.rows)).toContain(
+            `"Index Name":"recommendation_cowatch_contribution_${side}_outcome_idx"`,
+          )
+        }
+        // One expired outcome occurs as the source and another as the target.
+        // The other 98 exercise the empty lookups observed in production.
+        await client.query(
+          `INSERT INTO recommendation_cowatch_contribution (
+            id, generation_id, source_outcome_id, target_outcome_id,
+            source_media_id, target_media_id, session_digest, viewer_key_digest,
+            gap_ms, quality_weight, recency_weight, effective_weight, expires_at
+          ) SELECT 'cowatch-retention-linked-' || source_id,
+            repeat(md5('retention-generation-1'), 2),
+            'cowatch-retention-outcome-' || source_id,
+            'cowatch-retention-outcome-' || target_id,
+            'fixture-source', 'fixture-target', $1, $1, 1000, 1, 1, 1, $2
+          FROM (VALUES (2502, 1), (1, 2503)) pairs(source_id, target_id)`,
+          ["6".repeat(64), expiresAt],
+        )
+        await client.query("SET LOCAL statement_timeout = '1500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_outcome_revision WHERE id = ANY($1::text[])`,
+          [
+            Array.from(
+              { length: 100 },
+              (_, i) => `cowatch-retention-outcome-${2502 + i}`,
+            ),
+          ],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS count FROM recommendation_cowatch_contribution`,
+            )
+          ).rows,
+        ).toEqual([{ count: 250000 }])
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS count FROM recommendation_outcome_revision
+               WHERE episode_id = $1`,
+              [graph.episodeId],
+            )
+          ).rows,
+        ).toEqual([{ count: 2501 }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
+
+    it("indexes projection run references and preserves completed runs on generation erasure", async () => {
+      await client.query("BEGIN")
+      try {
+        await client.query(
+          `INSERT INTO recommendation_profile_projection_generation (
+            id, manifest_id, scope, session_digest, generation, state,
+            projection_version, clustering_version, eligibility_policy_version,
+            outcome_classifier_version, input_window_start, input_window_end,
+            input_digest, retention_days, created_at, published_at, expires_at
+          ) SELECT 'projection-index-generation-' || n,
+            'multi-interest-profile-shadow-v1', 'session', repeat('8', 64), n,
+            'published', 'fixture', 'fixture', 'fixture', 'fixture',
+            '2026-08-18', '2026-08-19', repeat(md5(n::text), 2), 1,
+            '2026-08-19', '2026-08-19', '2026-08-20'
+          FROM generate_series(1, 101) n`,
+        )
+        await client.query(
+          `INSERT INTO recommendation_profile_projection_run (
+            id, scope, session_digest, state, projection_id,
+            created_at, completed_at, expires_at
+          ) SELECT 'projection-index-run-' || n, 'session', repeat('8', 64),
+            'completed', 'projection-index-generation-' ||
+              CASE WHEN n > 100000 THEN n - 99999 ELSE 1 END,
+            '2026-08-19', '2026-08-19', '2026-08-20'
+          FROM generate_series(1, 100002) n`,
+        )
+        await client.query("ANALYZE recommendation_profile_projection_run")
+        const plan = await client.query(
+          `EXPLAIN (FORMAT JSON) UPDATE recommendation_profile_projection_run
+           SET projection_id = NULL WHERE projection_id = $1`,
+          ["projection-index-generation-101"],
+        )
+        expect(JSON.stringify(plan.rows)).toContain(
+          '"Index Name":"recommendation_profile_projection_run_projection_idx"',
+        )
+        await client.query("SET LOCAL statement_timeout = '1500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_profile_projection_generation
+           WHERE id = ANY($1::text[])`,
+          [
+            Array.from(
+              { length: 100 },
+              (_, i) => `projection-index-generation-${i + 2}`,
+            ),
+          ],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT projection_id, state, count(*)::int AS count
+               FROM recommendation_profile_projection_run
+               GROUP BY projection_id, state ORDER BY projection_id NULLS LAST`,
+            )
+          ).rows,
+        ).toEqual([
+          {
+            projection_id: "projection-index-generation-1",
+            state: "completed",
+            count: 100000,
+          },
+          { projection_id: null, state: "completed", count: 2 },
+        ])
+        expect(
+          (
+            await client.query(
+              `SELECT id FROM recommendation_profile_projection_generation
+               WHERE id LIKE 'projection-index-generation-%'`,
+            )
+          ).rows,
+        ).toEqual([{ id: "projection-index-generation-1" }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
 
     it("allows only FK-driven lineage detachment while projection children stay immutable", async () => {
       await client.query("BEGIN")

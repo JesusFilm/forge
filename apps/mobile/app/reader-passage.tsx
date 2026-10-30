@@ -20,7 +20,7 @@ export default function ReaderPassageRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { tokens } = useReaderSheetTheme(services.settingsStore)
+  const { tokens, background } = useReaderSheetTheme(services.settingsStore)
   const { state } = useSheetCatalog(services.loadCatalog)
 
   // While a stand-in shows a book (R25), the picker follows the viewer's own
@@ -46,30 +46,33 @@ export default function ReaderPassageRoute() {
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: tokens.background } }}
+        options={{ contentStyle: { backgroundColor: background } }}
       />
       {state.status === "loading" ? (
-        <View style={{ flex: 1, backgroundColor: tokens.background }} />
+        <View style={{ flex: 1, backgroundColor: background }} />
       ) : (
-        <PassagePicker
-          tokens={tokens}
-          translation={translation}
-          standIn={standInTranslation}
-          bookNames={bookNames}
-          // With no known translation the picker shows BSB's numbers.
-          current={pickerCurrent({
-            translation,
-            ref: request.ref,
-            shownRef: request.translationRef,
-            standIn,
-            shown,
-          })}
-          onPick={(ref) => {
-            services.positionStore.moveTo(ref)
-            router.back()
-          }}
-          onClose={() => router.back()}
-        />
+        <View testID="screen-reader-passage">
+          <PassagePicker
+            tokens={tokens}
+            background={background}
+            translation={translation}
+            standIn={standInTranslation}
+            bookNames={bookNames}
+            // With no known translation the picker shows BSB's numbers.
+            current={pickerCurrent({
+              translation,
+              ref: request.ref,
+              shownRef: request.translationRef,
+              standIn,
+              shown,
+            })}
+            onPick={(ref) => {
+              services.positionStore.moveTo(ref)
+              router.back()
+            }}
+            onClose={() => router.back()}
+          />
+        </View>
       )}
     </>
   )

@@ -717,7 +717,7 @@ export function BibleQuotesCarouselRenderer({
   if (quotes.length === 0) return null
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-bible-quotes" style={layout.sectionOuter}>
       <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text
@@ -836,7 +836,6 @@ const styles = StyleSheet.create({
     ...CARD_TEXT_SHADOW,
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
@@ -846,14 +845,12 @@ const styles = StyleSheet.create({
   reference: {
     ...CARD_TEXT_SHADOW,
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     letterSpacing: 1.5,
     marginBottom: REFERENCE_MARGIN,
   },
   quoteText: {
     ...CARD_TEXT_SHADOW,
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     marginBottom: VERSE_MARGIN,
   },
   // Scripture reads upright and bold, larger than the body copy around it. Its
@@ -873,13 +870,11 @@ const styles = StyleSheet.create({
     ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: TRANSLATION_COLOR,
-    fontFamily: "System",
     marginBottom: TRANSLATION_MARGIN,
   },
   copyright: {
     ...CARD_TEXT_SHADOW,
     color: COPYRIGHT_COLOR,
-    fontFamily: "System",
   },
   passageLink: {
     marginTop: LINK_MARGIN_TOP,
@@ -897,7 +892,6 @@ const styles = StyleSheet.create({
     ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     textDecorationLine: "underline",
   },
   verseLoading: {
@@ -925,7 +919,6 @@ const styles = StyleSheet.create({
     ...CARD_TEXT_SHADOW,
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   dotsContainer: {
     flexDirection: "row",

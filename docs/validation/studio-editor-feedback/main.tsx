@@ -12,7 +12,6 @@ const document = {
   fps: 30,
   durationInFrames: 300,
   tracks: [{ id: "mixed", kind: "visual" }],
-  packRevisionIds: [],
   components: [
     {
       versionId: "Caption",

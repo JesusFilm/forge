@@ -111,6 +111,7 @@ const configSchema = z
     input: inputSchema,
     concurrency: z.number().int().min(1).max(16).optional(),
     minCallStartIntervalMs: z.number().int().min(0).max(30_000).optional(),
+    minimumRemainingPercent: z.union([z.literal(0), z.literal(25)]).optional(),
     frozenCatalog: z
       .object({ path: localPath, sha256: digest })
       .strict()
@@ -164,6 +165,7 @@ async function main(args: string[]) {
     throw new Error("manual_config_invalid")
   const account = createLocalCodexAccountReader({
     codexExecutable: config.codexExecutable,
+    minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const model = createCodexSubscriptionAstraModel({
     codexExecutable: config.codexExecutable,
@@ -172,6 +174,7 @@ async function main(args: string[]) {
     readAllowance: account.readAllowance,
     concurrency: config.concurrency,
     minCallStartIntervalMs: config.minCallStartIntervalMs,
+    minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const admin = createAdminSourceDependencies()
   const catalog = config.frozenCatalog
@@ -209,7 +212,11 @@ async function main(args: string[]) {
         return capacityMeasurement.parse(JSON.parse(stdout) as unknown)
       },
     },
-    { concurrency: config.concurrency, signal: controller.signal },
+    {
+      concurrency: config.concurrency,
+      signal: controller.signal,
+      minimumRemainingPercent: config.minimumRemainingPercent,
+    },
   ).finally(() => {
     process.off("SIGINT", pause)
     process.off("SIGTERM", pause)

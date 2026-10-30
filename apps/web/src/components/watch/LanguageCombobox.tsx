@@ -17,6 +17,7 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import { correctedBcp47 } from "@/lib/locale"
 import {
   declaredLanguageAttributes,
   derivedNativeNameLang,
@@ -102,7 +103,8 @@ function nativeNameForOption(
       lang: declaredLanguageAttributes(option.nativeNameLang)?.lang ?? null,
     }
   }
-  const language = primaryLanguageCode(option.bcp47)?.toLowerCase()
+  const bcp47 = correctedBcp47(option.slug, option.bcp47)
+  const language = primaryLanguageCode(bcp47)?.toLowerCase()
   if (!language) return null
   try {
     // Unsupported locales silently fall back to English, which is not an endonym.
@@ -117,7 +119,7 @@ function nativeNameForOption(
     // tag when the row's script differs (a ku-Arab row is not Latin `kurdî`).
     return {
       text: capitalizeNativeName(displayName, language),
-      lang: derivedNativeNameLang(option.bcp47),
+      lang: derivedNativeNameLang(bcp47),
     }
   } catch {
     return null
@@ -603,7 +605,10 @@ export function LanguageCombobox({
               />
             )}
             <span className="grid min-w-0 content-center">
-              <span className="block truncate leading-tight">
+              <span
+                className="block truncate leading-tight"
+                title={selected?.name}
+              >
                 {selected ? (
                   <PrimaryLanguageName
                     text={selected.name}
@@ -616,6 +621,7 @@ export function LanguageCombobox({
               {selectedNativeName ? (
                 <span
                   data-testid="language-combobox-trigger-native"
+                  title={selectedNativeName.text}
                   className={`mt-0.5 block truncate leading-tight text-stone-400 ${
                     compact ? "text-xs sm:text-[11px]" : "text-sm sm:text-xs"
                   }`}
@@ -793,7 +799,10 @@ export function LanguageCombobox({
                             <span className="flex min-w-0 items-center gap-4">
                               <LanguageCodeMarker option={option} />
                               <span className="min-w-0">
-                                <span className="block truncate text-base leading-5 sm:text-sm font-semibold">
+                                <span
+                                  className="block truncate text-base leading-5 sm:text-sm font-semibold"
+                                  title={option.name}
+                                >
                                   <PrimaryLanguageName
                                     text={option.name}
                                     lang={option.nameLang}
@@ -802,6 +811,7 @@ export function LanguageCombobox({
                                 {nativeName ? (
                                   <span
                                     data-testid="language-combobox-option-native"
+                                    title={nativeName.text}
                                     className="block truncate text-sm leading-4 sm:text-xs text-stone-400"
                                   >
                                     <NativeLanguageName

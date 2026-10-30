@@ -38,7 +38,8 @@ import {
   Observable,
 } from "@apollo/client"
 import type { DocumentNode } from "graphql"
-import { createRequestChain } from "./apolloClient"
+import { ServerError } from "@apollo/client/errors"
+import { createRequestChain, shouldRetryRequest } from "./apolloClient"
 
 // Terminating link captures the composed headers as the request reaches the
 // transport slot; the chain runs synchronously so no network is involved.
@@ -153,5 +154,66 @@ describe("createRequestChain (signed-in user bearer)", () => {
       }
     `)
     expect(headers?.Authorization).toBeUndefined()
+  })
+})
+
+describe("shouldRetryRequest (R19 transient-transport recovery)", () => {
+  const QUERY = gql`
+    query GetWatchExperience {
+      __typename
+    }
+  `
+  const MUTATION = gql`
+    mutation RecordWatchEvent {
+      __typename
+    }
+  `
+  const netFail = { name: "TypeError", message: "Network request failed" }
+
+  it("retries a query that failed on the network", () => {
+    // The living-room case: TV reaches JS before Wi-Fi associates.
+    expect(shouldRetryRequest(netFail, QUERY)).toBe(true)
+  })
+
+  it("never retries a mutation", () => {
+    // A duplicated watch-event write is worse than a failed one, and the
+    // transport cannot know whether the server already committed.
+    expect(shouldRetryRequest(netFail, MUTATION)).toBe(false)
+  })
+
+  it("never retries our own deliberate timeout", () => {
+    // fetchWithTimeout aborting is a decision to stop waiting; retrying it
+    // stacks another REQUEST_TIMEOUT_MS onto a screen someone is watching.
+    expect(shouldRetryRequest({ name: "AbortError" }, QUERY)).toBe(false)
+  })
+
+  it("does not retry when there is no error", () => {
+    expect(shouldRetryRequest(null, QUERY)).toBe(false)
+    expect(shouldRetryRequest(undefined, QUERY)).toBe(false)
+  })
+
+  it("retries only selected transient HTTP failures", () => {
+    for (const status of [500, 502, 503, 504]) {
+      const error = new ServerError("Temporary service failure", {
+        response: new Response("", { status }),
+        bodyText: "",
+      })
+      expect(shouldRetryRequest(error, QUERY)).toBe(true)
+      expect(shouldRetryRequest(error, MUTATION)).toBe(false)
+    }
+    for (const status of [400, 401, 403, 404, 429, 501]) {
+      const error = new ServerError("Non-retryable service response", {
+        response: new Response("", { status }),
+        bodyText: "",
+      })
+      expect(shouldRetryRequest(error, QUERY)).toBe(false)
+    }
+  })
+
+  it("does not retry parser or arbitrary application errors", () => {
+    expect(shouldRetryRequest({ name: "ServerParseError" }, QUERY)).toBe(false)
+    expect(shouldRetryRequest(new Error("Invalid configuration"), QUERY)).toBe(
+      false,
+    )
   })
 })

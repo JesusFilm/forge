@@ -1,10 +1,25 @@
 import ExpoModulesCore
+import UIKit
+
+struct NativeDetailTrackOption: Record {
+  @Field var id: String = ""
+  @Field var label: String = ""
+  @Field var detail: String = ""
+  @Field var searchText: String = ""
+  @Field var disabled: Bool = false
+  @Field var pinned: Bool = false
+
+  var row: NativeDetailTrackRow {
+    NativeDetailTrackRow(id: id, label: label, detail: detail, searchText: searchText, disabled: disabled, pinned: pinned)
+  }
+}
 
 struct NativePlayerOption: Record {
   @Field var id: String = ""
   @Field var label: String = ""
   @Field var detail: String = ""
   @Field var url: String = ""
+  @Field var confirmationMessage: String? = nil
 }
 
 struct NativePlayerMoment: Record {
@@ -15,8 +30,54 @@ struct NativePlayerMoment: Record {
 }
 
 public final class NativeSwiftPlayerModule: Module {
+  private var detailTrackChoice: NativeDetailTrackChoice?
+
   public func definition() -> ModuleDefinition {
     Name("NativeSwiftPlayer")
+
+    AsyncFunction("showTrackChoice") { (requestId: String, title: String, options: [NativeDetailTrackOption], selectedId: String?, status: String?, query: String, promise: Promise) in
+      let previous = self.detailTrackChoice
+      let choice = NativeDetailTrackChoice(
+        requestId: requestId,
+        title: title,
+        rows: options.map(\.row),
+        selectedId: selectedId,
+        status: status,
+        query: query
+      ) { [weak self] result in
+        if self?.detailTrackChoice?.requestId == requestId { self?.detailTrackChoice = nil }
+        promise.resolve(result)
+      }
+      self.detailTrackChoice = choice
+      let present = { [weak self, weak choice] in
+        guard let self, let choice, self.detailTrackChoice === choice else { return }
+        guard let presenter = self.appContext?.utilities?.currentViewController(),
+              presenter.viewIfLoaded?.window != nil else {
+          choice.dismiss(animated: false)
+          return
+        }
+        choice.present(from: presenter)
+      }
+      // A cancelled request must finish dismissing before the next modal is
+      // presented. Its completion cannot clear a newer request's ownership.
+      if let previous { previous.dismiss(animated: false, completion: present) }
+      else { present() }
+    }.runOnQueue(.main)
+
+    AsyncFunction("updateTrackChoice") { (requestId: String, options: [NativeDetailTrackOption], selectedId: String?, status: String?) in
+      guard self.detailTrackChoice?.requestId == requestId else { return }
+      self.detailTrackChoice?.update(rows: options.map(\.row), selectedId: selectedId, status: status)
+    }.runOnQueue(.main)
+
+    AsyncFunction("dismissTrackChoice") { (requestId: String) in
+      guard self.detailTrackChoice?.requestId == requestId else { return }
+      self.detailTrackChoice?.dismiss()
+    }.runOnQueue(.main)
+
+    OnDestroy {
+      let choice = self.detailTrackChoice
+      DispatchQueue.main.async { choice?.dismiss(animated: false) }
+    }
 
     View(NativeSwiftPlayerView.self) {
       Events(
@@ -24,6 +85,7 @@ public final class NativeSwiftPlayerModule: Module {
         "onEnded",
         "onPlayNext",
         "onPlaybackPosition",
+        "onPlaybackState",
         "onError",
         "onAudioChange",
         "onSubtitleChange",
@@ -34,6 +96,9 @@ public final class NativeSwiftPlayerModule: Module {
 
       Prop("sourceUrl") { (view, value: String?) in
         view.sourceUrl = value
+      }
+      Prop("sourceGeneration") { (view, value: Int?) in
+        view.sourceGeneration = value ?? 0
       }
       Prop("playerVariant") { (view, value: String?) in
         view.playerVariant = value == "native-b" ? "native-b" : "native-a"
@@ -79,6 +144,12 @@ public final class NativeSwiftPlayerModule: Module {
       }
       Prop("feedbackReference") { (view, value: String?) in
         view.feedbackReference = value
+      }
+      Prop("feedbackSimulator") { (view, value: Bool?) in
+        view.feedbackSimulator = value ?? false
+      }
+      Prop("feedbackHostedSimulator") { (view, value: Bool?) in
+        view.feedbackHostedSimulator = value ?? false
       }
       Prop("feedbackLoading") { (view, value: Bool?) in
         view.feedbackLoading = value ?? false

@@ -32,6 +32,7 @@ import {
   type QualityTier,
 } from "../../lib/streamQuality"
 import { feedback } from "../../styles/shared"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 
 type PlayerT = UiT<"Player">
 
@@ -242,64 +243,72 @@ export function PlayerSettingsSheet({
           pointerEvents="none"
           style={[styles.scrim, { opacity: progress }]}
         />
+        {/* The root testID sits on the full-screen backdrop: inside a Modal,
+            the iOS UI test tree drops a plain view's id but keeps a button's. */}
         <Pressable
+          testID="screen-player-settings"
           style={styles.backdrop}
           onPress={close}
           accessibilityRole="button"
           accessibilityLabel={t("dismissSettingsAriaLabel")}
           {...{ "dd-action-name": "player-settings-dismiss" }}
         />
+        {/* Only a slide here: an opacity on any ancestor stops the glass. */}
         <Animated.View
           onLayout={onPanelLayout}
-          style={[
-            styles.panel,
-            { paddingBottom: Math.max(insets.bottom, 12) },
-            {
-              transform: [
-                {
-                  translateY: progress.interpolate({
-                    inputRange: [0, 1],
-                    // Parked a full panel-height down until measured, so the
-                    // unmeasured first frame is offscreen rather than in place.
-                    outputRange: [panelHeight || 9999, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
+          style={{
+            transform: [
+              {
+                translateY: progress.interpolate({
+                  inputRange: [0, 1],
+                  // Parked a full panel-height down until measured, so the
+                  // unmeasured first frame is offscreen rather than in place.
+                  outputRange: [panelHeight || 9999, 0],
+                }),
+              },
+            ],
+          }}
         >
-          <View style={styles.header}>
-            {body !== "root" ? (
+          <GlassSurface
+            style={[
+              styles.panel,
+              { paddingBottom: Math.max(insets.bottom, 12) },
+            ]}
+            fallback={PANEL_FALLBACK}
+          >
+            <View style={styles.header}>
+              {body !== "root" ? (
+                <Pressable
+                  style={styles.headerButton}
+                  onPress={() => setBody("root")}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("backAriaLabel")}
+                  {...{ "dd-action-name": "player-settings-back" }}
+                >
+                  <Ionicons
+                    name={directionalIcon("chevron-back")}
+                    size={22}
+                    color={TEXT_PRIMARY}
+                  />
+                </Pressable>
+              ) : (
+                <View style={styles.headerButton} />
+              )}
+              <Text style={styles.headerTitle}>{bodyTitle(body, t)}</Text>
               <Pressable
                 style={styles.headerButton}
-                onPress={() => setBody("root")}
+                onPress={close}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t("backAriaLabel")}
-                {...{ "dd-action-name": "player-settings-back" }}
+                accessibilityLabel={tCommon("closeAriaLabel")}
+                {...{ "dd-action-name": "player-settings-close" }}
               >
-                <Ionicons
-                  name={directionalIcon("chevron-back")}
-                  size={22}
-                  color={TEXT_PRIMARY}
-                />
+                <Ionicons name="close" size={22} color={TEXT_PRIMARY} />
               </Pressable>
-            ) : (
-              <View style={styles.headerButton} />
-            )}
-            <Text style={styles.headerTitle}>{bodyTitle(body, t)}</Text>
-            <Pressable
-              style={styles.headerButton}
-              onPress={close}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={tCommon("closeAriaLabel")}
-              {...{ "dd-action-name": "player-settings-close" }}
-            >
-              <Ionicons name="close" size={22} color={TEXT_PRIMARY} />
-            </Pressable>
-          </View>
-          {listRows}
+            </View>
+            {listRows}
+          </GlassSurface>
         </Animated.View>
       </View>
     </Modal>
@@ -319,13 +328,15 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
   },
-  // The app's hard-coded dark surface — the sheet must not follow the system
-  // appearance the player chrome ignores.
   panel: {
-    backgroundColor: BG_COLOR,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingTop: 4,
+  },
+  // The app's hard-coded dark surface — the sheet must not follow the system
+  // appearance the player chrome ignores.
+  panelFill: {
+    backgroundColor: BG_COLOR,
   },
   header: {
     flexDirection: "row",
@@ -342,7 +353,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },
@@ -356,7 +366,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
   },
   // A rule above it: this row leaves the sheet, the settings rows do not.
@@ -372,7 +381,6 @@ const styles = StyleSheet.create({
   },
   rowValueText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontSize: 14,
   },
   checkSlot: {
@@ -380,3 +388,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 })
+
+// The solid panel where Liquid Glass is unavailable (R1).
+const PANEL_FALLBACK: GlassFallback = { kind: "fill", style: styles.panelFill }

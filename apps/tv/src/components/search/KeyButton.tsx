@@ -81,11 +81,24 @@ export function KeyButton({
           />
         ) : (
           <Text
+            numberOfLines={cell.action.kind === "submit" ? 1 : undefined}
+            adjustsFontSizeToFit={cell.action.kind === "submit"}
+            minimumFontScale={cell.action.kind === "submit" ? 0.7 : undefined}
             style={[
               styles.keyLabel,
               {
                 color: inkColor,
-                fontSize: Math.round(scale(dims.labelFontSize)),
+                fontSize: Math.round(
+                  scale(
+                    cell.action.kind === "submit"
+                      ? dims.labelFontSize * 0.77
+                      : dims.labelFontSize,
+                  ),
+                ),
+                maxWidth:
+                  cell.action.kind === "submit"
+                    ? scale(dims.size - 8)
+                    : undefined,
               },
             ]}
           >

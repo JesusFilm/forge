@@ -1,6 +1,6 @@
 // The reader's own theme (feat-553 KTD12, R34, R35, R36). Three token sets:
 // Light and Dark on the app's warm stone scale, and True Dark (owner,
-// 2026-09-28). The app's Appearance never changes; only the reader reads these.
+// 2026-09-28). The app's own colors never change; only the reader reads these.
 import {
   ACCENT,
   ACCENT_ON_DARK,

@@ -143,7 +143,7 @@ describe("cast remote mode (U4)", () => {
 
   it("routes the double-tap side seek to the cast target", () => {
     const sideSeek = at("const doSideSeek = useCallback(")
-    const seekEnd = at("[player, showSeekFlash, castTarget]", sideSeek)
+    const seekEnd = at("[player, castTarget, controls]", sideSeek)
     const body = SOURCE.slice(sideSeek, seekEnd)
     expect(body).toContain("if (castTarget != null) {")
     expect(body).toContain("if (castTarget.held) return")

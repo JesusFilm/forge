@@ -16,6 +16,7 @@ import {
   LOGO_PREVIEW_DURATION_MS,
   parseLogoAnimationId,
   type LoadingAnimationId,
+  STARTUP_ANIMATION_ENABLED,
 } from "../../lib/logoAnimations"
 import { scale } from "../../lib/scale"
 import { LogoAnimation } from "../LogoAnimation"
@@ -177,7 +178,7 @@ export function AnimationSettingsScreen() {
               disabled={!hydrated}
               onPress={() => setPreviewRevision((revision) => revision + 1)}
             />
-            {target === "startup" && (
+            {target === "startup" && STARTUP_ANIMATION_ENABLED && (
               <SettingsRow
                 testID="animations-restart"
                 icon="refresh-outline"

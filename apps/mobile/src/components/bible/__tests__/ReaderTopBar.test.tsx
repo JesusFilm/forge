@@ -12,7 +12,7 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import type { TranslationLabel } from "../../../lib/bible/reader/labels"
 import type { PillDownloadStatus } from "../../../lib/bible/reader/labels"
-import { readerTokens } from "../../../lib/bible/theme/palettes"
+import { READER_THEMES, readerTokens } from "../../../lib/bible/theme/palettes"
 import { ReaderTopBar, STAND_IN_TIP_MS } from "../ReaderTopBar"
 import {
   refreshLocale,
@@ -154,6 +154,39 @@ function textCount(renderer: TestInstance, text: string): number {
     (node) => typeof node.type === "string" && node.props.children === text,
   ).length
 }
+
+describe("ReaderTopBar settings button", () => {
+  // The owner (2026-10-15): the gear takes the pills' text color, not the accent.
+  it.each(READER_THEMES)(
+    "draws the gear in the %s theme's text color",
+    async (theme) => {
+      const tokens = readerTokens(theme)
+      await act(async () => {
+        mounted = TestRenderer.create(
+          <ReaderTopBar
+            tokens={tokens}
+            safeAreaTop={0}
+            passage="John 3:16"
+            onPressPassage={() => {}}
+            pulse={0}
+            reduceMotion
+            translation={BSB_LABEL}
+            onPressTranslation={() => {}}
+            translationStatus={null}
+            onPressSettings={() => {}}
+          />,
+        )
+      })
+      const [gear] = mounted!.root.findAll(
+        (node) =>
+          typeof node.type !== "string" &&
+          node.props.name === "settings-outline",
+      )
+      expect(gear.props.color).toBe(tokens.text)
+      expect(gear.props.color).not.toBe(tokens.icon)
+    },
+  )
+})
 
 describe("ReaderTopBar translation pill download status", () => {
   const inPill = (renderer: TestInstance, testID: string) =>

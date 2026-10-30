@@ -14,7 +14,6 @@ import { ForbiddenError } from "../errors"
 import { StudioCommandError } from "./errors"
 import { StudioAssetService } from "./assets"
 import { studioActor, lockProject, assertEditable } from "./state"
-import { resolveStudioPackSources } from "./packs"
 import { resolveStudioDocumentSources } from "./sources"
 
 function worker(user: Principal | null) {
@@ -160,7 +159,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       return tx.shortMuxJob.create({
         data: {
@@ -191,7 +189,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       const dispatchId = randomUUID()
       await tx.shortMuxJob.update({
@@ -251,6 +248,20 @@ export class StudioMuxJobs {
       return tx.shortMuxJob.update({ where: { id }, data: { state: "FAILED" } })
     })
   }
+  async assetFailed(user: Principal | null, id: string, assetId: string) {
+    worker(user)
+    z.string().min(1).max(255).parse(assetId)
+    return this.db.$transaction(async (tx) => {
+      const { job } = await lockMux(tx, id)
+      if (
+        job.assetId !== assetId ||
+        !["PROCESSING", "FAILED"].includes(job.state)
+      )
+        throw new StudioCommandError("CONFLICT")
+      if (job.state === "FAILED") return job
+      return tx.shortMuxJob.update({ where: { id }, data: { state: "FAILED" } })
+    })
+  }
   async uploadEligible(user: Principal | null, id: string) {
     worker(user)
     return this.db.$transaction(async (tx) => {
@@ -272,7 +283,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       return job
     })

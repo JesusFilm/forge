@@ -2,16 +2,11 @@ import { Stack } from "expo-router"
 
 import { BACK_SWIPE_RESPONSE_DISTANCE } from "../../src/lib/backSwipe"
 import { BG_COLOR } from "../../src/lib/color"
+import { formSheetOptions } from "../../src/lib/sheetOptions"
 import { SeriesSessionProvider } from "../../src/contexts/SeriesSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
-const SHEET_BASE_OPTIONS = {
-  headerShown: false,
-  presentation: "formSheet",
-  sheetInitialDetentIndex: 0,
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 16,
-} as const
+const SHEET_BASE_OPTIONS = formSheetOptions()
 
 // Long, scrollable language list → opt out of scroll-expands-to-edge so the
 // first scroll at the smaller detent doesn't snap the sheet to full (same as

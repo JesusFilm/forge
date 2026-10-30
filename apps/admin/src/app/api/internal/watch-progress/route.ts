@@ -4,6 +4,7 @@ import { z } from "zod"
 import { isValidWatchProgressBearer } from "@/auth/watch-progress-bearer"
 import { prisma } from "@/db/client"
 import { deleteWatchEventsForUser } from "@/services/watch-events.service"
+import { eraseWatchLearningProgressForSubject } from "@/services/watch-learning-progress.service"
 import {
   deleteWatchProgressForUser,
   listWatchProgress,
@@ -106,19 +107,35 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   // resume positions without destroying that user's whole watch-event log.
   const erasesEvents = parsed.data.reason === "account-deleted"
 
-  // One transaction: a partial erasure would leave apps/auth aborting the
-  // deletion — and telling the user nothing changed — with rows already gone.
-  const [result, events] = await prisma.$transaction(async (tx) => [
+  // One Admin transaction prevents partial data-domain erasure. Auth user-row
+  // deletion is a separate transaction: losing this response can still leave
+  // a live account fenced. Never automatically undo the fence on an abort.
+  // Learning progress (feat-731) is account data, so like the event log it is
+  // erased only for an account deletion; the same call records the fence
+  // that refuses any learning write still in flight for this subject.
+  const [result, events, learning] = await prisma.$transaction(async (tx) => [
     await deleteWatchProgressForUser(parsed.data.userId, tx),
     erasesEvents
       ? await deleteWatchEventsForUser(tx, parsed.data.userId)
       : { deletedCount: 0 },
+    erasesEvents
+      ? await eraseWatchLearningProgressForSubject(tx, parsed.data.userId)
+      : null,
   ])
   console.warn(
-    `[watch-progress] event=erasure reason=${parsed.data.reason ?? "unspecified"} progress=${result.deletedCount} events=${events.deletedCount}`,
+    `[watch-progress] event=erasure reason=${parsed.data.reason ?? "unspecified"} progress=${result.deletedCount} events=${events.deletedCount} learning=${learning?.deletedCount ?? "skipped"}`,
   )
   return NextResponse.json({
     ...result,
     deletedWatchEventCount: events.deletedCount,
+    // apps/auth requires this acknowledgement before it deletes an account,
+    // so an Admin that predates learning erasure cannot be mistaken for one
+    // that erased it.
+    ...(learning
+      ? {
+          deletedLearningProgressCount: learning.deletedCount,
+          learningProgressErased: true,
+        }
+      : {}),
   })
 }

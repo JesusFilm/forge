@@ -554,7 +554,7 @@ export default function SeriesScreen() {
   )
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-series" style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
       {/* Trailer plays → pin the player at the top so scrolling the list never
@@ -565,6 +565,7 @@ export default function SeriesScreen() {
           {/* No `session`: a trailer never originates a mini-player session,
               and it yields the root player to one that is already live (AE14). */}
           <PlayerSlot
+            page="series"
             streamingUrl={trailerHls}
             posterUrl={displayPoster}
             fullscreen={isFullscreen}
@@ -714,7 +715,6 @@ const styles = StyleSheet.create({
   },
   retryLink: {
     color: ACCENT,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,

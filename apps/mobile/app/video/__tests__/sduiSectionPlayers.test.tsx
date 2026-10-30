@@ -90,20 +90,43 @@ jest.mock("../../../src/lib/watchProgress/syncClient", () => ({
   getSignedInAccountId: () => "account-1",
 }))
 
-// The SDUI section both screens read. Driven per test so one suite can render
-// a single video and a collection from the same provider seam.
+// The SDUI section both screens read, and the record titles the provider has
+// loaded. Driven per test so one suite can render a single video and a
+// collection from the same provider seam.
 jest.mock("../../../src/contexts/ExperienceProvider", () => {
   let section: unknown = null
+  let titles: Record<string, string> = {}
   return {
     useSectionByKey: () => section,
+    useExperienceContext: () => ({
+      getVideoTitle: (videoId: string) => titles[videoId] ?? null,
+    }),
     __setSection: (next: unknown) => {
       section = next
+    },
+    __setTitles: (next: Record<string, string>) => {
+      titles = next
     },
   }
 })
 
+// Mux Data (U10): a valid key opens the gate, and a fake backend records what
+// each route hands the monitor. The real backend arrives with the device spike.
+jest.mock("../../../src/env", () => ({
+  env: {
+    ...jest.requireActual("../../../src/env").env,
+    EXPO_PUBLIC_MUX_DATA_ENV_KEY: "k0abc123",
+  },
+}))
+jest.mock("../../../src/lib/muxData/monitor", () => ({
+  resolveMuxMonitorBackend: () => mockBackend,
+}))
+jest.mock("../../../src/lib/muxData/viewerId", () => ({
+  getMuxViewerIdStore: () => ({ get: () => Promise.resolve(mockViewerId) }),
+}))
+
 import { act } from "react"
-import { AppState } from "react-native"
+import { AppState, Dimensions } from "react-native"
 
 import CollectionPlayerScreen from "../../collection/[sectionKey]"
 import VideoDetailScreen from "../[sectionKey]"
@@ -111,6 +134,12 @@ import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
 } from "../../../src/lib/miniPlayer/store"
+import type {
+  MuxMonitor,
+  MuxMonitorBackend,
+  MuxPlayerSize,
+} from "../../../src/lib/muxData/monitor"
+import type { MuxViewData } from "../../../src/lib/muxData/viewData"
 import type { ExpoVideoMock } from "../../../src/test-utils/expoVideoMock"
 import {
   TestRenderer,
@@ -120,10 +149,43 @@ import {
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const experience = jest.requireMock(
   "../../../src/contexts/ExperienceProvider",
-) as { __setSection: (next: unknown) => void }
+) as {
+  __setSection: (next: unknown) => void
+  __setTitles: (next: Record<string, string>) => void
+}
 const sessionStore = getMiniPlayerStore()
 
+const mockViewerId = "5f0b6c1e-8d2a-4c3b-9e4f-0a1b2c3d4e5f"
+
+type FakeMonitor = { [K in keyof MuxMonitor]: jest.Mock }
+const monitors: FakeMonitor[] = []
+const attaches: Array<{ data: MuxViewData; size: MuxPlayerSize | null }> = []
+
+function makeBackend(): MuxMonitorBackend {
+  return {
+    downloadedPlaysMonitored: true,
+    // False makes the surface visible in the data: only an "experience" view
+    // takes the forge-mobile-experience player name (R13).
+    seesNativeControlSeeks: false,
+    attach: jest.fn(({ data, size }) => {
+      attaches.push({ data, size })
+      const monitor: FakeMonitor = {
+        stage: jest.fn(),
+        updateView: jest.fn(),
+        startView: jest.fn(),
+        setPlayerSize: jest.fn(),
+        release: jest.fn(),
+      }
+      monitors.push(monitor)
+      return monitor
+    }),
+  }
+}
+
+let mockBackend: MuxMonitorBackend = makeBackend()
+
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
+const URL_B = "https://stream.mux.com/assetBBB222.m3u8"
 
 // PRODUCTION SHAPE. Admin exposes no `streamingUrl` on a block or an item — it
 // resolves the playable dub live into `videoDub`, and the fragments select that.
@@ -228,6 +290,10 @@ function startSession() {
 beforeEach(() => {
   video.__reset()
   experience.__setSection(null)
+  experience.__setTitles({})
+  monitors.length = 0
+  attaches.length = 0
+  mockBackend = makeBackend()
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
   // jest-expo leaves this undefined; a device never does. The autostart gate
@@ -330,5 +396,124 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     expect(labelled(renderer, "Loading video")).toBe(false)
     expect(posterShown(renderer)).toBe(false)
     expect(video.__player.playing).toBe(false)
+  })
+})
+
+// ── Mux Data (U10) ──────────────────────────────────────────────────────────
+
+/** Two playable items with distinct ids and streams, so a move is a new video. */
+const TWO_ITEM_COLLECTION = {
+  __typename: "VideoCarouselBlock",
+  sectionKey: "section-1",
+  title: "A collection",
+  items: [
+    {
+      videoId: "coll-video-1",
+      videoDub: { hls: URL_A, dash: null, share: null },
+      imageUrl: null,
+      titleOverride: "Item one override",
+    },
+    {
+      videoId: "coll-video-2",
+      videoDub: { hls: URL_B, dash: null, share: null },
+      imageUrl: null,
+      titleOverride: "Item two override",
+    },
+  ],
+}
+
+/** The view data an Experience route sends for one stream: no slug (KTD7). */
+function experienceView(
+  videoId: string,
+  url: string,
+  title?: string,
+): MuxViewData {
+  return {
+    player_name: "forge-mobile-experience",
+    viewer_user_id: mockViewerId,
+    custom_1: "streamed",
+    video_id: videoId,
+    ...(title == null ? {} : { video_title: title }),
+    video_source_url: url,
+  }
+}
+
+/** The last size a route gave Mux: at the attach, or through the facade after. */
+function sizeSentToMux(): MuxPlayerSize | null {
+  const calls = monitors[0]?.setPlayerSize.mock.calls ?? []
+  const later = calls[calls.length - 1]?.[0] as MuxPlayerSize | undefined
+  return later ?? attaches[0]?.size ?? null
+}
+
+/** Both routes fill the full window width with a 16:9 frame. */
+function expectWindowSixteenByNine(size: MuxPlayerSize | null) {
+  const { width } = Dimensions.get("window")
+  expect(width).toBeGreaterThan(0)
+  expect(size).toEqual({ width, height: expect.closeTo((width * 9) / 16, 0) })
+}
+
+describe("video/[sectionKey] Mux Data (U10)", () => {
+  it("sends the record title once it loads, never the block's stored title, and no slug", async () => {
+    const renderer = await renderScreen(VideoDetailScreen, VIDEO_SECTION)
+
+    // R15: before the record loads the view carries no title. The block's
+    // stored title ("A section video") never reaches Mux.
+    expect(attaches).toHaveLength(1)
+    expect(attaches[0].data).toEqual(experienceView("sdui-video-1", URL_A))
+
+    experience.__setTitles({ "sdui-video-1": "Record Title" })
+    await act(async () => {
+      renderer.update(<VideoDetailScreen />)
+    })
+
+    expect(attaches).toHaveLength(1)
+    expect(monitors[0].updateView).toHaveBeenCalledTimes(1)
+    expect(monitors[0].updateView.mock.calls[0][0]).toEqual(
+      experienceView("sdui-video-1", URL_A, "Record Title"),
+    )
+  })
+
+  it("forwards its player size to the monitor", async () => {
+    await renderScreen(VideoDetailScreen, VIDEO_SECTION)
+    expectWindowSixteenByNine(sizeSentToMux())
+  })
+})
+
+describe("collection/[sectionKey] Mux Data (U10)", () => {
+  it("sends each item's record title and no slug, and a move starts one view for the next item", async () => {
+    experience.__setTitles({
+      "coll-video-1": "Record One",
+      "coll-video-2": "Record Two",
+    })
+    await renderScreen(CollectionPlayerScreen, TWO_ITEM_COLLECTION)
+
+    // The item's own titleOverride is display copy, never the record title.
+    expect(attaches).toHaveLength(1)
+    expect(attaches[0].data).toEqual(
+      experienceView("coll-video-1", URL_A, "Record One"),
+    )
+
+    // Auto-advance is the pager move this route makes on its own.
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    const [monitor] = monitors
+    expect(monitor.stage.mock.calls.map(([data]) => data)).toEqual([
+      experienceView("coll-video-2", URL_B, "Record Two"),
+    ])
+    expect(monitor.startView).not.toHaveBeenCalled()
+
+    await act(async () => {
+      video.__player.__settleReplace()
+    })
+    expect(monitor.startView).toHaveBeenCalledTimes(1)
+    // The open view keeps item one's data; item two's goes to its new view.
+    expect(monitor.updateView).not.toHaveBeenCalled()
+    expect(attaches).toHaveLength(1)
+  })
+
+  it("forwards its player size to the monitor", async () => {
+    await renderScreen(CollectionPlayerScreen, TWO_ITEM_COLLECTION)
+    expectWindowSixteenByNine(sizeSentToMux())
   })
 })

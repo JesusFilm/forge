@@ -17,7 +17,6 @@ import {
   studioHash,
 } from "./state"
 import { StudioCommandError } from "./errors"
-import { resolveStudioPackSources } from "./packs"
 import { assertStudioCompletedRenderSources } from "./render-preparation"
 import { stagedStudioReleaseSchema } from "./catalog-readiness"
 
@@ -84,18 +83,12 @@ export async function assertStudioPublicationEligibility(
     if (rows.length !== 1) throw new StudioCommandError("AUTHORIZATION_REVOKED")
   }
   const sources = await assertStudioCompletedRenderSources(
-      tx,
-      document,
-      input.renderAttemptId,
-    ),
-    packs = await resolveStudioPackSources(tx, document.packRevisionIds)
+    tx,
+    document,
+    input.renderAttemptId,
+  )
   const restrictions = [
-    ...new Set([
-      ...sources.flatMap((source) => source.eligibility.restrictions),
-      ...packs.flatMap((pack) =>
-        pack.sources.flatMap((source) => source.eligibility.restrictions),
-      ),
-    ]),
+    ...new Set(sources.flatMap((source) => source.eligibility.restrictions)),
   ].sort()
   if (
     studioHash(restrictions) !==

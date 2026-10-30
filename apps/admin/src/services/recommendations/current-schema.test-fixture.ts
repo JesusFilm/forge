@@ -56,13 +56,17 @@ if (!privateRequestMarkerDdl)
 export const recommendationRuntimeBaseMigrationSql = readdirSync(migrationRoot)
   .filter(
     (name) =>
-      /^\d{4}_/.test(name) &&
-      Number(name.slice(0, 4)) >= 52 &&
-      // This legacy request/trace fixture has no catalog video table. The
-      // precomputed slice tests its migrations with the full Admin chain.
-      !name.includes("recommendation_precomputed") &&
-      (name.includes("recommendation") ||
-        name === "0057_semantic_control_readiness"),
+      // Schema retirement checks the durable workflow ledger even on a fresh
+      // install. Use its real standalone migration in this catalog-free slice.
+      name === "0009_workflow_run_ledger" ||
+      name === "0165_remove_retired_behavioral_schema" ||
+      (/^\d{4}_/.test(name) &&
+        Number(name.slice(0, 4)) >= 52 &&
+        // This legacy request/trace fixture has no catalog video table. The
+        // precomputed slice tests its migrations with the full Admin chain.
+        !name.includes("recommendation_precomputed") &&
+        (name.includes("recommendation") ||
+          name === "0057_semantic_control_readiness")),
   )
   .sort()
   .map(scopedMigrationSql)

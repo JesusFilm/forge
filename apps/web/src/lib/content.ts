@@ -1,5 +1,7 @@
 import type { ErrorLike } from "@apollo/client"
+import type { SearchLanguageOption } from "@/lib/search-language"
 import { cache } from "react"
+import { visit } from "graphql"
 import { unstable_cache } from "next/cache"
 import {
   adminGraphql,
@@ -16,6 +18,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   legacyWatchExperienceFragment,
   preCopyWatchExperienceFragment,
   watchExperienceFragment,
@@ -26,7 +29,7 @@ import {
 import {
   hasPublicWatchLanguageSlugShape,
   isPublicWatchLanguageSlug,
-  slugToBcp47Tag,
+  slugToAdminContentLocale,
 } from "@/lib/locale"
 import { selectOwnLanguageName } from "@/lib/language-native-name"
 import {
@@ -34,6 +37,10 @@ import {
   isWatchAudioLanguageSlug,
 } from "@/lib/watch-route-manifest"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import {
+  omitWatchAudienceSelection,
+  partitionWatchAudienceBlockLag,
+} from "@/lib/watch-audience-content"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import { logWatchServerEvent } from "@/lib/watch-observability"
@@ -133,6 +140,15 @@ const GET_PRE_COPY_WATCH_SETTINGS = adminGraphql(
   `,
   [preCopyWatchExperienceFragment],
 )
+
+// Admin and Web deploy independently. The same selections without the
+// `WatchAudienceBlock` union member, for an Admin that predates it; derived from
+// the current documents so they cannot drift. Delete with the tier below once
+// no Admin schema without the block can serve traffic.
+const PRE_AUDIENCE_GET_WATCH_EXPERIENCE =
+  omitWatchAudienceSelection(GET_WATCH_EXPERIENCE)
+const PRE_AUDIENCE_GET_WATCH_SETTINGS =
+  omitWatchAudienceSelection(GET_WATCH_SETTINGS)
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
 type GetWatchLanguagePickerVariantsData = AdminResultOf<
@@ -315,6 +331,8 @@ export type WatchStudyQuestion = {
 }
 
 export type WatchBibleCitationPassage = {
+  /** Selected Bible version's content language; old snapshots may omit it. */
+  languageSlug?: string | null
   citationDocumentId: string
   content: string
   copyright: string
@@ -576,9 +594,24 @@ function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
   return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
 }
 
-type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+// "audience": every error says Admin predates `WatchAudienceBlock`; the
+// pre-audience selection (otherwise identical) is the compatible one.
+type CategoryRailSchemaLag = "none" | "copy" | "legacy" | "audience"
 
 function classifyCategoryRailSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): CategoryRailSchemaLag {
+  const { audience, rest } = partitionWatchAudienceBlockLag(result)
+  if (!audience) return classifyRailSchemaLag(result)
+  // The audience block never appears in the pre-copy or legacy selections, so
+  // an Admin that also lags on the rail needs only those existing tiers.
+  return graphqlErrorsFromResult(rest).length === 0
+    ? "audience"
+    : classifyRailSchemaLag(rest)
+}
+
+function classifyRailSchemaLag(result: {
   error?: ErrorLike | null
   errors?: unknown[] | undefined
 }): CategoryRailSchemaLag {
@@ -653,6 +686,9 @@ async function getExperienceBySlug(
   locale: string,
   slug: string,
   categoryRailCompatibility?: "supported" | "pre-copy" | "legacy-schema",
+  query:
+    | typeof GET_WATCH_EXPERIENCE
+    | typeof PRE_AUDIENCE_GET_WATCH_EXPERIENCE = GET_WATCH_EXPERIENCE,
 ): Promise<NonNullable<WatchExperience> | null> {
   if (categoryRailCompatibility === "legacy-schema") {
     return getLegacyExperienceBySlug(locale, slug)
@@ -692,7 +728,7 @@ async function getExperienceBySlug(
   let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
-      query: GET_WATCH_EXPERIENCE,
+      query,
       variables: { locale, slug },
       fetchPolicy: "no-cache",
     })
@@ -712,6 +748,14 @@ async function getExperienceBySlug(
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "audience" && query === GET_WATCH_EXPERIENCE) {
+    return getExperienceBySlug(
+      locale,
+      slug,
+      categoryRailCompatibility,
+      PRE_AUDIENCE_GET_WATCH_EXPERIENCE,
+    )
+  }
   if (lag === "copy") {
     return getExperienceBySlug(locale, slug, "pre-copy")
   }
@@ -727,14 +771,19 @@ async function getExperienceBySlug(
     null) as NonNullable<WatchExperience> | null
 }
 
-async function getWatchSettings(locale: string): Promise<{
+async function getWatchSettings(
+  locale: string,
+  query:
+    | typeof GET_WATCH_SETTINGS
+    | typeof PRE_AUDIENCE_GET_WATCH_SETTINGS = GET_WATCH_SETTINGS,
+): Promise<{
   setting: WatchSetting | null
   categoryRailCompatibility: "supported" | "pre-copy" | "legacy-schema"
 }> {
   let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
-      query: GET_WATCH_SETTINGS,
+      query,
       variables: { locale },
       fetchPolicy: "no-cache",
     })
@@ -754,6 +803,9 @@ async function getWatchSettings(locale: string): Promise<{
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "audience" && query === GET_WATCH_SETTINGS) {
+    return getWatchSettings(locale, PRE_AUDIENCE_GET_WATCH_SETTINGS)
+  }
   if (lag === "copy") {
     let preCopyRejectedLag: CategoryRailSchemaLag = "none"
     const preCopyResult = await client
@@ -932,6 +984,7 @@ type AdminBibleCitationRaw = {
   osisId?: string | null
   bibleBook?: { documentId: string | null; name?: unknown } | null
   passage?: {
+    languageSlug?: string | null
     content?: string | null
     copyright?: string | null
     humanReference?: string | null
@@ -999,9 +1052,16 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
+type AdminRequestedLanguageRaw = {
+  slug?: string | null
+  name?: unknown
+  bcp47?: string | null
+} | null
+
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -1425,6 +1485,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
             c.passage.versionId
               ? {
                   citationDocumentId: c.documentId,
+                  languageSlug: c.passage.languageSlug ?? null,
                   content: c.passage.content,
                   copyright: c.passage.copyright,
                   humanReference: c.passage.humanReference,
@@ -1795,7 +1856,7 @@ type WatchContentIdentity = {
 async function contentIdentityForWatchLanguage(
   languageSlugOrLocale: string,
 ): Promise<WatchContentIdentity> {
-  const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
+  const mappedLocale = slugToAdminContentLocale(languageSlugOrLocale)
   const locale = mappedLocale ?? languageSlugOrLocale
 
   if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {
@@ -2110,6 +2171,68 @@ async function queryWatchLanguagePickerVariantsBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+// TEMPORARY (FGE-284): deploy-window shim for the additive
+// `WatchRouteSnapshot.requestedLanguage` field. Remove once admin with that
+// field is live in every environment plus one release: delete this cooldown,
+// `isRequestedLanguageSchemaLag`, the retry branches in
+// `queryWatchVideoRouteSnapshotBySlug`, and
+// `getLegacyWatchVideoRouteSnapshotBySlugOperation` (fragments/watch-video.ts,
+// its barrel export, the `visit` import and tests). Grep: `TEMPORARY (FGE-284)`.
+//
+// Retry only the exact additive-field validation failure during independent
+// deploys. A brief process-local cooldown avoids repeated failed probes; all
+// other GraphQL/server failures preserve their existing error behavior.
+let requestedLanguageSnapshotRetryAfter = 0
+function noteRequestedLanguageSchemaLag(videoSlug: string) {
+  requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+  logWatchServerEvent("watch_route_snapshot.requested_language_schema_lag", {
+    videoSlug,
+  })
+}
+function isRequestedLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  return (
+    errors.length > 0 &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        typeof entry.message === "string" &&
+        /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+          entry.message,
+        ),
+    )
+  )
+}
+
+// Passage metadata is independently additive: an older producer may still
+// support requestedLanguage. Strip only the passage child selection and retry
+// only exact schema validation failures, preserving that existing repair.
+let passageLanguageSnapshotRetryAfter = 0
+function isPassageLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  const passage = (message: unknown) =>
+    typeof message === "string" &&
+    /^Cannot query field "languageSlug" on type "Passage"\./.test(message)
+  return (
+    errors.some((entry) => passage(entry.message)) &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        (passage(entry.message) ||
+          (typeof entry.message === "string" &&
+            /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+              entry.message,
+            ))),
+    )
+  )
+}
+
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
   variables: {
@@ -2118,18 +2241,79 @@ async function queryWatchVideoRouteSnapshotBySlug(
     subtitleLanguageSlug?: string | null
   },
 ): Promise<AdminVideoRouteSnapshotRaw | null> {
-  const result = await client.query({
-    query: getWatchVideoRouteSnapshotBySlugOperation,
-    variables: {
-      locale: variables.locale,
-      languageSlug: variables.languageSlug,
-      ...(variables.subtitleLanguageSlug
-        ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
-        : {}),
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const queryVariables = {
+    locale: variables.locale,
+    languageSlug: variables.languageSlug,
+    ...(variables.subtitleLanguageSlug
+      ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
+      : {}),
+    videoSlug,
+  }
+  const query = async (legacy: boolean) => {
+    const operation = legacy
+      ? getLegacyWatchVideoRouteSnapshotBySlugOperation
+      : getWatchVideoRouteSnapshotBySlugOperation
+    const withoutPassageLanguage = () =>
+      visit(operation, {
+        Field: (node, _key, _parent, _path, ancestors) =>
+          node.name.value === "languageSlug" &&
+          ancestors.some(
+            (ancestor) =>
+              "kind" in ancestor &&
+              ancestor.kind === "Field" &&
+              ancestor.name.value === "passage",
+          )
+            ? null
+            : undefined,
+      })
+    const run = (omitMetadata: boolean) =>
+      client.query({
+        query: omitMetadata ? withoutPassageLanguage() : operation,
+        variables: queryVariables,
+        fetchPolicy: "no-cache",
+      })
+    const omitMetadata = Date.now() < passageLanguageSnapshotRetryAfter
+    const noteLag = () => {
+      passageLanguageSnapshotRetryAfter = Date.now() + 60_000
+      logWatchServerEvent("watch_route_snapshot.passage_language_schema_lag", {
+        videoSlug,
+      })
+    }
+    let response
+    try {
+      response = await run(omitMetadata)
+    } catch (error) {
+      if (
+        omitMetadata ||
+        !isPassageLanguageSchemaLag({ error: error as ErrorLike })
+      )
+        throw error
+      noteLag()
+      return run(true)
+    }
+    if (!omitMetadata && isPassageLanguageSchemaLag(response)) {
+      noteLag()
+      return run(true)
+    }
+    return response
+  }
+  const useLegacy = Date.now() < requestedLanguageSnapshotRetryAfter
+  let result
+  try {
+    result = await query(useLegacy)
+  } catch (error) {
+    if (
+      useLegacy ||
+      !isRequestedLanguageSchemaLag({ error: error as ErrorLike })
+    )
+      throw error
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
+  if (!useLegacy && isRequestedLanguageSchemaLag(result)) {
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
 
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
@@ -2220,6 +2404,7 @@ export const resolveWatchLanguagePickerVariants = cache(
 )
 
 export type WatchUnavailableRecoveryTarget = {
+  requestedLanguage: SearchLanguageOption | null
   contentTitle: string | null
   imageUrl: string | null
 }
@@ -2243,9 +2428,23 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     const video = normalizeAdminVideo(localizedCopy)
     if (!video) return null
 
+    const requestedLanguageName = pickLocalizedName(
+      snapshot.requestedLanguage?.name,
+    )?.trim()
     return {
       contentTitle: video.title,
       imageUrl: resolvePosterUrl(video.images[0]),
+      requestedLanguage:
+        snapshot.requestedLanguage?.slug === requestedLanguageSlug &&
+        requestedLanguageName
+          ? {
+              publicSlug: requestedLanguageSlug,
+              englishName: requestedLanguageName,
+              nativeName: null,
+              bcp47: snapshot.requestedLanguage.bcp47 ?? null,
+              regionNames: [],
+            }
+          : null,
     }
   },
 )
@@ -2330,6 +2529,7 @@ function mergeParentRelationsShellAndCopy(
 
 function mergeWatchVideoShellWithCopy(
   shell: AdminVideoRaw & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     variants?: AdminVideoVariantRaw[] | null
