@@ -139,6 +139,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     beforeAll(async () => {
+      const databaseUrl = new URL(env.DATABASE_URL)
+      if (
+        !["127.0.0.1", "localhost"].includes(databaseUrl.hostname) ||
+        !["/forge_test", "/forge_precomputed_control_test"].includes(
+          databaseUrl.pathname,
+        ) ||
+        databaseUrl.search ||
+        databaseUrl.hash
+      )
+        throw new Error("Owned loopback precomputed fixture database required")
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
       await admin.query(`CREATE SCHEMA "${schema}"`)
@@ -515,25 +525,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: "recommendation-serving-control" },
         data: { enabled: true },
       })
-      const profile = await prisma.recommendationProfile.create({
-        data: {
-          tokenDigest: profileTokenDigest,
-          privacyGeneration: 1,
-          choice: "DURABLE_ALLOWED",
-          expiresAt: new Date(Date.now() + 35 * 86_400_000),
-        },
-      })
-      await prisma.recommendationConsentReceipt.create({
-        data: {
-          tokenDigest: consentReceiptDigest,
-          contractVersion: "recommendation-consent-v1",
-          choice: "PERSONALIZATION",
-          state: "ACTIVE",
-          profileId: profile.id,
-          privacyGeneration: 1,
-          expiresAt: new Date(Date.now() + 35 * 86_400_000),
-        },
-      })
       const generationId = await makeGeneration([])
       const experiment = await configurePrivatePrecomputedExperiment(prisma, {
         id: `private-watch-${suffix}`,
@@ -855,23 +846,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(end.eligible.served - start.eligible.served).toBe(0)
     })
 
-    it("admits no-receipt and personalization-disabled control visits without profile learning", async () => {
-      const disabledReceiptDigest = createHash("sha256")
-        .update(`essential-only-${suffix}`)
+    it("admits no-receipt and stale legacy receipt control visits without personalization", async () => {
+      const staleReceiptDigest = createHash("sha256")
+        .update(`retired-receipt-${suffix}`)
         .digest("hex")
-      await prisma.recommendationConsentReceipt.create({
-        data: {
-          tokenDigest: disabledReceiptDigest,
-          contractVersion: "recommendation-consent-v1",
-          choice: "ESSENTIAL_ONLY",
-          state: "ACTIVE",
-          privacyGeneration: 0,
-          expiresAt: new Date(Date.now() + 35 * 86_400_000),
-        },
-      })
       for (const [caseName, receiptDigest] of [
         ["no_receipt", null],
-        ["disabled", disabledReceiptDigest],
+        ["stale_legacy_receipt", staleReceiptDigest],
       ] as const) {
         let control: { visitId: string; browserDigest: string } | undefined
         for (let index = 0; index < 20 && !control; index += 1) {
@@ -921,11 +902,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           measurementStatus: "recorded",
         })
         expect(delivered.delivery?.personalization ?? null).toBeNull()
-        expect(
-          await prisma.recommendationProfileSessionLink.count({
-            where: { sessionDigest },
-          }),
-        ).toBe(0)
       }
     })
 
@@ -1007,7 +983,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    it("keeps contextual visits and delivery eligible after receipt expiry or withdrawal", async () => {
+    it("keeps contextual visits and delivery eligible with stale legacy cookie tokens", async () => {
       const visitId = randomUUID()
       const admitted = await admitPrivatePrecomputedVisit(prisma, {
         visitId,
@@ -1022,15 +998,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         caller,
       })
       expect(admitted.status).toBe("eligible")
-      const receipt =
-        await prisma.recommendationConsentReceipt.findUniqueOrThrow({
-          where: { tokenDigest: consentReceiptDigest },
-        })
-      await prisma.recommendationConsentReceipt.update({
-        where: { id: receipt.id },
-        data: { expiresAt: new Date(Date.now() - 1000) },
-      })
-      const afterExpiry = await admitPrivatePrecomputedVisit(prisma, {
+      const anotherVisit = await admitPrivatePrecomputedVisit(prisma, {
         visitId: randomUUID(),
         browserDigest: "8".repeat(64),
         consentReceiptDigest,
@@ -1042,24 +1010,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         enrollmentMode: "private_test",
         caller,
       })
-      expect(afterExpiry).toMatchObject({
+      expect(anotherVisit).toMatchObject({
         status: "eligible",
         arm: admitted.arm,
-      })
-      await prisma.recommendationConsentReceipt.update({
-        where: { id: receipt.id },
-        data: { expiresAt: receipt.expiresAt },
-      })
-      await prisma.recommendationConsentReceipt.update({
-        where: { id: receipt.id },
-        data: {
-          state: "REVOKED",
-          revokedAt: new Date(),
-          revokeReason: "private_test_withdrawal",
-          tokenDigest: null,
-          profileId: null,
-          privacyGeneration: 1,
-        },
       })
       expect(
         await recordPrivatePrecomputedVisitDelivery(prisma, {
@@ -1088,7 +1041,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toMatchObject({ status: "eligible", arm: admitted.arm })
       expect(
         await recordPrivatePrecomputedVisitDelivery(prisma, {
-          visitId: afterExpiry.visitId,
+          visitId: anotherVisit.visitId,
           browserDigest: "7".repeat(64),
           result: "empty",
           actualStrategy: "precomputed-watch-preview-v1",

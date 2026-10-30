@@ -1,5 +1,4 @@
 import {
-  RecommendationProfileState,
   RecommendationShadowEvaluationState,
   RecommendationShadowRunState,
   type PrismaClient,
@@ -110,7 +109,6 @@ function claimedRun(overrides: Record<string, unknown> = {}) {
       servedItemPayload: null,
       items: [liveItem("video-a", 0), liveItem("video-b", 1)],
     },
-    projectionProfile: null,
     ...overrides,
   }
 }
@@ -528,14 +526,10 @@ describe("shadow evaluation service", () => {
     )
   })
 
-  it("fences and redacts a deleted profile generation before projection", async () => {
+  it("fences and redacts a retired profile binding before projection", async () => {
     const run = claimedRun({
       projectionProfileId: "profile-1",
       privacyGeneration: 4,
-      projectionProfile: {
-        state: RecommendationProfileState.TOMBSTONED,
-        privacyGeneration: 4,
-      },
     })
     const tx = {
       recommendationShadowNomination: {
