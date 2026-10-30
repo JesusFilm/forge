@@ -76,11 +76,18 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
-async function show(fetchMock: ReturnType<typeof vi.fn>) {
+async function show(
+  fetchMock: ReturnType<typeof vi.fn>,
+  navigate?: (href: string) => void,
+) {
   vi.stubGlobal("fetch", fetchMock)
   act(() =>
     root.render(
-      <WatchForYouRecommendations locale="en" audioLanguageSlug="english" />,
+      <WatchForYouRecommendations
+        locale="en"
+        audioLanguageSlug="english"
+        navigate={navigate}
+      />,
     ),
   )
   expect(fetchMock).not.toHaveBeenCalled()
@@ -94,6 +101,45 @@ async function show(fetchMock: ReturnType<typeof vi.fn>) {
   await flush()
 }
 describe("For you row", () => {
+  it("navigates promptly while a keepalive selection can finish after page departure", async () => {
+    let resolveSelection!: (response: Response) => void
+    let selectionSignal: AbortSignal | undefined
+    const navigate = vi.fn()
+    const fetchMock = vi.fn((url: string, init: RequestInit) => {
+      if (url.endsWith("/for-you")) {
+        return Promise.resolve(new Response(JSON.stringify(delivery())))
+      }
+      if (url.endsWith("/select")) {
+        selectionSignal = init.signal ?? undefined
+        return new Promise<Response>((resolve) => {
+          resolveSelection = resolve
+        })
+      }
+      return Promise.resolve(
+        new Response(JSON.stringify(acceptedEvidence(init))),
+      )
+    })
+    await show(fetchMock, navigate)
+    vi.useFakeTimers()
+    act(() =>
+      container
+        .querySelector("a")!
+        .dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        ),
+    )
+    await act(async () => vi.advanceTimersByTimeAsync(800))
+    expect(navigate).toHaveBeenCalledExactlyOnceWith("/watch/video-0.html")
+    expect(selectionSignal?.aborted).toBe(false)
+    act(() => window.dispatchEvent(new Event("pagehide")))
+    act(() => root.render(<div>replacement</div>))
+    expect(selectionSignal?.aborted).toBe(false)
+    await act(async () =>
+      resolveSelection(new Response(JSON.stringify({ accepted: true }))),
+    )
+    expect(navigate).toHaveBeenCalledTimes(1)
+  })
+
   it("loads lazily, renders six stable full-video links and keeps capabilities out of the DOM", async () => {
     const fetchMock = vi.fn(
       async (_url: string, init: RequestInit) =>

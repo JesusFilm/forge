@@ -43,7 +43,7 @@ export default function MoreScreen() {
   const paddingBottom = useMiniPlayerBottomClearance() + WINDOW_EDGE_MARGIN
 
   return (
-    <View style={styles.screen}>
+    <View testID="screen-more" style={styles.screen}>
       <ScreenTopBar title={tMyWatch("moreTitle")} showBack />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom }]}
@@ -236,7 +236,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     marginRight: 12,
   },
   socialRow: {
@@ -250,7 +249,6 @@ const styles = StyleSheet.create({
   },
   version: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

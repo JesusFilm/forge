@@ -13,6 +13,15 @@
 /* Runs after Bubblewrap created namespaces and dropped capabilities. No path or
  * process settings are accepted from a render request. Linux x86_64 image only. */
 #define DENY(n) BPF_JUMP(BPF_JMP|BPF_JEQ|BPF_K, (n), 0, 1), BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_ERRNO|EPERM)
+#ifndef STUDIO_CHILD_CPUS
+#define STUDIO_CHILD_CPUS 2
+#endif
+#ifndef STUDIO_CHILD_PIDS
+#define STUDIO_CHILD_PIDS 96
+#endif
+#ifndef STUDIO_CHILD_ENTRY
+#define STUDIO_CHILD_ENTRY "/runtime/child.mjs"
+#endif
 int main(void) {
   if (getuid() == 0 || geteuid() == 0) return 126;
   /* Libraries must size pools for this job, not the much larger host. The
@@ -21,10 +30,10 @@ int main(void) {
   CPU_ZERO(&available); CPU_ZERO(&bounded);
   if (sched_getaffinity(0,sizeof(available),&available)) return 126;
   int selected=0;
-  for (int cpu=0;cpu<CPU_SETSIZE && selected<2;cpu++)
+  for (int cpu=0;cpu<CPU_SETSIZE && selected<STUDIO_CHILD_CPUS;cpu++)
     if (CPU_ISSET(cpu,&available)) { CPU_SET(cpu,&bounded); selected++; }
   if (!selected || sched_setaffinity(0,sizeof(bounded),&bounded)) return 126;
-  struct rlimit tasks = {96,96}, files={256,256}, output={134217728,134217728}, core={0,0};
+  struct rlimit tasks = {STUDIO_CHILD_PIDS,STUDIO_CHILD_PIDS}, files={256,256}, output={134217728,134217728}, core={0,0};
   if (setrlimit(RLIMIT_NPROC,&tasks) || setrlimit(RLIMIT_NOFILE,&files) || setrlimit(RLIMIT_FSIZE,&output) || setrlimit(RLIMIT_CORE,&core)) return 126;
   if (prctl(PR_SET_NO_NEW_PRIVS,1,0,0,0)) return 126;
   struct sock_filter filter[] = {
@@ -52,7 +61,7 @@ int main(void) {
   };
   struct sock_fprog program = {sizeof(filter)/sizeof(filter[0]),filter};
   if (prctl(PR_SET_SECCOMP,SECCOMP_MODE_FILTER,&program)) return 126;
-  char *args[] = {"/runtime/node","--max-old-space-size=256","/runtime/child.mjs",NULL};
+  char *args[] = {"/runtime/node","--max-old-space-size=256",STUDIO_CHILD_ENTRY,NULL};
   char *env[] = {"HOME=/tmp","PATH=/usr/bin:/bin","PWD=/input","TMPDIR=/tmp",NULL};
   execve(args[0],args,env); return 126;
 }

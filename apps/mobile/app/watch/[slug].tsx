@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  AccessibilityInfo,
   Alert,
-  Animated,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
-  Pressable,
   ScrollView,
   Share,
   StyleSheet,
@@ -38,13 +35,7 @@ import {
 import { isSeriesRecord } from "../../src/lib/isSeriesRecord"
 import { decodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxThumbnail"
-import {
-  ACCENT_ON_DARK,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_PRIMARY,
-  hexToRgba,
-} from "../../src/lib/color"
+import { ACCENT_ON_DARK } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useCastPlayback } from "../../src/hooks/useCastPlayback"
@@ -85,6 +76,7 @@ import {
   KeepWatchingOffer,
   offerResumeSeconds,
 } from "../../src/components/watch/KeepWatchingOffer"
+import { ScrollTopButton } from "../../src/components/watch/ScrollTopButton"
 import { useWatchProgressEntry } from "../../src/hooks/useWatchProgressEntry"
 import {
   exportControls,
@@ -96,7 +88,6 @@ import {
 } from "../../src/lib/watchProgress/thresholds"
 import { UpNextCarousel } from "../../src/components/watch/UpNextCarousel"
 import { VideoDescription } from "../../src/components/watch/VideoDescription"
-import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { RelatedQuestionsRenderer } from "../../src/components/sections/RelatedQuestionsRenderer"
 import { BibleQuotesCarouselRenderer } from "../../src/components/sections/BibleQuotesCarouselRenderer"
@@ -157,32 +148,9 @@ export default function WatchVideoPage() {
     isReady: downloadsReady,
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const playerFrameVisible = usePlaybackFrameVisible()
   const insets = useSafeAreaInsets()
-  // Honor reduce-motion for the scroll-to-top FAB, the way the player's
-  // chrome/subtitles already do — snap instead of fading.
-  const reduceMotionRef = useRef(false)
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      reduceMotionRef.current = v
-    })
-    const sub = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      (v) => {
-        reduceMotionRef.current = v
-      },
-    )
-    return () => {
-      try {
-        sub.remove()
-      } catch {
-        // noop
-      }
-    }
-  }, [])
 
   const {
     video,
@@ -638,19 +606,6 @@ export default function WatchVideoPage() {
     [],
   )
 
-  useEffect(() => {
-    const to = showScrollTop ? 1 : 0
-    if (reduceMotionRef.current) {
-      scrollTopOpacity.setValue(to)
-      return
-    }
-    Animated.timing(scrollTopOpacity, {
-      toValue: to,
-      duration: 200,
-      useNativeDriver: true,
-    }).start()
-  }, [showScrollTop, scrollTopOpacity])
-
   const handleScrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true })
   }, [])
@@ -818,7 +773,7 @@ export default function WatchVideoPage() {
       : null
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-watch" style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
       {/* Sibling of the player dock, NOT a child: the dock carries
@@ -849,6 +804,7 @@ export default function WatchVideoPage() {
             redirect, an Up Next replace, no variant in this language): dropping
             it hands the player to the route beneath and reads as a back press. */}
         <PlayerSlot
+          page="watch"
           // The cast pin (KTD4), not the live chain: a dub chosen mid-session
           // reaches the player only when the session releases it.
           streamingUrl={effectivePlayerSource}
@@ -1139,24 +1095,7 @@ export default function WatchVideoPage() {
         <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       )}
 
-      {showScrollTop && (
-        <Animated.View
-          style={[
-            styles.scrollTopFab,
-            { bottom: insets.bottom + 16, opacity: scrollTopOpacity },
-          ]}
-        >
-          <Pressable
-            onPress={handleScrollToTop}
-            style={styles.scrollTopButton}
-            accessibilityRole="button"
-            accessibilityLabel={t("scrollToTopAriaLabel")}
-            {...{ "dd-action-name": "watch-scroll-top" }}
-          >
-            <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
-          </Pressable>
-        </Animated.View>
-      )}
+      <ScrollTopButton visible={showScrollTop} onPress={handleScrollToTop} />
 
       {/* Hidden while casting (a seek moves the local player, not the TV), but
           never unmounted: a remount would restart its clock after the hold ended. */}
@@ -1206,27 +1145,9 @@ const styles = StyleSheet.create({
   retryLink: {
     // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
     color: ACCENT_ON_DARK,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,
     textAlign: "center",
-  },
-  scrollTopFab: {
-    position: "absolute",
-    right: 16,
-  },
-  scrollTopButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: hexToRgba(SURFACE_COLOR, 0.85),
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
 })

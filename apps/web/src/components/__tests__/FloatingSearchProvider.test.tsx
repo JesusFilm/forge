@@ -5094,6 +5094,59 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).toBe("Результаты на русском")
   })
 
+  // jsdom has no layout, so these pin the wiring (which logical margin
+  // utilities the chip wrapper carries); the rendered flush spacing itself was
+  // checked in a real browser. Each locale pins a different attachment shape:
+  // ar start only, zh-Hans both sides (the only fixture reaching the
+  // attached-end branch), en neither.
+  it.each([
+    ["ar", { start: true, end: false }],
+    ["zh-Hans", { start: true, end: true }],
+    ["en", { start: false, end: false }],
+  ] as const)(
+    "drops chip margin only on the sides glued to copy (%s)",
+    async (locale, glued) => {
+      const language =
+        locale === "en"
+          ? englishSearchLanguage
+          : {
+              englishName: locale === "ar" ? "Arabic" : "Chinese",
+              nativeName: locale === "ar" ? "العربية" : "中文",
+              bcp47: locale === "ar" ? "ar" : "zh-Hans",
+              publicSlug: locale === "ar" ? "arabic" : "chinese",
+              regionNames: ["Asia"],
+            }
+      mockedGetSearchLanguageOptions.mockResolvedValue({
+        ok: true,
+        options: [language],
+        countrySuggestion: null,
+        recommendedLanguage: language,
+        countryCode: null,
+        countryName: null,
+      })
+      const input = await openSearchOverlay(locale)
+
+      const chipWrapper = () =>
+        document
+          .querySelector('[data-testid="searching-in-language-label"]')
+          ?.closest(".pointer-events-auto.inline-flex") as HTMLElement | null
+      const expectMargins = () => {
+        const className = chipWrapper()?.className ?? ""
+        expect(className.split(" ").includes("ms-1")).toBe(!glued.start)
+        expect(className.split(" ").includes("me-1")).toBe(!glued.end)
+      }
+
+      // Idle template (searchInLanguage).
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+
+      // Query-intent template (searchSuggestionWithLanguage).
+      act(() => setInputValue(input, "jesus"))
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+    },
+  )
+
   it("does not mount the full search overlay on initial render without query intent", () => {
     act(() => {
       root.render(

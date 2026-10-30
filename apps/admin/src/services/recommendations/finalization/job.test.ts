@@ -261,12 +261,7 @@ describe("recommendation episode finalization job", () => {
     })
 
     expect(classifyPlaybackOutcome).toHaveBeenCalledWith("active-outcome")
-    expect(dispatchRecommendationProfileFeedback).toHaveBeenCalledWith({
-      sessionDigest: "a".repeat(64),
-      profileId: "profile-1",
-      privacyGeneration: 4,
-      evidenceWatermark: new Date("2026-08-19T03:01:00.000Z"),
-    })
+    expect(dispatchRecommendationProfileFeedback).not.toHaveBeenCalled()
   })
 
   it("refreshes the directly linked profile after a qualified outcome without an experiment assignment", async () => {
@@ -309,12 +304,7 @@ describe("recommendation episode finalization job", () => {
       reason: "terminal-fact",
     })
 
-    expect(dispatchRecommendationProfileFeedback).toHaveBeenCalledWith({
-      sessionDigest: "a".repeat(64),
-      profileId: "profile-direct",
-      privacyGeneration: 7,
-      evidenceWatermark: new Date("2026-08-19T03:01:00.000Z"),
-    })
+    expect(dispatchRecommendationProfileFeedback).not.toHaveBeenCalled()
   })
 
   it("re-arms durable recovery and fails the run when consumer dispatch fails", async () => {

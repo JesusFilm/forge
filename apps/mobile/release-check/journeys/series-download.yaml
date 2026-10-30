@@ -1,0 +1,74 @@
+# Open the series download sheet, wait until it has checked every episode,
+# and close it. The journey starts no download; watch-download starts one.
+# Washi Gospel has five episodes with downloads (R21).
+appId: org.jesusfilm.forgewatch
+name: series-download
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://series/washi-gospel
+    label: Open the Washi Gospel series
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-series
+    timeout: 30000
+    label: The series page shows
+- tapOn:
+    text: Download all
+    label: Open the series download sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-series-download
+    timeout: 20000
+    label: The series download sheet shows
+- assertVisible:
+    text: "5 episodes · .+"
+    label: The sheet counts the five episodes
+- extendedWaitUntil:
+    visible:
+      text: Download all episodes
+      enabled: true
+    timeout: 60000
+    label: The sheet has checked every episode
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 50%,15%
+          label: Tap the page above the sheet
+    label: Close the sheet on iOS
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - pressKey:
+          key: back
+          label: Press the Android back button
+    label: Close the sheet on Android
+- extendedWaitUntil:
+    notVisible:
+      id: screen-series-download
+    timeout: 10000
+    label: The series download sheet closes
+- assertVisible:
+    id: screen-series
+    label: The series page shows again

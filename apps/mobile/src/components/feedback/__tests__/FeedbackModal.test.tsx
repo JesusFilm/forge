@@ -35,14 +35,28 @@ jest.mock("expo-device", () => ({
     return "iPhone17,2"
   },
 }))
+// jest-expo reports Liquid Glass as available, so each case pins the branch.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+// A host stand-in that renders its children, so the form inside stays visible.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 import { act } from "react"
-import { AccessibilityInfo } from "react-native"
+import {
+  AccessibilityInfo,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import { FeedbackModal } from "../FeedbackModal"
+import { FeedbackSheetContent } from "../FeedbackSheetContent"
 import { type FeedbackSheetContext } from "../feedbackFlow"
 import { getT } from "../../../i18n/useT"
 import { getApolloClient } from "../../../lib/apolloClient"
+import { BG_COLOR } from "../../../lib/color"
 import { getNonRouteSheetCounter } from "../../../lib/miniPlayer/suppression"
 import {
   TestRenderer,
@@ -75,6 +89,7 @@ const mockedGetApolloClient = jest.mocked(getApolloClient)
 
 beforeEach(() => {
   jest.useFakeTimers()
+  mockGate.glass = true
   mutate.mockReset()
   mutate.mockResolvedValue({
     data: { submitFeedback: { accepted: true, refusal: null } },
@@ -151,7 +166,14 @@ async function startSend(renderer: TestInstance) {
   await press(pressableByLabel(renderer, "Send feedback"))
 }
 
-describe("presentation", () => {
+describe.each([
+  ["with Liquid Glass", true],
+  ["without Liquid Glass", false],
+])("presentation %s", (_name, glass) => {
+  beforeEach(() => {
+    mockGate.glass = glass
+  })
+
   it("allows both orientations, so it can open over the fullscreen player", async () => {
     // Fullscreen locks the app to landscape while RN's Modal defaults to
     // portrait-only; no common orientation aborts the app in UIKit.
@@ -233,5 +255,98 @@ describe("suppression (R11)", () => {
     expect(counter.isPresented()).toBe(true)
     await unmount(renderer)
     expect(counter.count()).toBe(0)
+  })
+})
+
+/** U11 (R16): the panel draws Liquid Glass in place of its solid fill. */
+describe("the panel's surface (U11)", () => {
+  function styleOf(node: RenderedNode): ViewStyle {
+    return StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {}
+  }
+
+  function ancestorsOf(node: RenderedNode): RenderedNode[] {
+    const out: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      out.push(at)
+    }
+    return out
+  }
+
+  /** The shared form; the panel is the nearest surface above it. */
+  function formNode(renderer: TestInstance): RenderedNode {
+    const [form] = renderer.root.findAll(
+      (node) => node.type === FeedbackSheetContent,
+    )
+    expect(form).toBeDefined()
+    return form!
+  }
+
+  function slideNode(node: RenderedNode): RenderedNode | undefined {
+    return ancestorsOf(node).find((at) => {
+      const t = styleOf(at).transform as
+        | Array<Record<string, unknown>>
+        | undefined
+      return (
+        Array.isArray(t) &&
+        t.some(
+          (e) =>
+            typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+            "function",
+        )
+      )
+    })
+  }
+
+  it("draws the panel on Liquid Glass with no fill, and no fade above it", async () => {
+    const { renderer } = await render()
+
+    const panel = ancestorsOf(formNode(renderer)).find(
+      (node) => node.type === "GlassView",
+    )
+    expect(panel).toBeDefined()
+    expect(styleOf(panel!)).toMatchObject({
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      overflow: "hidden",
+    })
+    // A fill on the glass, or under it, would cover the material.
+    expect(styleOf(panel!).backgroundColor).toBeUndefined()
+    expect(panel!.props.colorScheme).toBe("dark")
+    expect(
+      ancestorsOf(formNode(renderer)).filter(
+        (node) => styleOf(node).backgroundColor === BG_COLOR,
+      ),
+    ).toHaveLength(0)
+    // GlassView draws nothing under an ancestor whose opacity fades.
+    for (const ancestor of ancestorsOf(panel!)) {
+      expect(styleOf(ancestor).opacity).toBeUndefined()
+      expect(styleOf(ancestor).backgroundColor).toBeUndefined()
+    }
+    // The panel still slides, and still takes its share of the keyboard room.
+    expect(styleOf(slideNode(panel!)!).height).toBe("92%")
+    await unmount(renderer)
+  })
+
+  it("keeps today's solid panel without Liquid Glass", async () => {
+    mockGate.glass = false
+    const { renderer } = await render()
+
+    const above = ancestorsOf(formNode(renderer))
+    expect(above.filter((node) => node.type === "GlassView")).toHaveLength(0)
+    const panel = above.find(
+      (node) =>
+        typeof node.type === "string" &&
+        styleOf(node).backgroundColor === BG_COLOR,
+    )
+    expect(panel).toBeDefined()
+    expect(styleOf(panel!)).toMatchObject({
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingTop: 4,
+      paddingBottom: 12,
+      overflow: "hidden",
+    })
+    expect(styleOf(slideNode(panel!)!).height).toBe("92%")
+    await unmount(renderer)
   })
 })

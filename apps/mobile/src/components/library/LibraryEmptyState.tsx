@@ -83,14 +83,12 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },
   body: {
     marginTop: 9,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
   button: {
@@ -104,7 +102,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
 })

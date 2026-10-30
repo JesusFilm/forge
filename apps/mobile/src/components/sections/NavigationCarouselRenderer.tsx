@@ -42,7 +42,7 @@ export function NavigationCarouselRenderer({
   if (items.length === 0) return null
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-navigation-carousel" style={layout.sectionOuter}>
       <Text
         style={[text.sectionHeadingPadded, typography.heading]}
         accessibilityRole="header"
@@ -134,7 +134,6 @@ const styles = StyleSheet.create({
   category: {
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
-    fontFamily: "System",
     // All-caps text needs letter spacing of at least 5% of its font size.
     // The other caption-size capitals already use 0.8.
     letterSpacing: 0.8,
@@ -143,6 +142,5 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

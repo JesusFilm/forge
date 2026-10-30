@@ -2,6 +2,12 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../../lib/scale"
+import {
+  HOSTED_SIMULATOR_FEEDBACK_DESCRIPTION,
+  HOSTED_SIMULATOR_FEEDBACK_REFERENCE,
+  SIMULATOR_FEEDBACK_DESCRIPTION,
+  SIMULATOR_FEEDBACK_REFERENCE,
+} from "../../lib/feedbackSimulator"
 import { NEAR_BLACK, WATCH_THEME } from "../watch/watchDetailTheme"
 import { useFeedbackQr } from "./useFeedbackQr"
 
@@ -14,13 +20,15 @@ export function FeedbackQrScreen() {
     filmTitle?: string
     timestamp?: string
   }>()
-  const { verified, loading, error, qr, retry } = useFeedbackQr(true, {
+  const { mode, verified, loading, error, qr, retry } = useFeedbackQr(true, {
     screen: params.screen ?? "settings",
     player: params.player,
     filmTitle: params.filmTitle,
     timestamp: params.timestamp,
   })
   const unit = qr ? Math.max(1, Math.floor(SIDE / (qr.modules + 8))) : 1
+  const simulator = mode !== "verified"
+  const hosted = mode === "signed-simulator"
 
   return (
     <View style={styles.screen}>
@@ -35,12 +43,16 @@ export function FeedbackQrScreen() {
         <Text style={styles.backLabel}>‹ Back</Text>
       </Pressable>
       <View style={styles.content}>
-        <Text style={styles.eyebrow}>WATCH TV · BETA</Text>
+        <Text style={styles.eyebrow}>
+          {simulator ? "WATCH TV · SIMULATOR TEST" : "WATCH TV · BETA"}
+        </Text>
         <Text style={styles.title}>The beta testing</Text>
         <Text style={styles.description}>
-          Scan with your phone to report a problem, suggest an idea, or share
-          what worked well. Add a photo or video if it helps explain what you
-          saw.
+          {simulator
+            ? hosted
+              ? HOSTED_SIMULATOR_FEEDBACK_DESCRIPTION
+              : SIMULATOR_FEEDBACK_DESCRIPTION
+            : "Scan with your phone to report a problem, suggest an idea, or share what worked well. Add a photo or video if it helps explain what you saw."}
         </Text>
         {qr ? (
           <>
@@ -60,7 +72,13 @@ export function FeedbackQrScreen() {
                 </View>
               ))}
             </View>
-            {verified ? (
+            {simulator ? (
+              <Text style={styles.reference}>
+                {hosted
+                  ? HOSTED_SIMULATOR_FEEDBACK_REFERENCE
+                  : SIMULATOR_FEEDBACK_REFERENCE}
+              </Text>
+            ) : verified ? (
               <Text style={styles.reference}>
                 Reference {verified.referenceCode} · Expires{" "}
                 {new Date(verified.expiresAt).toLocaleString()}
@@ -72,7 +90,11 @@ export function FeedbackQrScreen() {
             {loading
               ? "Verifying this TV…"
               : error
-                ? "Verified feedback is unavailable. Please try again later."
+                ? simulator
+                  ? hosted
+                    ? "Simulator feedback is unavailable. Check the signed link."
+                    : "Local feedback is unavailable. Check the simulator configuration."
+                  : "Verified feedback is unavailable. Please try again later."
                 : "Feedback is not available in this build."}
           </Text>
         )}

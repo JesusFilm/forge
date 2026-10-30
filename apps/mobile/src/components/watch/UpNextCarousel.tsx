@@ -207,7 +207,6 @@ const styles = StyleSheet.create({
   playingPillText: {
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   titleOverlay: {
     position: "absolute",
@@ -219,6 +218,5 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

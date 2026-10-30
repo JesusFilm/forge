@@ -81,8 +81,9 @@ Deploy in expand-then-activate order:
    startup ceiling; it cannot override an unhealthy or disabled database
    control.
 4. Confirm the bootstrap manifest is exactly
-   `semantic-transcript-pgvector-v1`, retention has a fresh successful run, the
-   database probe is healthy, and Admin reports no overdue roots.
+   `semantic-transcript-pgvector-v1` and the database probe is healthy. Monitor
+   retention watermarks and overdue roots separately; cleanup runs concurrently
+   and is not a serving prerequisite (October 19 owner decision).
 5. Enable the singleton serving-control row with a bounded reason code and
    increment its version. Every delivery rereads this row; do not replace it
    with an environment-only switch or cache it per viewer.
@@ -166,7 +167,7 @@ present; their absence is normal on current requests.
 Production must have Redis available. Redis loss fails new attributed delivery
 closed before retrieval; only non-production uses the process-local admission
 adapter. A missing keyring, disabled environment ceiling, disabled/mismatched
-manifest control, or overdue retention also issues no attributed slate. None
+manifest control also issues no attributed slate. None
 of these conditions may block the source or target player.
 
 ## Serving Disable and Recovery
@@ -187,10 +188,11 @@ issuance and verification reread this set on every request, so revocation takes
 effect on each replica's next use. Record only a reason code, never key
 material.
 
-After remediation, require all activation gates again. In particular, clear
-retention backlog with the bounded purge, verify the oldest overdue root is
-gone and a fresh successful retention ledger exists, then re-enable the shared
-control. Do not infer recovery from an empty request window.
+After remediation, require the serving activation gates again and re-enable
+the shared control. Repair retention backlog independently with the bounded
+purge; do not stop serving or wait for backlog clearance to restore cards.
+Verify delivery and cleanup separately. Do not infer recovery from an empty
+request window.
 
 ## Capability Key Rotation
 
@@ -223,9 +225,35 @@ request-linked audit/conflict records inherit that root expiry and cannot
 extend it. Source-neutral standalone playback episodes receive the same
 29-day horizon and are purged as bounded roots with their cascading facts and
 outcomes. Reads hide expired roots immediately. The daily advisory-locked
-purge runs at 10:30 UTC in batches of 500 (hard maximum 5,000), deletes request
+purge runs at 10:30 UTC in batches of 100 (hard maximum 5,000), deletes request
 roots under database cascades, and fences late finalizers from recreating or
 publishing deleted generations.
+
+This is an application-owned durable job on the Admin worker; it does not
+depend on an operator, Codex, or the separate daily evidence monitor. The fixed
+UTC schedule is 23:30 in Auckland during NZDT and 22:30 during NZST. The worker
+bootstrap calls `ensureRecommendationRetentionSchedulerStarted` in
+`apps/admin/src/services/recommendations/retention/job.ts`; the durable loop is
+`apps/admin/src/workflows/recommendationRetention.ts`.
+
+The daily wake starts a bounded catch-up cycle. A full page or explicit
+continuation signal keeps cleanup running even when expired rows are still
+inside the 24-hour propagation window. Each step performs at most eight passes
+and checks its 30-second catch-up window between passes, then records a
+60-second continuation while more work is reported. Individual purges retain their five-second
+deadline. Budget yields preserve committed counts and unknown backlog; they do
+not advance the success watermark or establish completion. Actual failures
+remain failed attempts and use bounded retries. Once the cycle reports no
+remaining work, it sleeps until the next daily wake. Rows can expire during
+that sleep; a nonzero younger-expired count between daily runs does not alone
+prove the scheduler stopped or missed work.
+
+Verify the `recommendation-retention-scheduler` ledger's `nextRunAt`, schedule
+and error state **and** the linked workflow-runtime status. A ledger that still
+says `running` is not sufficient if its runtime has failed. Verify deletion
+through the separate purge and workflow ledgers, all retained-type backlogs,
+oldest expiry and successful watermark. The read-only daily evidence monitor
+checks those outcomes; it does not initiate or retry a manual purge.
 
 The purge has a 24-hour propagation SLA and a 30-day hard ceiling. Retention is
 overdue when a request or standalone playback root is more than 24 hours past
@@ -258,7 +286,7 @@ Admin health is a truth table over recommendation-owned durable evidence:
 | `conflict`            | The same event identity arrived with a different digest and was quarantined.                                             |
 | `late`                | A fact that occurred inside the active window was received later, before the hard horizon.                               |
 | `classifier_lag`      | A terminal/deadline episode has no outcome, or an open episode is past its deadline.                                     |
-| `retention_overdue`   | Purge propagation or success-watermark freshness failed; attributed serving stays disabled.                              |
+| `retention_overdue`   | Purge propagation or success-watermark freshness failed; investigate cleanup while recommendation serving continues.     |
 
 Selection without an impression and valid out-of-order facts stay visible as
 facts; they are not manufactured into loss. Read counters together with the
@@ -331,7 +359,8 @@ blocked by the browser if the forwarded origin is omitted.
 
 Start Admin first. The durable workflow runner performs an initial bounded
 retention run and then sleeps until the daily schedule. Confirm the bootstrap
-rows and retention watermark before enabling the shared control:
+rows before enabling the shared control, and inspect the retention watermark
+independently:
 
 ```sql
 SELECT id, strategy_version, contract_version, surface_version, generator,

@@ -5,11 +5,20 @@
  */
 
 import { act, type ReactElement } from "react"
+import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// The `mock` prefix lets babel-plugin-jest-hoist accept this name. A case
+// takes the glass branch unless it turns the gate off.
+const mockGlass = { on: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.on,
+}))
+// A host stand-in, so a case can see where the glass draws.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 // A fixture `es` catalog joins the real set, so the UI language can change
 // while a state is on screen.
 const mockGetLocales = jest.fn()
@@ -66,10 +75,13 @@ import {
   type FeedState,
 } from "../../../lib/explore/feedState"
 import type { FeedClip } from "../../../lib/explore/types"
+import { BLACK, hexToRgba } from "../../../lib/color"
+import { GlassSurface } from "../../ui/GlassSurface"
 import {
   TestRenderer,
   hasText,
   pressableByLabel,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
@@ -80,6 +92,7 @@ afterEach(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
   jest.useRealTimers()
+  mockGlass.on = true
 })
 
 function mount(element: ReactElement): TestInstance {
@@ -195,6 +208,52 @@ describe("ExploreStates", () => {
     expect(
       hasText(renderer, "This clip can't play. Swipe for the next one."),
     ).toBe(true)
+  })
+})
+
+describe("ClipFailed — the message pill (R4)", () => {
+  const MESSAGE = "This clip can't play. Swipe for the next one."
+
+  /** The host node right behind the message text. */
+  function pillBehindMessage(renderer: TestInstance): RenderedNode {
+    const [text] = renderer.root.findAll(
+      (n) => n.type === "Text" && n.props.children === MESSAGE,
+    )
+    let at = text?.parent
+    while (at != null && typeof at.type !== "string") at = at.parent
+    if (at == null) throw new Error("no host node behind the message")
+    return at
+  }
+
+  function inSurface(node: RenderedNode): boolean {
+    for (let at = node.parent; at != null; at = at.parent) {
+      if (at.type === GlassSurface) return true
+    }
+    return false
+  }
+
+  it("shows the message on glass, with no fill over it", () => {
+    const pill = pillBehindMessage(mount(<ClipFailed />))
+    expect(pill.type).toBe("GlassView")
+    expect(inSurface(pill)).toBe(true)
+    expect(pill.props.glassEffectStyle).toMatchObject({ style: "regular" })
+    expect(
+      StyleSheet.flatten(pill.props.style as StyleProp<ViewStyle>)
+        ?.backgroundColor,
+    ).toBeUndefined()
+  })
+
+  it("keeps today's dark pill where Liquid Glass is unavailable", () => {
+    mockGlass.on = false
+    const renderer = mount(<ClipFailed />)
+    const pill = pillBehindMessage(renderer)
+    expect(StyleSheet.flatten(pill.props.style as never)).toMatchObject({
+      backgroundColor: hexToRgba(BLACK, 0.7),
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    })
+    expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
   })
 })
 

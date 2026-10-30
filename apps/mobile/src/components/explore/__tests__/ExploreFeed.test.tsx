@@ -199,9 +199,9 @@ import type {
 import {
   LOOP_SEEK_SETTLE_MS,
   EXPLORE_QUALITY_TIER,
-  SEEK_LOADING_GRACE_MS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
 } from "../../../hooks/useFeedPlayers"
+import { SEEK_LOADING_GRACE_MS } from "../../../lib/seekLoading"
 import {
   refreshLocale,
   resetLocaleStoreForTests,
@@ -256,6 +256,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
+import { isTabBarHidden } from "../../../lib/tabBarVisibility"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const [A, B] = video.__players
@@ -1360,6 +1361,24 @@ describe("the 2x hold (owner, 2026-10-14)", () => {
     expect(B.playbackRate).toBe(1)
   })
 
+  it("hides the iOS tab bar only while the hold plays the clip at 2x", async () => {
+    await startWithStandby()
+    expect(isTabBarHidden()).toBe(false)
+    await pressSide("onLongPress", "end")
+    expect(isTabBarHidden()).toBe(true)
+    await pressSide("onPressOut", "end")
+    expect(isTabBarHidden()).toBe(false)
+
+    // An unmount mid-hold must not strand the bar hidden.
+    await pressSide("onLongPress", "end")
+    expect(isTabBarHidden()).toBe(true)
+    await act(async () => {
+      renderer!.unmount()
+    })
+    renderer = null
+    expect(isTabBarHidden()).toBe(false)
+  })
+
   it("pauses on a short tap on a side, as on the rest of the clip", async () => {
     await startWithStandby()
     await pressSide("onPress", "end")
@@ -1632,6 +1651,16 @@ describe("the overlay (R10, R44)", () => {
     expect(A.playing).toBe(false)
     expect(overlay().props.paused).toBe(true)
     await tap()
+    expect(A.playing).toBe(true)
+    expect(overlay().props.paused).toBe(false)
+  })
+
+  it("resumes a paused clip from a tap on the play glyph", async () => {
+    await startWithStandby()
+    await tap()
+    expect(overlay().props.paused).toBe(true)
+    // The glyph takes its own tap now, so the feed must wire it to play.
+    await callOverlay("onResume")
     expect(A.playing).toBe(true)
     expect(overlay().props.paused).toBe(false)
   })

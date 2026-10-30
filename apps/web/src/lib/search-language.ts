@@ -6,7 +6,10 @@ import {
   resolveWatchLocaleIdentity,
   type UiLocale,
 } from "./locale"
-import { selectOwnLanguageName } from "./language-native-name"
+import {
+  nativeNameMatchesLanguageScript,
+  selectOwnLanguageName,
+} from "./language-native-name"
 
 export type SearchLanguageResolutionSource =
   | "explicit-selection"
@@ -610,7 +613,11 @@ function nativeName(
 
   for (const candidate of candidates) {
     const value = names[candidate]
-    if (typeof value === "string" && value.trim().length > 0) {
+    if (
+      typeof value === "string" &&
+      value.trim().length > 0 &&
+      nativeNameMatchesLanguageScript(value.trim(), bcp47)
+    ) {
       return value.trim()
     }
   }

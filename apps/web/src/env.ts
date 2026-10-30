@@ -209,6 +209,7 @@ export const env = createEnv({
     // helpers return local defaults so preview/local environments can boot
     // before LaunchDarkly is provisioned.
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_AUDIENCE_DEFAULT: z.string().optional(),
     FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
@@ -266,6 +267,11 @@ export const env = createEnv({
     WEB_AUTH_BASE_URL: z.url().default("https://auth.jesusfilm.org"),
     WEB_AUTH_ISSUER_URL: z.url().optional(),
     WEB_AUTH_CLIENT_ID: z.string().min(1).optional(),
+    // Admin's registered OAuth resource identifier (feat-731). When set, Web
+    // requests access tokens with this audience so Admin's confidential
+    // introspection client — linked to the same resource in Auth — can
+    // verify them. Unset keeps today's audience-less tokens.
+    WEB_AUTH_ADMIN_RESOURCE: z.url().optional(),
     WEB_BASE_URL: z
       .url()
       .default(
@@ -409,6 +415,7 @@ export const env = createEnv({
     ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_AUDIENCE_DEFAULT: process.env.FORGE_WATCH_AUDIENCE_DEFAULT,
     FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
       process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
@@ -431,6 +438,9 @@ export const env = createEnv({
     WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
     WEB_AUTH_ISSUER_URL: emptyToUndefined(process.env.WEB_AUTH_ISSUER_URL),
     WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),
+    WEB_AUTH_ADMIN_RESOURCE: emptyToUndefined(
+      process.env.WEB_AUTH_ADMIN_RESOURCE,
+    ),
     WEB_BASE_URL: emptyToUndefined(process.env.WEB_BASE_URL),
     WEB_SESSION_SECRET: emptyToUndefined(process.env.WEB_SESSION_SECRET),
     DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),

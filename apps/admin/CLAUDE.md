@@ -436,7 +436,7 @@ Snapshot fields the web branch can rely on:
   hreflang-eligible or not. Sitemap `<loc>` entries come from `languageSlugs`
   and `<xhtml:link>` annotations come from `alternates`, so a language with no
   ISO-639-1 code (Cebuano, Ilocano, Hiligaynon) still gets a discoverable URL
-  (feat-733 / FGE-183, formerly feat-716 and feat-533). `languageSlugs` is optional at the schema boundary
+  (feat-913 / FGE-183, formerly feat-733, feat-716 and feat-533). `languageSlugs` is optional at the schema boundary
   because `WatchSeoManifestStore.getLatest()` parses the persisted snapshot on
   every read — a required field would make this route 500 on the snapshot the
   previous build wrote, until the next Core sync. The generator always emits it.
@@ -533,16 +533,18 @@ duration, profile, and exact bucket key. A completed dump logs size and export
 duration before upload, and a failed upload logs its elapsed duration without
 credentials, so capacity and cost evidence survives an upload failure.
 
-The schedule is fixed in code at daily 09:00 UTC. The admin Railway image gets
-PostgreSQL 18 client tools from the admin service's Railpack variable
-`RAILPACK_PACKAGES=postgres@18.1`; keep that in sync with the managed database
-major version because `pg_dump` cannot dump from a newer server. Railpack's
-Mise Postgres package compiles from source, so the services also need
-`RAILPACK_BUILD_APT_PACKAGES=bison flex`. Because this monorepo has multiple
-Railway services, do not put a root Railpack config in place for this feature
-unless every service should inherit it. Deployment details should be checked
-after merge to confirm the package settings were applied to both admin web and
-worker services.
+The schedule is fixed in code at daily 09:00 UTC. Source-bound Admin web and
+worker builds use `apps/admin/Dockerfile`, which ships checksum-pinned
+PostgreSQL18.6 client tools from the official source. This preserves the
+PostgreSQL18 dump/restore contract and does not change the database server.
+The image fixture checks `pg_dump`, `pg_restore` and `psql`, a disposable
+schema dump/list and verified TLS to the disposable server. A public endpoint
+that cannot negotiate PostgreSQL TLS is not a libpq certificate control.
+
+Dashboard-controlled services still need their own reviewed build binding;
+the prior Railpack setup used `RAILPACK_PACKAGES=postgres@18.1` and
+`RAILPACK_BUILD_APT_PACKAGES=bison flex`. Check effective source/config and
+current image before treating the new Dockerfile as deployed there.
 
 ### Datadog observability
 
@@ -567,7 +569,10 @@ plain and opt-in; Railway does not let the Agent scrape sibling service stdout.
 The shared Railway Datadog Agent service definition lives in
 `infra/datadog-agent/`; operator setup and env variables are documented in
 `docs/observability/datadog.md`. Admin browser sourcemaps upload with
-`pnpm --filter @forge/admin datadog:sourcemaps`.
+`pnpm --filter @forge/admin datadog:sourcemaps`. Source-bound Docker services
+run this in `predeploy-production.sh` before migrations, preserving the release
+upload gate while keeping the upload key outside Docker build arguments/layers.
+Browser-visible RUM configuration and release IDs remain explicit build inputs.
 
 Production Admin Railway config lives in `apps/admin/railway.toml` once the
 service's Config-as-code Path is set to that file. For best Datadog
@@ -1898,9 +1903,15 @@ The pinned U1 versions are `semantic-recommendation-v1` (delivery),
 `semantic-transcript-pgvector-v1` (manifest), and `legacy-position-v0`
 (provisional, learning-ineligible outcome). The migration registers the exact
 manifest and a disabled shared control. New issuance requires the environment
-ceiling, shared control, valid active keyring, healthy retention, authenticated
+ceiling, shared control, valid active keyring, authenticated
 Web consumer caller, and production Redis admission to agree. Disabling or
 degrading this plane must never make either Watch player unavailable.
+
+Retention cleanup runs concurrently with recommendation delivery. Global purge
+backlog or a stale/missing cleanup watermark must not block new issuance or add
+a health probe to the delivery path. Keep operator retention health reporting
+and per-record expiry, erasure, privacy-generation and eligibility enforcement.
+See the October 19 decision in `docs/analytics-and-recommendation-policy.md`.
 
 Treat request `expiresAt` as the immutable 29-day lifecycle root. Descendants
 cannot extend it; the daily bounded purge has a 24-hour propagation SLA and a

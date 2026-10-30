@@ -71,15 +71,17 @@ function readiness(fixture: boolean): Readiness {
 }
 
 describe("precomputed public operator controls", () => {
-  it("does not offer public start or fixture preparation in an ordinary environment", () => {
+  it("offers public start with no baseline, verification, or model qualification", () => {
+    const data = readiness(false)
+    data.generations[0]!.modelId = "codex-editorial-session"
+    data.generations[0]!.protocolVersion = 1
+    data.generations[0]!.inputMode = "content_only"
     const html = renderToStaticMarkup(
-      <PublicPrecomputedControls
-        readiness={readiness(false)}
-        canOperate
-        canRollback
-      />,
+      <PublicPrecomputedControls readiness={data} canOperate canRollback />,
     )
     expect(html).toContain("incumbent")
+    expect(html).toContain("Start 50/50 A/B")
+    expect(html).toContain("codex-editorial-session")
     expect(html).not.toContain("Start fixture A/B")
     expect(html).not.toContain("Prepare cohort without serving")
   })

@@ -58,7 +58,6 @@ class RetentionFixtureError extends Error {}
         tracks: [],
         items: [],
         components: [],
-        packRevisionIds: [],
       },
     })
     const attempt = await commands.request(human, {

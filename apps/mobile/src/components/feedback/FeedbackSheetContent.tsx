@@ -70,6 +70,7 @@ export type FeedbackSheetContentProps = {
   /** R19: true while a submission is in flight, so the host can refuse its own
    *  backdrop, gesture and Android back dismissals. */
   onDismissLockedChange?: (locked: boolean) => void
+  testID?: string
 }
 
 /** Two-step feedback form (KTD4): one body serves both doors — no Modal, no
@@ -79,6 +80,7 @@ export function FeedbackSheetContent({
   context,
   onClose,
   onDismissLockedChange,
+  testID,
 }: FeedbackSheetContentProps) {
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
@@ -205,6 +207,7 @@ export function FeedbackSheetContent({
   if (state.phase === "success") {
     return (
       <Pressable
+        testID={testID}
         style={styles.successPanel}
         onPress={onClose}
         accessibilityRole="button"
@@ -221,7 +224,7 @@ export function FeedbackSheetContent({
 
   const showBack = state.phase === "compose" || state.phase === "sending"
   const shell = (children: ReactNode) => (
-    <View style={styles.root}>
+    <View testID={testID} style={styles.root}>
       <View style={styles.header}>
         {showBack ? (
           <Pressable
@@ -493,6 +496,7 @@ export function FeedbackSheetContent({
       </View>
 
       <Pressable
+        testID="feedback-send"
         onPress={handleSend}
         disabled={dismissLocked}
         style={({ pressed }) => [
@@ -532,7 +536,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   step: {
@@ -554,12 +557,10 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   kindLine: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   tile: {
     minHeight: 56,
@@ -572,7 +573,6 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   tagRow: {
@@ -587,14 +587,12 @@ const styles = StyleSheet.create({
   tagText: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   field: {
     gap: 6,
   },
   fieldLabel: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   input: {
     minHeight: 48,
@@ -603,7 +601,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: SURFACE_COLOR,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   messageInput: {
     minHeight: 132,
@@ -619,12 +616,10 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   problemText: {
     flex: 1,
     color: STATUS_FAILED_COLOR,
-    fontFamily: "System",
   },
   switchRow: {
     flexDirection: "row",
@@ -636,7 +631,6 @@ const styles = StyleSheet.create({
   switchLabel: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   disclosure: {
     gap: 2,
@@ -647,12 +641,10 @@ const styles = StyleSheet.create({
   },
   disclosureTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   disclosureRow: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   noticeRow: {
     flexDirection: "row",
@@ -662,7 +654,6 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   sendButton: {
     minHeight: 50,
@@ -673,7 +664,6 @@ const styles = StyleSheet.create({
   },
   sendLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -684,7 +674,6 @@ const styles = StyleSheet.create({
   },
   quietLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },
@@ -697,7 +686,6 @@ const styles = StyleSheet.create({
   },
   successText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },

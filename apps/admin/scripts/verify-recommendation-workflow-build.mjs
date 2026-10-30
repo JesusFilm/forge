@@ -83,11 +83,7 @@ assertRegistration({
   name: "runRecommendationCowatchRefreshScheduler",
   routeSource: workflowRouteSource,
 })
-for (const name of [
-  "stepMarkRecommendationCowatchRefreshStarted",
-  "stepRunRecommendationCowatchRefresh",
-  "stepRecordRecommendationCowatchRefreshHeartbeat",
-]) {
+for (const name of ["stepCompleteBehavioralRetirement"]) {
   assertRegistration({
     entries: manifest.steps?.[refreshModule],
     kind: "step",
@@ -97,5 +93,5 @@ for (const name of [
 }
 
 console.log(
-  `Verified retention workflows and steps, plus the co-watch refresh scheduler and its three steps`,
+  `Verified retention workflows and steps, plus the retired co-watch scheduler tombstone`,
 )

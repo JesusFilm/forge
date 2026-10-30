@@ -1,4 +1,10 @@
 import { parse } from "graphql"
+import { recommendationIdentityStorageKey } from "./identityStorageKey"
+
+const mockIdentityKey = recommendationIdentityStorageKey(
+  "https://admin.example.test/api/graphql",
+  true,
+)
 
 const mockStorage = new Map<string, string>()
 let mockEventId = 0
@@ -129,9 +135,7 @@ it("requests exactly six cards in English UI metadata and the chosen audio, with
     count: 6,
   })
   expect(request?.variables).not.toHaveProperty("sessionDigest")
-  expect(mockStorage.get("tv.recommendations.identity.v1")).toContain(
-    viewer.viewerToken,
-  )
+  expect(mockStorage.get(mockIdentityKey)).toContain(viewer.viewerToken)
 })
 it("preserves an unavailable language result, without requesting a fallback dub", async () => {
   const client = jest.requireActual<typeof import("./client")>("./client")
@@ -167,6 +171,47 @@ it("resets while preserving an off preference and never touches My List or Conti
   expect(mockStorage.get("tv.myList")).toBe("keep")
   expect(mockStorage.get("tv.continueWatching")).toBe("keep")
 })
+it("uses context then claim for search playback, never a raw account or profile digest", async () => {
+  const prior = handler
+  handler = (request) => {
+    if (request.operationName === "IssueWatchPlaybackContext")
+      return {
+        data: {
+          issueWatchPlaybackContext: {
+            claimNonce: "native-nonce-0123456789",
+            contextVersion: "playback-context-v1",
+          },
+        },
+      }
+    if (request.operationName === "ClaimSemanticRecommendationEpisode")
+      return {
+        data: {
+          claimSemanticRecommendationEpisode: {
+            episodeId: "episode",
+            capability: "memory-only",
+            activeUntil: "2026-10-03T00:00:00Z",
+            hardUntil: "2026-10-03T00:00:00Z",
+          },
+        },
+      }
+    return prior(request)
+  }
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  const episode = await client.claimPlayback("video-1", "search")
+  expect(episode.mediaId).toBe("video-1")
+  const issuance = requests.find(
+    (r) => r.operationName === "IssueWatchPlaybackContext",
+  )
+  expect(issuance?.variables).toMatchObject({
+    mediaId: "video-1",
+    discoverySource: "search",
+    provenance: { client: "tv" },
+  })
+  expect(issuance?.variables).not.toHaveProperty("profileTokenDigest")
+  expect(requests.at(-1)?.operationName).toBe(
+    "ClaimSemanticRecommendationEpisode",
+  )
+})
 it("retains a failed withdrawal as pending and blocks delivery until it succeeds", async () => {
   const client = jest.requireActual<typeof import("./client")>("./client")
   await client.fetchForYou("english")
@@ -201,7 +246,7 @@ it("grants and withdraws explicitly, preserving the installation handle", async 
 it("recovers a missing server handle once, while retaining the off choice", async () => {
   mockStorage.set("tv.recommendations.choice.v1", "false")
   mockStorage.set(
-    "tv.recommendations.identity.v1",
+    mockIdentityKey,
     JSON.stringify({
       ...viewer,
       viewerToken: "o".repeat(43),
@@ -252,4 +297,174 @@ it("times out acknowledgement-body consumption, not just response headers", asyn
   } finally {
     jest.useRealTimers()
   }
+})
+function attribution(
+  client: typeof import("./client"),
+): import("./client").Attribution {
+  const item = {
+    id: "item",
+    position: 0,
+    targetMediaId: "video-1",
+    canonicalHref: "/watch/jesus.html/english.html",
+    capability: "item-memory-capability",
+    videoSlug: "jesus",
+    videoTitle: "JESUS",
+    imageUrl: null,
+    description: "JESUS feature film",
+    durationSeconds: 120,
+    generator: "curated",
+    poolVersion: "starter",
+    poolKey: "start",
+  }
+  const delivery = {
+    contractVersion: "user-recommendation-v1",
+    surfaceVersion: "watch-for-you-v1",
+    requestId: "request",
+    result: "served",
+    reason: null,
+    expiresAt: "2027-01-01T00:00:00.000Z",
+    requestedCount: 6,
+    profileCount: 0,
+    curatedCount: 6,
+    cohort: "cold_start",
+    poolVersion: "starter",
+    items: [item],
+  }
+  return {
+    item,
+    delivery,
+    audioLanguageSlug: "english",
+    privacyGeneration: client.getRecommendationGeneration(),
+  }
+}
+it("retains selection only in memory and creates a fresh episode for replay", async () => {
+  const prior = handler
+  handler = (request) => {
+    if (request.operationName === "SelectSemanticRecommendation")
+      return {
+        data: {
+          selectSemanticRecommendation: {
+            status: "accepted",
+            claimNonce: request.variables.claimNonce,
+            canonicalHref: "/watch/jesus.html/english.html",
+            targetMediaId: "video-1",
+          },
+        },
+      }
+    if (request.operationName === "ClaimSemanticRecommendationEpisode")
+      return {
+        data: {
+          claimSemanticRecommendationEpisode: {
+            episodeId: request.variables.claimNonce,
+            capability: "episode-memory-capability",
+            activeUntil: "2027-01-01T00:00:00Z",
+            hardUntil: "2027-01-01T00:00:00Z",
+          },
+        },
+      }
+    return prior(request)
+  }
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  expect(await client.selectRecommendation(attribution(client))).toBe("jesus")
+  const selected = client.takeRecommendationSelection("jesus")
+  expect(selected).toBeDefined()
+  expect(client.takeRecommendationSelection("jesus")).toBeUndefined()
+  const first = await client.claimPlayback("video-1", "direct", selected)
+  const second = await client.claimPlayback("video-1", "direct", selected)
+  expect(first.episodeId).not.toBe(second.episodeId)
+  expect(
+    requests.filter((r) => r.operationName === "IssueWatchPlaybackContext"),
+  ).toHaveLength(0)
+  expect(
+    requests.filter((r) => r.operationName === "SelectSemanticRecommendation"),
+  ).toHaveLength(2)
+  expect([...mockStorage.values()].join()).not.toContain("capability")
+})
+it("batches the qualified render and impression with distinct immutable IDs", async () => {
+  const prior = handler
+  handler = (request) =>
+    request.operationName === "RecordSemanticRecommendationEvidence"
+      ? {
+          data: {
+            recordSemanticRecommendationEvidence: (
+              request.variables.events as { eventId: string }[]
+            ).map((event) => ({ eventId: event.eventId, status: "accepted" })),
+          },
+        }
+      : prior(request)
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  await client.sendCardEvidence(attribution(client))
+  const events = requests.find(
+    (r) => r.operationName === "RecordSemanticRecommendationEvidence",
+  )?.variables.events as { eventId: string; kind: string; payload: unknown }[]
+  expect(events.map((event) => event.kind)).toEqual(["render", "impression"])
+  expect(new Set(events.map((event) => event.eventId)).size).toBe(2)
+  expect(events[0].payload).toEqual({ surfacePolicy: "watch-for-you-v1" })
+  expect(events[1].payload).toEqual({ visibilityPolicy: "watch-for-you-v1" })
+})
+it("rejects stale attribution after reset before any selection request", async () => {
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  const old = attribution(client)
+  client.clearRecommendationContext()
+  await expect(client.selectRecommendation(old)).rejects.toThrow("unavailable")
+  expect(requests).toHaveLength(0)
+})
+
+it("retires an in-flight selection retry when recommendation authority changes", async () => {
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  await client.fetchForYou("english")
+  jest.useFakeTimers()
+  try {
+    const prior = handler
+    handler = (request) =>
+      request.operationName === "SelectSemanticRecommendation"
+        ? {
+            errors: [
+              { extensions: { recommendationCode: "SERVICE_UNAVAILABLE" } },
+            ],
+          }
+        : prior(request)
+    const selection = client.selectRecommendation(attribution(client))
+    // Attach the rejection handler before advancing the retry timer.
+    const settled = selection.catch((error: unknown) => error)
+    for (let i = 0; i < 20; i++) await Promise.resolve()
+    expect(
+      requests.filter(
+        (r) => r.operationName === "SelectSemanticRecommendation",
+      ),
+    ).toHaveLength(1)
+    client.clearRecommendationContext()
+    await jest.runAllTimersAsync()
+    expect(await settled).toMatchObject({ code: "retired" })
+    expect(
+      requests.filter(
+        (r) => r.operationName === "SelectSemanticRecommendation",
+      ),
+    ).toHaveLength(1)
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+it("does not send the prior unscoped fixture identity to a development backend", async () => {
+  mockStorage.set(
+    "tv.recommendations.identity.v1",
+    JSON.stringify({
+      ...viewer,
+      viewerToken: "f".repeat(43),
+      lastActivity: Date.now(),
+    }),
+  )
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  await client.fetchForYou("english")
+  expect(requests[0].operationName).toBe("CreateRecommendationViewer")
+  expect(
+    requests.some(
+      (request) => request.variables.viewerToken === "f".repeat(43),
+    ),
+  ).toBe(false)
+  expect(mockStorage.get("tv.recommendations.identity.v1")).toContain(
+    "f".repeat(43),
+  )
+  expect(mockStorage.get(mockIdentityKey)).toContain(viewer.viewerToken)
 })

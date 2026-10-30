@@ -173,7 +173,6 @@ export function createStudioRuntime(storage: MastraStorage, config: Config) {
             tracks: [],
             items: [],
             components: [],
-            packRevisionIds: [],
           },
         }
         return streaming(

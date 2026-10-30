@@ -7,7 +7,6 @@ import type {
 } from "./slate"
 
 const RECENT_CONTEXT_WINDOW_DAYS = 7
-const MAX_RECENT_CONTEXT_SESSIONS = 8
 // Bound ledger work before joining served items and lifecycle facts. A viewer
 // may accumulate arbitrarily many issued roots inside the seven-day window;
 // only the newest roots per authorized session can influence this request.
@@ -30,10 +29,8 @@ export type RecommendationRecentContext = Readonly<{
 
 /**
  * Resolve only bounded facts from the recommendation-owned ledger. The
- * current operational session is always the narrow base scope. Cross-session
- * context is available only when the caller has already proved that this is a
- * durable personalized execution and the supplied token still names an active
- * profile/privacy generation.
+ * Current operational session facts are the only source of recent context.
+ * Retired learned profiles never authorize cross-session history.
  */
 export async function getRecommendationRecentContext(
   prisma: Pick<PrismaClient, "$queryRaw">,
@@ -56,58 +53,20 @@ export async function getRecommendationRecentContext(
     input.now.getTime() - RECENT_CONTEXT_WINDOW_DAYS * 86_400_000,
   )
   const rows = await prisma.$queryRaw<RecentContextRow[]>`
-    WITH active_profile AS MATERIALIZED (
-      SELECT profile.id, profile.privacy_generation, profile.created_at
-      FROM recommendation_profile profile
-      WHERE ${input.profileTokenDigest}::text IS NOT NULL
-        AND profile.token_digest = ${input.profileTokenDigest}
-        AND profile.state = 'active'
-        AND profile.expires_at > ${input.now}
-      LIMIT 1
-    ),
-    durable_sessions AS MATERIALIZED (
-      SELECT link.session_digest, GREATEST(link.linked_at, profile.created_at) AS authorization_start
-      FROM active_profile profile
-      JOIN recommendation_profile_session_link link
-        ON link.profile_id = profile.id
-        AND link.privacy_generation = profile.privacy_generation
-        AND link.expires_at > ${input.now}
-        AND (
-          link.session_digest = ${input.sessionDigest}
-          OR ${input.allowDurableProfileLinks}
-        )
-      ORDER BY
-        (link.session_digest = ${input.sessionDigest}) DESC,
-        link.expires_at DESC,
-        link.session_digest
-      LIMIT ${MAX_RECENT_CONTEXT_SESSIONS}
-    ),
-    scoped_sessions AS MATERIALIZED (
-      SELECT
-        session_digest,
-        GREATEST(authorization_start, ${windowStart}) AS authorization_start
-      FROM durable_sessions
-      UNION ALL
-      SELECT
-        ${input.sessionDigest}::text AS session_digest,
-        ${windowStart}::timestamp AS authorization_start
-      WHERE ${input.profileTokenDigest}::text IS NULL
-        AND NOT EXISTS (SELECT 1 FROM active_profile)
+    WITH scoped_sessions AS MATERIALIZED (
+      SELECT ${input.sessionDigest}::text AS session_digest,
+        ${windowStart}::timestamptz AS authorization_start
     ),
     recent_requests AS MATERIALIZED (
       SELECT request.id, request.created_at
-      FROM scoped_sessions session
-      CROSS JOIN LATERAL (
-        SELECT root.id, root.created_at
-        FROM recommendation_request root
-        WHERE root.session_digest = session.session_digest
-          AND root.state = 'issued'
-          AND root.result IN ('served', 'fallback')
-          AND root.created_at >= session.authorization_start
-          AND root.created_at <= ${input.now}
-        ORDER BY root.created_at DESC, root.id DESC
-        LIMIT ${MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION}
-      ) request
+      FROM recommendation_request request
+      WHERE request.session_digest = ${input.sessionDigest}
+        AND request.state = 'issued'
+        AND request.result IN ('served', 'fallback')
+        AND request.created_at >= ${windowStart}
+        AND request.created_at <= ${input.now}
+      ORDER BY request.created_at DESC, request.id DESC
+      LIMIT ${MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION}
     ),
     selected_items AS MATERIALIZED (
       SELECT DISTINCT selection.request_id, selection.item_id

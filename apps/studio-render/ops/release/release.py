@@ -12,9 +12,9 @@ class ReleaseRefused(Exception):
 ARCHIVE_SHA256 = 'e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4'
 FFMPEG_SHA256 = 'bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6'
 FFPROBE_SHA256 = 'c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c'
-PROFILE = 'studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m'
-# Retained v1/v2 candidates remain selectable for an explicit rollback.
-SUPPORTED_PROFILES = {PROFILE, 'studio-render-2/1200s-180prep-2cpu-2g-128p-96child-128m', 'studio-render-1/900s-2cpu-2g-128p-96child-128m'}
+PROFILE = 'studio-render-4/3600s-180prep-24cpu-32g-4096p-4096child-128m'
+# Retained v1/v2/v3 candidates remain selectable for an explicit rollback.
+SUPPORTED_PROFILES = {PROFILE, 'studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m', 'studio-render-2/1200s-180prep-2cpu-2g-128p-96child-128m', 'studio-render-1/900s-2cpu-2g-128p-96child-128m'}
 
 
 def exact_keys(value, keys):

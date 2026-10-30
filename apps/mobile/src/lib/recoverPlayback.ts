@@ -29,6 +29,12 @@ export type RecoveryOutcome = "recovered" | "failed"
  *  route, so a load that never arrives must not leave the listener behind. */
 export const RECOVERY_SEEK_WINDOW_MS = 15000
 
+/** Called with the URL a reload loads, before the load starts; the returned
+ *  settle runs once the source is set (KTD16). */
+export type ReloadObserver = (url: string) => () => void
+
+const NO_OBSERVER: ReloadObserver = () => () => {}
+
 export async function recoverPlayback(
   player: RecoverablePlayer,
   sourceUrl: string,
@@ -36,6 +42,7 @@ export async function recoverPlayback(
   /** Mirrors the adapter's swap resume: never start audio the viewer cannot
    *  see, and never play locally under a cast session. */
   shouldResume: () => boolean = () => true,
+  onReload: ReloadObserver = NO_OBSERVER,
 ): Promise<RecoveryOutcome> {
   // The seek rides `sourceLoad`, NOT the replaceAsync promise. replaceAsync
   // settles while the source is still being applied, so a write in its
@@ -115,11 +122,29 @@ export async function recoverPlayback(
   }
   deadline = setTimeout(() => finish("failed"), RECOVERY_SEEK_WINDOW_MS)
 
+  // The observer is best-effort. A throw inside the replaceAsync continuation
+  // would run the fallback and load the source a second time.
+  let settleObserver = () => {}
+  try {
+    settleObserver = onReload(sourceUrl)
+  } catch {
+    // Recovery does not depend on the observer.
+  }
+  const reportSettled = () => {
+    try {
+      settleObserver()
+    } catch {
+      // Recovery does not depend on the observer.
+    }
+  }
+
   try {
     await player.replaceAsync(sourceUrl)
+    reportSettled()
   } catch {
     try {
       player.replace(sourceUrl, true)
+      reportSettled()
     } catch {
       // Released, or the source is genuinely unplayable. The caller keeps the
       // error state, so the viewer still sees the failure surface.

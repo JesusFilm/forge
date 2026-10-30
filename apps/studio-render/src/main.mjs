@@ -1,4 +1,4 @@
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import { STUDIO_RENDER_PROFILE_V3 as STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
 import { createPublicKey } from "node:crypto"
 import { mkdir, rm, statfs } from "node:fs/promises"
 import { createExecutionService } from "./service.mjs"

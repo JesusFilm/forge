@@ -31,7 +31,8 @@ const nextConfig: NextConfig = {
   // Consume the raw-source `@forge/experience-schema` workspace package
   // (its `exports` point at `./src/index.ts`); Next must transpile it as
   // first-party code rather than treat it as a prebuilt node_modules dep.
-  transpilePackages: ["@forge/experience-schema"],
+  // `@forge/feature-flags` is raw source for the same reason.
+  transpilePackages: ["@forge/experience-schema", "@forge/feature-flags"],
 }
 
 // withWorkflow enables `"use workflow"` / `"use step"` directives.

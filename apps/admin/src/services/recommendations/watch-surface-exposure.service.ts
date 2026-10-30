@@ -8,6 +8,7 @@ import {
   RecommendationInputError,
 } from "./errors"
 import { recommendationTraffic } from "./traffic"
+import { WATCH_SURFACE_EXPOSURE_RETENTION_MS } from "./watch-surface-exposure-retention"
 import { registeredAnonymousWatchSurface } from "./watch-surface-registry"
 
 const Event = z
@@ -215,7 +216,7 @@ export async function issueWatchSurfaceDelivery(
     kind: "served",
     visibilityCapability: null,
     occurredAt: now,
-    expiresAt: new Date(now.getTime() + 29 * 86_400_000),
+    expiresAt: new Date(now.getTime() + WATCH_SURFACE_EXPOSURE_RETENTION_MS),
   }))
   return prisma.$transaction(
     async (tx): Promise<WatchSurfaceDeliveryReceipt> => {
@@ -323,7 +324,7 @@ export async function recordWatchSurfaceExposureBatch(
       ...event,
       expiresAt:
         issuedExpiries.get(event.eventId) ??
-        new Date(now.getTime() + 29 * 86_400_000),
+        new Date(now.getTime() + WATCH_SURFACE_EXPOSURE_RETENTION_MS),
     })),
     skipDuplicates: true,
     select: { eventId: true },
@@ -435,7 +436,7 @@ export async function recordWatchSurfaceExposure(
         occurredAt,
         expiresAt:
           issuedExpiries.get(event.eventId) ??
-          new Date(now.getTime() + 29 * 86_400_000),
+          new Date(now.getTime() + WATCH_SURFACE_EXPOSURE_RETENTION_MS),
       },
     })
     return { eventId: event.eventId, status: prior ? "repeat" : "accepted" }

@@ -1,0 +1,212 @@
+# Download a short video, then select and delete it in the Downloads list
+# through the iOS 26 action sheet, and cancel the export folder picker. The
+# app data starts empty. Android runs downloads-library-android instead.
+appId: org.jesusfilm.forgewatch
+name: downloads-library-ios
+tags:
+  - platform:ios
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- tapOn:
+    text: Open
+    optional: true
+    label: Accept the iOS prompt to open the link
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- tapOn:
+    text: Download
+    label: Open the download sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 20000
+    label: The download sheet shows
+- tapOn:
+    text: Save to Files
+    label: Pick the Save to Files mode
+- tapOn:
+    text: I agree to the Terms of Use
+    label: Accept the terms of use
+# On an iPad the button can sit under the sheet's lower edge, where a tap
+# closes the sheet, so the journey scrolls the sheet itself.
+- swipe:
+    from:
+      id: screen-watch-download
+    direction: UP
+    label: Scroll the sheet up for the save button
+- scrollUntilVisible:
+    element:
+      text: Save video to the device
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the save button
+- tapOn:
+    text: Save video to the device
+    label: Open the folder picker
+# The picker comes first and the export starts only after a pick, so a
+# cancel starts nothing (not-tested.json).
+- extendedWaitUntil:
+    visible:
+      text: Cancel
+    timeout: 20000
+    label: The folder picker shows
+# A tap while the picker still slides in does nothing.
+- waitForAnimationToEnd:
+    label: Wait for the folder picker to stop moving
+# An iPhone shows the picker's Cancel button to Maestro. An iPad shows the
+# picker as a popover whose buttons Maestro cannot see, so a tap below it
+# closes it. That tap lands on empty space under the Up Next row.
+- runFlow:
+    when:
+      notVisible:
+        id: PopoverDismissRegion
+    commands:
+      - tapOn:
+          text: Cancel
+          retryTapIfNoChange: true
+          label: Tap the picker's Cancel button
+    label: Cancel the folder picker on an iPhone
+- runFlow:
+    when:
+      visible:
+        id: PopoverDismissRegion
+    commands:
+      - tapOn:
+          point: 50%,95%
+          label: Tap below the picker
+    label: Cancel the folder picker on an iPad
+- extendedWaitUntil:
+    notVisible:
+      text: Cancel
+    timeout: 10000
+    label: The folder picker closes
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 10000
+    label: The download sheet stays open after the cancel
+- scrollUntilVisible:
+    element:
+      text: Offline Watching
+    direction: UP
+    timeout: 10000
+    label: Scroll back to the download modes
+- tapOn:
+    text: Offline Watching
+    label: Pick the offline mode
+- tapOn:
+    text: "Select a file size, .+"
+    label: Open the file size list
+- tapOn:
+    text: "Low.*"
+    label: Pick the smallest file
+- swipe:
+    from:
+      id: screen-watch-download
+    direction: UP
+    label: Scroll the sheet up for the download button
+- scrollUntilVisible:
+    element:
+      text: Download video
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the download button
+- tapOn:
+    text: Download video
+    label: Start the download
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 20000
+    label: The watch page shows after the sheet
+- extendedWaitUntil:
+    visible:
+      text: Downloaded
+    timeout: 180000
+    label: The download finishes
+- tapOn:
+    text: Go back
+    label: Leave the watch page
+- extendedWaitUntil:
+    visible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player shows
+# iOS can drop the window's buttons from the accessibility tree, so the
+# journey taps the close button's place in the window's top corner.
+- tapOn:
+    id: mini-player-window
+    point: 93%,12%
+    label: Close the mini player
+- extendedWaitUntil:
+    notVisible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player closes
+- tapOn:
+    text: My Watch
+    label: Open My Watch
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-profile
+    timeout: 20000
+    label: My Watch shows
+# The Downloads heading and "See all" show only when the rail has a tile.
+- extendedWaitUntil:
+    visible:
+      text: See all downloads
+    timeout: 10000
+    label: The downloads rail shows
+- tapOn:
+    text: See all downloads
+    label: Open the Downloads list
+- extendedWaitUntil:
+    visible:
+      id: screen-downloads
+    timeout: 20000
+    label: The Downloads list shows
+- tapOn:
+    text: Select downloads
+    label: Start the selection
+- tapOn:
+    text: ".+, .*Downloaded"
+    label: Select the downloaded video
+- assertVisible:
+    text: 1 selected
+    label: One video is selected
+- tapOn:
+    text: Delete 1 selected video
+    label: Ask to delete the video
+- extendedWaitUntil:
+    visible:
+      text: Delete 1 video?
+    timeout: 10000
+    label: The delete action sheet shows
+- tapOn:
+    text: Delete
+    label: Delete the video
+- extendedWaitUntil:
+    visible:
+      text: No Downloads Yet
+    timeout: 20000
+    label: The empty Downloads state shows

@@ -70,6 +70,7 @@ import {
   EXPLORE_FAST_HOLD_MS,
   EXPLORE_FAST_SIDE_SHARE,
 } from "../../lib/explore/fastHold"
+import { resetTabBarHidden, setTabBarHidden } from "../../lib/tabBarVisibility"
 import {
   BLUR_RELEASE_GRACE_MS,
   INITIAL_FEED_STATE,
@@ -581,6 +582,13 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
 
   // Only a clip that plays can play at 2x; the strips and the cue share this.
   const fastPlayable = state.phase === "playing" && !yieldsToRoot
+  const fastShown = fastHeld && fastPlayable
+  // Like Shorts and Reels, a 2x hold shows only the video and the 2x cue. The
+  // tab bar hides on iOS; on Android it holds layout space, so it stays.
+  useEffect(() => {
+    setTabBarHidden(fastShown)
+  }, [fastShown])
+  useEffect(() => resetTabBarHidden, [])
 
   const current = currentClip(state)
   const currentLayers =
@@ -601,7 +609,8 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           player={activePlayer}
           muted={exploreMuted}
           paused={state.phase === "paused" && state.overlay == null}
-          fast={fastHeld && fastPlayable}
+          onResume={handleTap}
+          fast={fastShown}
           onToggleMute={handleToggleMute}
           onSeek={seekActive}
           onKeepWatching={handleKeepWatching}

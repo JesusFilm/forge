@@ -1,3 +1,4 @@
+import { WatchHomeRoleBand } from "@/components/home/WatchHomeRoleBand"
 import {
   signWatchHomeHeroManifestCatalog,
   signWatchSurfaceManifest,
@@ -24,8 +25,12 @@ import {
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 type WatchHomeExperiencePageProps = {
+  audienceEnabled?: boolean
+  /** Published audience configuration; absent keeps the code definitions. */
+  audience?: WatchAudienceResolution
   heroModel: WatchHomeModel
   blocks: readonly Section[]
   locale?: string
@@ -146,6 +151,8 @@ function isDynamicMediaCollectionBlock(block: Section) {
 }
 
 export function WatchHomeExperiencePage({
+  audienceEnabled = false,
+  audience,
   heroModel,
   blocks,
   locale = "en",
@@ -246,6 +253,11 @@ export function WatchHomeExperiencePage({
     )
     const typename = (block as { readonly __typename?: string | null })
       .__typename
+    // The audience frame is the one shared band above, fed by the published
+    // configuration. The authored block only carries that data: it keeps its
+    // place (and every other block's key and placement index) but mounts
+    // nothing, so the questionnaire never appears twice.
+    if (typename === "WatchAudienceBlock") return <Fragment key={blockKey} />
     const instrumentedBlock =
       typename === "LanguageGlobeBlock" ? (
         <Fragment key={blockKey}>{renderedBlock}</Fragment>
@@ -362,6 +374,12 @@ export function WatchHomeExperiencePage({
             </Suspense>
           ) : null}
           <WatchHomeBodyZone>
+            {audienceEnabled ? (
+              <WatchHomeRoleBand
+                audience={audience}
+                languageSlug={languageSlug}
+              />
+            ) : null}
             {heroAboveBodyZone ? (
               <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
             ) : null}

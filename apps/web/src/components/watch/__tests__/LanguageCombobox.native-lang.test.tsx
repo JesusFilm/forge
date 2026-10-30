@@ -296,3 +296,53 @@ describe("LanguageCombobox native-name markup (FGE-50)", () => {
     })
   })
 })
+
+describe("LanguageCombobox truncated-name tooltips (N31)", () => {
+  const options: LanguageComboboxOption[] = [
+    {
+      slug: "chinese-simplified",
+      name: "Chinese, Simplified",
+      nativeName: "中文（简体）",
+      bcp47: "zh-Hans",
+    },
+    { slug: "english", name: "English", bcp47: "en" },
+  ]
+
+  it("puts the full name and native name on the truncating trigger spans", () => {
+    renderOpen(options, "chinese-simplified")
+    const trigger = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    const primary = Array.from(trigger?.querySelectorAll("span") ?? []).find(
+      (span) => span.classList.contains("truncate") && !span.dataset.testid,
+    )
+    expect(primary?.getAttribute("title")).toBe("Chinese, Simplified")
+    expect(
+      trigger
+        ?.querySelector('[data-testid="language-combobox-trigger-native"]')
+        ?.getAttribute("title"),
+    ).toBe("中文（简体）")
+  })
+
+  it("puts the full name and native name on the truncating option spans", () => {
+    renderOpen(options, "english")
+    const row = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-option"][data-language-slug="chinese-simplified"]',
+    )
+    const primary = Array.from(row?.querySelectorAll("span") ?? []).find(
+      (span) => span.classList.contains("truncate") && !span.dataset.testid,
+    )
+    expect(primary?.getAttribute("title")).toBe("Chinese, Simplified")
+    expect(optionNative("chinese-simplified")?.getAttribute("title")).toBe(
+      "中文（简体）",
+    )
+  })
+
+  it("does not title the placeholder when nothing is selected", () => {
+    renderOpen(options, "")
+    const trigger = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(trigger?.querySelector("[title]")).toBeNull()
+  })
+})

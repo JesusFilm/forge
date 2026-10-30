@@ -17,6 +17,8 @@ class NativePlayerOption : Record {
   @Field var url: String = ""
   @Field var disabled: Boolean = false
   @Field var searchText: String = ""
+  @Field var pinned: Boolean = false
+  @Field var confirmationMessage: String? = null
 }
 
 class NativePlayerMoment : Record {
@@ -31,13 +33,42 @@ class NativeAndroidPlayerModule : Module() {
   private var resumeRequestId: String? = null
   private var loadingDialog: Dialog? = null
   private var loadingRequestId: String? = null
+  private var trackDialog: NativeSearchDialog? = null
+  private var trackRequestId: String? = null
 
   override fun definition() = ModuleDefinition {
     Name("NativeAndroidPlayer")
     Events("onPlaybackLoadingCancelled")
+    AsyncFunction("setPerformanceTracing") { enabled: Boolean -> NativePlaybackTrace.enabled = enabled }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hidePlaybackLoading") {
       PlaybackLoadingCover.hide()
+    }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("showTrackChoice") { requestId: String, title: String, options: List<NativePlayerOption>, selectedId: String?, status: String?, initialQuery: String, promise: Promise ->
+      NativePlaybackTrace.mark("track-choice-open")
+      trackDialog?.dismiss()
+      val activity = requireNotNull(appContext.currentActivity) { "Activity unavailable" }
+      var chosen: String? = null
+      trackRequestId = requestId
+      lateinit var dialog: NativeSearchDialog
+      dialog = NativeSearchDialog(activity, title,
+        onChoice = { NativePlaybackTrace.mark("track-choice-selected"); chosen = it },
+        onClosed = {
+          if (trackRequestId == requestId) { trackDialog = null; trackRequestId = null }
+          promise.resolve(trackChoiceResult(chosen, dialog.queryText))
+        }, initialQuery = initialQuery)
+      trackDialog = dialog
+      dialog.update(trackRows(options), selectedId, status)
+      dialog.show()
+    }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("updateTrackChoice") { requestId: String, options: List<NativePlayerOption>, selectedId: String?, status: String? ->
+      if (trackRequestId == requestId) trackDialog?.update(trackRows(options), selectedId, status)
+    }.runOnQueue(Queues.MAIN)
+
+    AsyncFunction("dismissTrackChoice") { requestId: String ->
+      if (trackRequestId == requestId) trackDialog?.dismiss()
     }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hideStartupLoading") {
@@ -103,6 +134,7 @@ class NativeAndroidPlayerModule : Module() {
     }.runOnQueue(Queues.MAIN)
 
     OnDestroy {
+      Handler(Looper.getMainLooper()).post { trackDialog?.dismiss(); trackDialog = null; trackRequestId = null }
       Handler(Looper.getMainLooper()).post { PlaybackLoadingCover.hide() }
       Handler(Looper.getMainLooper()).post { resumeDialog?.dismiss(); resumeDialog = null; resumeRequestId = null }
       Handler(Looper.getMainLooper()).post { loadingDialog?.dismiss(); loadingDialog = null; loadingRequestId = null }
@@ -114,6 +146,7 @@ class NativeAndroidPlayerModule : Module() {
         "onEnded",
         "onPlayNext",
         "onPlaybackPosition",
+        "onPlaybackState",
         "onError",
         "onAudioChange",
         "onSubtitleChange",
@@ -128,6 +161,7 @@ class NativeAndroidPlayerModule : Module() {
       Prop("sourceUrl") { view: NativeAndroidPlayerView, value: String? ->
         view.sourceUrl = value
       }
+      Prop("sourceGeneration") { view: NativeAndroidPlayerView, value: Int? -> view.sourceGeneration = value ?: 0 }
       Prop("storyboardUrl") { view: NativeAndroidPlayerView, value: String? -> view.storyboardUrl = value }
       Prop("title") { view: NativeAndroidPlayerView, value: String? ->
         view.videoTitle = value
@@ -169,6 +203,8 @@ class NativeAndroidPlayerModule : Module() {
       Prop("feedbackVisible") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackVisible = value ?: false }
       Prop("feedbackRows") { view: NativeAndroidPlayerView, value: List<String>? -> view.feedbackRows = value ?: emptyList() }
       Prop("feedbackReference") { view: NativeAndroidPlayerView, value: String? -> view.feedbackReference = value }
+      Prop("feedbackSimulator") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackSimulator = value ?: false }
+      Prop("feedbackHostedSimulator") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackHostedSimulator = value ?: false }
       Prop("feedbackLoading") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackLoading = value ?: false }
       Prop("feedbackError") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackError = value ?: false }
       Prop("upNextSlug") { view: NativeAndroidPlayerView, value: String? ->
@@ -187,3 +223,10 @@ class NativeAndroidPlayerModule : Module() {
     }
   }
 }
+
+internal fun trackRows(options: List<NativePlayerOption>): List<NativeChoiceRow> =
+  options.sortedWith(compareBy<NativePlayerOption> { !it.pinned }.thenBy { it.label.lowercase() }.thenBy { it.id })
+    .map { NativeChoiceRow(it.id, it.label, it.detail, it.disabled, pinned = it.pinned, searchText = it.searchText) }
+
+internal fun trackChoiceResult(choice: String?, query: String): Map<String, String>? =
+  choice?.let { mapOf("id" to it, "query" to query) }

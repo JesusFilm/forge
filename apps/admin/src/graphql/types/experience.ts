@@ -249,6 +249,16 @@ ExperiencePreviewRef.implement({
       description:
         "Render this draft with the Watch home layout even though it is not the live homepage. Renderers use isHomepage OR homepageLayout.",
     }),
+    isTemplate: t.exposeBoolean("isTemplate", {
+      nullable: false,
+      description:
+        "Whether the parent Experience is a route template. Multiple Experiences may be route templates.",
+    }),
+    isDefaultTemplate: t.exposeBoolean("isDefaultTemplate", {
+      nullable: false,
+      description:
+        "Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.",
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),

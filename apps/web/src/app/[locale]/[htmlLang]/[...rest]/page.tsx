@@ -18,6 +18,8 @@ import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceReg
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
+import { WatchGrowReturnPreload } from "@/components/watch/WatchGrowReturnPreload"
+import { watchAudienceFrame } from "@/lib/watch-audience-config"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
@@ -45,7 +47,9 @@ import {
   getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
+import { resolveWatchAudience } from "@/lib/watch-audience-content"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
@@ -791,10 +795,17 @@ async function renderOneSegment(shape: {
           name: "Watch",
         })
       : null
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
@@ -966,11 +977,21 @@ async function renderEpisode(
         languageSlug,
       })
 
+  const audienceEnabled = await isWatchAudienceEnabled()
+  // One published definition for home and video; omitted when the rollout is off.
+  const audience = audienceEnabled
+    ? await resolveWatchAudience(locale)
+    : undefined
   return (
     <>
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
+      {audienceEnabled && watchAudienceFrame(audience) ? (
+        <WatchGrowReturnPreload />
+      ) : null}
       <WatchPageClient
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
@@ -1140,13 +1161,23 @@ async function renderVideo(
           blocks: mergedBlocks,
           languageSlug,
         })
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData
           json={watchVideoStructuredDataJson(metadataModel)}
         />
         <WatchStructuredData json={relatedItemsJson} />
+        {audienceEnabled && watchAudienceFrame(audience) ? (
+          <WatchGrowReturnPreload />
+        ) : null}
         <WatchPageClient
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}

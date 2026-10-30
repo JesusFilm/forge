@@ -1,5 +1,4 @@
 import { Platform, AppState } from "react-native"
-import { z } from "zod"
 import { adminGraphql } from "@forge/admin-graphql"
 import { getApolloClient } from "../apolloClient"
 import { getStorage } from "../safeStorage"
@@ -30,24 +29,18 @@ import {
   type TopShelfPreviewStyle,
 } from "./preview"
 
-const VIDEO = adminGraphql(`query TopShelfVideo($slug: String!) {
+const VIDEO =
+  adminGraphql(`query TopShelfVideo($slug: String!, $languageSlug: String!) {
   videoBySlug(slug: $slug) {
     id slug durationSeconds
     locales(locale: "en") { title snippet }
     images { mobileCinematicHigh thumbnail url }
-    dubs { published hls language { slug } }
+    preferredPlayableDub(languageSlug: $languageSlug) { published hls language { slug } }
   }
 }`)
 const ROTATION_KEY = "watch.top-shelf.rotation.v1"
 const SNAPSHOT_KEY = "watch.top-shelf.snapshot.v1"
 const CATALOG_KEY = "watch.top-shelf.catalog.v1"
-const catalogSchema = z.object({
-  day: z.string(),
-  language: z.string(),
-  slugs: z.string(),
-  videos: z.array(itemSchema).max(8),
-  journeys: z.array(itemSchema).max(3),
-})
 function storedJson(raw: string | null): unknown {
   try {
     return JSON.parse(raw ?? "null")
@@ -135,6 +128,11 @@ export async function syncTopShelf(
   }, 12000)
   const now = new Date()
   const privacyGeneration = getRecommendationGeneration()
+  const isCurrent = () =>
+    !controller.signal.aborted &&
+    active === controller &&
+    privacyGeneration === getRecommendationGeneration() &&
+    AppState.currentState === "active"
   let phase = "recommendations"
   onPreviewStatus?.("Updating Top Shelf…")
   try {
@@ -142,6 +140,7 @@ export async function syncTopShelf(
     const recommendationVideos: ShelfItem[] = []
     if (recommendationsEnabled()) {
       const delivery = await fetchForYou(language)
+      if (!isCurrent()) return
       if (delivery.result === "unavailable") {
         onPreviewStatus?.(
           "Recommendations are unavailable. Try Automatic again.",
@@ -173,34 +172,44 @@ export async function syncTopShelf(
     ].slice(0, 8)
     phase = "video information"
     const verified: ShelfItem[] = []
-    const cached = catalogSchema.safeParse(
-      storedJson(await storage.getItem(CATALOG_KEY)),
+    const previous = snapshotSchema.safeParse(
+      storedJson(await storage.getItem(SNAPSHOT_KEY)),
     )
-    const reuse =
-      cached.success &&
-      cached.data.day === localDay(now) &&
-      cached.data.language === language &&
-      cached.data.slugs === slugs.join("|")
-    if (reuse && cached.success) verified.push(...cached.data.videos)
-    for (const slug of reuse ? [] : slugs) {
-      if (controller.signal.aborted) return
-      const response = await getApolloClient().query({
-        query: VIDEO,
-        variables: { slug },
-        fetchPolicy: "network-only",
-        context: { fetchOptions: { signal: controller.signal } },
-      })
+    const unavailableSlugs = new Set<string>()
+    let metadataFailed = false
+    // The native snapshot is the offline fallback. A second day-long catalogue
+    // hid same-day copy/artwork/publication edits, including after app restart.
+    // Revalidate only this bounded set during an existing foreground sync.
+    for (const slug of slugs) {
+      if (!isCurrent()) return
+      let response
+      try {
+        response = await getApolloClient().query({
+          query: VIDEO,
+          variables: { slug, languageSlug: language },
+          fetchPolicy: "network-only",
+          context: {
+            queryDeduplication: false,
+            fetchOptions: { signal: controller.signal },
+          },
+        })
+      } catch {
+        if (!isCurrent()) return
+        metadataFailed = true
+        continue
+      }
+      if (!isCurrent()) return
       const video = response.data?.videoBySlug
+      const dub = video?.preferredPlayableDub
       if (
         !video?.slug ||
-        !video.dubs?.some(
-          (dub) =>
-            dub.published &&
-            dub.language?.slug === language &&
-            validateStreamingUrl(dub.hls),
-        )
-      )
+        !dub?.published ||
+        dub.language?.slug !== language ||
+        !validateStreamingUrl(dub.hls)
+      ) {
+        unavailableSlugs.add(slug)
         continue
+      }
       const artwork = video.images?.find(
         (image) => image.mobileCinematicHigh || image.thumbnail || image.url,
       )
@@ -215,6 +224,39 @@ export async function syncTopShelf(
         kind: "video",
       })
       if (item.success) verified.push(item.data)
+      else unavailableSlugs.add(slug)
+    }
+    if (metadataFailed) {
+      // Keep unknown data only within its original expiry, but never preserve a
+      // film that this refresh positively confirmed removed or unplayable.
+      if (
+        previous.success &&
+        previous.data.language === language &&
+        previous.data.expiresAt > now.toISOString()
+      ) {
+        const resumeSlugs = new Set(
+          resume.filter(isResumeWorthy).map((entry) => entry.slug),
+        )
+        const sectionIds = new Set(model.sections.map((section) => section.id))
+        const items = previous.data.items.filter((item) =>
+          item.kind === "section"
+            ? sectionIds.has(item.id)
+            : !unavailableSlugs.has(item.slug) &&
+              (previous.data.concept !== "continue" ||
+                resumeSlugs.has(item.slug)),
+        )
+        if (items.length !== previous.data.items.length && isCurrent()) {
+          const retained = JSON.stringify({ ...previous.data, items })
+          await topShelf.writeSnapshot(retained)
+          if (!isCurrent()) return
+          await storage.setItem(SNAPSHOT_KEY, retained)
+        }
+      }
+      if (isCurrent())
+        onPreviewStatus?.(
+          "Could not update Top Shelf (video information). Try again.",
+        )
+      return
     }
     const continued = resume.flatMap((entry) => {
       const video = verified.find((item) => item.slug === entry.slug)
@@ -237,7 +279,11 @@ export async function syncTopShelf(
     })
     const discovery = (
       recommendationsEnabled() ? recommendationVideos : verified
-    ).filter((item) => !continued.some((entry) => entry.slug === item.slug))
+    ).filter(
+      (item) =>
+        !unavailableSlugs.has(item.slug) &&
+        !continued.some((entry) => entry.slug === item.slug),
+    )
     const journeys: ShelfItem[] = []
     for (const section of model.sections) {
       const artwork = discovery.find((video) =>
@@ -265,19 +311,6 @@ export async function syncTopShelf(
       }
       if (journeys.length >= 3) break
     }
-    if (!reuse && !controller.signal.aborted)
-      await storage.setItem(
-        CATALOG_KEY,
-        JSON.stringify({
-          day: localDay(now),
-          language,
-          slugs: slugs.join("|"),
-          videos: verified,
-          journeys: journeys.filter(
-            (item) => itemSchema.safeParse(item).success,
-          ),
-        }),
-      )
     const pools: Record<Concept, ShelfItem[]> = {
       spotlight: discovery.slice(0, 3),
       continue: continued,
@@ -308,9 +341,6 @@ export async function syncTopShelf(
     const overriding =
       previewEnabled && previewStyle !== "automatic" && concept === previewStyle
     const items = concept ? pools[concept] : []
-    const previous = snapshotSchema.safeParse(
-      storedJson(await storage.getItem(SNAPSHOT_KEY)),
-    )
     const content = {
       schemaVersion: 1 as const,
       concept: concept ?? ("spotlight" as const),
@@ -336,32 +366,23 @@ export async function syncTopShelf(
             generatedAt: now.toISOString(),
             expiresAt: new Date(now.getTime() + 86400000).toISOString(),
           })
-    if (
-      controller.signal.aborted ||
-      active !== controller ||
-      privacyGeneration !== getRecommendationGeneration() ||
-      AppState.currentState !== "active"
-    )
-      return
+    if (!isCurrent()) return
     phase = "native shelf"
     await topShelf.writeSnapshot(JSON.stringify(snapshot))
-    if (
-      controller.signal.aborted ||
-      active !== controller ||
-      privacyGeneration !== getRecommendationGeneration() ||
-      AppState.currentState !== "active"
-    )
-      return
+    if (!isCurrent()) return
     if (rotation && !overriding)
       await storage.setItem(ROTATION_KEY, JSON.stringify(rotation))
+    if (!isCurrent()) return
     await storage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot))
+    if (!isCurrent()) return
     const label =
       concept === previewStyle || previewStyle === "automatic"
         ? "Top Shelf updated. Return to Apple TV Home."
         : "This style has no matching content. Automatic is displayed."
     onPreviewStatus?.(label)
   } catch {
-    onPreviewStatus?.(`Could not update Top Shelf (${phase}). Try again.`)
+    if (isCurrent())
+      onPreviewStatus?.(`Could not update Top Shelf (${phase}). Try again.`)
     // Preserve the last unexpired snapshot; the extension expires it independently.
   } finally {
     clearTimeout(deadline)

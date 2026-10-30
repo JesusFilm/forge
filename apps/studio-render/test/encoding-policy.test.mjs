@@ -29,12 +29,20 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 
 // Run the actual child body, replacing only its fixed runtime imports and I/O.
 // The policy stays inline in production; the test cannot substitute its formula.
-async function childOptions(selected = composition, bytes = 1) {
+async function childOptions(
+  selected = composition,
+  bytes = 1,
+  file = "child.mjs",
+) {
   const source = (
-    await readFile(new URL("../src/child.mjs", import.meta.url), "utf8")
+    await readFile(new URL(`../src/${file}`, import.meta.url), "utf8")
   )
     .replace(/^import .* from .*\n/gm, "")
     .replace('import("/runtime/renderer.cjs")', "loadRenderer()")
+    .replace(
+      file === "parallel-child.mjs" ? "await renderMedia(" : "NEVER_MATCH",
+      "await parallelRender(",
+    )
   let captured
   let piped = false
   let closed = false
@@ -58,6 +66,7 @@ async function childOptions(selected = composition, bytes = 1) {
     "resolve",
     "process",
     "loadRenderer",
+    "parallelRender",
     source,
   )(
     () => ({}),
@@ -76,6 +85,9 @@ async function childOptions(selected = composition, bytes = 1) {
         captured = options
       },
     }),
+    async (options) => {
+      captured = options
+    },
   )
   assert.equal(closed, true)
   assert.equal(piped, true)
@@ -131,6 +143,67 @@ function value(args, flag) {
   assert.equal(args.filter((arg) => arg === flag).length, 1, flag)
   return args[args.indexOf(flag) + 1]
 }
+
+// Exercise Remotion's real delay/continue path with a deterministic clock. Its
+// media deadline is two seconds shorter than the renderer's frame timeout.
+async function delayedMediaFrame(timeoutInMilliseconds, fetchMs) {
+  const filename = sdkRequire.resolve("remotion")
+  const remotionRequire = createRequire(filename)
+  const source = await readFile(
+    path.join(path.dirname(filename), "delay-render.js"),
+    "utf8",
+  )
+  const timers = new Map()
+  const module = { exports: {} }
+  compileFunction(source, [
+    "require",
+    "module",
+    "exports",
+    "setTimeout",
+    "clearTimeout",
+  ])(
+    remotionRequire,
+    module,
+    module.exports,
+    (callback, ms) => {
+      const timer = { callback, ms }
+      timers.set(timer, timer)
+      return timer
+    },
+    (timer) => timers.delete(timer),
+  )
+  const scope = {
+    remotion_delayRenderHandles: [],
+    remotion_delayRenderTimeouts: {},
+    remotion_puppeteerTimeout: timeoutInMilliseconds,
+    remotion_attempt: 1,
+  }
+  const environment = { isRendering: true, isClientSideRendering: true }
+  const handle = module.exports.delayRenderInternal({
+    scope,
+    environment,
+    label: "Fetching retained video frame from server",
+    options: {},
+  })
+  for (const timer of timers.values()) if (timer.ms <= fetchMs) timer.callback()
+  module.exports.continueRenderInternal({
+    scope,
+    environment,
+    handle,
+    logLevel: "error",
+  })
+  return scope
+}
+
+test("actual child allows a retained frame fetch beyond five seconds but still bounds a stuck fetch", async () => {
+  const { timeoutInMilliseconds } = await childOptions()
+  const completed = await delayedMediaFrame(timeoutInMilliseconds, 6000)
+  assert.equal(completed.remotion_cancelledError, undefined)
+  assert.equal(completed.remotion_renderReady, true)
+  const stalled = await delayedMediaFrame(timeoutInMilliseconds, 30000)
+  assert.match(stalled.remotion_cancelledError, /was called but not cleared/)
+  assert.ok(timeoutInMilliseconds <= 30000)
+})
 
 test("actual child budgets the full duration and SDK applies it before final video copy", async () => {
   const options = await childOptions()
@@ -462,3 +535,21 @@ test(
     }
   },
 )
+
+test("the parallel entry retains full-duration bitrate, frame allowance and output rejection", async () => {
+  const serial = await childOptions()
+  const parallel = await childOptions(composition, 1, "parallel-child.mjs")
+  for (const key of [
+    "videoBitrate",
+    "encodingMaxRate",
+    "encodingBufferSize",
+    "audioBitrate",
+    "timeoutInMilliseconds",
+  ])
+    assert.equal(parallel[key], serial[key], key)
+  assert.equal(parallel.timeoutInMilliseconds, 30000)
+  await assert.rejects(
+    childOptions(composition, cap + 1, "parallel-child.mjs"),
+    /Output size rejected/,
+  )
+})
