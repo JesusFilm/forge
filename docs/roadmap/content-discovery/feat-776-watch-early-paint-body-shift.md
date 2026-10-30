@@ -85,3 +85,11 @@ client stays empty, exactly as before.
   the hero segment, content below would move up when the hero lands. No run
   showed that order (the hero always revealed with the page segment), so it is
   left unchanged.
+
+## October 29 current-main integration
+
+The body renderer now has a shared `renderBodyEntry` for both ordinary and
+persona-band content. Apply the streaming reserve there, retaining main's
+audience configuration, share-film context and body order. The server/client
+fallback behavior and audience loading suites pass together: 36 tests.
+Exact-head CI and the combined page-load check remain separate release gates.

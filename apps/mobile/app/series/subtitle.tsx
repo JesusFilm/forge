@@ -77,6 +77,7 @@ export default function SeriesSubtitleRoute() {
 
   return (
     <SubtitleSheetContent
+      testID="screen-series-subtitle"
       subtitles={subtitles}
       subtitleEnabled={subtitlesEnabled}
       activeSubtitleSlug={activeSlug}

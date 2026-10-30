@@ -80,3 +80,6 @@ apps/mobile/src/lib/bible/data/sources.lock.json
 
 # Local bootstrap tools, native build outputs and audit evidence.
 .local-tools/
+
+# Local Codex chat exports are generated transcripts, not authored source.
+docs/codex/chats/

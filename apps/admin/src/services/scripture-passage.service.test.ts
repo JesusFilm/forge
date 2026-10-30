@@ -38,6 +38,41 @@ afterEach(() => {
 })
 
 describe("ScripturePassageService.getPassageForCitation", () => {
+  it.each([
+    ["arabic-modern-standard", 195, "arabic-modern-standard"],
+    ["arabic-hassaniya", 195, "arabic-modern-standard"],
+    ["spanish-latin-american", 147, "spanish-latin-american"],
+    ["unmapped-language", 3034, "english"],
+    [undefined, 3034, "english"],
+  ])(
+    "labels cached %s text by the selected version, without a fetch",
+    async (languageSlug, versionId, expectedLanguage) => {
+      const { ScripturePassageService } = await loadService({
+        appKey: "app-key",
+      })
+      const prisma = mockPrisma()
+      prisma.bibleCitation.findFirst.mockResolvedValue(makeCitation())
+      prisma.biblePassageCache.findUnique.mockResolvedValue({
+        content: "Selected version text",
+        provider: "youversion",
+        versionId: String(versionId),
+        reference: "JHN.3.16",
+        humanReference: "John 3:16",
+        copyright: "Copyright",
+        expiresAt: new Date(Date.now() + 60_000),
+      })
+      const fetchFn = vi.fn()
+      const passage = await new ScripturePassageService(
+        prisma,
+        fetchFn as never,
+      ).getPassageForCitation({ citationId: "bc-1", languageSlug })
+      expect(passage).toEqual(
+        expect.objectContaining({ languageSlug: expectedLanguage, versionId }),
+      )
+      expect(fetchFn).not.toHaveBeenCalled()
+    },
+  )
+
   it("returns a fresh cached passage without calling YouVersion", async () => {
     const { ScripturePassageService } = await loadService({
       appKey: "app-key",
@@ -64,6 +99,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
 
     expect(fetchFn).not.toHaveBeenCalled()
     expect(passage).toEqual({
+      languageSlug: "english",
       content: "For God so loved the world.",
       copyright: "Copyright.",
       humanReference: "John 3:16",
@@ -145,6 +181,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
     )
     expect(passage).toEqual(
       expect.objectContaining({
+        languageSlug: "english",
         content: "For God so loved the world.",
         humanReference: "John 3:16",
         reference: "JHN.3.16",
@@ -276,6 +313,7 @@ describe("ScripturePassageService.getPassageForCitation", () => {
     )
     expect(passage).toEqual(
       expect.objectContaining({
+        languageSlug: "spanish-latin-american",
         humanReference: "Juan 3:16",
         versionAbbreviation: "NTV",
         versionId: 147,

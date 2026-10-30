@@ -2,6 +2,7 @@ import { useCallback } from "react"
 
 import { useT } from "../../i18n/useT"
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { SheetTitleRow } from "../sheets/SheetTitleRow"
 import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 
 // Series language rows over childDubLanguages. Identity is the unique `slug`, not
@@ -22,6 +23,7 @@ export type SeriesLanguageSheetProps = {
   activeLanguageSlug: string
   onLanguageChange: (slug: string) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SeriesLanguageSheet({
@@ -29,6 +31,7 @@ export function SeriesLanguageSheet({
   activeLanguageSlug,
   onLanguageChange,
   onClose,
+  testID,
 }: SeriesLanguageSheetProps) {
   const t = useT("Series")
   const handleSelect = useCallback(
@@ -40,8 +43,11 @@ export function SeriesLanguageSheet({
     [onLanguageChange, onClose],
   )
 
+  const title = <SheetTitleRow title={t("languagesTitle")} />
+
   return (
     <SearchableListSheet
+      testID={testID}
       rows={languages}
       activeId={activeLanguageSlug}
       getSelectionId={getSlug}
@@ -53,6 +59,7 @@ export function SeriesLanguageSheet({
       searchPlaceholder={t("searchLanguagesPlaceholder")}
       searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
       emptySearchMessage={t("noLanguagesFound")}
+      headerTop={title}
       actionName="series-language-sheet"
     />
   )

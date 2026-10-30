@@ -729,6 +729,44 @@ describe("audience integration", () => {
       expect.objectContaining({ languageSlug: "spanish" }),
     )
   })
+
+  it("hands the published audience configuration to the one lazy frame, only while the rollout is on", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const blocks = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+    ]
+    const audience = { kind: "rejected" } as const
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audience={audience}
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    // The rollout flag still gates the frame; a configuration alone mounts nothing.
+    expect(audienceFrameMock).not.toHaveBeenCalled()
+
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audience={audience}
+          audienceEnabled
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(
+      container.querySelectorAll('[data-testid="watch-audience-frame-mock"]'),
+    ).toHaveLength(1)
+    expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ audience, languageSlug: "spanish" }),
+    )
+  })
 })
 
 // feat-776: body blocks stream as separate Suspense segments, and React can

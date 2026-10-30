@@ -56,6 +56,7 @@ export default function SubtitleSheetRoute() {
 
   return (
     <SubtitleSheetContent
+      testID="screen-watch-subtitle"
       subtitles={activeVariantMedia?.subtitles ?? []}
       subtitleEnabled={subtitleEnabled}
       activeSubtitleSlug={activeSubtitleSlug}

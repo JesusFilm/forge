@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
-import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { WatchRecommendationVerification } from "@/components/recommendations/WatchRecommendationVerification"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
@@ -40,7 +39,11 @@ import {
   WATCH_BASE_PATH,
 } from "@/lib/routes"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
-import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
+import {
+  RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
+} from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
@@ -52,7 +55,6 @@ const DELIVERY_MAX_ATTEMPTS = 3
 // Recommendation delivery admission v1 uses this exact same-session/seed
 // cooldown and currently exposes it through the versioned response reason.
 const DELIVERY_COOLDOWN_MS = 5_000
-const SELECTION_DEADLINE_MS = 800
 const EVIDENCE_DEADLINE_MS = RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS
 
 async function recommendationDeliveryJsonWithDeadline(
@@ -537,7 +539,9 @@ export function WatchSemanticRecommendations({
     return () => {
       mountedRef.current = false
       selectionGenerationRef.current += 1
-      selectionAttemptRef.current?.controller.abort()
+      // A keepalive selection may still be completing after navigation begins.
+      if (!navigationStartedRef.current)
+        selectionAttemptRef.current?.controller.abort()
       selectionAttemptRef.current = null
     }
   }, [])
@@ -1016,7 +1020,7 @@ export function WatchSemanticRecommendations({
               headers: { "content-type": "application/json" },
               body: selectionBody(claimNonce),
             },
-            SELECTION_DEADLINE_MS,
+            RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
           ).catch(() => {
             // Navigation is intentionally independent of telemetry.
           })
@@ -1047,6 +1051,9 @@ export function WatchSemanticRecommendations({
         mountedRef.current &&
         selectionGenerationRef.current === attemptId &&
         selectionAttemptRef.current?.id === attemptId
+      const navigationTimer = window.setTimeout(() => {
+        if (isCurrentAttempt()) navigateOnce(item.canonicalHref)
+      }, RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS)
       void recommendationJsonWithRetry(
         SELECTION_ENDPOINT,
         {
@@ -1058,7 +1065,7 @@ export function WatchSemanticRecommendations({
           signal: controller.signal,
           body: selectionBody(claimNonce),
         },
-        SELECTION_DEADLINE_MS,
+        RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
         {
           accept: (value) => {
             if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -1072,14 +1079,16 @@ export function WatchSemanticRecommendations({
             )
           },
         },
-      )
-        .then(() => {
-          if (!isCurrentAttempt()) return
-          navigateOnce(item.canonicalHref)
-        })
-        .catch(() => {
+      ).then(
+        () => {
+          window.clearTimeout(navigationTimer)
           if (isCurrentAttempt()) navigateOnce(item.canonicalHref)
-        })
+        },
+        () => {
+          window.clearTimeout(navigationTimer)
+          if (isCurrentAttempt()) navigateOnce(item.canonicalHref)
+        },
+      )
     },
     [measurementTicket, navigateOnce, requestId, requestKey],
   )
@@ -1167,7 +1176,6 @@ export function WatchSemanticRecommendations({
           {recommendationExplanation}
         </p>
       ) : null}
-      <RecommendationPersonalizationControl />
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>

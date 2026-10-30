@@ -175,13 +175,6 @@ type ContainerSlotSpans {
   xs: Int
 }
 
-type ContentPackRevision {
-  document: JSON
-  id: ID
-  number: Int
-  packId: ID
-}
-
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -307,7 +300,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchAudienceBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
 Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.
@@ -407,9 +400,17 @@ type ExperiencePreview {
   """
   homepageLayout: Boolean!
   """
+  Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.
+  """
+  isDefaultTemplate: Boolean!
+  """
   Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.
   """
   isHomepage: Boolean!
+  """
+  Whether the parent Experience is a route template. Multiple Experiences may be route templates.
+  """
+  isTemplate: Boolean!
   locale: String!
   localeId: ID!
   metaDescription: String
@@ -2090,6 +2091,7 @@ type Mutation {
   reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
+  resetMyWatchLearningProgress(contentVersion: String!, courseId: String!, expectedRevision: Int!, lessonId: String!): WatchLearningSaveResult!
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -2099,6 +2101,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  saveMyWatchLearningProgress(input: WatchLearningProgressSaveInput!): WatchLearningSaveResult!
   selectSemanticRecommendation(browserDigest: String, capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
@@ -2201,7 +2204,6 @@ type Mutation {
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
-  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -2240,6 +2242,10 @@ type Passage {
   content: String
   copyright: String
   humanReference: String
+  """
+  Content language of the selected Bible version, including English fallback; absent in older snapshots.
+  """
+  languageSlug: String
   provider: String
   publisherUrl: String
   reference: String
@@ -2387,6 +2393,7 @@ type Query {
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myWatchLearningProgress(contentVersion: String!, courseId: String!): [WatchLearningLessonProgress!]!
   myWatchProgress: [WatchProgressEntry!]
   precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   precomputedWatchPublicVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, humanVerificationReceipt: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrecomputedWatchPublicVisitDelivery!
@@ -2406,8 +2413,6 @@ type Query {
   shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
   shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
   shortsCatalogRelease(id: ID!): ShortsCatalogRelease
-  shortsContentPackRevision(id: ID!): ContentPackRevision
-  shortsContentPacks(input: JSON): [ContentPackRevision!]
   shortsExperiment(id: ID!): JSON
   shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
   shortsNarrationIdentity(language: String!, speech: JSON!): JSON
@@ -3514,6 +3519,25 @@ type VideoTranscriptChunk {
 }
 
 """
+Top-level audience questionnaire. Definitions use the shared published WatchSetting projection on public surfaces.
+"""
+type WatchAudienceBlock {
+  configurationJson: String!
+  sectionKey: String
+  t: String
+}
+
+"""
+Published default-template audience definition. Null configJson with rejected=true preserves authored presence; consumers must not substitute baked-in copy.
+"""
+type WatchAudienceConfiguration {
+  configJson: String
+  rejected: Boolean!
+  sourceBlockId: String!
+  sourceLocale: String!
+}
+
+"""
 Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.
 """
 type WatchCollectionFeed {
@@ -3753,6 +3777,40 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+type WatchLearningLessonProgress {
+  completed: Boolean!
+  completedAt: String
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  lessonId: String!
+  resumeCardId: String
+  revision: Int!
+  updatedAt: String
+}
+
+input WatchLearningProgressSaveInput {
+  completed: Boolean!
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  expectedRevision: Int!
+  lessonId: String!
+  resumeCardId: String
+}
+
+type WatchLearningSaveResult {
+  progress: WatchLearningLessonProgress!
+  status: WatchLearningSaveStatus!
+}
+
+enum WatchLearningSaveStatus {
+  CONFLICT
+  SAVED
 }
 
 type WatchPlaybackContextReceipt {
@@ -4127,6 +4185,10 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+  """
+  Shared audience configuration from the same published default template. Requested locale only (STRICT NULL); an omitted locale uses watchSetting's locale. Never reads homepage configuration or drafts.
+  """
+  watchAudience(locale: String): WatchAudienceConfiguration
 }
 
 type WatchSurfaceExposureReceipt {

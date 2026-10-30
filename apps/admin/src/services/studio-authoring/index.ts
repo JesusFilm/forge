@@ -1,7 +1,6 @@
 import { assertStudioProductionEnabled } from "./release-controls"
 import { completeStudioAttempt } from "./completion"
 import { canReviewStudio } from "@/auth/permissions"
-import { resolveStudioPackSources } from "./packs"
 import type { PrismaClient } from "@prisma/client"
 import {
   studioActorSchema,
@@ -79,7 +78,6 @@ export class StudioAuthoringService {
           sourceVideoDubId: input.sourceVideoDubId ?? null,
         },
       })
-      await resolveStudioPackSources(tx, input.document.packRevisionIds)
       await resolveStudioDocumentSources(tx, input.document)
       await tx.shortRevision.create({
         data: {
@@ -194,7 +192,6 @@ export class StudioAuthoringService {
         studioDocumentSchema.parse(previous.document),
         input.operations,
       )
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       const revision = project.currentRevision + 1
       await tx.shortRevision.create({

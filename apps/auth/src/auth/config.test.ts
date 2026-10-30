@@ -61,6 +61,7 @@ vi.mock("@/config/env", () => ({
   assertProductionAuthSecrets: vi.fn(),
   env: authConfigCapture.env,
   getAdminWatchProgressErasureConfig: vi.fn(() => null),
+  isWatchLearningErasureRequired: vi.fn(() => false),
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
   getAuthCustomAudiences: vi.fn(() => ["https://custom.example.test"]),
