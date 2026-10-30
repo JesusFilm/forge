@@ -1,0 +1,43 @@
+{
+  "recorded_at": "2026-10-22T21:36:11.458402+00:00",
+  "scope": "Owned loopback PostgreSQL18 fixture only; no production mutation",
+  "schema": "current-main2bcf98e19; all migrations through0162; seven production exposure indexes",
+  "fixture": {
+    "rows": 500000,
+    "expired": 249999,
+    "unexpired": 250001,
+    "relation_bytes": 249782272,
+    "expiry_distribution": "same expiry across expired cohort; deliberately large tie"
+  },
+  "sql_single_sample_ms": {
+    "page100": 203.149,
+    "page1000": 169.235,
+    "page5000": 380.339
+  },
+  "whole_service": {
+    "attempts": 10,
+    "successes": 10,
+    "rows_per_attempt": 1000,
+    "roots_per_attempt": 0,
+    "elapsed_ms": [833, 545, 551, 572, 508, 592, 692, 613, 809, 735],
+    "sum_elapsed_ms": 6450,
+    "median_ms": 602.5,
+    "continuation_all": true
+  },
+  "native_regressions": {
+    "passed": 4,
+    "tests": [
+      "real5s exposure timeout rolls back rows and retains FAILED attempt/success watermark",
+      "1001 expired rows drain1000+1 with exact ledger counts; unexpired29d facts survive",
+      "full1000 exposure page alongside request/served child and250projection runs",
+      "generation child tail drains without early audit/run deletion"
+    ]
+  },
+  "limits": [
+    "No production throughput guarantee",
+    "Large load fixture has no loaded request roots; mixed small-root regression is separate",
+    "No new filesystem savings measured",
+    "No independent after-run ledger receipt for load fixture; exact durable parity covered by native regression"
+  ],
+  "cleanup": "Owned fixture database and container/volumes removed; local filesystem headroom recovered to1.7GB"
+}

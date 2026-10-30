@@ -1,0 +1,37 @@
+[
+  {
+    "name": "postgres-0a458a815f2d12e6",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:0a458a815f2d12e6aad17d8abca4f956a60ca50adf12ac50ad4ce314015459af"
+  },
+  {
+    "name": "postgres-34c3e49e7ed2aaef",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:34c3e49e7ed2aaef6c575fb23bb37b878007e97752d3bf27ccb550046f893ca7"
+  },
+  {
+    "name": "postgres-87184beace8ec657",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:87184beace8ec657a760401a466a13c5b689066b31b77993103b4771933a9d31"
+  },
+  {
+    "name": "postgres-8dbbfcb7fafacc22",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:8dbbfcb7fafacc22c01dc0c425c38793b5d0449163a3d178d3e3767d43e6f3ee"
+  },
+  {
+    "name": "postgres-8dcde23134ad2ca3",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:8dcde23134ad2ca318bc4caad004b0a15f820be52ce16e8f05c4fd6fd9232976"
+  },
+  {
+    "name": "postgres-fcc6686a3f4f1962",
+    "kind": "postgres",
+    "base": "ghcr.io/railwayapp-templates/postgres-ssl@sha256:fcc6686a3f4f1962fe4ed77a15884553b7bd611ae1cea3204687968c5c09d517"
+  },
+  {
+    "name": "typesense",
+    "kind": "typesense",
+    "base": "docker.io/typesense/typesense@sha256:610f2d34b1f93d00762869da2c67736775e5798d19a2c8b91b014b8a0cc1e110"
+  }
+]

@@ -773,7 +773,7 @@ export default function WatchVideoPage() {
       : null
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-watch" style={layout.screenContainer}>
       <StatusBar style="light" hidden={isFullscreen} />
 
       {/* Sibling of the player dock, NOT a child: the dock carries

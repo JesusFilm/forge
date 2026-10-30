@@ -158,7 +158,6 @@ function fixture() {
         controls: {},
       },
     ],
-    packRevisionIds: [],
     items: [
       {
         id: "video-item",

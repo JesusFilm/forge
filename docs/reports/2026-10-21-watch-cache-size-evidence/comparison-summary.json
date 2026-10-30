@@ -1,0 +1,26 @@
+{
+  "captured_at_utc": "2026-10-20 23:20:06 UTC",
+  "candidate_scope": "custom cache handlers only; default-handler behavior retained",
+  "pairs": 8,
+  "iterations_per_process": 12,
+  "entry_buffer_bytes": 1941310,
+  "storage": "synthetic base64+JSON; no Redis or real Watch data",
+  "ordering": "baseline/candidate for even pairs; candidate/baseline for odd pairs",
+  "measurement": "pending actual Next cache.get delayed by one synchronous cache.set on same thread; includes fixture codec; not HTTP TTFB",
+  "summary": {
+    "baseline": {
+      "count": 96,
+      "median_ms": 90.2525925000001,
+      "p95_ms": 167.46164599999997,
+      "max_ms": 179.75761700000004
+    },
+    "candidate": {
+      "count": 96,
+      "median_ms": 16.696814499999988,
+      "p95_ms": 46.74582699999996,
+      "max_ms": 59.88407500000005
+    }
+  },
+  "changed_files_between_variants": 6,
+  "startup_hook_between_variants": "identical; existing preload patch retained in both"
+}

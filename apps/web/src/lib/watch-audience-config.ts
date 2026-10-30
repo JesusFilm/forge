@@ -401,7 +401,7 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
       chip: "I’m exploring",
       eyebrow: "Find your next step",
       heading: "Three quick questions.",
-      lead: "No right answers. We’ll point you to one thing worth watching next.",
+      lead: "No right answers. We’ll point you to the one thing worth doing next.",
       finish: "Here’s where we’d start.",
       actions: [
         {
@@ -427,12 +427,6 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
           title: "Read the passage behind it",
           body: "The Bible passages this film is drawn from.",
           target: { kind: "current-video", target: "bible-quotes" },
-        },
-        {
-          id: "explore-language",
-          title: "Find a film in your language",
-          body: "Browse every language the films are available in.",
-          target: { kind: "languages" },
         },
       ],
       questions: [
@@ -485,8 +479,22 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
         },
         {
           id: "how",
-          prompt: "How do you like to explore?",
+          prompt: "How do you like to work things out?",
           options: [
+            {
+              id: "alone",
+              label: "On my own, quietly",
+              hint: "Read, think, no one watching",
+              reason: "you prefer to work it out alone",
+              scores: [{ actionId: "explore-bible-passage", weight: 3 }],
+            },
+            {
+              id: "talk",
+              label: "Talking it through",
+              hint: "With a real person",
+              reason: "you’d rather talk it through",
+              scores: [{ actionId: "explore-short-films", weight: 3 }],
+            },
             {
               id: "watch",
               label: "Show me the story",
@@ -496,20 +504,6 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
                 { actionId: "explore-full-film", weight: 3 },
                 { actionId: "explore-next-episode", weight: 1 },
               ],
-            },
-            {
-              id: "read",
-              label: "Let me read what it says",
-              hint: "The words, at my own pace",
-              reason: "you’d rather read it for yourself",
-              scores: [{ actionId: "explore-bible-passage", weight: 3 }],
-            },
-            {
-              id: "language",
-              label: "In my own language",
-              hint: "It means more in the language I know best",
-              reason: "you want it in your own language",
-              scores: [{ actionId: "explore-language", weight: 4 }],
             },
           ],
         },
@@ -616,8 +610,8 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
               scores: [{ actionId: "grow-share", weight: 3 }],
             },
             {
-              id: "together",
-              label: "To walk with others",
+              id: "community",
+              label: "People to walk with",
               hint: "I don’t want to do this alone",
               reason: "you don’t want to do this alone",
               scores: [{ actionId: "grow-beginning-with-jesus", weight: 3 }],
@@ -706,12 +700,6 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
           target: { kind: "video", slug: "conversation-starters" },
         },
         {
-          id: "share-language",
-          title: "Find a film in their language",
-          body: "Browse every language the films are available in.",
-          target: { kind: "languages" },
-        },
-        {
           id: "share-amazing-question",
           title: "Learn the Amazing Question",
           body: "A guide to opening a faith conversation.",
@@ -754,10 +742,10 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
               ],
             },
             {
-              id: "language",
-              label: "Someone who speaks another language",
-              reason: "they speak another language",
-              scores: [{ actionId: "share-language", weight: 4 }],
+              id: "online",
+              label: "People who follow me online",
+              reason: "you want to reach people online",
+              scores: [{ actionId: "share-send-film", weight: 3 }],
             },
           ],
         },
@@ -839,8 +827,8 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
       chip: "I’m a ministry partner",
       eyebrow: "Find your next step",
       heading: "Three quick questions.",
-      lead: "Tell us about the setting and we’ll point you to the right materials.",
-      finish: "Where to start.",
+      lead: "Tell us about the setting and we’ll pull the right materials.",
+      finish: "What to download first.",
       actions: [
         {
           id: "partner-download",
@@ -879,7 +867,7 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
           prompt: "What are you planning?",
           options: [
             {
-              id: "event",
+              id: "service",
               label: "A service or event",
               reason: "you’re planning an event",
               scores: [
@@ -942,13 +930,13 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
           prompt: "Will you have reliable internet where you show it?",
           options: [
             {
-              id: "online",
+              id: "yes",
               label: "Yes, we’ll stream",
               reason: "you’ll stream it",
               scores: [{ actionId: "partner-share", weight: 2 }],
             },
             {
-              id: "offline",
+              id: "no",
               label: "No, we need it offline",
               reason: "you need it offline",
               scores: [{ actionId: "partner-download", weight: 3 }],
@@ -967,4 +955,50 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
       ],
     },
   ],
+}
+
+/**
+ * What a Watch surface knows about the published configuration, resolved by
+ * `lib/watch-audience-content.ts`. `absent` means no authored configuration
+ * exists for the requested locale (or Admin predates the block): the code
+ * definitions above stand in until one is published. `rejected` and
+ * `unavailable` mean an authored configuration exists but cannot be shown;
+ * the frame is omitted and never replaced by the baked-in questions.
+ */
+export type WatchAudienceResolution =
+  | {
+      kind: "authored"
+      config: WatchAudienceConfig
+      identity: string
+      sourceLocale: string
+    }
+  | { kind: "rejected" }
+  | { kind: "unavailable" }
+  | { kind: "absent" }
+
+export type WatchAudienceFrame = {
+  sourceLocale: string
+  config: WatchAudienceConfig
+  /** Changes whenever the configuration does, so the frame remounts and answers reset. */
+  identity: string
+}
+
+export function watchAudienceFrame(
+  resolution: WatchAudienceResolution | undefined,
+): WatchAudienceFrame | null {
+  if (resolution?.kind === "authored") {
+    return {
+      config: resolution.config,
+      identity: resolution.identity,
+      sourceLocale: resolution.sourceLocale,
+    }
+  }
+  if (resolution === undefined || resolution.kind === "absent") {
+    return {
+      config: WATCH_AUDIENCE_CODE_CONFIG,
+      identity: "code",
+      sourceLocale: "en",
+    }
+  }
+  return null
 }

@@ -1,7 +1,7 @@
 ---
 title: "Affected-gated expo-doctor bills upstream Expo patch drift to the first PR that wakes it"
 date: "2026-08-17"
-last_updated: "2026-09-30"
+last_updated: "2026-10-23"
 category: build-errors
 module: mobile
 problem_type: build_error
@@ -13,6 +13,7 @@ symptoms:
   - "gh run rerun --failed fails identically (not flake)"
   - "after bumping only the named packages, doctor names MORE packages plus a duplicate-native-module failure"
   - "the failing CI job is named expo-doctor, but the step that fails is `npx expo install --check`"
+  - "one package in the reported set changes guarded native behaviour, so it cannot move with the others"
 root_cause: environment_config
 resolution_type: dependency_update
 related_components:
@@ -25,6 +26,8 @@ tags:
   - affected-gating
   - dependency-drift
   - pnpm-monorepo
+  - expo-notifications
+  - install-exclude
 ---
 
 # Affected-gated expo-doctor bills upstream Expo patch drift to the first PR that wakes it
@@ -106,6 +109,56 @@ Result here: nine patch bumps within the SDK 57 line (Expo's patch releases are
 bug/security fixes only — no minors, no new packages), doctor 20/20, mobile
 suite and typecheck green, full CI matrix green.
 
+## Hold one package back when its patch changes guarded native code
+
+Some packages carry a guard that pins their exact version, because app code
+depends on Expo internals. The Android push-tap relay is one:
+`apps/mobile/src/lib/__tests__/androidPushTapUpstream.guard.test.js:13-17`
+pins `expo` and `expo-notifications`. For such a package, a patch in the
+reported set is not automatically safe to take.
+
+Decide per package with a diff of the published code:
+
+```bash
+mkdir -p /tmp/pkgdiff && cd /tmp/pkgdiff
+for v in expo-notifications@57.0.23 expo-notifications@57.0.24; do
+  mkdir -p "$v" && (cd "$v" && npm pack "$v" --silent && tar xzf *.tgz)
+done
+diff -r expo-notifications@57.0.23/package/android expo-notifications@57.0.24/package/android
+```
+
+- When only the package's own `version`, `versionName`, and `versionCode`
+  lines change, and no dependency version in `build.gradle` or the `.pom`
+  changes, bump the package and move the guard pin.
+- When source files change, hold the package until the device check that
+  `apps/mobile/CLAUDE.md` names for that guard has passed.
+
+On 2026-10-22 (PR #2867), `expo` 57.0.31 changed only its version lines
+under `android/`, but
+`expo-notifications` 57.0.24 changed three Kotlin files. It is Expo PR
+#47615: a listener now returns whether it handled a tap, and
+`NotificationManager` then clears the pending tap queue. The relay's Block B
+calls `NotificationManager.onNotificationResponseFromExtras`
+(`apps/mobile/plugins/withAndroidPushTapRelay.js:42`), so this needs the
+release-build cold-tap pass.
+
+A hold needs two settings in `apps/mobile/package.json`, and both are
+load-bearing:
+
+1. **An exact version, not a tilde range.** `"~57.0.23"` still allowed pnpm
+   to keep 57.0.24 (observed 2026-10-23). `"57.0.23"` holds it
+   (`apps/mobile/package.json:60`).
+2. **An `expo.install.exclude` entry** for the package
+   (`apps/mobile/package.json:93-97`). Without it, `npx expo install --check`
+   still fails on the held package.
+
+The exclusion also hides every later patch of that package, so a hold is
+never open-ended. Give it a ticket that runs the device check and removes the
+exclusion (feat-785 for this hold), and record the hold in the guard's
+section of `apps/mobile/CLAUDE.md`. An earlier constraint, "Do not use
+`expo.install.exclude`" (feat-582), still holds for ordinary drift. There the
+check reports something true, and the fix is the bump.
+
 ## Prevention / next-time playbook
 
 - **Treat "conditionally-run CI check × live external state" as a standing
@@ -168,13 +221,15 @@ every one or two weeks. Each row is one alignment (or one open failure):
 | 2026-10-12 | #2578              | The 57.0.28 patch set rode inside a recommendations feature PR: eight packages moved.                                                                                                                                                                                                                                           |
 | 2026-10-15 | #2727              | `expo` 57.0.29 and six siblings were published 2026-10-14T16:32Z. The owner chose to align them inside this feature PR. The Android push-tap guard's `expo` and `expo-notifications` pins moved with them, after the check in `apps/mobile/CLAUDE.md`.                                                                          |
 | 2026-10-15 | #2750              | `expo` 57.0.30 and `expo-router` 57.0.28 were published 2026-10-15T14:38Z, one day after the 57.0.29 set. The owner chose to align them inside this feature PR. Six resolved versions moved. The `expo` `android/` diff changed only its version lines, so the Android push-tap guard's `expo` pin moved without a device pass. |
+| 2026-10-22 | #2867              | `expo` 57.0.31, `expo-network` 57.0.3, `expo-notifications` 57.0.24 and `expo-router` 57.0.29. The owner chose to fix it inside this feature PR. Three packages moved. `expo-notifications` was held at 57.0.23 (see "Hold one package back"), and feat-785 tracks its device pass.                                             |
 
 Two things follow for the next agent:
 
-- **Expect it, and split it out.** When the check fails on a PR with no
-  dependency change, do not fix it in that PR. Open the separate alignment PR
-  from `main` that the Fix section describes, and say in the feature PR that
-  the failure is upstream drift.
+- **Expect it, and offer the choice.** When the check fails on a PR with no
+  dependency change, say in the feature PR that the failure is upstream drift.
+  A separate alignment PR from `main` fixes every open PR at once. The owner
+  chose to fix it inside the feature PR on #2727, #2750 and #2867, so offer
+  both and do not assume either.
 - **The structural cause is still open.** #2097 proposed two fixes: make the
   version check non-blocking for `ci-gate`, or scope the Railway deploy gate
   to each service. As of 2026-09-28, no roadmap ticket tracks either one.
@@ -185,4 +240,7 @@ Two things follow for the next agent:
   — different expo-doctor failure mode (accumulated project-config health issues
   when the check was first introduced). Together they cover both ways this job
   goes red: config debt vs. upstream registry drift.
+- `docs/solutions/integration-issues/android-push-tap-task-restart-drops-new-intent.md`
+  — the push-tap relay and the guard whose pins decide when an
+  `expo-notifications` patch must be held.
 - Fixed in PR #1945 (`feat/tv-combined`, squash-merged 2026-08-17).

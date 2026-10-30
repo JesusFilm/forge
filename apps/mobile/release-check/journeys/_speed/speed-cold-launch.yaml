@@ -1,0 +1,21 @@
+# The speed pass cold launch (KTD19). The runner installs the app fresh before
+# this flow and reads the step times from commands.json, so keep the labels.
+appId: org.jesusfilm.forgewatch
+name: speed-cold-launch
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+# The tab bar does not wait for the Home content, so on iOS this step ends
+# the cold launch.
+- extendedWaitUntil:
+    visible:
+      text: My Watch
+    timeout: 60000
+    label: The first screen shows
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home content shows

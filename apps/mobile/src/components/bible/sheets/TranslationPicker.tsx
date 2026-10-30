@@ -15,7 +15,7 @@ import {
   buildTranslationList,
   translationLanguageLabel,
   translationSearchValues,
-  translationStatusLabel,
+  translationStatusParts,
 } from "../../../lib/bible/sheets/translationList"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import { useUiTag } from "../../../hooks/useUiTag"
@@ -51,8 +51,9 @@ const getId = (translation: CatalogTranslation) => translation.id
 const getName = (translation: CatalogTranslation) => translation.name
 const getCredit = (translation: CatalogTranslation) => translation.credit
 
-// R23's picker, in the reader's theme. Each row shows the name, the language,
-// complete or partial with the download state, and the credit.
+// R23's picker, in the reader's theme. Each row shows the name, then one line
+// with the language, complete or partial, and the download state. Only the
+// Current row adds the credit (owner, 2026-10-22).
 export function TranslationPicker({
   tokens,
   catalog,
@@ -95,9 +96,9 @@ export function TranslationPicker({
 
   // `t` is a new function after a language change, so the list's renderItem
   // changes too and a recycled row redraws in the new language.
-  const getStatus = useCallback(
+  const getStatusParts = useCallback(
     (translation: CatalogTranslation) =>
-      translationStatusLabel(
+      translationStatusParts(
         t,
         translation,
         downloads.getState(translation.id),
@@ -176,8 +177,8 @@ export function TranslationPicker({
         getKey={getId}
         getPrimaryLabel={getName}
         getSecondaryLabel={translationLanguageLabel}
-        getStatusLabel={getStatus}
-        getDetailLabel={getCredit}
+        getStatusParts={getStatusParts}
+        getActiveDetailLabel={getCredit}
         getSearchValues={translationSearchValues}
         onSelect={pick}
         searchPlaceholder={t("searchPlaceholder")}

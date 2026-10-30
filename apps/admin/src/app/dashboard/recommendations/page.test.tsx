@@ -391,6 +391,36 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("Exposure rows are scoped")
   })
 
+  it.each(["24h", "7d", "29d"])(
+    "labels the shorter anonymous history honestly for %s",
+    async (window) => {
+      requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
+      loadOverviewMock.mockResolvedValue({
+        ...overview,
+        window: { ...overview.window, preset: window },
+      })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({ window }),
+        }),
+      )
+      expect(html).toContain(
+        "New anonymous Watch exposure facts expire after 14 days",
+      )
+      if (window === "29d") {
+        expect(html).toContain("Partial anonymous history")
+        expect(html).toContain("cannot describe the complete 29-day window")
+        expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+        expect(loadTracePageMock).toHaveBeenCalledWith(
+          {},
+          expect.objectContaining({ window: "29d" }),
+        )
+      } else {
+        expect(html).not.toContain("Partial anonymous history")
+      }
+    },
+  )
+
   it.each([
     {
       exposure: "watch-home:hero:hero-card",
@@ -517,7 +547,7 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("Raw cookies, digests, session links")
     expect(html).toContain("Promotion decision")
     expect(html).toContain("50% of eligible assignments")
-    expect(html).toContain("Read-only evidence")
+    expect(html).toContain("Historical evidence only")
     expect(html).toContain("Activation Effective")
     expect(html).toContain("Profile candidate shadow")
     expect(html).toContain("MULTI-INTEREST")
@@ -572,12 +602,12 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("request-private-1")
     expect(html).toContain("/dashboard/recommendations/request-private-1")
     expect(html).toContain("cursor=opaque-private-cursor")
-    expect(html).toContain("Confirm permanent default")
-    expect(html).toContain("Restore last-known-good")
-    expect(html).toContain("Emergency stop")
+    expect(html).not.toContain("Confirm permanent default")
+    expect(html).not.toContain("Restore last-known-good")
+    expect(html).not.toContain("Emergency stop")
   })
 
-  it("shows rollback only for a historical profile-only promotion pointer", async () => {
+  it("shows historical profile promotion without active controls", async () => {
     requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
     loadOverviewMock.mockResolvedValue({
       ...overview,
@@ -605,8 +635,8 @@ describe("Admin Recommendations pages", () => {
     expect(html).not.toContain("Approve exact manifest")
     expect(html).not.toContain("Increase bounded stage")
     expect(html).not.toContain("Confirm permanent default")
-    expect(html).toContain("Restore last-known-good")
-    expect(html).toContain("Emergency stop")
+    expect(html).not.toContain("Restore last-known-good")
+    expect(html).not.toContain("Emergency stop")
   })
 
   it("denies the overview before any recommendation reader runs", async () => {

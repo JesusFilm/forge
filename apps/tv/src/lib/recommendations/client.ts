@@ -17,12 +17,13 @@ import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import { getApiToken, getGraphQLUrl } from "../config"
 import { authHeadersForOperation } from "../authHeaders"
 import { createIdentityStore } from "./identity"
+import { recommendationIdentityStorageKey } from "./identityStorageKey"
 import { createEvidenceQueue } from "./evidenceQueue"
 
 export const recommendationsEnabled = () =>
   process.env.EXPO_PUBLIC_TV_RECOMMENDATIONS_ENABLED === "true"
 export const EVIDENCE_CONTRACT = "recommendation-evidence-v1"
-const IDENTITY_KEY = "tv.recommendations.identity.v1"
+const IDENTITY_KEY = recommendationIdentityStorageKey(getGraphQLUrl(), __DEV__)
 const CHOICE_KEY = "tv.recommendations.choice.v1"
 const WITHDRAW_PENDING_KEY = "tv.recommendations.withdraw-pending.v1"
 let controlBusy = false

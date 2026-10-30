@@ -110,3 +110,42 @@ Eight alternating local timing pairs overlap, and the fixture substitutes data
 and view dependencies. Persistent cache policy, deployment configuration and
 the production app remain unchanged. Keep this ticket in progress; owner review,
 normal authorized rollout and representative production acceptance are pending.
+
+## Local cache-size repair candidate — 2026-10-21 NZDT
+
+See `docs/plans/2026-10-21-watch-cache-size-serialization.md` and
+`docs/reports/2026-10-21-watch-cache-size-serialization.md`. The versioned Next
+patch now skips the unused size serialization only for custom handlers in
+standalone and compiled APP_PAGE production runtimes. Default-handler behavior
+in the other Next apps is preserved. Real framework regressions went red on the
+baseline and green
+with the patch, preserving applicable FETCH limits. A synthetic concurrent get/set
+comparison retaining base64/JSON storage encoding reduced median pending-HIT time
+from about 90 ms to 17 ms across 96 measurements per side. A new default-handler
+regression passes in all five entry points, and Admin's seven existing readiness
+unit tests pass. This is mechanism evidence, not real Watch TTFB or production recovery.
+
+The owner requested shipping this repair first. Fresh frozen installation, the
+full Web production build, typecheck, zero-warning lint and 5,502 Web tests pass.
+Admin's seven readiness tests and production HTTP probes with default/custom
+handlers also pass; the latter use controlled inventory data/views. Normal
+PR/release checks and representative production acceptance remain pending.
+Keep this ticket in progress.
+
+## Existing cache entry measured — 2026-10-21 NZDT
+
+One bounded read of the existing English home APP_PAGE entry measured 1,941,303
+stored bytes: HTML 968,550, RSC 482,838, segment data 489,273 across four segments,
+and metadata/JSON envelope 642. HTML includes 390,408 raw bytes of embedded React
+stream scripts. These are representation sizes, not latency attribution or proof
+that segment/HTML representations can be removed. Sanitized evidence and exact
+query are in `docs/reports/2026-10-21-watch-cache-size-evidence/cache-entry-sizes.json`;
+method and limits are in the cache-size serialization report. No page render,
+production hook, cache mutation or deployment was introduced. Keep this ticket
+in progress pending the remaining repair and sustained acceptance work.
+
+Owner requested the serialization repair proceed first. Fresh focused framework,
+Admin readiness, Redis cleanup and telemetry checks pass. Full build/branch/PR
+preparation now uses the portable resource checks in the investigation plan,
+as requested by the owner. Native disk/inode checks replace a missing optional
+guard; the old machine-specific path no longer blocks validation.

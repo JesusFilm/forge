@@ -43,6 +43,7 @@ describe("WatchSettingService.get", () => {
     const result = await service.get({ locale: "en" })
 
     expect(result).toEqual({
+      locale: "en",
       documentId: "exp-home-1",
       homepageExperience: homepage,
       defaultTemplateExperience: templateLocale,
@@ -75,6 +76,8 @@ describe("WatchSettingService.get", () => {
       isTemplate: true,
       archivedAt: null,
     })
+    expect(templateCall.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }])
+    expect(prisma.experience.findFirst).toHaveBeenCalledOnce()
     expect(templateCall.include.locales.where).toMatchObject({
       locale: "en",
       status: "PUBLISHED",
@@ -102,6 +105,8 @@ describe("WatchSettingService.get", () => {
     const result = await service.get({ locale: "de" })
 
     expect(result.defaultTemplateExperience).toBeNull()
+    // No second parent search promotes B when selected A lacks this locale.
+    expect(prisma.experience.findFirst).toHaveBeenCalledOnce()
   })
 
   it("strict-null locale fallback: missing homepage returns null, not a fallback locale", async () => {

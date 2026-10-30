@@ -24,6 +24,13 @@ export function sourceProtocolWhitelist(
   return nodeEnv === "production" ? base : `${base},file`
 }
 
+// FFmpeg's native HTTPS transport can default to no peer verification.
+// Apply verification before opening every remote input, including HLS reads.
+// Local generated files have no TLS protocol options.
+export function sourceTlsOptions(url: string): string[] {
+  return /^https:/i.test(url) ? ["-tls_verify", "1"] : []
+}
+
 export type CommandResult = {
   stdout: Buffer
   stderr: string
@@ -66,7 +73,7 @@ export class CommandFailedError extends Error {
 export class MissingBinaryError extends Error {
   constructor(binary: string) {
     super(
-      `${binary} is required for crop-worker. Install ${binary} in the runtime image (repo-root nixpacks.toml adds ffmpeg, which includes ffprobe) or inject a RunCommand in tests.`,
+      `${binary} is required for crop-worker. Install ${binary} in the runtime image (apps/crop-worker/Dockerfile supplies both binaries) or inject a RunCommand in tests.`,
     )
     this.name = "MissingBinaryError"
   }
@@ -226,6 +233,7 @@ export async function probeSource(
       [
         "-v",
         "error",
+        ...sourceTlsOptions(url),
         "-protocol_whitelist",
         protocolWhitelist,
         "-print_format",
