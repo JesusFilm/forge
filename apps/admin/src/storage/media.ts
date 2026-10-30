@@ -7,6 +7,7 @@ export type MediaStorageBackend = "LOCAL" | "S3" | "MUX"
 export type MediaObjectVariant = "original" | "preview"
 
 export type WriteMediaObjectOptions = {
+  signal?: AbortSignal
   assetId: string
   filename: string
   variant?: MediaObjectVariant
@@ -16,6 +17,7 @@ export type WriteMediaObjectOptions = {
 }
 
 export type ReadMediaObjectOptions = {
+  signal?: AbortSignal
   key: string
   backend?: MediaStorageBackend
 }
@@ -111,7 +113,9 @@ export async function writeMediaObject({
   body,
   contentType,
   backend = defaultBackend(),
+  signal,
 }: WriteMediaObjectOptions): Promise<string> {
+  signal?.throwIfAborted()
   const key = mediaObjectKey({ assetId, filename, variant })
 
   if (backend === "MUX") {
@@ -119,19 +123,21 @@ export async function writeMediaObject({
   }
 
   if (backend === "S3") {
-    return writeObject(key, body, contentType)
+    return writeObject(key, body, contentType, signal)
   }
 
   const filePath = join(LOCAL_MEDIA_DIR, key)
   await mkdir(dirname(filePath), { recursive: true })
-  await writeFile(filePath, body)
+  await writeFile(filePath, body, { signal })
   return key
 }
 
 export async function readMediaObject({
   key,
   backend = defaultBackend(),
+  signal,
 }: ReadMediaObjectOptions): Promise<Uint8Array> {
+  signal?.throwIfAborted()
   assertSafeMediaObjectKey(key)
 
   if (backend === "MUX") {
@@ -139,8 +145,8 @@ export async function readMediaObject({
   }
 
   if (backend === "S3") {
-    return readObject(key)
+    return readObject(key, signal)
   }
 
-  return readFile(join(LOCAL_MEDIA_DIR, key))
+  return readFile(join(LOCAL_MEDIA_DIR, key), { signal })
 }

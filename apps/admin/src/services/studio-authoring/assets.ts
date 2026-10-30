@@ -58,7 +58,9 @@ export async function readVerifiedStudioAsset(
   db: Prisma.TransactionClient,
   ref: StudioAssetReference,
   maxBytes = STUDIO_MAX_ASSET_BYTES,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted()
   const row = await resolveAssetVersion(db, ref)
   if (!row.mediaAsset.objectKey) throw new NotFoundError("Studio bytes")
   if (Number(row.mediaAsset.byteSize) > maxBytes)
@@ -66,7 +68,9 @@ export async function readVerifiedStudioAsset(
   const bytes = await readMediaObject({
     key: row.mediaAsset.objectKey,
     backend: row.mediaAsset.backend,
+    signal,
   })
+  signal?.throwIfAborted()
   if (bytes.byteLength > maxBytes || byteDigest(bytes) !== ref.digest)
     throw new StudioCommandError("INVALID")
   // S3 yields Uint8Array while local storage yields Buffer. Manifest readers
@@ -97,7 +101,9 @@ export class StudioAssetService {
     raw: unknown,
     bytes: Uint8Array,
     backend: MediaStorageBackend = defaultBackend(),
+    signal?: AbortSignal,
   ) {
+    signal?.throwIfAborted()
     const actor = studioActor(user)
     const input = studioRegisterAssetSchema.parse(raw)
     if (
@@ -116,6 +122,7 @@ export class StudioAssetService {
       include: { mediaAsset: true },
     })
     if (prior) {
+      signal?.throwIfAborted()
       if (prior.requestHash !== requestHash)
         throw new StudioCommandError("CONFLICT")
       return present(prior)
@@ -139,18 +146,22 @@ export class StudioAssetService {
       body: bytes,
       contentType: input.mimeType,
       backend,
+      signal,
     })
     if (
-      byteDigest(await readMediaObject({ key: objectKey, backend })) !== digest
+      byteDigest(await readMediaObject({ key: objectKey, backend, signal })) !==
+      digest
     )
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
+      signal?.throwIfAborted()
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${requestKey}, 455))::text`
       const retry = await tx.shortAssetVersion.findUnique({
         where: { requestKey },
         include: { mediaAsset: true },
       })
       if (retry) {
+        signal?.throwIfAborted()
         if (retry.requestHash !== requestHash)
           throw new StudioCommandError("CONFLICT")
         return present(retry)
@@ -188,6 +199,7 @@ export class StudioAssetService {
         },
         include: { mediaAsset: true },
       })
+      signal?.throwIfAborted()
       return present(row)
     })
   }

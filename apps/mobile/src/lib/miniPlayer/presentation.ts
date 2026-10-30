@@ -12,7 +12,12 @@
  * "(tabs)" and not "(tabs)/index".
  */
 
-import type { MiniPlayerStoreSnapshot } from "./store"
+import {
+  sameSessionContent,
+  type MiniPlayerSession,
+  type MiniPlayerStoreSnapshot,
+} from "./store"
+import type { CoverSource } from "./playbackRequest"
 import { isSuppressedBySheet, routePattern } from "./suppression"
 
 export type MiniPlayerPresentation =
@@ -37,13 +42,18 @@ export const FULL_SCREEN_ROUTE_PATTERNS = [
   "watch/download",
 ] as const
 
-/** The four tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
- *  too: only the router's index-pop keeps it out of the segment list. */
+/** The Explore tab, whose takeover ends any floating window (KTD10). */
+export const EXPLORE_TAB_ROUTE_PATTERN = "(tabs)/explore"
+
+/** The five tab roots from `app/(tabs)/_layout.tsx`. "(tabs)/index" is listed
+ *  too: only the router's index-pop keeps it out of the segment list. The
+ *  pushed Bible reader is the root route "reader", not "(tabs)/bible". */
 export const TAB_ROOT_ROUTE_PATTERNS = [
   "(tabs)",
   "(tabs)/index",
+  EXPLORE_TAB_ROUTE_PATTERN,
   "(tabs)/watch",
-  "(tabs)/library",
+  "(tabs)/bible",
   "(tabs)/profile",
 ] as const
 
@@ -82,11 +92,121 @@ export function canOriginateRoutePattern(pattern: string): boolean {
   return !EXCLUDED_ORIGIN_ROUTES.has(pattern)
 }
 
+/** feat-553 KTD10: the pushed reader and its three root sheets (`app/_layout.tsx`)
+ *  sit over the watch screen's player slot. The Bible tab does not: no watch
+ *  slot is mounted under it. */
+export const READER_COVER_ROUTE_PATTERNS = [
+  "reader",
+  "reader-passage",
+  "reader-translation",
+  "reader-settings",
+] as const
+
+/** feat-553 KTD11: every route that shows the reader. */
+export const READER_ROUTE_PATTERNS = [
+  ...READER_COVER_ROUTE_PATTERNS,
+  "(tabs)/bible",
+] as const
+
+const READER_COVER_ROUTES: ReadonlySet<string> = new Set(
+  READER_COVER_ROUTE_PATTERNS,
+)
+
+/** The reader's cover predicate. The host, the slot poster and the screen's
+ *  back button all follow the cover it starts (KTD10). */
+export function isReaderCovering(segments: readonly string[]): boolean {
+  return READER_COVER_ROUTES.has(routePattern(segments))
+}
+
+/** The two pages that mount a `PlayerSlot`, each with its own group's sheets
+ *  (`app/watch/_layout.tsx`, `app/series/_layout.tsx`). The first entry is
+ *  the page; on the others the page is under its sheet. */
+export const SLOT_PAGE_ROUTE_PATTERNS = {
+  watch: FULL_SCREEN_ROUTE_PATTERNS,
+  series: [
+    "series/[slug]",
+    "series/language",
+    "series/subtitle",
+    "series/download",
+  ],
+} as const
+
+export type SlotPage = keyof typeof SLOT_PAGE_ROUTE_PATTERNS
+
+const SLOT_PAGE_ROUTES: Record<SlotPage, ReadonlySet<string>> = {
+  watch: new Set(SLOT_PAGE_ROUTE_PATTERNS.watch),
+  series: new Set(SLOT_PAGE_ROUTE_PATTERNS.series),
+}
+// A slot that named no page: either page's routes may be its own.
+const ANY_SLOT_PAGE_ROUTES: ReadonlySet<string> = new Set([
+  ...SLOT_PAGE_ROUTE_PATTERNS.watch,
+  ...SLOT_PAGE_ROUTE_PATTERNS.series,
+])
+
+/** What covers the current slot. A screen pushed over the slot's screen keeps
+ *  it mounted, so the host would draw the full view over that screen. A pop
+ *  never sets `underScreen`; the route check waits for the new segments. */
+export function slotCoverSource(
+  segments: readonly string[],
+  underScreen: boolean,
+  /** The source of the current slot's live cover, or null. */
+  liveCover: CoverSource | null = null,
+  /** The page that mounts the slot. Only its own routes leave it in view. */
+  page: SlotPage | null = null,
+): CoverSource | null {
+  if (isReaderCovering(segments)) return "reader"
+  if (!underScreen) return null
+  const pattern = routePattern(segments)
+  const ownRoutes = page == null ? ANY_SLOT_PAGE_ROUTES : SLOT_PAGE_ROUTES[page]
+  if (!ownRoutes.has(pattern)) return "screen"
+  // A tap on the window pushes a watch page, and its slot attaches a commit
+  // later, so a live cover holds there. Over the page's own sheet it ends.
+  const onPage = pattern === "watch/[slug]" || pattern === "series/[slug]"
+  return liveCover === "screen" && onPage ? "screen" : null
+}
+
+/** Where the reader runs: the Bible tab, the pushed route, or one of the
+ *  three sheets, which can sit over either host. */
+export type ReaderRouteKind = "tab" | "pushed" | "sheet"
+
+export function readerRouteKind(
+  segments: readonly string[],
+): ReaderRouteKind | null {
+  const pattern = routePattern(segments)
+  if (pattern === "(tabs)/bible") return "tab"
+  if (pattern === "reader") return "pushed"
+  return READER_COVER_ROUTES.has(pattern) ? "sheet" : null
+}
+
+/** What a tap on the window does: go back to the covered screen, or open one. */
+export type ExpandAction = "pop" | "push"
+
+/** KTD10, AE14: a tap on the window over the reader goes back to the watch
+ *  screen under it, so the stack never holds a second one. Anything else
+ *  pushes: the Bible tab has no slot, and a pop closes one route of several. */
+export function expandAction(input: {
+  /** What covers the current slot while its window floats, or null. */
+  cover: CoverSource | null
+  descriptor: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
+  session: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
+  segments: readonly string[]
+}): ExpandAction {
+  if (
+    input.cover !== "reader" ||
+    input.descriptor == null ||
+    input.session == null
+  )
+    return "push"
+  if (!sameSessionContent(input.descriptor, input.session)) return "push"
+  return routePattern(input.segments) === "reader" ? "pop" : "push"
+}
+
 /**
  * Presentation from the session and the current route.
  *
  * `floating` is the default for every route the tables do not name, because R3
- * promises the window persists across tab changes and further pushes. `exiting`
+ * promises the window persists across tab changes and further pushes. The one
+ * exception is Explore, whose takeover ends the window (feat-552 KTD10). `exiting`
  * outranks the route tables: a dismissed window animates away wherever the
  * viewer is, and only `exiting` may clear the store.
  */
@@ -94,6 +214,10 @@ export function miniPlayerPresentation(
   snapshot: MiniPlayerStoreSnapshot,
   segments: readonly string[],
   openNonRouteSheetCount = 0,
+  /** Route and Modal sheets draw over the host: true on iOS, false on Android. */
+  sheetsDrawOverHost = false,
+  /** Open sheets drawn inside a route, which the host covers everywhere. */
+  openInlineSheetCount = 0,
 ): MiniPlayerPresentation {
   if (!snapshot.session) return "none"
   if (snapshot.dismissal === "exiting") return "exiting"
@@ -101,6 +225,14 @@ export function miniPlayerPresentation(
   // KTD16 rides the same branch as R11 by RESULT only: the window stops drawing
   // its chrome. The mechanisms differ, and U7/U9 own that difference.
   if (snapshot.pipHold) return "hidden"
-  if (isSuppressedBySheet(segments, openNonRouteSheetCount)) return "hidden"
+  if (openInlineSheetCount > 0) return "hidden"
+  // The owner (2026-09-30): a sheet that draws over the window, and dims it,
+  // leaves it in place. R11 hides it only where it would draw over the sheet.
+  if (
+    !sheetsDrawOverHost &&
+    isSuppressedBySheet(segments, openNonRouteSheetCount)
+  ) {
+    return "hidden"
+  }
   return "floating"
 }

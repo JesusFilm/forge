@@ -1,3 +1,7 @@
+import {
+  inSearchStage,
+  RetrievalModelMismatchError,
+} from "../contracts/index.js"
 /**
  * Retrieval context — query + policy → ranked, cited results. The core library
  * with no transport: embed the query, fan out candidates from the
@@ -156,7 +160,7 @@ async function assertModelMatch(deps: RetrieveDeps): Promise<boolean> {
   const models = await deps.search.embeddingModels()
   if (models.length === 0) return false // empty corpus — recheck after indexing
   if (!models.includes(deps.embedder.model)) {
-    throw new Error(
+    throw new RetrievalModelMismatchError(
       `retrieval model mismatch: query embedder is "${deps.embedder.model}" but the corpus ` +
         `was embedded with [${models.join(", ")}]. Queries and documents must use the same ` +
         `embedding model or retrieval returns silent garbage — set EMBED_MODEL_ID to match ` +
@@ -200,15 +204,19 @@ export function createRetriever(deps: RetrieveDeps): Retriever {
       policy: RetrievalPolicy = {},
     ): Promise<RankedResult[]> {
       if (policy.allowedSourceKeys?.length === 0) return []
-      await ensureModelMatch()
+      await inSearchStage("model_check", () => ensureModelMatch())
       const topK = policy.topK ?? DEFAULT_TOP_K
       const minScore = policy.minScore ?? DEFAULT_MIN_SCORE
 
-      const queryVec = await deps.embedder.embedQuery(query)
-      const candidates = await deps.search.vectorSearch(
-        queryVec,
-        policyToFilter(policy, deps.embedder.model),
-        candidateTopK(topK),
+      const queryVec = await inSearchStage("embedding", () =>
+        deps.embedder.embedQuery(query),
+      )
+      const candidates = await inSearchStage("vector_search", () =>
+        deps.search.vectorSearch(
+          queryVec,
+          policyToFilter(policy, deps.embedder.model),
+          candidateTopK(topK),
+        ),
       )
 
       const aboveCutoff = candidates.filter((r) => r.score >= minScore)
@@ -223,8 +231,8 @@ export function createRetriever(deps: RetrieveDeps): Retriever {
       // the final topK, only on request). `text` stays the matched chunk (the
       // ranking evidence); `document` carries the whole body to answer from.
       if (!policy.includeDocument) return results
-      const docTexts = await deps.search.fetchDocumentTexts(
-        winners.map((r) => r.documentId),
+      const docTexts = await inSearchStage("document_fetch", () =>
+        deps.search.fetchDocumentTexts(winners.map((r) => r.documentId)),
       )
       return results.map((result, i) => {
         const document = docTexts.get(winners[i].documentId)

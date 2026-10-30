@@ -1,6 +1,7 @@
 export {
   adminWatchSearchOperation,
   adminWatchSearchQuery,
+  adminWatchSearchLegacyQuery,
   adminWatchSearchSuggestionsOperation,
   adminWatchSearchSuggestionsQuery,
 } from "./watch-search"
@@ -17,10 +18,24 @@ export {
   adminRecordSemanticRecommendationPlaybackOperation,
   adminRecordRecommendationContentActionMutation,
   adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureMutation,
+  adminRecordWatchSurfaceExposureOperation,
+  adminIssueWatchSurfaceDeliveryMutation,
+  adminIssueWatchSurfaceDeliveryOperation,
   adminSelectSemanticRecommendationMutation,
   adminSelectSemanticRecommendationOperation,
+  adminSelectPrivatePrecomputedRecommendationMutation,
+  adminSelectPrivatePrecomputedRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
   adminSemanticRecommendationDeliveryQuery,
+  adminPrivateSemanticRecommendationFallbackOperation,
+  adminPrivateSemanticRecommendationFallbackQuery,
+  adminPrecomputedWatchPreviewDeliveryOperation,
+  adminPrecomputedWatchPreviewDeliveryQuery,
+  adminPrivatePrecomputedWatchVisitDeliveryOperation,
+  adminPrivatePrecomputedWatchVisitDeliveryQuery,
+  adminPrecomputedWatchPublicVisitDeliveryOperation,
+  adminPrecomputedWatchPublicVisitDeliveryQuery,
   adminTransitionRecommendationProfileMutation,
   adminTransitionRecommendationProfileOperation,
 } from "./recommendations"
@@ -33,3 +48,10 @@ export {
   adminUpdateRecommendationViewerMutation,
   adminUpdateRecommendationViewerOperation,
 } from "./user-recommendations"
+
+export {
+  adminRegisterPushDeviceMutation,
+  adminRegisterPushDeviceOperation,
+  adminReportPushOpenMutation,
+  adminReportPushOpenOperation,
+} from "./push"

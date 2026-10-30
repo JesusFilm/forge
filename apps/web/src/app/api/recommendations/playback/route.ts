@@ -138,7 +138,10 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
       kind: z.literal("playback_observation"),
       payload: z
         .object({
-          version: z.literal("playback-observations-v1"),
+          version: z.enum([
+            "playback-observations-v1",
+            "playback-observations-v2",
+          ]),
           elapsedMilliseconds: wallElapsedMilliseconds,
           visibility: z.enum(["visible", "hidden", "unknown"]),
           playerState: z.enum(["playing", "paused", "buffering", "unknown"]),
@@ -147,8 +150,19 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
           seekCount: z.number().int().min(0).max(65535),
           navigationCount: z.number().int().min(0).max(65535),
           qoeCount: z.number().int().min(0).max(65535),
+          deviceClass: z.enum(["mobile", "desktop", "unknown"]).optional(),
+          networkClass: z
+            .enum(["slow-2g", "2g", "3g", "4g", "unknown"])
+            .optional(),
         })
-        .strict(),
+        .strict()
+        .superRefine((value, context) => {
+          if (
+            value.version === "playback-observations-v2" &&
+            (value.deviceClass == null || value.networkClass == null)
+          )
+            context.addIssue({ code: "custom", message: "V2 context missing" })
+        }),
     })
     .strict(),
   z
@@ -164,11 +178,23 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
             "visible",
             "bfcache_suspend",
             "bfcache_resume",
+            "manual_skip",
+            "autoplay_transition",
           ]),
-          cause: z.literal("unknown"),
+          cause: z.enum(["unknown", "user", "scroll", "system"]),
           positionSeconds,
         })
-        .strict(),
+        .strict()
+        .superRefine((value, context) => {
+          if (
+            (value.action === "manual_skip" && value.cause !== "user") ||
+            (value.action === "autoplay_transition" && value.cause !== "system")
+          )
+            context.addIssue({
+              code: "custom",
+              message: "Navigation cause invalid",
+            })
+        }),
     })
     .strict(),
   z
@@ -177,11 +203,25 @@ const PlaybackEvent = z.discriminatedUnion("kind", [
       kind: z.literal("playback_qoe"),
       payload: z
         .object({
-          action: z.enum(["waiting", "stalled", "buffering_end"]),
+          action: z.enum([
+            "waiting",
+            "stalled",
+            "buffering_end",
+            "startup_timeout",
+            "media_error",
+          ]),
           cause: z.literal("unknown"),
           positionSeconds,
+          severity: z.enum(["recoverable", "fatal", "unknown"]).optional(),
         })
-        .strict(),
+        .strict()
+        .superRefine((value, context) => {
+          if ((value.action === "media_error") !== (value.severity != null))
+            context.addIssue({
+              code: "custom",
+              message: "QoE severity invalid",
+            })
+        }),
     })
     .strict(),
   z

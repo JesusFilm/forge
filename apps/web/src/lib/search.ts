@@ -85,6 +85,9 @@ export type SearchError = {
 }
 
 export type SearchResponse = {
+  surfaceManifest?:
+    | import("./watch-surface-manifest").SignedWatchSurfaceManifest
+    | null
   results: SearchResult[]
   hasMore: boolean
   query: string

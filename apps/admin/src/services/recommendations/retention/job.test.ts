@@ -5,6 +5,7 @@ const runtimeRunGet = vi.hoisted(() => vi.fn())
 const purgeExpiredRecommendationRequests = vi.hoisted(() => vi.fn())
 const workflowRun = vi.hoisted(() => ({
   findFirst: vi.fn(),
+  findUnique: vi.fn(),
   update: vi.fn(),
   updateMany: vi.fn(),
 }))
@@ -44,14 +45,19 @@ vi.mock("@/services/recommendations/retention.service", async (original) => {
 })
 
 import {
+  dispatchManualRecommendationRetention,
   ensureRecommendationRetentionSchedulerStarted,
   markRecommendationRetentionSchedulerRuntimeStarted,
+  nextRecommendationRetentionCatchUpRunAt,
+  recommendationRetentionNeedsContinuation,
   recordRecommendationRetentionSchedulerHeartbeat,
   runRecommendationRetentionFromScheduler,
   runRecommendationRetentionJob,
+  runManualRecommendationRetentionOnce,
 } from "./job"
 import { RecommendationInternalStateError } from "../errors"
 import { runRecommendationRetentionScheduler } from "@/workflows/recommendationRetention"
+import { runRecommendationRetention } from "@/workflows/recommendationRetention"
 
 const purgeResult = {
   status: "succeeded" as const,
@@ -60,11 +66,13 @@ const purgeResult = {
   rowCounts: { requests: 2 },
   oldestExpiredAtAfter: null,
   overdueAfterRun: false,
+  batchLimitReached: false,
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   workflowRun.findFirst.mockResolvedValue(null)
+  workflowRun.findUnique.mockResolvedValue(null)
   workflowRun.update.mockResolvedValue({})
   workflowRun.updateMany.mockResolvedValue({ count: 1 })
   transaction.$queryRaw.mockResolvedValue([{ locked: true }])
@@ -79,6 +87,157 @@ beforeEach(() => {
 })
 
 describe("recommendation retention job", () => {
+  it("keeps a full successful manual batch marked for continuation", async () => {
+    const fullBatch = { ...purgeResult, batchLimitReached: true }
+    expect(recommendationRetentionNeedsContinuation(fullBatch)).toBe(true)
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce(fullBatch)
+
+    await runRecommendationRetentionJob({ ledgerRunId: "ledger-1" })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        details: expect.objectContaining({ continuationRequired: true }),
+      }),
+    })
+  })
+
+  it("requires review after a skipped or yielded operator pass", () => {
+    expect(
+      recommendationRetentionNeedsContinuation({
+        ...purgeResult,
+        status: "skipped",
+      }),
+    ).toBe(true)
+    expect(
+      recommendationRetentionNeedsContinuation({
+        ...purgeResult,
+        status: "yielded",
+        continuationRequired: true,
+      }),
+    ).toBe(true)
+  })
+
+  it("runs exactly one deployed operator pass with a manual ledger", async () => {
+    await expect(runManualRecommendationRetentionOnce()).resolves.toEqual({
+      ledgerRunId: "ledger-1",
+      result: purgeResult,
+    })
+    expect(workflowLog.createWorkflowRunLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: "manual",
+        details: { retention: "expired-records-only", batchesRequested: 1 },
+      }),
+    )
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledOnce()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "stored-expiry-only",
+      "manual-cli",
+    )
+    expect(start).not.toHaveBeenCalled()
+  })
+
+  it("identifies the scheduled entry point independently of retention mode", async () => {
+    await runRecommendationRetentionFromScheduler()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "scheduled",
+      "scheduled-job",
+    )
+  })
+
+  it("keeps the scheduled job on ordinary retention", async () => {
+    await runRecommendationRetentionJob()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "scheduled",
+      "worker-job",
+    )
+  })
+
+  it("dispatches one manual pass with a distinct durable trigger", async () => {
+    workflowLog.createWorkflowRunLog.mockResolvedValueOnce({
+      id: "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+    })
+    await expect(
+      dispatchManualRecommendationRetention(
+        "operator-1",
+        "123e4567-e89b-42d3-a456-426614174000",
+      ),
+    ).resolves.toEqual({
+      ledgerRunId: "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+      runtimeRunId: "runtime-1",
+      state: "queued",
+    })
+    expect(workflowLog.createWorkflowRunLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+        trigger: "manual",
+        actorId: "operator-1",
+        details: { retention: "expired-records-only", batchesRequested: 1 },
+      }),
+    )
+    expect(start).toHaveBeenCalledWith(runRecommendationRetention, [
+      {
+        ledgerRunId: "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+      },
+    ])
+    expect(workflowLog.attachWorkflowRuntimeRunId).toHaveBeenCalledWith(
+      "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+      "runtime-1",
+    )
+  })
+
+  it("reserves an uncertain manual dispatch without replaying it", async () => {
+    start.mockRejectedValueOnce(new Error("runtime unavailable"))
+    // A runtime may already have completed before its start response is lost.
+    // The compare-and-update must leave that terminal receipt untouched.
+    workflowRun.updateMany.mockResolvedValueOnce({ count: 0 })
+    await expect(
+      dispatchManualRecommendationRetention(
+        "operator-1",
+        "123e4567-e89b-42d3-a456-426614174000",
+      ),
+    ).resolves.toMatchObject({ state: "uncertain" })
+    expect(workflowRun.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "manual-retention-123e4567-e89b-42d3-a456-426614174000",
+          status: "QUEUED",
+        },
+      }),
+    )
+    expect(workflowRun.update).not.toHaveBeenCalled()
+    expect(workflowLog.markWorkflowRunFailed).not.toHaveBeenCalled()
+    expect(purgeExpiredRecommendationRequests).not.toHaveBeenCalled()
+    workflowLog.createWorkflowRunLog.mockRejectedValueOnce(new Error("unique"))
+    workflowRun.findUnique.mockResolvedValueOnce({
+      actorId: "operator-1",
+      runtimeRunId: null,
+    })
+    await expect(
+      dispatchManualRecommendationRetention(
+        "operator-1",
+        "123e4567-e89b-42d3-a456-426614174000",
+      ),
+    ).resolves.toMatchObject({ state: "uncertain" })
+    expect(start).toHaveBeenCalledOnce()
+  })
+
+  it("schedules a bounded continuation one minute later", () => {
+    expect(
+      nextRecommendationRetentionCatchUpRunAt(
+        new Date("2026-10-06T10:30:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-06T10:31:00.000Z")
+  })
+
   it("runs the purge and records the purge ledger lifecycle", async () => {
     await expect(
       runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
@@ -90,6 +249,62 @@ describe("recommendation retention job", () => {
       data: expect.objectContaining({
         status: "SUCCEEDED",
         summary: "Purged 2 recommendation request root(s).",
+      }),
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        details: expect.objectContaining({
+          batchLimitReached: false,
+          purgeStatus: "succeeded",
+        }),
+      }),
+    })
+  })
+
+  it("records a skipped purge accurately for the scheduler to retry", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "skipped",
+      rootsDeleted: 0,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "skipped" })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        summary:
+          "Recommendation retention purge skipped because its lock was held.",
+        details: expect.objectContaining({ purgeStatus: "skipped" }),
+      }),
+    })
+  })
+
+  it("records a budget yield with unknown backlog and a continuation signal", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "yielded",
+      oldestExpiredAtAfter: null,
+      overdueAfterRun: null,
+      continuationRequired: true,
+      batchLimitReached: true,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "yielded", continuationRequired: true })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        status: "SUCCEEDED",
+        summary: expect.stringContaining("yielded after purging 2"),
+        details: expect.objectContaining({
+          purgeStatus: "yielded",
+          overdueAfterRun: null,
+          continuationRequired: true,
+        }),
       }),
     })
   })

@@ -37,8 +37,10 @@ import {
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { isAutoplayBlockedError } from "@/lib/autoplay-refusal"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { getViewerId } from "@/lib/viewer-id"
 import {
   ensureWatchProgressAuth,
@@ -73,6 +75,7 @@ import {
 } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { MUX_HERO_POSTER_MAX_WIDTH, resolveMuxHeroPosterUrl } from "@/lib/url"
+import { withBandwidthTestStart } from "@/lib/hls-start-level"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -226,7 +229,9 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
-const HERO_HLS_CONFIG = {
+// Measure bandwidth before picking the first rendition, so slow connections
+// start low instead of on Mux's first-listed 720p rung. See hls-start-level.ts.
+const HERO_HLS_CONFIG = withBandwidthTestStart({
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
@@ -234,7 +239,7 @@ const HERO_HLS_CONFIG = {
   // subtitle selection through the injected track below, so keep HLS.js from
   // creating/auto-selecting Mux's generated caption tracks.
   enableWebVTT: false,
-}
+})
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
@@ -319,15 +324,6 @@ function shouldUseFastMobilePreview(windowRef: Window): boolean {
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
 
-// `<MuxVideo>` (bare `<video>`) emits a generic error and the autoplay refusal
-// surfaces as a Promise rejection from `play()` with
-// `DOMException("NotAllowedError")`.
-function isAutoplayBlockedError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false
-  const named = err as { name?: unknown }
-  return named.name === "NotAllowedError" || named.name === "AutoplayNotAllowed"
-}
-
 // Minimum number of playable language variants before the language-switch
 // audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
@@ -338,6 +334,7 @@ export function HeroPlayer({
   onPlayerActivated,
   onPlayerViewabilityChange,
   onLanguageClick,
+  onCancelLanguageOpen,
   onShareClick,
   languageSlug,
   playableLanguageCount,
@@ -355,6 +352,7 @@ export function HeroPlayer({
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
   onPlayerViewabilityChange?: (visible: boolean) => void
   onLanguageClick?: () => void
+  onCancelLanguageOpen?: () => void
   onShareClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
@@ -388,7 +386,14 @@ export function HeroPlayer({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<MuxPlayerRef | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
-  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null)
+  const recordModalPause = useCallback(() => {
+    dispatchPlaybackNavigationIntent({
+      mediaId: video.documentId,
+      action: "pause_intent",
+      cause: "system",
+    })
+  }, [video.documentId])
+  usePauseForWatchModal(player, playbackId ?? hlsSrc ?? null, recordModalPause)
   const [nextPlaybackState, setNextPlaybackState] = useState({
     currentTime: 0,
     duration: 0,
@@ -599,11 +604,19 @@ export function HeroPlayer({
     return watchEpisodePath(parentSlug, slug, lang, { autoplay: true })
   }, [block.nextWatchItem, languageSlug])
 
-  const navigateToNextWatchItem = useCallback(() => {
-    if (nextWatchHref == null || nextNavigationStartedRef.current) return
-    nextNavigationStartedRef.current = true
-    router.push(nextWatchHref)
-  }, [nextWatchHref, router])
+  const navigateToNextWatchItem = useCallback(
+    (automatic = false) => {
+      if (nextWatchHref == null || nextNavigationStartedRef.current) return
+      nextNavigationStartedRef.current = true
+      if (!automatic)
+        dispatchPlaybackNavigationIntent({
+          mediaId: video.documentId,
+          action: "manual_skip",
+        })
+      router.push(nextWatchHref)
+    },
+    [nextWatchHref, router, video.documentId],
+  )
 
   useEffect(() => {
     nextNavigationStartedRef.current = false
@@ -713,7 +726,7 @@ export function HeroPlayer({
         watchNextModeRef.current?.videoId === video.documentId &&
         watchNextModeRef.current.mode === "armed"
       ) {
-        navigateToNextWatchItem()
+        navigateToNextWatchItem(true)
       }
     }
     const handleSeeking = () => {
@@ -1070,6 +1083,11 @@ export function HeroPlayer({
         // flag, so the next scroll-back doesn't override their intent.
         if (player.paused) return
         pausedByScrollRef.current = true
+        dispatchPlaybackNavigationIntent({
+          mediaId: video.documentId,
+          action: "pause_intent",
+          cause: "scroll",
+        })
         player.pause()
         return
       }
@@ -1104,7 +1122,13 @@ export function HeroPlayer({
       if (rafHandle !== 0) cancelAnimationFrame(rafHandle)
       onPlayerViewabilityChange?.(false)
     }
-  }, [chromeRevealed, heroHeight, player, onPlayerViewabilityChange])
+  }, [
+    chromeRevealed,
+    heroHeight,
+    player,
+    onPlayerViewabilityChange,
+    video.documentId,
+  ])
 
   const viewerUserId = useSyncExternalStore(
     subscribeClientSnapshot,
@@ -1466,13 +1490,18 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
-  const variantLanguageCode = languageCodeFor({
+  const explicitLanguageCode = languageBadgeCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageBadgeCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
     slug: variant.language?.slug,
   })
   const languageCode = explicitLanguageCode ?? variantLanguageCode
+  const languageName = explicitLanguageCode
+    ? variant.language?.slug === languageSlug
+      ? (variant.language?.name ?? explicitLanguageCode)
+      : explicitLanguageCode
+    : variant.language?.name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current
@@ -1577,7 +1606,10 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            cancelPendingOpen: onCancelLanguageOpen,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            languageName:
+              showTopLanguageSwitch && languageCode ? languageName : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -1586,7 +1618,9 @@ export function HeroPlayer({
   }, [
     headerLanguageSwitcherOwnerToken,
     languageCode,
+    languageName,
     onLanguageClick,
+    onCancelLanguageOpen,
     showTopLanguageSwitch,
   ])
 
@@ -1601,6 +1635,7 @@ export function HeroPlayer({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -1845,6 +1880,7 @@ export function HeroPlayer({
 
         {chromeRevealed ? (
           <HeroPlayerControls
+            mediaId={video.documentId}
             player={player}
             playerRef={playerRef}
             wrapperRef={wrapperRef}
@@ -1853,6 +1889,7 @@ export function HeroPlayer({
             playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
+            languageName={languageName}
             subtitleLanguageCode={subtitleLanguageCode}
             subtitleEnabled={Boolean(subtitleVttSrc)}
             // In-chrome audio control intentionally stays visible in fullscreen
@@ -1877,7 +1914,7 @@ export function HeroPlayer({
             data-manual={watchNextManual ? "true" : "false"}
             data-auto-armed={watchNextAutoArmed ? "true" : "false"}
             aria-label={t("nextEpisode")}
-            onClick={navigateToNextWatchItem}
+            onClick={() => navigateToNextWatchItem()}
             className={`animate-overlay-fade-in absolute bottom-24 z-30 isolate flex min-w-40 cursor-pointer items-center gap-3 overflow-hidden rounded-full px-5 py-3 text-left shadow-2xl shadow-black/40 ring-1 backdrop-blur-md transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white md:bottom-28 ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${
               watchNextManual
                 ? "bg-white text-black ring-white hover:bg-white"

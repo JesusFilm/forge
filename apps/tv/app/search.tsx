@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BackHandler, Platform, StyleSheet, Text, View } from "react-native"
+import {
+  BackHandler,
+  Platform,
+  StyleSheet,
+  Text,
+  TVEventControl,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import {
@@ -15,13 +22,21 @@ import {
   toNativeSearchResults,
 } from "../src/components/search/nativeSearchResults"
 import { searchResultPath } from "../src/components/search/searchResultPath"
+import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
 import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
+import {
+  nativeSearchSuggestions,
+  nativeSearchActions,
+  findNativeSearchAction,
+} from "../src/components/search/nativeSearchSuggestions"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
+import { navigateBackFromSearch } from "../src/components/search/searchBack"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
+import { FeedbackUtilityHeader } from "../src/components/feedback/FeedbackUtilityHeader"
 import {
   SEARCH_PAGE_GUTTER,
   SEARCH_THEME,
@@ -45,6 +60,7 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  * module; see docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.)
  */
 export default function SearchScreen() {
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const {
     state,
@@ -53,15 +69,19 @@ export default function SearchScreen() {
     searchRequestId,
     submit,
     runQuery,
-    retry,
   } = useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
   // Sanitize at the write site so downstream consumers never see raw input.
   // No-op for the on-screen keyboard today; defense-in-depth for future sources.
-  const setSanitizedQuery = useCallback((next: string) => {
-    setQuery(sanitizeQuery(next))
-  }, [])
+  const setSanitizedQuery = useCallback(
+    (next: string | ((current: string) => string)) => {
+      setQuery((current) =>
+        sanitizeQuery(typeof next === "function" ? next(current) : next),
+      )
+    },
+    [],
+  )
 
   // Record a successful non-empty search in recents once, on first 'ready' with
   // results. Keying on lastSubmittedQuery (not live `query`) matches what the user
@@ -128,6 +148,33 @@ export default function SearchScreen() {
     return () => subscription.remove()
   }, [])
 
+  useEffect(() => {
+    if (Platform.OS !== "ios") return
+
+    const handler = () => navigateBackFromSearch(router)
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handler,
+    )
+    let menuKeyEnabled = false
+    try {
+      TVEventControl.enableTVMenuKey()
+      menuKeyEnabled = true
+    } catch (error) {
+      console.error("[Search] enableTVMenuKey failed:", error)
+    }
+
+    return () => {
+      subscription.remove()
+      if (!menuKeyEnabled) return
+      try {
+        TVEventControl.disableTVMenuKey()
+      } catch (error) {
+        console.error("[Search] disableTVMenuKey failed:", error)
+      }
+    }
+  }, [router])
+
   // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
   // over stale `query` until the next render, so the lag would search the prior one.
@@ -173,7 +220,7 @@ export default function SearchScreen() {
     onRunQuery: runQueryImmediate,
     onClearHistory: clearAll,
     recents,
-    onRetry: retry,
+    onRetry: submit,
     onKeyFocus: handleEntryRegionFocus,
     onCardFocus: handleCardFocus,
     micOwnsInitialFocus: voice.available,
@@ -188,33 +235,24 @@ export default function SearchScreen() {
   // keyboard if the native module is unavailable.
   if (Platform.OS === "ios" && isNativeSearchAvailable()) {
     return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
-    )
-  }
-
-  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
-  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
-  // tvOS gives third-party apps no mic access; dictation writes exclusively
-  // into Apple's own text primitive, so the input+results presentation is
-  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
-  // telemetry → recents) stays this screen's. Falls back to the custom
-  // keyboard if the native module is unavailable.
-  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
-    return (
-      <SearchBodyNativeTvos
-        state={state}
-        results={results}
-        onChangeQuery={setSanitizedQuery}
-      />
+      <View style={styles.nativeScreen}>
+        <FeedbackUtilityHeader screen="search" />
+        <SearchBodyNativeTvos
+          state={state}
+          results={results}
+          query={query}
+          recents={recents}
+          onRunQuery={runQueryImmediate}
+          onSubmit={submit}
+          onChangeQuery={setSanitizedQuery}
+        />
+      </View>
     )
   }
 
   return (
     <View style={styles.screen}>
+      <FeedbackUtilityHeader screen="search" />
       <View style={styles.queryLine}>
         {voice.available ? (
           <VoiceSearchButton
@@ -251,18 +289,51 @@ export default function SearchScreen() {
 function SearchBodyNativeTvos({
   state,
   results,
+  query,
+  recents,
+  onRunQuery,
+  onSubmit,
   onChangeQuery,
 }: {
   state: SearchState
   results: SearchResult[]
-  onChangeQuery: (next: string) => void
+  query: string
+  recents: string[]
+  onRunQuery: (query: string) => void
+  onSubmit: () => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
 }) {
   const router = useRouter()
 
-  const nativeResults = useMemo(() => toNativeSearchResults(results), [results])
+  const showSuggestions = !meetsMinQueryLength(query)
+  // Scope opaque recent IDs to the displayed snapshot: a delayed native event
+  // must never resolve to a different query after history reorders.
+  const suggestionGeneration = useRef(0)
+  const suggestions = useMemo(
+    () => nativeSearchSuggestions(recents, ++suggestionGeneration.current),
+    [recents],
+  )
+  const nativeActions = useMemo(
+    () => nativeSearchActions(state, showSuggestions, suggestions),
+    [state, showSuggestions, suggestions],
+  )
+  const showActionCards = nativeActions.length > 0
+  const nativeResults = useMemo(
+    () =>
+      showActionCards
+        ? nativeActions.map(({ card }) => card)
+        : toNativeSearchResults(results),
+    [showActionCards, nativeActions, results],
+  )
+  // Only external actions write this prop. Echoing sanitized onSearch text back
+  // to the native field can disrupt typing/dictation and cause callback loops.
+  const [nativeQueryOverride, setNativeQueryOverride] = useState<
+    string | undefined
+  >()
 
   const handleSearch = useCallback(
     (event: SearchEvent) => {
+      setNativeQueryOverride(undefined)
       onChangeQuery(event.nativeEvent.query)
     },
     [onChangeQuery],
@@ -270,24 +341,64 @@ function SearchBodyNativeTvos({
 
   const handleSelectItem = useCallback(
     (event: SelectItemEvent) => {
+      if (showActionCards) {
+        const action = findNativeSearchAction(
+          nativeActions,
+          event.nativeEvent.id,
+        )
+        if (action?.kind === "retry") {
+          // Input can change while an error card is still visible during debounce.
+          // Submit the live field and cancel its pending debounce timer.
+          onSubmit()
+        } else if (action?.kind === "search") {
+          setNativeQueryOverride(action.query)
+          onRunQuery(action.query)
+        }
+        return
+      }
       const match = findResultById(results, event.nativeEvent.id)
-      if (match != null) router.push(searchResultPath(match))
+      if (match != null) {
+        rememberPlaybackEntry(match.slug, { source: "search" })
+        router.push(searchResultPath(match))
+      }
     },
-    [results, router],
+    [showActionCards, nativeActions, onSubmit, onRunQuery, results, router],
   )
+
+  const reclaimMenuKeyAfterNativeFocus = useCallback(() => {
+    try {
+      TVEventControl.enableTVMenuKey()
+    } catch (error) {
+      console.error("[Search] native focus Menu reclaim failed:", error)
+    }
+  }, [])
 
   return (
     <View style={styles.nativeScreen}>
       <TvosSearchView
         style={styles.nativeSearch}
         results={nativeResults}
+        searchText={nativeQueryOverride}
+        {...{ "dd-action-name": "search" }}
+        cardHeight={showActionCards ? 110 : 420}
         onSearch={handleSearch}
         onSelectItem={handleSelectItem}
+        onSearchFieldFocused={reclaimMenuKeyAfterNativeFocus}
         isLoading={state === "loading"}
         placeholder="Search"
         colorScheme="dark"
         accentColor={WATCH_THEME.accent}
-        showTitle
+        showTitle={!showActionCards}
+        showTitleOverlay={showActionCards}
+        // Cover the native artwork placeholder with an intentional action tile.
+        // These overlay styles are dormant on ordinary content-result cards.
+        overlayHeight={110}
+        overlayBackgroundColor={WATCH_THEME.focusInk}
+        overlayBackgroundColorFocused={WATCH_THEME.focusFill}
+        overlayTextColor={WATCH_THEME.text}
+        overlayTextColorFocused={WATCH_THEME.focusInk}
+        overlayTitleSize={24}
+        showSubtitle
         emptyStateText="Search films, series, and topics"
         searchingText="Searching…"
         noResultsText="No results found"
@@ -304,7 +415,7 @@ type SearchBodyProps = {
   searchRequestId: string
   meta: string
   hasQuery: boolean
-  onChangeQuery: (next: string) => void
+  onChangeQuery: (next: string | ((current: string) => string)) => void
   onSubmit: () => void
   onRunQuery: (next: string) => void
   onClearHistory: () => void
@@ -386,7 +497,6 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           tvOS focus engine then hops through a fallback. Keep it mounted. */}
       <View style={styles.keyboardPane}>
         <SearchKeyboard
-          value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
           onKeyFocus={props.onKeyFocus}

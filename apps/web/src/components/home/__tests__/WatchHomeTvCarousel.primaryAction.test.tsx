@@ -11,9 +11,9 @@
  * playback position does. The click assertions exist so that stability cannot
  * be bought by dropping resume behaviour.
  *
- * `prefetch={false}` is the second half. A stable href stops the per-second
- * storm but not `next/link`'s own viewport refresh cycle, which a production
- * build measured re-fetching this one destination 8 times in 48s. `prefetch`
+ * `prefetch={false}` is the second half. These tests pin the explicit opt-out;
+ * historical unequal-window counts do not identify a refresh mechanism or
+ * replace matched production-build network measurements. `prefetch`
  * never reaches the DOM through a real `next/link` (it is destructured out
  * before the spread), so it is observable only through the mock's
  * `data-prefetch` below — see
@@ -21,7 +21,7 @@
  */
 import { StrictMode, act } from "react"
 import { createRoot } from "react-dom/client"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import enMessages from "../../../../messages/en.json"
 
@@ -57,6 +57,7 @@ vi.mock("next/link", () => ({
 
 import { NextIntlClientProvider } from "next-intl"
 
+import { HOVER_CAPABLE_POINTER_QUERY } from "../useTouchGatedPrefetch"
 import { PrimaryAction } from "../WatchHomeTvCarousel"
 import type { WatchHomeTvCarouselSlide } from "../useWatchHomeTvCarousel"
 
@@ -131,6 +132,12 @@ beforeEach(() => {
   root = createRoot(container)
 })
 
+afterEach(() => {
+  act(() => root.unmount())
+  container.remove()
+  vi.unstubAllGlobals()
+})
+
 describe("Watch home hero CTA href", () => {
   it("does not move when the live playback position advances", () => {
     renderAt(21)
@@ -146,14 +153,42 @@ describe("Watch home hero CTA href", () => {
     expect(second).toBe(third)
   })
 
-  it("opts the hero CTA out of route prefetching", () => {
-    renderAt(21)
+  it.each(["touch", "mouse"] as const)(
+    "keeps hero prefetch disabled on %s through focus and pointer intent",
+    (pointer) => {
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn((query: string) => ({
+          matches: pointer === "mouse" && query === HOVER_CAPABLE_POINTER_QUERY,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        })),
+      )
+      renderAt(21)
+      const href = anchor().getAttribute("href")
+      expect(anchor().getAttribute("data-prefetch")).toBe("false")
 
-    // Three-valued on purpose: "false" is the explicit opt-out, "undefined"
-    // would be the default strategy with the prop dropped, and a null anchor
-    // would mean this is no longer a Link at all.
-    expect(anchor().getAttribute("data-prefetch")).toBe("false")
-  })
+      for (const pointerType of ["touch", "mouse"]) {
+        const event = new Event("pointermove", { bubbles: true })
+        Object.defineProperty(event, "pointerType", { value: pointerType })
+        act(() => anchor().dispatchEvent(event))
+        expect(anchor().getAttribute("data-prefetch")).toBe("false")
+      }
+      act(() => anchor().focus())
+      expect(document.activeElement).toBe(anchor())
+      expect(anchor().getAttribute("data-prefetch")).toBe("false")
+
+      renderAt(22)
+      expect(anchor().getAttribute("href")).toBe(href)
+      expect(anchor().getAttribute("data-prefetch")).toBe("false")
+      expect(clickAnchor().defaultPrevented).toBe(true)
+      expect(pushMock).toHaveBeenCalledTimes(1)
+      expect(pushMock).toHaveBeenLastCalledWith(
+        "/miraculous-catch-of-fish.html?t=22&autoplay=1",
+      )
+    },
+  )
 
   it("renders the autoplay signal without a playback position", () => {
     renderAt(21)

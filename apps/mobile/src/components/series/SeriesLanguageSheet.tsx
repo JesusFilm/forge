@@ -1,6 +1,8 @@
 import { useCallback } from "react"
 
+import { useT } from "../../i18n/useT"
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { SheetTitleRow } from "../sheets/SheetTitleRow"
 import type { WatchChildLanguage } from "../../lib/normalizeVideo"
 
 // Series language rows over childDubLanguages. Identity is the unique `slug`, not
@@ -10,6 +12,9 @@ function displayName(lang: WatchChildLanguage): string {
   return lang.name ?? lang.slug
 }
 
+// A slug stand-in has no known language.
+const displayLang = (lang: WatchChildLanguage) =>
+  lang.name != null ? lang.nameLang : null
 const getSlug = (lang: WatchChildLanguage) => lang.slug
 const getSearchValues = (lang: WatchChildLanguage) => [displayName(lang)]
 
@@ -18,6 +23,7 @@ export type SeriesLanguageSheetProps = {
   activeLanguageSlug: string
   onLanguageChange: (slug: string) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SeriesLanguageSheet({
@@ -25,7 +31,9 @@ export function SeriesLanguageSheet({
   activeLanguageSlug,
   onLanguageChange,
   onClose,
+  testID,
 }: SeriesLanguageSheetProps) {
+  const t = useT("Series")
   const handleSelect = useCallback(
     (lang: WatchChildLanguage) => {
       // Exact slug match — never bcp47.
@@ -35,18 +43,24 @@ export function SeriesLanguageSheet({
     [onLanguageChange, onClose],
   )
 
+  const title = <SheetTitleRow title={t("languagesTitle")} />
+
   return (
     <SearchableListSheet
+      testID={testID}
       rows={languages}
       activeId={activeLanguageSlug}
       getSelectionId={getSlug}
       getKey={getSlug}
       getPrimaryLabel={displayName}
+      getPrimaryLang={displayLang}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
-      searchPlaceholder="Search languages..."
-      searchAccessibilityLabel="Search languages"
-      emptySearchMessage="No languages found"
+      searchPlaceholder={t("searchLanguagesPlaceholder")}
+      searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
+      emptySearchMessage={t("noLanguagesFound")}
+      headerTop={title}
+      actionName="series-language-sheet"
     />
   )
 }

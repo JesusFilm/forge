@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "kind": "step",
+      "target": "sign-in",
+      "platforms": ["ios", "android"],
+      "reason": "Production leaves sign-in off, and a sign-in writes to production auth."
+    },
+    {
+      "kind": "screen",
+      "target": "account",
+      "platforms": ["ios", "android"],
+      "reason": "Only a signed-in viewer can open the Account screen, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "my-watch-signed-in",
+      "platforms": ["ios", "android"],
+      "reason": "Signed-in My Watch needs a sign-in, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "for-you-shelf",
+      "platforms": ["ios", "android"],
+      "reason": "Recommendations are off in the test build, because they cannot work without writes."
+    },
+    {
+      "kind": "step",
+      "target": "home-hero-insert-link",
+      "platforms": ["ios", "android"],
+      "reason": "An inserted hero slide has a button that opens a jesusfilm.org page in the browser, and that page sends production web analytics. The journey swipes past it and never taps it (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "home-mission-beta-signup",
+      "platforms": ["ios", "android"],
+      "reason": "The \"Become a beta tester\" card in the Home mission rail opens the beta signup page in the browser. The journey asserts that the card shows and never taps it (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "mission-beta-signup",
+      "platforms": ["ios", "android"],
+      "reason": "The \"Become a beta tester\" button on the Mission screen opens the beta signup page in the browser. The journey asserts that the button shows and never taps it (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "mission-beta-hold-alert",
+      "platforms": ["ios", "android"],
+      "reason": "A 5-second hold on \"Become a beta tester\" shows the push test ID alert. A hold that ends early opens the beta signup page in the browser, so no journey holds the button."
+    },
+    {
+      "kind": "step",
+      "target": "player-cast",
+      "platforms": ["ios", "android"],
+      "reason": "Simulators and emulators have no cast receiver, so the cast dialog finds no device. The dialog's help links open web pages, so no journey opens it."
+    },
+    {
+      "kind": "step",
+      "target": "player-airplay",
+      "platforms": ["ios"],
+      "reason": "The AirPlay picker is a system view, and the simulator has no AirPlay receiver."
+    },
+    {
+      "kind": "step",
+      "target": "picture-in-picture",
+      "platforms": ["ios", "android"],
+      "reason": "The picture-in-picture window is a system window outside the app, and a journey cannot assert it. An iPhone simulator also reports picture-in-picture as not supported."
+    },
+    {
+      "kind": "step",
+      "target": "player-fullscreen",
+      "platforms": ["ios"],
+      "reason": "On iOS, Maestro 2.11.0 does not read the controls on the right half of a landscape screen, so a journey cannot leave fullscreen. The play-video journey checks fullscreen on Android."
+    },
+    {
+      "kind": "step",
+      "target": "watch-resume-at-offer",
+      "platforms": ["ios", "android"],
+      "reason": "The \"Resume at\" offer shows only when Explore's \"Keep watching\" opens a video that has a later saved place. Only a signed-in viewer has a saved place (R10), and the test settings hide Explore."
+    },
+    {
+      "kind": "step",
+      "target": "share-target",
+      "platforms": ["ios", "android"],
+      "reason": "The share-video journey opens the system share sheet and cancels it. A share to a target sends the video link out of the device."
+    },
+    {
+      "kind": "screen",
+      "target": "sdui-quiz",
+      "platforms": ["ios", "android"],
+      "reason": "The quiz sheet is a web view of a third-party production page (your.nextstep.is). The page records visit and answer events on load, so the experience-deep-link journey asserts the \"Open faith quiz\" button and never opens it (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "experience-partner-links",
+      "platforms": ["ios", "android"],
+      "reason": "The Easter Explained video page has partner links (\"Ask yours\" in the related questions and \"Join Our Bible Study\" on the last Bible quote card) that open partner web pages in the browser. The experience-deep-link journey asserts that they show and never taps them (KTD12). iOS reads the quotes carousel as one element, so only Android asserts the Bible study link."
+    },
+    {
+      "kind": "step",
+      "target": "search-experience-result",
+      "platforms": ["ios", "android"],
+      "reason": "Admin's watchSearch returns only video results: WatchSearchService.search in apps/admin/src/services/watch-search.service.ts calls only searchVideos. So no search result can open an Experience. The search-series-result journey opens a series result, and experience-deep-link covers the Experience page."
+    },
+    {
+      "kind": "step",
+      "target": "series-download-start",
+      "platforms": ["ios", "android"],
+      "reason": "The series-download journey opens the series download sheet and closes it without a download, because a series download fetches every episode. The watch-download journey proves that a download starts and finishes."
+    },
+    {
+      "kind": "step",
+      "target": "explore-2x-hold",
+      "platforms": ["ios", "android"],
+      "reason": "Maestro cannot run an assertion while a press is held, and the 2x cue is hidden from the accessibility tree. The explore-feed journey holds a side and checks only that the clip still shows after the hold."
+    },
+    {
+      "kind": "step",
+      "target": "more-links",
+      "platforms": ["ios", "android"],
+      "reason": "The More rows Contact Jesus Film Project, About Jesus Film, Newsletter, Give, Privacy Policy, Terms of Use, and Legal Statement open jesusfilm.org pages in the browser, and those pages send production web analytics. The more-and-feedback journey asserts that they show and never taps them (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "more-social-links",
+      "platforms": ["ios", "android"],
+      "reason": "The X, Facebook, Instagram, and YouTube buttons on the More screen open social web pages in the browser. The more-and-feedback journey asserts that they show and never taps them (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "bible-verse-share-target",
+      "platforms": ["ios", "android"],
+      "reason": "The bible-verse-select journey opens the system share sheet and cancels it. A share to a target sends the verse text out of the device."
+    },
+    {
+      "kind": "step",
+      "target": "raw-export-save",
+      "platforms": ["ios", "android"],
+      "reason": "The downloads-library journeys open the export folder picker and cancel it, so no export starts. A save copies the whole video file into a device folder outside the app, which the runner's app reset does not clear."
+    },
+    {
+      "kind": "step",
+      "target": "bible-translation-download-start",
+      "platforms": ["ios", "android"],
+      "reason": "The bible-translation-download journey opens the download prompt and cancels it. A download fetches the whole translation from bible.helloao.org, and the runner clears the app data before each journey, so each run would fetch it again."
+    },
+    {
+      "kind": "step",
+      "target": "home-tab-retap-scroll-to-top",
+      "platforms": ["ios", "android"],
+      "reason": "The plan's tabs-navigation step expects a second Home tap to scroll Home to the top, but the app has no such behavior: no tab screen handles a second tap, and on the iPhone SE simulator (2026-10-23) Home stayed scrolled. The journey taps Home again and checks only that Home still shows."
+    }
+  ]
+}

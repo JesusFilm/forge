@@ -39,6 +39,10 @@ create, and modify database objects and corpus rows, so a command selecting the
 - `DATABASE_URL`
 - `ALTER DEFAULT PRIVILEGES`
 
+Legacy variable names in this completed ticket describe its implementation-time
+contract. The [current environment runbook](../../../apps/rag/docs/ops/environment-and-secrets.md)
+supersedes them under feat-532.
+
 ## What To Build
 
 - Add an explicit operator command that provisions a PostgreSQL `NOLOGIN`

@@ -28,6 +28,9 @@ export type PlaybackTransport = {
   isPlaying: () => boolean
   pause: () => void
   play: () => void
+  /** KTD12: moves the playhead. Optional, so a registration without it stays
+   *  valid; `seekPlayback` then reports false. */
+  seek?: (seconds: number) => void
 }
 
 export type PlaybackInterruption = {
@@ -82,6 +85,22 @@ export function beginPlaybackInterruption(): PlaybackInterruption {
         // Released while away. The viewer still has the play control.
       }
     },
+  }
+}
+
+/**
+ * Moves the one player to `seconds` (the R17 offer's choice). The host owns
+ * the player, so a route-tree surface seeks through this. Returns false when
+ * no host can take the seek, so the caller knows the playhead did not move.
+ */
+export function seekPlayback(seconds: number): boolean {
+  const seek = transport?.seek
+  if (seek == null || !Number.isFinite(seconds)) return false
+  try {
+    seek(Math.max(0, seconds))
+    return true
+  } catch {
+    return false // Native player already released.
   }
 }
 

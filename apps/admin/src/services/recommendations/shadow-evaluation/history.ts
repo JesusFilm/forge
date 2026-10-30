@@ -14,7 +14,12 @@ export type ShadowHistory = Readonly<{
 /** Offline reconstruction, never a claim that history was captured at serving. */
 export async function reconstructShadowHistory(
   prisma: PrismaClient,
-  request: { sessionDigest: string; createdAt: Date; expiresAt: Date },
+  request: {
+    sessionDigest: string
+    locale: string
+    createdAt: Date
+    expiresAt: Date
+  },
   now: Date,
 ): Promise<ShadowHistory> {
   const unavailable: ShadowHistory = { status: "unavailable", recentVideos: [] }
@@ -39,6 +44,7 @@ export async function reconstructShadowHistory(
           sessionDigest: request.sessionDigest,
           profileTokenDigest: null,
           allowDurableProfileLinks: false,
+          locale: request.locale,
           // Exclude this request and any subsequent receipt, even when evaluation
           // runs days later. Same-session scope needs no recovered bearer token.
           now: new Date(request.createdAt.getTime() - 1),

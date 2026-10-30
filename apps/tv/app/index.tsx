@@ -10,6 +10,8 @@ import {
 import {
   Platform,
   BackHandler,
+  TVEventControl,
+  useTVEventHandler,
   ScrollView,
   StyleSheet,
   View,
@@ -20,14 +22,29 @@ import {
 import { HomeBackdrop } from "../src/components/home/HomeBackdrop"
 import { HeroPager } from "../src/components/home/HeroPager"
 import { advanceByDelta } from "../src/components/home/heroPagerState"
+import {
+  heroPresentationKey,
+  clampHeroIndex,
+  shouldReturnHomeToTop,
+  claimHomeMenuKey,
+} from "../src/components/home/heroInteractionState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { ForYouRail, FOR_YOU_SECTION } from "../src/components/home/ForYouRail"
+import { recommendationsEnabled } from "../src/lib/recommendations/client"
+import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
+import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
+import { useVideoPlayerContext } from "../src/contexts/VideoPlayerContext"
 import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
-import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
+import { BrandedLoading } from "../src/components/BrandedLoading"
+import { useStartupIntroActive } from "../src/contexts/StartupIntroProvider"
 import { ScreenStateView } from "../src/components/ScreenStateView"
 import { AndroidLoadingDialog } from "../src/components/AndroidLoadingDialog"
-import { isRailActive } from "../src/components/home/homeRailWindow"
+import {
+  homeRailRenderCount,
+  isRailActive,
+} from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
   resolveBrowseState,
@@ -69,6 +86,10 @@ import {
   createFocusMemory,
   type FocusMemory,
 } from "../src/components/home/focusMemory"
+import {
+  createHomeFocusRestore,
+  isHomeRestoreCancellationInput,
+} from "../src/components/home/homeFocusRestore"
 import { datadogLog } from "../src/lib/datadog"
 import {
   createShowcaseFocusDebouncer,
@@ -87,6 +108,8 @@ import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import type { WatchHomeCard } from "../src/lib/watchHome/model"
+import { useTopShelfSync } from "../src/lib/topShelf/useTopShelfSync"
+import { syncGoogleTvHome } from "../src/lib/googleTvHomeSync"
 
 /**
  * Forge TV Home redesign: curated watch-home set (useWatchHome lean fetch, R8)
@@ -109,8 +132,48 @@ const IS_ANDROID = Platform.OS === "android"
 let autoStartConsumed = false
 
 export default function HomeScreen() {
+  const introActive = useStartupIntroActive()
   const router = useRouter()
-  const { model, loading, error, refetch } = useWatchHome()
+  const [isFocused, setIsFocused] = useState(true)
+  const { state: playerState } = useVideoPlayerContext()
+  const { audioLanguageSlug } = useWatchPreferences()
+  const [recommendationVisit, setRecommendationVisit] = useState(0)
+  const [homeRefreshRevision, setHomeRefreshRevision] = useState(0)
+  const homeHasFocused = useRef(false)
+  const appleTv = Platform.OS === "ios" && Platform.isTV
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true)
+      setRecommendationVisit((v) => v + 1)
+      if (appleTv && homeHasFocused.current)
+        setHomeRefreshRevision((value) => value + 1)
+      homeHasFocused.current = true
+      return () => setIsFocused(false)
+    }, [appleTv]),
+  )
+  const { model, loading, error, refetch, refreshing } = useWatchHome({
+    refreshOnForeground: appleTv && isFocused,
+    refreshKey: appleTv ? homeRefreshRevision : undefined,
+  })
+
+  const logicalFocus = useRef(createHomeFocusRestore()).current
+  const canRememberRailPosition = useCallback(
+    () => logicalFocus.isActive() && !logicalFocus.isPending(),
+    [logicalFocus],
+  )
+  const [shelvesReady, setShelvesReady] = useState(false)
+  const shelvesReadyRef = useRef(false)
+  const returnToChromeRef = useRef<() => void>(() => {})
+  const [restoreVisit, setRestoreVisit] = useState(0)
+  const restoreAttemptRef = useRef<() => void>(() => {})
+  const restoreFrame = useRef<number | null>(null)
+  const queueRestore = useCallback(() => {
+    if (restoreFrame.current != null) cancelAnimationFrame(restoreFrame.current)
+    restoreFrame.current = requestAnimationFrame(() => {
+      restoreFrame.current = null
+      restoreAttemptRef.current()
+    })
+  }, [])
 
   // Continue Watching shelf (feat-322): reloaded on every screen focus so
   // returning from playback shows the fresh resume position immediately.
@@ -118,17 +181,31 @@ export default function HomeScreen() {
     ContinueWatchingEntry[]
   >([])
   const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
+  useTopShelfSync(
+    model,
+    continueEntries,
+    usePathname() === "/" && !introActive && !refreshing && !error,
+  )
+  useEffect(() => {
+    if (model && isFocused && !introActive && !playerState.isVisible)
+      void syncGoogleTvHome(model, continueEntries)
+  }, [model, continueEntries, isFocused, introActive, playerState.isVisible])
   useFocusEffect(
     useCallback(() => {
       let cancelled = false
-      void loadContinueWatching().then((entries) => {
-        if (!cancelled) setContinueEntries(entries)
-      })
-      // Same focus pass: a video saved on the details screen must be on the
-      // rail by the time Back lands here.
-      void loadMyList().then((entries) => {
-        if (!cancelled) setMyListEntries(entries)
-      })
+      shelvesReadyRef.current = false
+      setShelvesReady(false)
+      // Commit both shelf results together before resolving the return row.
+      void Promise.allSettled([loadContinueWatching(), loadMyList()]).then(
+        ([continued, saved]) => {
+          if (cancelled) return
+          if (continued.status === "fulfilled")
+            setContinueEntries(continued.value)
+          if (saved.status === "fulfilled") setMyListEntries(saved.value)
+          shelvesReadyRef.current = true
+          setShelvesReady(true)
+        },
+      )
       return () => {
         cancelled = true
       }
@@ -147,7 +224,7 @@ export default function HomeScreen() {
   >([])
   const seedVideoId = recommendationSeed?.videoId ?? null
   useEffect(() => {
-    if (seedVideoId == null) {
+    if (recommendationsEnabled() || seedVideoId == null) {
       setRecommendationRows([])
       return
     }
@@ -180,7 +257,7 @@ export default function HomeScreen() {
     return [
       continueSection,
       myListSection,
-      recommendationsSection,
+      recommendationsEnabled() ? FOR_YOU_SECTION : recommendationsSection,
       ...model.sections,
     ].filter((section) => section != null)
   }, [
@@ -198,32 +275,54 @@ export default function HomeScreen() {
   if (focusMemoryRef.current == null) {
     focusMemoryRef.current = createFocusMemory()
   }
-  const captureFocusedNode = useCallback((node: ViewType | null) => {
-    focusMemoryRef.current?.capture(node)
-  }, [])
+  const captureFocusedNode = useCallback(
+    (node: ViewType | null, activation = false) => {
+      if (
+        node != null &&
+        (activation ? logicalFocus.activate(null) : logicalFocus.capture(null))
+      )
+        focusMemoryRef.current?.capture(node)
+    },
+    [logicalFocus],
+  )
 
-  // Restore only on a genuine re-entry, not first mount (the top bar Search
-  // tab's hasTVPreferredFocus owns initial focus) — a prior blur proves
-  // re-entry. rAF defers past the pop's commit so the target node is mounted
-  // before we focus it.
+  // First mount still belongs to Search. Re-entry freezes the logical card
+  // until shelf refresh + its current layout have committed.
   const hasBlurredRef = useRef(false)
   useFocusEffect(
     useCallback(() => {
-      let raf: number | null = null
-      if (hasBlurredRef.current) {
-        raf = requestAnimationFrame(() => {
-          // A false restore on genuine re-entry (hasBlurredRef) means the
-          // remembered node was lost — a real focus fault, not first-mount.
-          const restored = focusMemoryRef.current?.restore()
-          if (restored === false) datadogLog.warn("focus.restore_failed")
+      const restoringCard = logicalFocus.enter()
+      if (restoringCard) setRestoreVisit((visit) => visit + 1)
+      if (hasBlurredRef.current && !restoringCard) {
+        restoreFrame.current = requestAnimationFrame(() => {
+          restoreFrame.current = null
+          if (focusMemoryRef.current?.restore() === false)
+            datadogLog.warn("focus.restore_failed")
         })
       }
       return () => {
-        if (raf != null) cancelAnimationFrame(raf)
+        if (restoreFrame.current != null)
+          cancelAnimationFrame(restoreFrame.current)
+        restoreFrame.current = null
+        logicalFocus.blur()
         hasBlurredRef.current = true
       }
-    }, []),
+    }, [logicalFocus]),
   )
+
+  useTVEventHandler((event) => {
+    // A real remote action supersedes deferred restoration. No late shelf or
+    // layout event may pull focus back after the viewer starts navigating.
+    if (
+      logicalFocus.isPending() &&
+      isHomeRestoreCancellationInput(Platform.OS, event)
+    ) {
+      logicalFocus.cancel()
+      if (restoreFrame.current != null)
+        cancelAnimationFrame(restoreFrame.current)
+      restoreFrame.current = null
+    }
+  })
 
   // R13: an office TV that power-cycles recovers without a remote. Gated on `hydrated`
   // because the pre-hydration default reads as off, and on the ACTIVE path so a deep
@@ -232,6 +331,7 @@ export default function HomeScreen() {
     useShowcasePrefs()
   const activePath = usePathname()
   useEffect(() => {
+    if (introActive) return
     if (
       !shouldAutoStartShowcase({
         hydrated: showcasePrefsHydrated,
@@ -245,7 +345,13 @@ export default function HomeScreen() {
     autoStartConsumed = true
     // Stamped so RUM can separate an unattended recovery from a human start (AE3).
     router.push(`/showcase?${SHOWCASE_SOURCE_PARAM}=${SHOWCASE_AUTO_SOURCE}`)
-  }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
+  }, [
+    introActive,
+    showcasePrefsHydrated,
+    showcasePrefs.autoStart,
+    activePath,
+    router,
+  ])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the
   // current pick if its id survives. Only CARDS dispatch focus, so it retains
@@ -285,21 +391,36 @@ export default function HomeScreen() {
 
   const handleCardFocus = useCallback(
     (card: WatchHomeCard, node: ViewType | null) => {
-      captureFocusedNode(node)
+      focusMemoryRef.current?.capture(node)
       focusDebouncerRef.current?.focus(card)
     },
-    [captureFocusedNode],
+    [],
   )
 
   // ── Browse state + row-anchored scrolling ── Focused row → top|browse|deep
   // (homeScrollState.ts) drives deep scrim + top bar hide. Scroll is row-anchored
   // via each shelf's onLayout y, immediate (not debounced) to track traversal.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
-  // Image-windowing: the row that holds focus (hero / top bar = 0). Drives which
-  // rails load card images (isRailActive); cards always mount so focus is safe.
+  // The focused row drives Android rail mounting and nearby image loading.
   const [focusedRow, setFocusedRow] = useState(0)
+  const [mountedRailCount, setMountedRailCount] = useState(2)
+  const sectionCount = renderSections?.length ?? 0
+  const visibleRailCount = homeRailRenderCount(
+    Platform.OS,
+    mountedRailCount,
+    focusedRow,
+    sectionCount,
+  )
   const scrollRef = useRef<ScrollView | null>(null)
+  const scrollOffsetRef = useRef(0)
   const rowYsRef = useRef<number[]>([])
+  const sectionLayouts = useRef(
+    new Map<string, { rowIndex: number; y: number }>(),
+  )
+  const cardNodes = useRef(new Map<string, Map<string, ViewType>>())
+  const railPositions = useRef(
+    new Map<string, { cardId: string; offset: number }>(),
+  )
   // If a row is focused before onLayout measures its y (cold paint / refetch
   // remount), resolveRowScrollTarget returns null and (focus-scroll off) the card
   // strands off-screen. Stash the row; recordRowY fires the scroll on onLayout.
@@ -335,6 +456,7 @@ export default function HomeScreen() {
       if (IS_ANDROID) {
         if (lastFocusedRowRef.current === rowIndex) return
         lastFocusedRowRef.current = rowIndex
+        setMountedRailCount((count) => Math.max(count, rowIndex + 2))
       }
       focusedRowRef.current = rowIndex
       setBrowseState(resolveBrowseState(rowIndex))
@@ -359,17 +481,151 @@ export default function HomeScreen() {
         focusedRow: focusedRowRef.current,
       })
       rowYsRef.current[rowIndex] = y
+      if (logicalFocus.isPending()) return
       if (effect === "flush-pending") {
         if (scrollToRow(rowIndex)) pendingScrollRowRef.current = null
       } else if (effect === "reanchor") {
         scrollToRow(rowIndex)
       }
     },
-    [scrollToRow],
+    [scrollToRow, logicalFocus],
+  )
+
+  const failCardRestore = useCallback(() => {
+    if (!logicalFocus.isPending()) return
+    logicalFocus.cancel()
+    datadogLog.warn("focus.restore_failed")
+    returnToChromeRef.current()
+  }, [logicalFocus])
+
+  const restoreSections = useMemo(
+    () =>
+      (renderSections ?? []).map((section) => ({
+        id: section.id,
+        cards: section.id === FOR_YOU_SECTION.id ? null : section.cards,
+      })),
+    [renderSections],
+  )
+  const restoreTarget = shelvesReady
+    ? logicalFocus.resolve(restoreSections)
+    : null
+  const restoreKey = restoreTarget
+    ? `${restoreVisit}:${restoreTarget.sectionId}:${restoreTarget.cardId}`
+    : undefined
+  // Only a measured logical section may supply the current numeric row/y.
+  restoreAttemptRef.current = () => {
+    if (!shelvesReady || !shelvesReadyRef.current || !logicalFocus.isPending())
+      return
+    const target = logicalFocus.resolve(restoreSections)
+    if (!target) return
+    const layout = sectionLayouts.current.get(target.sectionId)
+    if (layout?.rowIndex !== target.rowIndex) return
+    rowYsRef.current[target.rowIndex] = layout.y
+    const scrollY = resolveRowScrollTarget({
+      rowIndex: target.rowIndex,
+      rowLayoutYs: rowYsRef.current,
+      anchorOffset: scale(ROW_ANCHOR_OFFSET),
+    })
+    // A newly inserted shelf can put the node outside Android's clipped
+    // viewport. Let the real scroll event confirm visibility before focusing.
+    if (scrollY != null && Math.abs(scrollOffsetRef.current - scrollY) > 1) {
+      scrollRef.current?.scrollTo({ y: scrollY, animated: false })
+      return
+    }
+    const node = cardNodes.current.get(target.sectionId)?.get(target.cardId) as
+      | (ViewType & { requestTVFocus?: () => void })
+      | undefined
+    if (!node) return
+    if (typeof node.requestTVFocus !== "function") {
+      failCardRestore()
+      return
+    }
+    lastFocusedRowRef.current = null
+    handleRowFocus(target.rowIndex)
+    node.requestTVFocus()
+  }
+  useEffect(() => {
+    if (!shelvesReady || !shelvesReadyRef.current || !logicalFocus.isPending())
+      return
+    logicalFocus.settle()
+    const target = logicalFocus.resolve(restoreSections)
+    if (!target) {
+      failCardRestore()
+      return
+    }
+    // Ensure an inserted shelf cannot push the selected rail out of Android's
+    // incrementally mounted window before its node/layout events arrive.
+    setMountedRailCount((count) => Math.max(count, target.rowIndex + 2))
+    setFocusedRow(target.rowIndex)
+    queueRestore()
+  }, [
+    logicalFocus,
+    restoreSections,
+    shelvesReady,
+    restoreVisit,
+    queueRestore,
+    failCardRestore,
+  ])
+
+  const sectionHandlers = useMemo(
+    () =>
+      new Map(
+        (renderSections ?? []).map((section, index) => [
+          section.id,
+          {
+            onLayout: (event: LayoutChangeEvent) => {
+              const y = event.nativeEvent.layout.y
+              sectionLayouts.current.set(section.id, { rowIndex: index + 1, y })
+              recordRowY(index + 1, y)
+              if (logicalFocus.isPending()) queueRestore()
+            },
+            onCardFocus: (
+              card: WatchHomeCard,
+              node: ViewType | null,
+              activation = false,
+            ) => {
+              if (
+                !(activation ? logicalFocus.activate : logicalFocus.capture)({
+                  sectionId: section.id,
+                  cardId: card.id,
+                })
+              )
+                return false
+              handleRowFocus(index + 1)
+              handleCardFocus(card, node)
+              return true
+            },
+            isRestorePending: (cardId: string) =>
+              logicalFocus.isRestoring({ sectionId: section.id, cardId }),
+            onPositionChange: (cardId: string, offset: number) => {
+              railPositions.current.set(section.id, { cardId, offset })
+            },
+            onCardNode: (card: WatchHomeCard, node: ViewType | null) => {
+              let nodes = cardNodes.current.get(section.id)
+              if (!nodes) {
+                nodes = new Map()
+                cardNodes.current.set(section.id, nodes)
+              }
+              if (node) nodes.set(card.id, node)
+              else nodes.delete(card.id)
+              if (logicalFocus.isPending()) queueRestore()
+            },
+          },
+        ]),
+      ),
+    [
+      renderSections,
+      logicalFocus,
+      recordRowY,
+      handleRowFocus,
+      handleCardFocus,
+      queueRestore,
+    ],
   )
 
   // Top bar tab focus: pin to the top state.
   const handleChromeFocus = useCallback(() => {
+    if (!logicalFocus.isActive() || logicalFocus.isPending()) return
     if (IS_ANDROID) {
       lastFocusedRowRef.current = null
       setFocusedRow(0)
@@ -378,11 +634,12 @@ export default function HomeScreen() {
     setBrowseState(resolveBrowseState(null))
     setBelowTopmost(false)
     scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }, [])
+  }, [logicalFocus])
 
   // Mission-tail QR focus: with the native focus-scroll disabled, the tail
   // needs its own scroll hook — pin to the end in the deep state.
   const handleMissionFocus = useCallback(() => {
+    if (!logicalFocus.isActive() || logicalFocus.isPending()) return
     if (IS_ANDROID) {
       lastFocusedRowRef.current = null
       // Center the image-window on the bottom rails so Up from the mission tail
@@ -395,7 +652,7 @@ export default function HomeScreen() {
     // later Up traversal stays column-preserving.
     setBelowTopmost(true)
     scrollRef.current?.scrollToEnd({ animated: true })
-  }, [])
+  }, [logicalFocus])
 
   // Stable per-row onLayout handlers (featured = 0, sections = 1..n) so the
   // memoized rails' wrappers don't churn on every screen re-render.
@@ -429,7 +686,13 @@ export default function HomeScreen() {
   const handleCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card)
-      if (path != null) router.push(path)
+      if (path != null) {
+        if (card.slug)
+          rememberPlaybackEntry(card.slug, {
+            source: card.id.startsWith("ml-") ? "direct" : "editorial",
+          })
+        router.push(path)
+      }
     },
     [router],
   )
@@ -441,7 +704,10 @@ export default function HomeScreen() {
   const handleResumeCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card, { autoplay: true })
-      if (path != null) router.push(path)
+      if (path != null) {
+        if (card.slug) rememberPlaybackEntry(card.slug, { source: "direct" })
+        router.push(path)
+      }
     },
     [router],
   )
@@ -471,6 +737,10 @@ export default function HomeScreen() {
     router.push("/settings")
   }, [router])
 
+  const handleFeedbackPress = useCallback(() => {
+    router.push({ pathname: "/feedback", params: { screen: "home" } })
+  }, [router])
+
   const handleProfilePress = useCallback(() => {
     router.push("/profile")
   }, [router])
@@ -485,13 +755,17 @@ export default function HomeScreen() {
   // no longer drives the backdrop — the pager covers it; backdrop is rail-browse.
   const featuredCount = model?.featured.length ?? 0
   const [heroIndex, setHeroIndex] = useState(0)
+  const presentedHeroIndex = clampHeroIndex(heroIndex, featuredCount)
+  const [heroFocused, setHeroFocused] = useState(false)
   // Direction of the last page: +1 next (slide in from the right), -1 previous
   // (from the left). Drives HeroPager's entry side.
   const [heroDirection, setHeroDirection] = useState(1)
   const advanceHero = useCallback(
     (delta: number) => {
       setHeroDirection(delta >= 0 ? 1 : -1)
-      setHeroIndex((i) => advanceByDelta(i, delta, featuredCount))
+      setHeroIndex((i) =>
+        advanceByDelta(clampHeroIndex(i, featuredCount), delta, featuredCount),
+      )
     },
     [featuredCount],
   )
@@ -502,17 +776,22 @@ export default function HomeScreen() {
       featuredCount > 0 ? Math.min(i, featuredCount - 1) : 0,
     )
   }, [featuredCount])
-  const handleHeroFocusChange = useCallback((isFocused: boolean) => {
-    if (!isFocused) return
-    if (IS_ANDROID) {
-      lastFocusedRowRef.current = null
-      setFocusedRow(0)
-    }
-    focusedRowRef.current = null
-    setBelowTopmost(false)
-    setBrowseState("browse")
-    scrollRef.current?.scrollTo({ y: 0, animated: true })
-  }, [])
+  const handleHeroFocusChange = useCallback(
+    (isFocused: boolean) => {
+      setHeroFocused(isFocused)
+      if (!isFocused || !logicalFocus.isActive() || logicalFocus.isPending())
+        return
+      if (IS_ANDROID) {
+        lastFocusedRowRef.current = null
+        setFocusedRow(0)
+      }
+      focusedRowRef.current = null
+      setBelowTopmost(false)
+      setBrowseState("browse")
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
+    },
+    [logicalFocus],
+  )
 
   // Hero CTA's native node — the D-pad-up destination for EVERY first-rail card
   // (so Up never dead-ends under the hero art), and the hero TVFocusGuideView's
@@ -532,6 +811,11 @@ export default function HomeScreen() {
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
       onSettingsPress={handleSettingsPress}
+      onFeedbackPress={
+        process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+          ? handleFeedbackPress
+          : undefined
+      }
       onProfilePress={
         isProfileSurfaceEnabled() ? handleProfilePress : undefined
       }
@@ -541,6 +825,72 @@ export default function HomeScreen() {
     />
   )
 
+  const homeActive = isFocused && !introActive && !playerState.isVisible
+  const [returnToTopRequested, setReturnToTopRequested] = useState(false)
+  const topFocusFrameRef = useRef<number | null>(null)
+  returnToChromeRef.current = () => {
+    handleChromeFocus()
+    setReturnToTopRequested(true)
+  }
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        if (topFocusFrameRef.current != null)
+          cancelAnimationFrame(topFocusFrameRef.current)
+        topFocusFrameRef.current = null
+        setReturnToTopRequested(false)
+      },
+      [],
+    ),
+  )
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          if (!shouldReturnHomeToTop(homeActive, browseState)) return false
+          logicalFocus.cancel()
+          pendingScrollRowRef.current = null
+          handleChromeFocus()
+          setReturnToTopRequested(true)
+          return true
+        },
+      )
+      const releaseMenu = claimHomeMenuKey(
+        homeActive,
+        browseState,
+        appleTv,
+        TVEventControl,
+      )
+      return () => {
+        subscription.remove()
+        releaseMenu?.()
+      }
+    }, [homeActive, browseState, handleChromeFocus, appleTv, logicalFocus]),
+  )
+  // Wait for the render which reveals and enables the real Search tab. Keeping
+  // this in the active-route effect cancels the request if another page opens.
+  useEffect(() => {
+    if (!homeActive) {
+      setReturnToTopRequested(false)
+      return
+    }
+    if (!returnToTopRequested || browseState !== "top" || searchTabNode == null)
+      return
+    const frame = requestAnimationFrame(() => {
+      topFocusFrameRef.current = null
+      ;(
+        searchTabNode as ViewType & { requestTVFocus?: () => void }
+      ).requestTVFocus?.()
+      setReturnToTopRequested(false)
+    })
+    topFocusFrameRef.current = frame
+    return () => {
+      cancelAnimationFrame(frame)
+      topFocusFrameRef.current = null
+    }
+  }, [homeActive, returnToTopRequested, browseState, searchTabNode])
+
   const screenState = resolveHomeScreenState({ model, loading, error })
 
   // ── Loading state (no model yet — initial load or a retry) ──
@@ -548,7 +898,7 @@ export default function HomeScreen() {
     if (IS_ANDROID) {
       return (
         <View style={styles.screen}>
-          <ScreenStateView kind="loading" message="Loading Home…" />
+          <BrandedLoading />
           <AndroidLoadingDialog
             message="Loading Home…"
             onBack={() => BackHandler.exitApp()}
@@ -556,14 +906,10 @@ export default function HomeScreen() {
         </View>
       )
     }
-    // Non-focusable skeleton (KTD2): no focus claim of its own — the top bar's
-    // Search tab (hasTVPreferredFocus) owns initial focus in this state too.
-    // Shown only when model == null (cold load); a warm re-entry skips straight
-    // to content.
     return (
       <View style={styles.screen}>
+        <BrandedLoading />
         {topBar}
-        <HomeSkeleton />
       </View>
     )
   }
@@ -608,8 +954,15 @@ export default function HomeScreen() {
           art + copy with an Apple-TV slide while the in-flow action row paints on
           top; fades out in "deep" so the backdrop's rail-card art shows. */}
       <HeroPager
+        // Remount only this noninteractive artwork/copy layer when focus enters
+        // or a focused viewer pages. Both layers then present the selected card
+        // immediately; the native action buttons below keep their focus.
+        key={heroPresentationKey(
+          model.featured[presentedHeroIndex]?.id ?? null,
+          heroFocused,
+        )}
         slides={model.featured}
-        index={heroIndex}
+        index={presentedHeroIndex}
         direction={heroDirection}
         visible={browseState !== "deep"}
       />
@@ -619,6 +972,11 @@ export default function HomeScreen() {
           bottom, so its scroll-into-view nudges the feed and overrides scrollTo(0). */}
       <ScrollView
         ref={scrollRef}
+        onScroll={(event) => {
+          scrollOffsetRef.current = event.nativeEvent.contentOffset.y
+          if (logicalFocus.isPending()) queueRestore()
+        }}
+        scrollEventThrottle={16}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={[0]}
@@ -639,8 +997,9 @@ export default function HomeScreen() {
             destinations={ctaNode != null ? [ctaNode] : undefined}
           >
             <HomeHeroCarousel
+              active={homeActive}
               slides={model.featured}
-              index={heroIndex}
+              index={presentedHeroIndex}
               onSelect={handleCardPress}
               onFocusChange={handleHeroFocusChange}
               onRequestAdvance={advanceHero}
@@ -651,58 +1010,132 @@ export default function HomeScreen() {
           </TVFocusGuideView>
         </View>
 
-        {(renderSections ?? []).map((section, sectionIndex) => (
-          <View key={section.id} onLayout={rowLayoutHandlers[sectionIndex + 1]}>
-            <HomeRail
-              rowIndex={sectionIndex + 1}
-              eyebrow={section.eyebrow}
-              title={section.title}
-              cards={section.cards}
-              variant={resolveHomeRailVariant(section)}
-              onCardFocus={handleCardFocus}
-              onRowFocus={handleRowFocus}
-              onCardPress={
-                section.id === CONTINUE_WATCHING_SECTION_ID
-                  ? handleResumeCardPress
-                  : handleCardPress
-              }
-              onCardLongPress={
-                section.id === CONTINUE_WATCHING_SECTION_ID
-                  ? handleResumeCardLongPress
-                  : section.id === MY_LIST_SECTION_ID
-                    ? handleMyListCardLongPress
-                    : undefined
-              }
-              // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
-              // is on the LEFT — wire every card's D-pad-up to the CTA node
-              // rather than letting geometry dead-end under the artwork.
-              upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
-              // ...and restore its last-focused card on re-entry from ABOVE (Down
-              // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
-              // off so Up-from-below keeps column-preserving geometry.
-              restoreLastFocus={sectionIndex === 0 && !belowTopmost}
-              // Android only: load images for rails in the focus window (cards
-              // always mount). tvOS loads every rail's images (true) — main.
-              active={
-                IS_ANDROID
-                  ? isRailActive(
-                      sectionIndex + 1,
-                      focusedRow,
-                      RAIL_WINDOW_BUFFER,
-                    )
-                  : true
-              }
-            />
-          </View>
-        ))}
+        {(renderSections ?? [])
+          .slice(0, visibleRailCount)
+          .map((section, sectionIndex) => (
+            <View
+              key={section.id}
+              onLayout={sectionHandlers.get(section.id)?.onLayout}
+            >
+              {section.id === FOR_YOU_SECTION.id ? (
+                <ForYouRail
+                  rowIndex={sectionIndex + 1}
+                  audioLanguageSlug={audioLanguageSlug ?? "english"}
+                  visit={recommendationVisit}
+                  visible={isFocused && !playerState.isVisible}
+                  onSelected={(slug) =>
+                    router.push(`/watch/${encodeURIComponent(slug)}`)
+                  }
+                  onCardFocus={sectionHandlers.get(section.id)!.onCardFocus}
+                  onCardNode={sectionHandlers.get(section.id)!.onCardNode}
+                  restoreCardId={
+                    restoreTarget?.sectionId === section.id
+                      ? restoreTarget.cardId
+                      : undefined
+                  }
+                  restoreRequest={
+                    restoreTarget?.sectionId === section.id
+                      ? restoreKey
+                      : undefined
+                  }
+                  restoreOffset={
+                    restoreTarget?.sectionId === section.id &&
+                    railPositions.current.get(section.id)?.cardId ===
+                      restoreTarget.cardId
+                      ? railPositions.current.get(section.id)?.offset
+                      : undefined
+                  }
+                  onPositionChange={
+                    sectionHandlers.get(section.id)!.onPositionChange
+                  }
+                  isRestorePending={
+                    sectionHandlers.get(section.id)!.isRestorePending
+                  }
+                  onRestoreReady={queueRestore}
+                  onRestoreUnavailable={failCardRestore}
+                  canRememberPosition={canRememberRailPosition}
+                  upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+                  restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+                />
+              ) : (
+                <HomeRail
+                  rowIndex={sectionIndex + 1}
+                  eyebrow={section.eyebrow}
+                  title={section.title}
+                  cards={section.cards}
+                  variant={resolveHomeRailVariant(section)}
+                  onCardFocus={sectionHandlers.get(section.id)!.onCardFocus}
+                  onCardNode={sectionHandlers.get(section.id)!.onCardNode}
+                  restoreCardId={
+                    restoreTarget?.sectionId === section.id
+                      ? restoreTarget.cardId
+                      : undefined
+                  }
+                  restoreRequest={
+                    restoreTarget?.sectionId === section.id
+                      ? restoreKey
+                      : undefined
+                  }
+                  restoreOffset={
+                    restoreTarget?.sectionId === section.id &&
+                    railPositions.current.get(section.id)?.cardId ===
+                      restoreTarget.cardId
+                      ? railPositions.current.get(section.id)?.offset
+                      : undefined
+                  }
+                  onPositionChange={
+                    sectionHandlers.get(section.id)!.onPositionChange
+                  }
+                  isRestorePending={
+                    sectionHandlers.get(section.id)!.isRestorePending
+                  }
+                  onRestoreReady={queueRestore}
+                  onRestoreUnavailable={failCardRestore}
+                  canRememberPosition={canRememberRailPosition}
+                  onCardPress={
+                    section.id === CONTINUE_WATCHING_SECTION_ID
+                      ? handleResumeCardPress
+                      : handleCardPress
+                  }
+                  onCardLongPress={
+                    section.id === CONTINUE_WATCHING_SECTION_ID
+                      ? handleResumeCardLongPress
+                      : section.id === MY_LIST_SECTION_ID
+                        ? handleMyListCardLongPress
+                        : undefined
+                  }
+                  // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
+                  // is on the LEFT — wire every card's D-pad-up to the CTA node
+                  // rather than letting geometry dead-end under the artwork.
+                  upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+                  // ...and restore its last-focused card on re-entry from ABOVE (Down
+                  // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
+                  // off so Up-from-below keeps column-preserving geometry.
+                  restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+                  // Android loads images near focus; tvOS loads every rail.
+                  active={
+                    IS_ANDROID
+                      ? isRailActive(
+                          sectionIndex + 1,
+                          focusedRow,
+                          RAIL_WINDOW_BUFFER,
+                        )
+                      : true
+                  }
+                />
+              )}
+            </View>
+          ))}
 
         {/* Mission tail (R15): storytelling cards + beta-signup QR. Its QR wrapper
             is focusable but non-actioning and never dispatches card-focus — the
             showcase keeps the last card (R10) and browse state stays "deep". */}
-        <MissionSection
-          onQrFocus={handleMissionFocus}
-          onFocusNode={captureFocusedNode}
-        />
+        {visibleRailCount === sectionCount ? (
+          <MissionSection
+            onQrFocus={handleMissionFocus}
+            onFocusNode={captureFocusedNode}
+          />
+        ) : null}
       </ScrollView>
     </View>
   )

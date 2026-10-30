@@ -1,0 +1,163 @@
+{
+  "phase": "initial-postactivation",
+  "window_utc": {
+    "from": "2026-09-27T23:26:00Z",
+    "to": "2026-09-27T23:36:00Z",
+    "minutes": 10
+  },
+  "baseline_window_utc": {
+    "from": "2026-09-27T21:33:00Z",
+    "to": "2026-09-27T22:03:00Z"
+  },
+  "environment": "production",
+  "admin_version": "ea13e146faf4c188f9fb8d40c2b9dc1e33440751",
+  "web_version": "08c7227d4bb10b75e48ba268bd50a4173508dfe5",
+  "sources": {
+    "runtime": "Datadog indexed logs service:forge-admin @event:recommendation.runtime; exact production/release ddtags constrained",
+    "delivery": "Datadog indexed privacy-safe event=recommendation.delivery logs service:forge-web; production/release ddtags verified",
+    "retention": "compact-observation-database.json"
+  },
+  "coverage": {
+    "admin_completion_events_per_minute": [8, 9, 10, 10, 9, 5, 6, 7, 6, 10],
+    "first_admin_observation": "2026-09-27T23:26:06.454Z",
+    "last_admin_observation": "2026-09-27T23:35:55.712Z",
+    "last_web_observation": "2026-09-27T23:35:55.718Z",
+    "indexing_verified_through": "2026-09-27T23:37:36.208Z",
+    "web_http_200_to_admin_seeded_count_reconciliation": 79
+  },
+  "web_delivery_observations": {
+    "total": 132,
+    "http_200": 79,
+    "http_403": 53,
+    "http_5xx_observed": 0,
+    "served": 67,
+    "fallback_non_timeout": 12,
+    "delivery_timeout_observed": 0,
+    "fallback_reasons": {
+      "no_candidates": 10,
+      "seed_embedding_unavailable": 1,
+      "cooldown": 1
+    },
+    "note": "All delivery observations seeded; operational logs are best effort, not complete HTTP denominator."
+  },
+  "admin_runtime": {
+    "complete_events": 80,
+    "seeded": {
+      "total": 79,
+      "served": 67,
+      "empty": 10,
+      "fallback": 1,
+      "unavailable": 1,
+      "rejected_observed": 0,
+      "timeout_fallback_observed": 0
+    },
+    "selection": {
+      "resolved": 1
+    },
+    "error_code_observed": 0,
+    "late_operation_failure_observed": 0
+  },
+  "candidate_evidence_insert": {
+    "observed": 78,
+    "complete": 78,
+    "unfinished": 0,
+    "timing_errors": 0,
+    "avg_ms": 14.837848807696085,
+    "p95_ms": 39.25474537418908,
+    "max_ms": 44.7453300000052,
+    "max_input_rows": 327,
+    "baseline_observed": 257,
+    "baseline_avg_ms": 122.9606055190591,
+    "baseline_p95_ms": 267.7721258158437,
+    "baseline_max_ms": 356.7133110165596,
+    "baseline_max_input_rows": 339,
+    "timing": "application/driver wall time; not isolated PostgreSQL execution",
+    "waits": "Unknown; no independent database wait-sampler events available in compared windows."
+  },
+  "retention": {
+    "measured_at": "2026-09-27T23:39:06.935856+00:00",
+    "horizon": {
+      "first_expiry": "2026-09-30T00:20:47.858+00:00",
+      "expired_roots": 0,
+      "overdue_roots": 0,
+      "latest_created_at": "2026-09-27T23:38:55.345+00:00",
+      "oldest_created_at": "2026-09-01T00:20:48.742+00:00",
+      "requests_last_24h": 10453
+    },
+    "latest_run": {
+      "status": "succeeded",
+      "batch_size": 500,
+      "row_counts": {
+        "expiredViewers": 0,
+        "expiredExperiments": 0,
+        "expiredPromotionRuns": 0,
+        "expiredContentActions": 0,
+        "expiredProfilesFenced": 0,
+        "expiredConsentReceipts": 0,
+        "expiredPromotionEvents": 0,
+        "retiredProfilesDeleted": 0,
+        "expiredProfileInterests": 228,
+        "expiredShadowEvaluations": 0,
+        "profileErasuresCompleted": 0,
+        "expiredConsentTransitions": 0,
+        "expiredControlEvaluations": 0,
+        "expiredPromotionApprovals": 0,
+        "expiredStandaloneEpisodes": 0,
+        "expiredStandaloneOutcomes": 0,
+        "expiredProfileSessionLinks": 13789,
+        "expiredEligibilityDecisions": 0,
+        "expiredExperimentAssignments": 0,
+        "expiredExperimentEvaluations": 0,
+        "expiredProfileProjectionRuns": 8707,
+        "profileConsentReceiptsRevoked": 0,
+        "expiredStandalonePlaybackFacts": 0,
+        "expiredExperimentEvaluationRuns": 0,
+        "expiredProfileProjectionGenerations": 0,
+        "expiredProfileProjectionContributions": 366
+      },
+      "started_at": "2026-09-27T10:30:01.773+00:00",
+      "reason_code": null,
+      "completed_at": "2026-09-27T10:30:01.771+00:00",
+      "roots_deleted": 0,
+      "oldest_expired_at_after": null
+    },
+    "history": [
+      {
+        "runs": 29,
+        "status": "succeeded",
+        "first_run": "2026-09-01T00:16:46.932+00:00",
+        "roots_deleted": 0,
+        "latest_completed": "2026-09-27T10:30:01.771+00:00"
+      },
+      {
+        "runs": 10,
+        "status": "skipped",
+        "first_run": "2026-09-01T10:30:00.474+00:00",
+        "roots_deleted": 0,
+        "latest_completed": "2026-09-16T10:30:00.349+00:00"
+      }
+    ],
+    "note": "Durable ledger unchanged: no newer retention run; zero expired/overdue roots. Request-root purge throughput cannot be measured until nonempty expiry cohort."
+  },
+  "parity_evidence_from_release_safety": {
+    "sample_measured_at": "2026-09-27T23:38:52.949974+00:00",
+    "compact_sample_runs": 100,
+    "legacy_sample_runs": 100,
+    "seven_stage_mismatches": 0,
+    "compact_child_stage_rows": 0,
+    "compact_evidence_incomplete": 2,
+    "legacy_evidence_incomplete": 8,
+    "legacy_runs_after_fleet_convergence": 0,
+    "compact_runs_since_merge": 107,
+    "note": "Incomplete evidence flag is recorded separately from representation parity; no assertion every request has complete evidence.",
+    "source": "compact-observation-verification.json"
+  },
+  "assessment": "Initial populated regression observation shows no observed issuance error or semantic timeout regression and lower completed insert wall-time distribution. It does not establish steady-state capacity, causal latency improvement, complete error rate, or loaded retention throughput.",
+  "limitations": [
+    "Baseline is 30 minutes versus postactivation 10 minutes, with different traffic and input-row distributions.",
+    "Admin and Web release versions changed; unrelated main releases are noted in baseline. The windows do not isolate one code change.",
+    "Logs are best effort; matching Web and Admin completed counts is coverage evidence, not proof of complete HTTP coverage.",
+    "Independent database waits remain unknown.",
+    "Expiry has no current roots to purge, so retention throughput remains unverified."
+  ]
+}

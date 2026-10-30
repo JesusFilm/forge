@@ -37,9 +37,11 @@ import type {
   UserRecommendationItem,
   UserRecommendationSlate,
 } from "../../lib/recommendations/delivery"
+import * as delivery from "../../lib/recommendations/delivery"
 import {
   DELIVERY_ATTEMPTS,
   DELIVERY_RETRY_DELAY_MS,
+  getUserRecommendationsClient,
   useUserRecommendations,
   type UseUserRecommendationsOptions,
   type UseUserRecommendationsResult,
@@ -424,5 +426,30 @@ describe("useUserRecommendations", () => {
     expect(c.fetch).toHaveBeenCalledTimes(2)
     hook.unmount()
     expect(listeners.size).toBe(0)
+  })
+})
+
+// KTD11: the app's client is the one path every surface takes to Admin, so the
+// English-metadata retry must sit on it, not on one caller.
+describe("the default client", () => {
+  it("sends each attempt through the coverage retry", async () => {
+    const deps = { marker: "deps" } as unknown as ReturnType<
+      typeof delivery.getDeliveryDeps
+    >
+    jest.spyOn(delivery, "getDeliveryDeps").mockReturnValue(deps)
+    const retry = jest
+      .spyOn(delivery, "fetchUserRecommendationsWithCoverage")
+      .mockResolvedValue({ kind: "disabled" })
+    const input = {
+      locale: "ru",
+      audioLanguageSlug: "english",
+      count: 6,
+      attempt: 1,
+    }
+    await expect(getUserRecommendationsClient().fetch(input)).resolves.toEqual({
+      kind: "disabled",
+    })
+    expect(retry).toHaveBeenCalledWith(input, deps)
+    jest.restoreAllMocks()
   })
 })

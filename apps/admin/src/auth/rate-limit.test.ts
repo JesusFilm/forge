@@ -8,6 +8,7 @@ describe("rateLimitAuthRoute", () => {
   })
 
   afterEach(async () => {
+    vi.doUnmock("@/infra/redis")
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     const { resetLocalRateLimitState } = await import("./rate-limit")
@@ -38,9 +39,12 @@ describe("rateLimitAuthRoute", () => {
   })
 
   it("falls back to local when Redis connect/incr fails", async () => {
-    vi.stubEnv("REDIS_HOST", "127.0.0.1")
-    vi.stubEnv("REDIS_PORT", "6379")
-    vi.stubEnv("REDIS_PASSWORD", "secret")
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => ({
+        status: "ready",
+        eval: vi.fn().mockRejectedValue(new Error("Redis unavailable")),
+      }),
+    }))
 
     const { rateLimitAuthRoute } = await import("./rate-limit")
     const request = new Request("http://localhost/api/auth/sign-in/email")

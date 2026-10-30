@@ -6,6 +6,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
+import { usesCompactCandidateTrace } from "./detail.service"
 import {
   RECOMMENDATION_TRACE_ACCESS_REASON,
   RECOMMENDATION_TRACE_ACCESS_RETENTION_DAYS,
@@ -16,6 +17,37 @@ import {
 } from "@/services/recommendations/admin-ops"
 
 const NOW = new Date("2026-08-19T12:00:00.000Z")
+
+describe("candidate trace read format", () => {
+  it("selects one format and fails closed for mismatched or future payloads", () => {
+    expect(
+      usesCompactCandidateTrace({
+        traceFormatVersion: null,
+        hasTracePayload: false,
+      }),
+    ).toBe(false)
+    expect(
+      usesCompactCandidateTrace({
+        traceFormatVersion: 1,
+        hasTracePayload: true,
+      }),
+    ).toBe(true)
+    expect(
+      usesCompactCandidateTrace({
+        traceFormatVersion: null,
+        hasTracePayload: false,
+        legacyDetailRetiredAt: NOW,
+      }),
+    ).toBe(false)
+    for (const run of [
+      { traceFormatVersion: null, hasTracePayload: true },
+      { traceFormatVersion: 1, hasTracePayload: false },
+      { traceFormatVersion: 2, hasTracePayload: true },
+    ]) {
+      expect(() => usesCompactCandidateTrace(run)).toThrow("Unsupported")
+    }
+  })
+})
 const DAY_MS = 86_400_000
 const ACTOR_DIGEST = recommendationTraceActorDigest(
   "admin-1",

@@ -509,7 +509,7 @@ done
 pnpm lang:sweep:production --source everystudent --mode blanks --apply
 ```
 
-Prod runs need `JFRAG_ALLOW_PROD_WRITE=1` and Doppler credentials — see
+Prod runs need `FORGE_RAG_ALLOW_PROD_WRITE=1` and Doppler credentials — see
 `docs/ops/language-sweep.md` → "Running against production".
 
 ### 0.5 ✅ Phase 4 — per-language retrieve smoke (2026-08-03): 47 / 47

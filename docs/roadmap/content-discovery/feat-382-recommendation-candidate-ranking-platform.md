@@ -9,17 +9,10 @@ duration: 7
 depends_on:
   - "feat-368"
   - "feat-376"
-  - "feat-381"
 blocks:
   - "feat-383"
   - "feat-386"
   - "feat-387"
-  - "feat-388"
-  - "feat-389"
-  - "feat-390"
-  - "feat-391"
-  - "feat-392"
-  - "feat-393"
 tags:
   - "admin"
   - "recommendations"

@@ -35,7 +35,11 @@ export type FakePlayer = {
   duration: number
   status: VideoPlayerStatus
   bufferOptions: BufferOptions
+  bufferedPosition: number
   subtitleTrack: SubtitleTrack | null
+  allowsExternalPlayback: boolean
+  /** expo-video's default is 0, which sends no timeUpdate event at all. */
+  timeUpdateEventInterval: number
   play: jest.Mock
   pause: jest.Mock
   replay: jest.Mock
@@ -57,15 +61,40 @@ export type FakePlayer = {
     options?: { withholdLoad?: boolean },
   ) => void
   __pendingReplaceCount: () => number
+  /**
+   * Releases the native player, as the real hook does first on unmount: every
+   * read, write and call then throws. `__reset` restores it.
+   */
+  __release: () => void
+  /**
+   * Moves the playhead and emits `timeUpdate` only while
+   * `timeUpdateEventInterval` is above 0, as a device does. Returns whether it
+   * emitted, so no case can pass on an event that production never sends.
+   */
+  __tick: (position: {
+    currentTime: number
+    bufferedPosition?: number
+  }) => boolean
   __reset: () => void
+}
+
+export type ExpoVideoMockOptions = {
+  /**
+   * Distinct players, handed out in call order. The default of one keeps the
+   * app's one-decoder contract; the Explore feed's suites opt into two and
+   * read `__players`.
+   */
+  players?: 1 | 2
 }
 
 export type ExpoVideoMock = {
   VideoView: jest.Mock
   useVideoPlayer: jest.Mock
   isPictureInPictureSupported: jest.Mock
-  /** The single player every useVideoPlayer call returns (R10: one decoder). */
+  /** The first player (`__players[0]`); the only one unless `players: 2`. */
   __player: FakePlayer
+  /** Every player, in call-site order. `__players[0]` is `__player`. */
+  __players: FakePlayer[]
   __settleReplace: (
     reason?: unknown,
     options?: { withholdLoad?: boolean },
@@ -80,8 +109,31 @@ export type ExpoVideoMock = {
  */
 type MockImpl = ReturnType<jest.Mock["getMockImplementation"]>
 
+// The state a released native player refuses to read or write.
+const RELEASED_FIELDS = [
+  "muted",
+  "loop",
+  "volume",
+  "playing",
+  "playbackRate",
+  "preservesPitch",
+  "currentTime",
+  "duration",
+  "status",
+  "bufferOptions",
+  "bufferedPosition",
+  "subtitleTrack",
+  "allowsExternalPlayback",
+  "timeUpdateEventInterval",
+] as const
+
+function releasedError(): Error {
+  return new Error("expo-video test double: the player is released")
+}
+
 export function makeFakePlayer(): FakePlayer {
   const listeners = new Map<string, Set<FakeListener>>()
+  let released = false
   const pendingReplaces: Array<
     (reason?: unknown, withholdLoad?: boolean) => void
   > = []
@@ -105,12 +157,18 @@ export function makeFakePlayer(): FakePlayer {
     duration: 0,
     status: "idle",
     bufferOptions: {},
+    bufferedPosition: 0,
     subtitleTrack: null,
+    // expo-video's documented default.
+    allowsExternalPlayback: true,
+    timeUpdateEventInterval: 0,
     play: jest.fn(() => {
+      if (released) throw releasedError()
       player.playing = true
       player.__emit("playingChange", { isPlaying: true })
     }),
     pause: jest.fn(() => {
+      if (released) throw releasedError()
       player.playing = false
       player.__emit("playingChange", { isPlaying: false })
     }),
@@ -122,6 +180,7 @@ export function makeFakePlayer(): FakePlayer {
       player.currentTime += seconds
     }),
     replace: jest.fn((source: VideoSource) => {
+      if (released) throw releasedError()
       player.currentTime = 0
       // The synchronous path lands the item immediately, so its load event
       // fires here rather than a tick later. The payload names the source that
@@ -132,6 +191,7 @@ export function makeFakePlayer(): FakePlayer {
     replaceAsync: jest.fn(
       (source: VideoSource) =>
         new Promise<void>((resolve, reject) => {
+          if (released) throw releasedError()
           pendingReplaces.push((reason, withholdLoad) => {
             if (reason !== undefined) {
               reject(reason)
@@ -175,9 +235,46 @@ export function makeFakePlayer(): FakePlayer {
       settle(reason, options?.withholdLoad === true)
     },
     __pendingReplaceCount: () => pendingReplaces.length,
+    __release: () => {
+      released = true
+      for (const field of RELEASED_FIELDS) {
+        Object.defineProperty(player, field, {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            throw releasedError()
+          },
+          set: () => {
+            throw releasedError()
+          },
+        })
+      }
+    },
+    __tick: ({ currentTime, bufferedPosition }) => {
+      player.currentTime = currentTime
+      if (bufferedPosition !== undefined)
+        player.bufferedPosition = bufferedPosition
+      if (!(player.timeUpdateEventInterval > 0)) return false
+      player.__emit("timeUpdate", {
+        currentTime,
+        bufferedPosition: player.bufferedPosition,
+        currentLiveTimestamp: null,
+        currentOffsetFromLive: null,
+      })
+      return true
+    },
     __reset: () => {
       listeners.clear()
       pendingReplaces.length = 0
+      released = false
+      for (const field of RELEASED_FIELDS) {
+        Object.defineProperty(player, field, {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: undefined,
+        })
+      }
       player.muted = false
       player.loop = false
       player.volume = 1
@@ -188,7 +285,10 @@ export function makeFakePlayer(): FakePlayer {
       player.duration = 0
       player.status = "idle"
       player.bufferOptions = {}
+      player.bufferedPosition = 0
       player.subtitleTrack = null
+      player.allowsExternalPlayback = true
+      player.timeUpdateEventInterval = 0
       for (const fn of [
         player.play,
         player.pause,
@@ -218,30 +318,40 @@ export function makeFakePlayer(): FakePlayer {
 }
 
 /** The module body for `jest.mock("expo-video", …)`. */
-export function createExpoVideoMock(): ExpoVideoMock {
-  const player = makeFakePlayer()
+export function createExpoVideoMock(
+  options?: ExpoVideoMockOptions,
+): ExpoVideoMock {
+  const players = Array.from({ length: options?.players ?? 1 }, makeFakePlayer)
+  const player = players[0]
   // Setup runs once per player, as the real hook does — a per-render re-run
   // would let a suite's setup-call count pass for the wrong reason.
-  let setupRan = false
+  const setupRan = new Set<FakePlayer>()
+  // Each render calls the hook once per call site, in a fixed order, so the
+  // call count modulo the player count gives each call site its own player.
+  let calls = 0
 
   const mock: ExpoVideoMock = {
     VideoView: jest.fn(() => null),
     useVideoPlayer: jest.fn(
       (_source: VideoSource, setup?: (p: FakePlayer) => void) => {
-        if (!setupRan) {
-          setupRan = true
-          setup?.(player)
+        const target = players[calls % players.length]
+        calls += 1
+        if (!setupRan.has(target)) {
+          setupRan.add(target)
+          setup?.(target)
         }
-        return player
+        return target
       },
     ),
     isPictureInPictureSupported: jest.fn(() => true),
     __player: player,
+    __players: players,
     __settleReplace: (reason, options) =>
       player.__settleReplace(reason, options),
     __reset: () => {
-      player.__reset()
-      setupRan = false
+      for (const each of players) each.__reset()
+      setupRan.clear()
+      calls = 0
       mock.VideoView.mockClear()
       mock.useVideoPlayer.mockClear()
       mock.isPictureInPictureSupported.mockClear()

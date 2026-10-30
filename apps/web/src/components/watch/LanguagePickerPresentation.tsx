@@ -237,6 +237,7 @@ export function LanguagePickerHeader({
   allLanguagesLabel,
   countLabel,
   heading,
+  headingId,
   loading = false,
   testIdPrefix,
   ...tooltipCallbacks
@@ -245,6 +246,8 @@ export function LanguagePickerHeader({
   allLanguagesLabel: string
   countLabel?: string
   heading: string
+  /** Id on the visible heading so the dialog can name itself from it. */
+  headingId?: string
   loading?: boolean
   testIdPrefix: string
 }) {
@@ -267,7 +270,9 @@ export function LanguagePickerHeader({
             >
               <Languages aria-hidden className="size-4" />
             </span>
-            <h2 className="text-xl font-semibold text-stone-100">{heading}</h2>
+            <h2 id={headingId} className="text-xl font-semibold text-stone-100">
+              {heading}
+            </h2>
           </div>
           {countLabel ? (
             <span

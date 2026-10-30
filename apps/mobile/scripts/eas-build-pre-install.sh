@@ -18,4 +18,8 @@ if [ -n "${EAS_BUILD_GIT_COMMIT_HASH:-}" ]; then
     echo "[datadog] version stamp failed (non-fatal); build continues untagged"
   fi
 fi
-exit 0
+
+# The only fatal step: a production build needs an empty pending-translation
+# list unless I18N_ALLOW_PENDING=1 (KTD8). The gate uses only Node built-ins.
+node "$(dirname "$0")/i18n/check-pending-gate.mjs"
+exit $?

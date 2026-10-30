@@ -5,7 +5,15 @@ import {
   type RecommendationCandidateContext,
 } from "../candidate"
 import { runCandidatePlatform } from "../orchestration"
-import { composeShadowSlate, type ShadowSlateEditorial } from "./slate-composer"
+import {
+  composeShadowSlate as composeLegacyShadowSlate,
+  type ShadowSlateEditorial,
+} from "./slate-composer"
+import {
+  composeMmrSlate,
+  MMR_SLATE_POLICY_VERSION,
+  type MmrSlateResult,
+} from "../composition/mmr"
 
 const context: RecommendationCandidateContext = {
   surface: "watch-below-player-v1",
@@ -64,10 +72,17 @@ function candidates(
   }).ordered
 }
 
-const ids = (result: ReturnType<typeof composeShadowSlate>) =>
+const ids = (result: MmrSlateResult) =>
   result.composed.map((item) => item.targetMediaId)
 
-describe("shadow row composer", () => {
+describe.each([
+  {
+    name: "legacy shadow",
+    compose: composeLegacyShadowSlate,
+    decision: "pending",
+  },
+  { name: "neutral MMR", compose: composeMmrSlate, decision: null },
+])("$name row composer", ({ compose: composeShadowSlate, decision }) => {
   it("trades repeated themes for source and interest coverage after item ranking", () => {
     const ordered = candidates([
       { id: "a", themes: ["hope"], interest: 0 },
@@ -90,7 +105,7 @@ describe("shadow row composer", () => {
       reasonCodes: ["mmr_source_interest_coverage", "position_moved"],
       sourceGain: 1,
     })
-    expect(result.decision).toBe("pending")
+    expect("decision" in result ? result.decision : null).toBe(decision)
     expect(JSON.stringify(ordered)).toBe(snapshot)
   })
 
@@ -306,5 +321,29 @@ describe("shadow row composer", () => {
     expect(
       composeShadowSlate({ ordered: long, context, limit: 80 }).evidence,
     ).toHaveLength(64)
+  })
+})
+
+describe("composition policy identity", () => {
+  it("keeps the neutral runtime version outside the legacy shadow allowlist", () => {
+    const ordered = candidates([
+      { id: "a", themes: ["hope"], interest: 0 },
+      { id: "b", themes: ["hope"], interest: 0 },
+      { id: "c", themes: ["prayer"], interest: 1 },
+    ])
+    const input = {
+      ordered,
+      context,
+      limit: 2,
+      policyVersion: MMR_SLATE_POLICY_VERSION,
+    }
+    const neutral = composeMmrSlate(input)
+    const legacy = composeLegacyShadowSlate(input)
+    expect(neutral.policyVersion).toBe(MMR_SLATE_POLICY_VERSION)
+    expect(neutral).not.toHaveProperty("decision")
+    expect(ids(neutral)).toEqual(["a", "c"])
+    expect(legacy.fallbackReason).toBe("policy_unavailable")
+    expect(ids(legacy)).toEqual(["a", "b"])
+    expect(legacy.decision).toBe("pending")
   })
 })

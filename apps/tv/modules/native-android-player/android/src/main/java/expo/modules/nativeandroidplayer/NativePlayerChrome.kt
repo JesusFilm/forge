@@ -189,6 +189,7 @@ internal enum class NativeMenuIcon {
   EXPLORE,
   LANGUAGE,
   SUBTITLES,
+  FEEDBACK,
   START_OVER
 }
 
@@ -207,6 +208,7 @@ internal class NativeMenuButton(
     NativeMenuIcon.EXPLORE -> R.drawable.native_player_book
     NativeMenuIcon.LANGUAGE -> R.drawable.native_player_globe
     NativeMenuIcon.SUBTITLES -> R.drawable.native_player_text
+    NativeMenuIcon.FEEDBACK -> R.drawable.native_player_feedback
     NativeMenuIcon.START_OVER -> R.drawable.native_player_start_over
   })
   private val labelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -273,7 +275,8 @@ internal class NativeMenuButton(
 
     val ink = if (isFocused) NATIVE_PLAYER_INK else Color.WHITE
     labelPaint.color = ink
-    subPaint.color = if (isFocused) Color.argb(128, 0, 0, 0) else Color.argb(158, 255, 255, 255)
+    // 62% black over the white focus fill gives 6.2:1 contrast for the small caption.
+    subPaint.color = if (isFocused) Color.argb(158, 0, 0, 0) else Color.argb(158, 255, 255, 255)
     menuIcon.draw(canvas, dp(17.5f), height / 2f, dp(13f), ink)
 
     val textX = dp(31f)

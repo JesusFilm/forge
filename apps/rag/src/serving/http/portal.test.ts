@@ -1,0 +1,205 @@
+import { describe, expect, it } from "vitest"
+
+import { createApp } from "./app.js"
+import { admitted, parsePortalAllowlist } from "./portal-policy.js"
+import { fixture } from "./portal-fixture.test-support.js"
+
+describe("portal admission", () => {
+  it("pins normalized login and numeric identity", () => {
+    const list = parsePortalAllowlist({
+      users: [{ login: "Engineer", id: 42 }],
+    })
+    expect(admitted(list, "engineer", 42)).toBe(true)
+    expect(admitted(list, "engineer", 43)).toBe(false)
+    expect(() =>
+      parsePortalAllowlist({
+        users: [
+          { login: "A", id: 1 },
+          { login: "a", id: 2 },
+        ],
+      }),
+    ).toThrow("duplicate_login")
+    expect(() =>
+      parsePortalAllowlist({ users: [{ login: "bad--name", id: 9 }] }),
+    ).toThrow("invalid_user")
+  })
+
+  it("admits a listed identity and denies an unmerged addition and removal on the next action", async () => {
+    const f = fixture()
+    const first = await f.start()
+    f.setAllowed(false)
+    expect(
+      (await f.callback(first.state, first.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=admission_denied")
+    f.setAllowed(true)
+    const second = await f.start()
+    const callback = await f.callback(second.state, second.browser)
+    expect(callback.status).toBe(303)
+    const session = callback.headers
+      .get("set-cookie")!
+      .match(/__Host-rag_portal=[^;]+/)![0]
+    expect(
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(200)
+    f.setAllowed(false)
+    expect(
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(403)
+  })
+
+  it("rejects state mismatch, replay, tampering and fixed session cookies", async () => {
+    const f = fixture()
+    const login = await f.start()
+    expect(
+      (await f.callback("different", login.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=oauth_invalid")
+    expect(
+      (await f.callback(login.state, "__Host-rag_oauth=other")).status,
+    ).toBe(303)
+    expect(
+      (await f.callback(login.state, login.browser, "tampered")).status,
+    ).toBe(303)
+    expect((await f.callback(login.state, login.browser)).status).toBe(303)
+    const next = await f.start()
+    f.sessions.set("fixed", { login: "engineer", id: 42 })
+    const fixed = await f.app.request(
+      `/callback?state=${next.state}&code=valid`,
+      { headers: { Cookie: `${next.browser}; __Host-rag_portal=fixed` } },
+    )
+    expect(fixed.status).toBe(303)
+    expect(f.sessions.has("fixed")).toBe(false)
+    expect(fixed.headers.get("set-cookie")).not.toContain(
+      "__Host-rag_portal=fixed",
+    )
+  })
+
+  it("rechecks current permission and allows sign out after admission changes", async () => {
+    const f = fixture()
+    const login = await f.start()
+    const response = await f.callback(login.state, login.browser)
+    const session = response.headers
+      .get("set-cookie")!
+      .match(/__Host-rag_portal=[^;]+/)![0]
+    expect(
+      (
+        await f.app.request("/sign-out", {
+          method: "POST",
+          headers: { Cookie: session, Origin: "https://evil.example" },
+        })
+      ).status,
+    ).toBe(403)
+    f.setEligible(false)
+    expect(
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(403)
+    expect(
+      (
+        await f.app.request("/sign-out", {
+          method: "POST",
+          headers: { Cookie: session, Origin: "https://rag.example" },
+        })
+      ).status,
+    ).toBe(200)
+    f.setEligible(true)
+    expect(
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(401)
+  })
+
+  it("fails closed on unavailable publication and reassigned handles, without management routes", async () => {
+    const f = fixture()
+    const first = await f.start()
+    f.setReassigned(true)
+    expect(
+      (await f.callback(first.state, first.browser)).headers.get("location"),
+    ).toBe("/portal?recovery=admission_denied")
+    f.setReassigned(false)
+    const next = await f.start()
+    const response = await f.callback(next.state, next.browser)
+    const session = response.headers
+      .get("set-cookie")!
+      .match(/__Host-rag_portal=[^;]+/)![0]
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly")
+    expect(response.headers.get("set-cookie")).toContain("Secure")
+    f.setAvailable(false)
+    expect(
+      (await f.app.request("/identity", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(503)
+    f.setAvailable(true)
+    expect(
+      (await f.app.request("/consumers", { headers: { Cookie: session } }))
+        .status,
+    ).toBe(404)
+    expect(
+      (await f.app.request("/usage", { headers: { Cookie: session } })).status,
+    ).toBe(404)
+  })
+
+  it("mounts the portal separately from bearer-protected retrieval", async () => {
+    const f = fixture()
+    const app = createApp({
+      retriever: { search: async () => [] },
+      consumerAuth: { authenticate: async () => null },
+      portal: f.deps,
+    })
+    expect((await app.request("/portal/identity")).status).toBe(401)
+    expect((await app.request("/portal/login")).status).toBe(302)
+    expect((await app.request("/v1/health")).status).toBe(200)
+    expect((await app.request("/v1/search", { method: "POST" })).status).toBe(
+      401,
+    )
+  })
+})
+
+it("serves a no-store static portal shell with same-origin assets and protected identity", async () => {
+  const f = fixture()
+  const shell = await f.app.request("/")
+  expect(shell.status).toBe(200)
+  expect(shell.headers.get("content-type")).toContain("text/html")
+  expect(shell.headers.get("cache-control")).toBe("no-store")
+  expect(shell.headers.get("content-security-policy")).toContain(
+    "frame-ancestors 'none'",
+  )
+  expect(shell.headers.get("content-security-policy")).not.toContain(
+    "unsafe-inline",
+  )
+  const html = await shell.text()
+  expect(html.replace(/\s+/g, " ")).toContain("Create consumer")
+  expect(html).toContain('src="/portal/assets/portal.js" defer')
+  expect(html).not.toContain("engineer")
+  expect((await f.app.request("/identity")).status).toBe(401)
+  expect((await f.app.request("/members")).status).toBe(401)
+  const login = await f.start()
+  const callback = await f.callback(login.state, login.browser)
+  const session = callback.headers
+    .get("set-cookie")!
+    .match(/__Host-rag_portal=[^;]+/)![0]
+  const headers = { Cookie: session }
+  expect(await (await f.app.request("/identity", { headers })).json()).toEqual({
+    login: "engineer",
+    githubId: 42,
+    managementAvailable: false,
+    usageAvailable: false,
+    expiresAt: expect.any(String),
+    absoluteExpiresAt: expect.any(String),
+  })
+  expect(await (await f.app.request("/members", { headers })).json()).toEqual({
+    users: [{ login: "engineer", id: 42 }],
+  })
+  f.setAllowed(false)
+  expect((await f.app.request("/members", { headers })).status).toBe(401)
+  for (const [file, type] of [
+    ["portal.js", "text/javascript"],
+    ["portal.css", "text/css"],
+  ]) {
+    const asset = await f.app.request("/assets/" + file)
+    expect(asset.status).toBe(200)
+    expect(asset.headers.get("content-type")).toContain(type)
+    expect(asset.headers.get("cache-control")).toBe("no-store")
+  }
+})

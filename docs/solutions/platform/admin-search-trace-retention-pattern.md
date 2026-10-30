@@ -24,6 +24,8 @@ related:
   - "docs/solutions/architecture-patterns/bearer-as-passport-multi-csv-composition-20260518.md"
   - "docs/solutions/architecture-patterns/db-backed-vs-env-csv-credential-storage-20260518.md"
   - "docs/solutions/platform/admin-hybrid-search-r4-pattern.md"
+  - "docs/solutions/workflow-issues/new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md"
+last_updated: "2026-09-30"
 ---
 
 # Admin Search Trace Retention Pattern
@@ -53,20 +55,27 @@ move the live request path.
   a one-day margin before the 30-day raw-retention limit.
 - Keep aggregate rollups query-free. `search_trace_aggregate` stores counts and
   non-query dimensions only, so it can survive raw trace deletion.
-- Keep trace writes out of the availability path. REST and GraphQL await
-  `recordSearchTraceSafely` behind a short timeout and swallow write failures.
-  Safe counters and key/value logs expose loss without logging query text.
+- Keep trace writes out of the availability path. GraphQL `Query.watchSearch`
+  puts each trace on a bounded queue that runs after the response
+  (`enqueueWatchSearchTrace`). A full queue drops the trace. The Experience
+  editor video library search awaits `recordSearchTraceSafely` behind a short
+  timeout. Both paths swallow write failures. Safe counters and key/value logs
+  show the loss without query text.
 - Sample through Admin HTTP only. Future Mastra eval jobs use
   `POST /api/internal/search-traces/sample` with
   `SEARCH_TRACE_SAMPLING_API_KEYS`; Mastra must not import Admin packages or
   read Admin Postgres directly.
-- Prove retention is alive before raw capture in production. Admin health reads
-  the retention scheduler/recent purge heartbeat; if retention is not healthy,
-  raw trace capture is disabled while aggregate/loss counters continue.
+- Enforce retention before raw capture in production. The trace writer reads
+  the retention health: a fresh scheduler heartbeat or a recent successful
+  purge. If the health is not healthy, the writer runs
+  `purgeExpiredSearchTraces` inline, logs `event=trace_retention_inline_purge`,
+  and then stores the raw row (feat-272). Only an explicit
+  `retentionHealthy: false` input disables raw capture.
 - Treat stale retention schedulers as unhealthy. A QUEUED/RUNNING scheduler
   ledger only counts as healthy when its `updatedAt`/`createdAt` heartbeat is
   inside the health window; startup marks stale active ledgers failed before
-  creating a replacement.
+  creating a replacement. Neither check reads the runtime status of the run,
+  so a fresh ledger can hide a dead run until the heartbeat goes stale.
 - Keep the sampling route deliberately narrow. It accepts JSON-only bounded
   request bodies, strict typed filters, a dedicated sampling bearer allowlist,
   and rejects public `jfp_search_*` partner-token shaped values even if one is
@@ -100,9 +109,9 @@ sampling and later eval workflows.
   and `apps/admin/src/services/search-trace-retention/job.ts`.
 - Scheduler: `apps/admin/src/workflows/searchTraceRetention.ts`, started by
   `apps/admin/src/instrumentation.ts`.
-- Public instrumentation:
-  `apps/admin/src/app/api/search/route.ts` and
-  `apps/admin/src/graphql/queries/hybrid-search.ts`.
+- Public instrumentation: `apps/admin/src/graphql/queries/watch-search.ts`
+  (`Query.watchSearch`). PR #1622 removed REST `/api/search` and GraphQL
+  `Query.search`.
 - Internal sampling:
   `apps/admin/src/app/api/internal/search-traces/sample/route.ts`.
 - Deterministic labels:
@@ -120,5 +129,13 @@ sampling and later eval workflows.
   `[search] event=... key=value` and safe dimensions only.
 - Do not let a long-lived scheduler ledger mask a dead retention loop. Health
   must use a fresh scheduler heartbeat or a recent successful purge.
-- Do not add LLM classification to REST `/api/search` or GraphQL `Query.search`.
-  The classifier is bounded eval code for sampled traces only.
+- A fresh heartbeat does not prove a live run. A replay failure at worker boot
+  can leave a fresh `running` ledger row beside a `failed` runtime run. The
+  boot check reads only the heartbeat age, so a worker restart inside the
+  health window does not repair the loop. After a deploy that changes the
+  durable call sequence of `runSearchTraceRetentionScheduler`, read the
+  runtime status of the run. The new-step learning in `related` gives the
+  procedure.
+- Do not add LLM classification to the live search path, GraphQL
+  `Query.watchSearch`. The classifier is bounded eval code for sampled traces
+  only.

@@ -13,8 +13,12 @@ import { Image } from "expo-image"
 import { VideoView } from "expo-video"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import {
+  useExperienceContext,
+  useSectionByKey,
+} from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
 import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
@@ -33,6 +37,7 @@ import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../src/i18n/useT"
 import type { AdminBlock } from "../../src/lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -71,6 +76,7 @@ export default function CollectionPlayerScreen() {
     index?: string
   }>()
   const typography = useTypography()
+  const t = useT("Sections")
 
   const decodedKey = parseSectionKey(sectionKey)
 
@@ -79,11 +85,11 @@ export default function CollectionPlayerScreen() {
   if (decodedKey == null || section == null) {
     return (
       <View style={layout.centered}>
-        <Text style={text.errorTitle}>Collection not found</Text>
+        <Text style={text.errorTitle}>{t("collectionNotFoundTitle")}</Text>
         <Text style={text.errorMessage}>
           {decodedKey == null
-            ? "Invalid collection identifier."
-            : `No collection found for "${decodedKey}".`}
+            ? t("invalidCollectionId")
+            : t("collectionNotFound", { key: decodedKey })}
         </Text>
       </View>
     )
@@ -111,6 +117,9 @@ function CollectionPlayerContent({
   initialIndex: number
   typography: ReturnType<typeof useTypography>
 }) {
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const navigation = useNavigation()
   const { width: screenWidth } = useWindowDimensions()
   const playerHeight = Math.round(screenWidth * (9 / 16))
@@ -166,15 +175,22 @@ function CollectionPlayerContent({
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
-  const { player, isPlaying } = useManagedVideoPlayer(
+  // R15: the record title the provider loads, never the item's titleOverride.
+  const { getVideoTitle } = useExperienceContext()
+  const { player, isPlaying, muxMonitor } = useManagedVideoPlayer(
     activeStreamingUrl,
     undefined,
     {
       // KTD5 opt-in: identity re-keys with the active pager item, flushing
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
+      muxData: experienceMuxData(activeVideoId, getVideoTitle),
     },
   )
+
+  useEffect(() => {
+    muxMonitor.setPlayerSize({ width: screenWidth, height: playerHeight })
+  }, [muxMonitor, screenWidth, playerHeight])
 
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not
@@ -247,7 +263,7 @@ function CollectionPlayerContent({
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride
-          : null) ?? "Untitled"
+          : null) ?? tCommon("untitled")
       const thumbnailUrl = resolveImageUrl(item.imageUrl)
 
       return (
@@ -266,7 +282,10 @@ function CollectionPlayerContent({
           onPress={isPlayable ? () => handleItemPress(idx) : undefined}
           disabled={!isPlayable}
           accessibilityRole="button"
-          accessibilityLabel={`${isActive ? "Now playing: " : ""}${title}`}
+          accessibilityLabel={
+            isActive ? t("nowPlayingAriaLabel", { title }) : title
+          }
+          {...{ "dd-action-name": "sdui-collection-item" }}
           accessibilityState={{ disabled: !isPlayable, selected: isActive }}
         >
           {/* Thumbnail */}
@@ -319,7 +338,7 @@ function CollectionPlayerContent({
         </Pressable>
       )
     },
-    [currentIndex, handleItemPress, typography],
+    [currentIndex, handleItemPress, typography, t, tCommon],
   )
 
   const hasSubtitle = vcSubtitle != null && vcSubtitle !== ""
@@ -333,7 +352,7 @@ function CollectionPlayerContent({
       <View style={layout.screenContainer}>
         <View style={[styles.playerContainer, { height: playerHeight }]}>
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Text style={styles.noVideoText}>No playable videos</Text>
+            <Text style={styles.noVideoText}>{t("noPlayableVideos")}</Text>
           </View>
         </View>
         {hasHeader && (
@@ -367,6 +386,7 @@ function CollectionPlayerContent({
         <FlatList
           data={items}
           renderItem={renderItem}
+          extraData={epoch}
           keyExtractor={(_item, idx) => `coll-${idx}`}
           contentContainerStyle={styles.listContent}
         />
@@ -375,7 +395,7 @@ function CollectionPlayerContent({
   }
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-collection" style={layout.screenContainer}>
       {/* Sticky 16:9 player */}
       <View style={[styles.playerContainer, { height: playerHeight }]}>
         <VideoView
@@ -403,7 +423,7 @@ function CollectionPlayerContent({
             contentFit="cover"
             pointerEvents="none"
             recyclingKey={`sdui-collection-poster-${currentIndex}`}
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         )}
         {awaitingAutostart && <PlayerLoadingVeil />}
@@ -444,6 +464,7 @@ function CollectionPlayerContent({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, idx) => `coll-${idx}`}
         getItemLayout={(_data, idx) => ({
           length: ROW_HEIGHT,
@@ -478,7 +499,6 @@ const styles = StyleSheet.create({
   noVideoText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
-    fontFamily: "System",
   },
   listContent: {
     paddingBottom: 48,
@@ -493,7 +513,6 @@ const styles = StyleSheet.create({
   },
   description: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 6,
     lineHeight: 20,
   },
@@ -539,7 +558,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontWeight: "500",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   rowTitleActive: {
     color: TEXT_PRIMARY,

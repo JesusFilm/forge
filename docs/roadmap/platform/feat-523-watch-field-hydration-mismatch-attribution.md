@@ -57,10 +57,11 @@ variants share a cause. No remaining field cause is established yet.
 ## Constraints
 
 Do not suppress hydration warnings, disable RUM or gate recommendation/analytics
-collection on consent. Keep the authored English Homepage Recommendations Block
-removed and `forge.watch.homepageRecommendations` default off. No Mobile/TV UI,
-account linking or curation republishing. Do not increase recommendation deadlines
-or weaken identity, authorization, attribution, integrity or rate limits.
+collection on consent. Preserve the current owner-authorized homepage
+recommendation pilot gating and published block state; do not remove, republish
+or widen targeting as part of this investigation. No Mobile/TV UI, account
+linking or curation republishing. Do not increase recommendation deadlines or
+weaken identity, authorization, attribution, integrity or rate limits.
 
 ## Verification
 
@@ -95,3 +96,23 @@ incidence rate or proof of human traffic. Existing framework-only stacks do
 not expose the server/client text difference. No hydration correction is
 justified by the healthy browser probes; source-mapped component evidence
 remains the next requirement.
+
+## September 24 current-release field continuation
+
+In a fixed 24-hour production RUM window on Web
+`37e10b622bd66e55647cf561c3896b2d4fbb4dce`, the four Chrome/Chrome Mobile/
+Safari/Mobile Safari browser-named groups contain 182 text-variant and seven
+HTML-variant React #418 events. Googlebot's 75 text events span only about three
+distinct views; identified bots remain separate. The same-window sampled view
+denominator, exact query and grouping limits are in the
+[September 24 browser record](../../operations/watch-browser-investigations-2026-09-24.md).
+Current-version HTML events include no-autoplay routes, so feat-517's completed
+autoplay fix does not explain all variants.
+
+Detailed RUM source maps still resolve the stack only to React's compiled
+hydration code, without a leaf component or server/client difference. An owned
+headed browser did not finish opening before its bounded timeout; no reproduction
+or regression was obtained. The required artifact is one privacy-redacted
+SSR-versus-first-client DOM difference or component stack from a matched affected
+route, cache, query, locale, timezone and persisted browser state. No speculative
+rendering fix is justified by current evidence; this ticket remains in progress.

@@ -18,6 +18,7 @@ import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
 import { computeBackdropGate, isAppStateForeground } from "./videoBackdropGate"
+import { useStartupIntroActive } from "../../contexts/StartupIntroProvider"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -53,6 +54,8 @@ type VideoBackdropProps = {
    * away; siblings omit it and stay gated by the overlay alone.
    */
   active?: boolean
+  /** Stronger copy-area protection for watch details; other heroes keep their ambient scrim. */
+  scrimVariant?: "ambient" | "detail"
 }
 
 export function VideoBackdrop({
@@ -62,7 +65,9 @@ export function VideoBackdrop({
   bottomFadeColor,
   muted = true,
   active = true,
+  scrimVariant = "ambient",
 }: VideoBackdropProps) {
+  const introActive = useStartupIntroActive()
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -104,7 +109,7 @@ export function VideoBackdrop({
   const { shouldPlay, shouldMountVideo } = computeBackdropGate({
     muted,
     active,
-    overlayVisible,
+    overlayVisible: overlayVisible || introActive,
     appForeground,
   })
 
@@ -266,12 +271,23 @@ export function VideoBackdrop({
           left→right + bottom→up darken + faint top fade, one LinearGradient each.
           collapsable={false} keeps them above the Android VideoView SurfaceView. */}
       <LinearGradient
-        colors={[
-          WATCH_THEME.scrim(0.92),
-          WATCH_THEME.scrim(0.55),
-          WATCH_THEME.scrim(0),
-        ]}
-        locations={[0, 0.34, 0.6]}
+        colors={
+          scrimVariant === "detail"
+            ? [
+                WATCH_THEME.scrim(0.98),
+                WATCH_THEME.scrim(0.9),
+                WATCH_THEME.scrim(0.72),
+                WATCH_THEME.scrim(0),
+              ]
+            : [
+                WATCH_THEME.scrim(0.92),
+                WATCH_THEME.scrim(0.55),
+                WATCH_THEME.scrim(0),
+              ]
+        }
+        locations={
+          scrimVariant === "detail" ? [0, 0.2, 0.62, 1] : [0, 0.34, 0.6]
+        }
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={StyleSheet.absoluteFill}

@@ -1,14 +1,6 @@
-/**
- * Session Replay records the rendered screen. The global level is
- * MASK_ALL_INPUTS, which masks input FIELDS — static <Text> is captured
- * verbatim — so the account identity block is masked per-element instead.
- *
- * Nothing else can catch a regression here: removing the wrapper breaks no
- * behaviour, no test, and nothing visible on screen. The leak is silent and
- * only appears in a recording held by a third party. apps/mobile has no
- * component-render tests (KTD11), so this pins the source. Node globals are
- * declared locally rather than via @types/node — KTD11 forbids new test deps.
- */
+// MASK_ALL_INPUTS masks input fields only, and a missing per-element mask
+// changes nothing on screen. The leak shows only in a third-party recording,
+// so this suite pins the source of each surface (R19).
 
 declare const __dirname: string
 declare const require: (moduleName: string) => {
@@ -19,45 +11,82 @@ declare const require: (moduleName: string) => {
 const fs = require("node:fs")
 const path = require("node:path")
 
-const ACCOUNT_SECTION = fs.readFileSync(
-  path.join(__dirname, "..", "AccountSection.tsx"),
-  "utf8",
-)
-const RUM_CONFIG = fs.readFileSync(
-  path.join(__dirname, "..", "..", "DatadogRum.tsx"),
-  "utf8",
-)
+function read(...parts: string[]): string {
+  return fs.readFileSync(path.join(__dirname, ...parts), "utf8")
+}
 
-/** The block holding both PII lines: the email AND the name it falls back to. */
+const RUM_CONFIG = read("..", "..", "DatadogRum.tsx")
+
+/** The one block that holds the account PII on a surface. */
 const IDENTITY_BLOCK =
   /<SessionReplayView\.MaskAll[^>]*>([\s\S]*?)<\/SessionReplayView\.MaskAll>/
 
-describe("account PII is masked in session replays", () => {
-  it("wraps the identity block in a replay mask", () => {
-    expect(ACCOUNT_SECTION).toMatch(IDENTITY_BLOCK)
-  })
+/** The JSX expressions that show account PII on each surface. The header
+ *  shows the display name (or the email) and the initial; the Account
+ *  screen shows those and the email line too. */
+type Surface = {
+  file: string
+  source: string
+  masked: string[]
+}
 
-  it("masks the raw email", () => {
-    const inside = ACCOUNT_SECTION.match(IDENTITY_BLOCK)?.[1] ?? ""
-    expect(inside).toContain("snapshot.user.email")
-  })
+const SURFACES: Surface[] = [
+  {
+    file: "MyWatchHeader.tsx",
+    source: read("..", "MyWatchHeader.tsx"),
+    masked: ["{displayName}", "{initial}"],
+  },
+  {
+    file: "app/account.tsx",
+    source: read("..", "..", "..", "..", "app", "account.tsx"),
+    masked: ["{displayName}", "{email}", "{initial}"],
+  },
+]
 
-  it("masks the display name too, since it falls back to the email", () => {
-    // `displayName = user.name?.trim() || user.email` — masking only the
-    // email line would still leak it whenever the account has no name,
-    // which is exactly the Hide My Email case.
-    const inside = ACCOUNT_SECTION.match(IDENTITY_BLOCK)?.[1] ?? ""
-    expect(inside).toContain("{displayName}")
-  })
+/** No JSX expression may render a raw user field outside the mask. */
+const RAW_USER_FIELD = /\{\s*(?:snapshot\.)?user\.(email|name)\b[^}]*\}/
 
-  it("renders no account PII outside the mask", () => {
-    // A future line added below the wrapper would silently reopen the leak.
-    const outside = ACCOUNT_SECTION.replace(IDENTITY_BLOCK, "")
-    expect(outside).not.toContain("{snapshot.user.email}")
-    expect(outside).not.toContain("{displayName}")
-  })
+describe.each(SURFACES)(
+  "account PII is masked in session replays: $file",
+  ({ source, masked }) => {
+    it("wraps the identity block in a replay mask", () => {
+      expect(source).toMatch(IDENTITY_BLOCK)
+    })
 
-  it("still relies on the global level that masks inputs only", () => {
+    it.each(masked)("renders %s inside the mask", (expression) => {
+      const inside = source.match(IDENTITY_BLOCK)?.[1] ?? ""
+      expect(inside).toContain(expression)
+    })
+
+    it("renders no account PII outside the mask", () => {
+      // A future line added beside the wrapper would silently reopen the leak.
+      const outside = source.replace(IDENTITY_BLOCK, "")
+      for (const expression of masked) {
+        expect(outside).not.toContain(expression)
+      }
+      expect(outside).not.toMatch(RAW_USER_FIELD)
+    })
+  },
+)
+
+describe("the raw user field rule", () => {
+  it.each(["{user.email}", "{ user.name }", "{snapshot.user.email}"])(
+    "catches %s outside the mask",
+    (expression) => {
+      const source = `<Text>${expression}</Text><SessionReplayView.MaskAll>{email}</SessionReplayView.MaskAll>`
+      const outside = source.replace(IDENTITY_BLOCK, "")
+      expect(outside).toMatch(RAW_USER_FIELD)
+    },
+  )
+
+  it("ignores helper calls and non-JSX reads", () => {
+    const source = "const email = user.email\nconst id = accountIdentity(user)"
+    expect(source).not.toMatch(RAW_USER_FIELD)
+  })
+})
+
+describe("the global replay level", () => {
+  it("still masks inputs only", () => {
     // If the global level ever becomes MASK_ALL, the per-element wrapper is
     // redundant rather than load-bearing — and this test should be revisited
     // rather than silently guarding nothing.

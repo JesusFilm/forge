@@ -8,6 +8,8 @@ import { SourcesList } from "./sources-list"
 import { VideoCard } from "./video-card"
 
 type MessageListProps = {
+  /** Names concurrent provider streams in the temporary comparison view. */
+  providerLabel?: string
   messages: Message[]
   // The in-flight assistant message id (from useConversations), or null. The
   // streaming pulse renders against this id rather than re-deriving "not yet
@@ -129,7 +131,9 @@ const AssistantTurn = memo(function AssistantTurn({
   followUps,
   followUpsDisabled,
   onSelectFollowUp,
+  providerLabel,
 }: {
+  providerLabel?: string
   message: Message
   streaming: boolean
   // Already reduced by the list: the questions to show on THIS turn, empty on
@@ -144,6 +148,7 @@ const AssistantTurn = memo(function AssistantTurn({
       <li
         data-message-id={message.id}
         data-pending="true"
+        aria-label={providerLabel ? `${providerLabel} response` : undefined}
         aria-live="polite"
         aria-atomic="false"
         className="max-w-[560px] text-lg leading-relaxed text-linen"
@@ -153,7 +158,9 @@ const AssistantTurn = memo(function AssistantTurn({
             so this branch is unreachable today — it exists so a future
             mid-stream or replay writer cannot silently drop the block. */}
         {message.video ? <VideoCard video={message.video} /> : null}
-        <span className="sr-only">Replying</span>
+        <span className="sr-only">
+          {providerLabel ? `${providerLabel} replying` : "Replying"}
+        </span>
       </li>
     )
   }
@@ -218,6 +225,7 @@ export function MessageList({
   streamingMessageId,
   onSelectFollowUp,
   followUpsDisabled = false,
+  providerLabel,
 }: MessageListProps) {
   // Chips belong to the conversation's LAST turn only (R3). Deriving the id
   // here — rather than per turn — keeps the rule in one place, and makes the
@@ -247,6 +255,7 @@ export function MessageList({
           <AssistantTurn
             key={message.id}
             message={message}
+            providerLabel={providerLabel}
             streaming={streaming}
             followUps={
               isLast && message.followUps ? message.followUps : NO_FOLLOW_UPS

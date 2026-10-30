@@ -11,7 +11,9 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react"
 import { StyleSheet, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
+import { useNavigation } from "expo-router"
 
+import { useT } from "../../i18n/useT"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import {
@@ -19,7 +21,9 @@ import {
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
   type ProgressFeed,
+  type ProgressHold,
 } from "../../lib/miniPlayer/playbackRequest"
+import type { SlotPage } from "../../lib/miniPlayer/presentation"
 import type { VideoPlayerCast } from "./VideoPlayer"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -29,6 +33,15 @@ import { PlayerPoster } from "./PlayerPoster"
 // ~2s at 60fps. Long enough for a slow cold open to attach the native node,
 // short enough that a genuinely unmeasurable slot stops asking.
 export const MEASURE_RETRY_FRAMES = 120
+
+/** The one stack event the slot reads. A generic parent's event map does not
+ *  name it, because only a stack navigator emits it. */
+type RootStackEvents = {
+  addListener: (
+    event: "transitionEnd",
+    listener: (event: { data?: { closing?: boolean } } | undefined) => void,
+  ) => () => void
+}
 
 type PlayerSlotProps = {
   /** Null while the surface has no stream yet, which is a state it OWNS rather
@@ -46,6 +59,8 @@ type PlayerSlotProps = {
   horizontalInset?: number
   /** Progress-recording identity (KTD5). Absent = no recording. */
   progressIdentity?: ProgressIdentity | null
+  /** KTD12: no progress write while set. Dropping it ends the hold at once. */
+  progressHold?: ProgressHold | null
   resumeAtSeconds?: number | null
   autostart?: boolean
   /** What this video's mini-player session would be. Omitted on a surface that
@@ -63,6 +78,9 @@ type PlayerSlotProps = {
   /** Filled by the host with the root adapter's progress facade, so the
    *  screen's cast recorder can write through it (KTD6). */
   progressFeedRef?: { current: ProgressFeed | null } | null
+  /** The page that mounts this slot. A screen pushed over it covers the slot
+   *  on every route but this page's own. */
+  page: SlotPage
 }
 
 export function PlayerSlot({
@@ -73,6 +91,7 @@ export function PlayerSlot({
   onToggleFullscreen,
   horizontalInset = 0,
   progressIdentity = null,
+  progressHold = null,
   resumeAtSeconds = null,
   autostart = false,
   session = null,
@@ -80,7 +99,9 @@ export function PlayerSlot({
   castActive = false,
   cast = null,
   progressFeedRef = null,
+  page,
 }: PlayerSlotProps) {
+  const tCommon = useT("Common")
   const store = getPlaybackRequestStore()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const viewRef = useRef<View | null>(null)
@@ -97,6 +118,7 @@ export function PlayerSlot({
     progressVideoId: progressIdentity?.videoId ?? null,
     progressVideoSlug: progressIdentity?.videoSlug ?? null,
     progressLanguageSlug: progressIdentity?.languageSlug ?? null,
+    progressHold,
     onToggleFullscreen: onToggleFullscreen ?? null,
     castActive,
     cast,
@@ -105,9 +127,11 @@ export function PlayerSlot({
   }
   const requestRef = useRef(request)
   requestRef.current = request
+  const pageRef = useRef(page)
+  pageRef.current = page
 
   useEffect(() => {
-    const id = store.attachSlot(requestRef.current)
+    const id = store.attachSlot(requestRef.current, pageRef.current)
     slotIdRef.current = id
     return () => {
       slotIdRef.current = null
@@ -127,10 +151,12 @@ export function PlayerSlot({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // The RECT, not just the attachment: the host draws nothing until it has one,
   // so treating "attached" as drawn would drop this poster over a black box.
+  // A cover (feat-553 KTD10) keeps the rect but draws nothing here.
   const isDrawn =
     snapshot.slotId != null &&
     snapshot.slotId === slotIdRef.current &&
-    snapshot.rect != null
+    snapshot.rect != null &&
+    snapshot.cover == null
 
   const measureIntoStore = useCallback(() => {
     const id = slotIdRef.current
@@ -177,6 +203,49 @@ export function PlayerSlot({
     }
   }, [measureIntoStore])
 
+  // feat-553 KTD10: a covering screen pops on the ROOT stack, so only the
+  // parent navigator sees the transition end. Measure once then: a rect taken
+  // while covered can be stale (a rotation), or its callback can have dropped.
+  const coveredRef = useRef(false)
+  if (snapshot.cover != null && snapshot.slotId === slotIdRef.current)
+    coveredRef.current = true
+  const navigation = useNavigation()
+  useEffect(() => {
+    const parent = navigation.getParent?.() as RootStackEvents | undefined
+    if (parent == null) return
+    return parent.addListener("transitionEnd", (event) => {
+      if (event?.data?.closing || !coveredRef.current) return
+      coveredRef.current = false
+      measureIntoStore()
+    })
+  }, [navigation, measureIntoStore])
+
+  // A screen pushed over this one keeps it mounted, so the slot never detaches
+  // and the host would draw over that screen. A pop blurs this screen too, but
+  // its `beforeRemove` comes first, and a leaving screen publishes no more.
+  const leavingRef = useRef(false)
+  useEffect(() => {
+    const publish = () => {
+      const id = slotIdRef.current
+      if (id == null || leavingRef.current) return
+      const focused = navigation.isFocused?.() ?? true
+      store.setSlotUnderScreen(id, !focused)
+    }
+    const unsubscribes = [
+      // A covered page that leaves keeps its cover, so its detach decides the
+      // window, and the full view never grows back first.
+      navigation.addListener?.("beforeRemove", () => {
+        leavingRef.current = true
+      }),
+      navigation.addListener?.("focus", publish),
+      navigation.addListener?.("blur", publish),
+    ]
+    publish()
+    return () => {
+      for (const unsubscribe of unsubscribes) unsubscribe?.()
+    }
+  }, [navigation, store])
+
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
   )
@@ -221,7 +290,7 @@ export function PlayerSlot({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             recyclingKey="player-slot-poster"
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         )
       )}

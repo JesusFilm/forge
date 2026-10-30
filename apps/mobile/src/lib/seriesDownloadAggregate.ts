@@ -1,3 +1,4 @@
+import type { DownloadButtonT } from "./downloadGlyph"
 import { clampFraction, type ExportSessionSnapshot } from "./exportSession"
 import type { SeriesExportRunProgress } from "./seriesExportProgress"
 import type {
@@ -232,9 +233,12 @@ export function deriveEpisodeBadges(
 // The Download button's spoken label for the settled states — the in-progress /
 // paused a11y is now the ring's own tap-hint (SeriesActionRow), so only the
 // idle / partial / all-downloaded labels are reachable here.
-export function seriesDownloadLabel(state: SeriesDownloadState): string {
+export function seriesDownloadLabel(
+  state: SeriesDownloadState,
+  t: DownloadButtonT,
+): string {
   const { downloaded, total } = state
-  if (seriesAllDownloaded(state)) return "All downloaded"
-  if (downloaded > 0) return `${downloaded} of ${total} downloaded`
-  return "Download all"
+  if (seriesAllDownloaded(state)) return t("allDownloadedAriaLabel")
+  if (downloaded > 0) return t("someDownloadedAriaLabel", { downloaded, total })
+  return t("downloadAllAriaLabel")
 }

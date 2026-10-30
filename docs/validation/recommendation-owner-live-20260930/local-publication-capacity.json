@@ -1,0 +1,224 @@
+{
+  "productionExecuted": false,
+  "method": "Synthetic aggregate-dominating shape; unchanged actual atomic publisher; local loopback PG18.6; no production values copied",
+  "sourceRoot": "/home/nisal/.codex/worktrees/recommendation-direct-live-20260930/forge",
+  "appScriptSha256": "c77613a402f10d6affcfee29f93018af440bd2763d3501a986b3d4ee9f0849b0",
+  "totalWallSeconds": 23.143853126035538,
+  "outer45SecondKill": false,
+  "processExitCode": 0,
+  "appState": {
+    "ExitCode": 0,
+    "OOMKilled": false,
+    "StartedAt": "2026-09-29T20:34:03.588832508Z",
+    "FinishedAt": "2026-09-29T20:34:26.294858007Z"
+  },
+  "appConfigured": {
+    "NanoCpus": 1000000000,
+    "Memory": 1073741824,
+    "MemorySwap": 1073741824,
+    "PidsLimit": 128,
+    "ReadonlyRootfs": true
+  },
+  "events": [
+    {
+      "event": "runtime",
+      "runtime": {
+        "memory.max": "1073741824",
+        "memory.swap.max": "0",
+        "cpu.max": "100000 100000",
+        "pids.max": "128"
+      },
+      "heapSizeLimitBytes": 587202560,
+      "node": "v24.20.0"
+    },
+    {
+      "event": "result",
+      "mode": "publish",
+      "status": "published",
+      "result": {
+        "rawSourceCount": 39551,
+        "rawSourceCountIsLowerBound": false,
+        "sourceCount": 6680,
+        "attemptedPairCount": 49840,
+        "contributionCount": 36220,
+        "edgeCount": 9055,
+        "publicationRowCount": 51956,
+        "sourceWindow": {
+          "version": "episode-event-window-v1",
+          "windowStart": "2026-09-22T19:00:00.000Z",
+          "windowEnd": "2026-09-29T19:00:00.000Z",
+          "evaluationAsOf": "2026-09-29T19:00:00.000Z"
+        },
+        "publishedAt": "2026-09-29T20:34:08.977Z",
+        "terminalDecision": "no_promotion",
+        "decisionReason": "controlled_evaluation_required_feat_505",
+        "status": "published"
+      },
+      "error": null,
+      "operationMs": 21646.692476,
+      "appWallMs": 22189.637404,
+      "sourceSha256": "c0115a9c12bdc9b7045d81946f8e967155a6e64e10fef9bcb0bc311cc25ffec3",
+      "queryBuckets": {
+        "transaction_control": {
+          "count": 3,
+          "totalMs": 16,
+          "maxMs": 10
+        },
+        "other_read": {
+          "count": 2,
+          "totalMs": 13,
+          "maxMs": 10
+        },
+        "source_read": {
+          "count": 1,
+          "totalMs": 2581,
+          "maxMs": 2581
+        },
+        "recommendation_cowatch_generation": {
+          "count": 1,
+          "totalMs": 2,
+          "maxMs": 2
+        },
+        "recommendation_cowatch_source_contribution": {
+          "count": 14,
+          "totalMs": 1380,
+          "maxMs": 167
+        },
+        "recommendation_cowatch_contribution": {
+          "count": 73,
+          "totalMs": 6662,
+          "maxMs": 396
+        },
+        "recommendation_cowatch_edge": {
+          "count": 19,
+          "totalMs": 1178,
+          "maxMs": 72
+        }
+      },
+      "firstWriteOffsetMs": 4478.294497,
+      "lastWriteOffsetMs": 21637.375235000003,
+      "sourceEndOffsetMs": 2732.266931,
+      "peakProcessRssBytes": 614973440,
+      "peakCgroupBytes": 577474560
+    }
+  ],
+  "allocationDeltas": [
+    {
+      "table": "recommendation_cowatch_source_contribution",
+      "heapBytes": 4980736,
+      "indexBytes": 4087808,
+      "toastBytes": 0,
+      "tableBytes": 5005312,
+      "totalBytes": 9093120,
+      "auxiliaryBytes": 24576
+    },
+    {
+      "table": "recommendation_cowatch_contribution",
+      "heapBytes": 29671424,
+      "indexBytes": 16850944,
+      "toastBytes": 0,
+      "tableBytes": 29696000,
+      "totalBytes": 46546944,
+      "auxiliaryBytes": 24576
+    },
+    {
+      "table": "recommendation_cowatch_edge",
+      "heapBytes": 5300224,
+      "indexBytes": 7233536,
+      "toastBytes": 0,
+      "tableBytes": 5324800,
+      "totalBytes": 12558336,
+      "auxiliaryBytes": 24576
+    },
+    {
+      "table": "recommendation_cowatch_generation",
+      "heapBytes": 8192,
+      "indexBytes": 24576,
+      "toastBytes": 0,
+      "tableBytes": 8192,
+      "totalBytes": 32768,
+      "auxiliaryBytes": 0
+    }
+  ],
+  "totalAllocatedBytes": 68231168,
+  "tableCounts": {
+    "recommendation_cowatch_generation": 1,
+    "recommendation_cowatch_source_contribution": 6680,
+    "recommendation_cowatch_contribution": 36220,
+    "recommendation_cowatch_edge": 9055,
+    "recommendation_cowatch_trial_authority": 0,
+    "recommendation_owner_release": 0
+  },
+  "walGeneratedBytes": 103812800,
+  "residentWalBytesBefore": 268435456,
+  "residentWalBytesAfter": 268435456,
+  "sampledPeakResidentWalBytes": 268435456,
+  "sampledPeakTempBytes": 45367296,
+  "tempBytes": 45371302,
+  "tempFiles": 3,
+  "monitorSamples": 103,
+  "limits": [
+    "Thirty-second unchanged Prisma interactive transaction; unchanged five-second statement and one-second lock timeout.",
+    "Peak WAL and temp are sampled at100ms plus control-query latency; short-lived temp may exceed observed peak. pg_stat_database totals included.",
+    "Explicit checkpoint before measured interval includes full-page WAL images; autovacuum off; allocation includes page slack. Existing input/fixture creation excluded.",
+    "Local loopback latency excludes actual SSH-path RTT; query counts and durations do not establish future network or lock bounds.",
+    "Synthetic shape dominates specified aggregate counts and encoded row widths, not every possible data distribution/query plan/cache state. No production publication or activation is authorized by this receipt."
+  ],
+  "monitorIntervalSeconds": {
+    "minimum": 0.20300000000000118,
+    "maximum": 0.30400000000000027,
+    "mean": 0.2247352941176471
+  },
+  "setupFailuresCorrectedBeforeMeasurement": [
+    "Synthetic seed SELECT DISTINCT required explicit profile enum casts.",
+    "Synthetic active profiles required a nonnull token digest; corrected before seeding canonical rows."
+  ],
+  "preflightAggregate": {
+    "rawSourceCount": 39551,
+    "rawSourceCountIsLowerBound": false,
+    "sourceCount": 6680,
+    "attemptedPairCount": 49840,
+    "contributionCount": 36220,
+    "edgeCount": 9055,
+    "publicationRowCount": 51956,
+    "sourceWindow": {
+      "version": "episode-event-window-v1",
+      "windowStart": "2026-09-22T19:00:00.000Z",
+      "windowEnd": "2026-09-29T19:00:00.000Z",
+      "evaluationAsOf": "2026-09-29T19:00:00.000Z"
+    },
+    "publishedAt": null,
+    "terminalDecision": "no_promotion",
+    "decisionReason": "complete_bounded_population_preflight",
+    "status": "ready",
+    "supportedEdgeCount": 9055,
+    "graphRowJsonBytes": {
+      "sources": {
+        "total": 6452880,
+        "maximum": 966
+      },
+      "contributions": {
+        "total": 24776000,
+        "maximum": 685
+      },
+      "edges": {
+        "total": 5681715,
+        "maximum": 628
+      }
+    }
+  },
+  "publisherFailureCount": 0,
+  "cleanup": {
+    "productionExecuted": false,
+    "removedExactContainers": [
+      "forge-owner-publish-app-preflight-20260930",
+      "forge-owner-publish-app-atomic-20260930",
+      "forge-owner-publish-capacity-20260930"
+    ],
+    "allContainersAbsent": true,
+    "ownedVolumeCount": 1,
+    "allOwnedVolumesAbsent": true
+  },
+  "planningComponentSumBytes": 217415270,
+  "planningComponentSumLimitation": "Sum of allocated graph bytes, generated WAL and cumulative temporary bytes; not a measured simultaneous disk peak. Resident WAL was already256MiB and did not grow in this fixture; replication/archive retention and existing Admin/process load are not reproduced."
+}

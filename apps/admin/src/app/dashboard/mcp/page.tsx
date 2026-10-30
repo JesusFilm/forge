@@ -20,6 +20,9 @@ const starterPrompts = [
   "Check whether target-language videos exist before creating drafts.",
   "Generate a new draft Experience about hope, then translate it into French.",
   "Duplicate the Easter Experience as an unpublished draft.",
+  "Use the forge-push-campaign-drafts skill to draft a push campaign for a new video.",
+  "Draft a push campaign for Mexico in English and Spanish, then give me the review link.",
+  "Fix only the Spanish copy of a draft push campaign. I will paste its dashboard link.",
 ]
 
 export default async function AdminMcpPage() {

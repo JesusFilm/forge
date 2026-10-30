@@ -100,6 +100,7 @@ export async function observeStudioMuxAsset(
   if (asset.id !== assetId)
     throw new StudioMuxReadinessError("Mux asset mismatch")
   if (asset.status === "preparing") return { status: "preparing" as const }
+  if (asset.status === "errored") return { status: "errored" as const }
   return {
     status: "ready" as const,
     proof: studioMuxReadyProof(asset, intentId),

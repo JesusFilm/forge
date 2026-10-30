@@ -1,4 +1,7 @@
+import { getT } from "../../i18n/useT"
 import { formatCitationLabel } from "../citationFormat"
+
+const t = getT("BibleQuotes")
 
 type Input = Parameters<typeof formatCitationLabel>[0]
 
@@ -26,6 +29,7 @@ describe("formatCitationLabel", () => {
           verseStart: 20,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Galatians 2:20")
   })
@@ -40,6 +44,7 @@ describe("formatCitationLabel", () => {
           verseStart: 26,
           verseEnd: 27,
         }),
+        t,
       ),
     ).toBe("Genesis 1:26-27")
   })
@@ -54,6 +59,7 @@ describe("formatCitationLabel", () => {
           verseStart: 26,
           verseEnd: 27,
         }),
+        t,
       ),
     ).toBe("Genesis 1:26-27")
   })
@@ -68,6 +74,7 @@ describe("formatCitationLabel", () => {
           verseStart: 20,
           verseEnd: 5,
         }),
+        t,
       ),
     ).toBe("Galatians 2:20–3:5")
   })
@@ -82,6 +89,7 @@ describe("formatCitationLabel", () => {
           verseStart: 20,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Galatians 2:20–3")
   })
@@ -96,6 +104,7 @@ describe("formatCitationLabel", () => {
           verseStart: null,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Genesis 3")
   })
@@ -110,6 +119,7 @@ describe("formatCitationLabel", () => {
           verseStart: null,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Genesis 3–5")
   })
@@ -125,6 +135,7 @@ describe("formatCitationLabel", () => {
           verseStart: null,
           verseEnd: 12,
         }),
+        t,
       ),
     ).toBe("Genesis 3")
   })
@@ -139,6 +150,7 @@ describe("formatCitationLabel", () => {
           verseStart: 1,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Unknown Book 1:1")
 
@@ -151,6 +163,7 @@ describe("formatCitationLabel", () => {
           verseStart: 1,
           verseEnd: null,
         }),
+        t,
       ),
     ).toBe("Unknown Book 1:1")
   })
@@ -165,6 +178,7 @@ describe("formatCitationLabel", () => {
           verseStart: 26,
           verseEnd: 27,
         }),
+        t,
       ),
     ).toBe("Genesis")
   })
@@ -179,13 +193,16 @@ describe("formatCitationLabel", () => {
         for (const chapterEnd of values) {
           for (const verseStart of values) {
             for (const verseEnd of values) {
-              const label = formatCitationLabel({
-                bookName,
-                chapterStart,
-                chapterEnd,
-                verseStart,
-                verseEnd,
-              })
+              const label = formatCitationLabel(
+                {
+                  bookName,
+                  chapterStart,
+                  chapterEnd,
+                  verseStart,
+                  verseEnd,
+                },
+                t,
+              )
 
               expect(label).not.toMatch(/[:\-–]\s*$/)
               expect(label).not.toMatch(/[:\-–]{2}/)

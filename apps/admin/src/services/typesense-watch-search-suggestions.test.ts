@@ -83,6 +83,30 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe("TypesenseWatchSearchSuggestionsService", () => {
+  it("reads newly published lexical collections for suggestions", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValue([{ found: 0, grouped_hits: [] }])
+    let collection = "watch_search_candidate_first_lexical"
+    const service = new TypesenseWatchSearchSuggestionsService(
+      {
+        language: { findFirst: findFirstMock },
+        video: { findMany: videoFindManyMock },
+      } as never,
+      { multiSearch: multiSearchMock } as never,
+      { warn: warnMock },
+      () => collection,
+    )
+    await service.suggest({ query: "Breaking", languageSlug: "english" })
+    collection = "watch_search_candidate_new_lexical"
+    await service.suggest({ query: "Breaking", languageSlug: "english" })
+    expect(multiSearchMock.mock.calls[0][0][0].collection).toBe(
+      "watch_search_candidate_first_lexical",
+    )
+    expect(multiSearchMock.mock.calls[1][0][0].collection).toBe(
+      "watch_search_candidate_new_lexical",
+    )
+  })
+
   it.each(["", " ", "j", "!?"])(
     "returns no suggestions for ineligible prefix %j without downstream work",
     async (query) => {

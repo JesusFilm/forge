@@ -1,8 +1,12 @@
 import {
+  CLIP_STILL_HEIGHT,
+  CLIP_STILL_WIDTH,
   deriveMuxThumbnailUrl,
   extractMuxPlaybackId,
   isSameMuxAsset,
   muxAnimatedPreviewFromPlaybackId,
+  muxClipStillUrl,
+  muxHeroPosterFromPlaybackId,
   muxHlsUrlFromPlaybackId,
   muxThumbnailAtSecond,
   muxThumbnailFromPlaybackId,
@@ -216,5 +220,48 @@ describe("muxThumbnailAtSecond", () => {
       muxThumbnailAtSecond("abc123XYZ", Number.POSITIVE_INFINITY),
     ).toBeNull()
     expect(muxThumbnailAtSecond("abc123XYZ", -1)).toBeNull()
+  })
+})
+
+describe("muxClipStillUrl (Explore R7, KTD21)", () => {
+  it("builds a fixed portrait smartcrop still at the clip start", () => {
+    expect(muxClipStillUrl("abc123XYZ", 734.5)).toBe(
+      "https://image.mux.com/abc123XYZ/thumbnail.webp?width=540&height=960&fit_mode=smartcrop&time=734.50",
+    )
+  })
+
+  it("keeps one portrait size for every clip", () => {
+    expect([CLIP_STILL_WIDTH, CLIP_STILL_HEIGHT]).toEqual([540, 960])
+    expect(muxClipStillUrl("abc123XYZ", 3)).toContain(
+      "width=540&height=960&fit_mode=smartcrop",
+    )
+    expect(muxClipStillUrl("abc123XYZ", 6000)).toContain(
+      "width=540&height=960&fit_mode=smartcrop",
+    )
+  })
+
+  it("returns null for a bad id or a bad start", () => {
+    expect(muxClipStillUrl("evil.com/x", 10)).toBeNull()
+    expect(muxClipStillUrl(null, 10)).toBeNull()
+    expect(muxClipStillUrl("abc123XYZ", Number.NaN)).toBeNull()
+    expect(muxClipStillUrl("abc123XYZ", -1)).toBeNull()
+  })
+})
+
+describe("muxHeroPosterFromPlaybackId (the veil poster derivative)", () => {
+  // Byte for byte with admin's pre-generated WATCH_HERO_POSTER_RECIPE source
+  // (apps/admin/src/services/mux-image-derivative.service.ts). Mux caches per
+  // exact URL, so any other shape is a cold render under the veil.
+  it("matches admin's WATCH_HERO_POSTER_RECIPE URL", () => {
+    expect(muxHeroPosterFromPlaybackId("abc123XYZ")).toBe(
+      "https://image.mux.com/abc123XYZ/thumbnail.webp?width=1280&time=2",
+    )
+  })
+
+  it("returns null for a missing or non-alphanumeric id", () => {
+    expect(muxHeroPosterFromPlaybackId("evil.com/x")).toBeNull()
+    expect(muxHeroPosterFromPlaybackId("abc123XYZ ")).toBeNull()
+    expect(muxHeroPosterFromPlaybackId(null)).toBeNull()
+    expect(muxHeroPosterFromPlaybackId("")).toBeNull()
   })
 })

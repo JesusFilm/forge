@@ -1,5 +1,12 @@
 # Source-free user recommendations
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 The shared Admin API returns one ranked list without a seed video. Web renders
 six cards through the authored `HomepageRecommendationsBlock`, labeled
 “Recommended for You.” The homepage starter places it after Browse by category;
@@ -85,22 +92,36 @@ callers cannot supply raw profile/session digests.
 
 ## Ranking and feedback
 
-After current eligibility, canonical deduplication and history rules, profile
-candidates fill first. Six profile results cause **no curated query**; four keep
-their positions and receive two curated additions; cold starts get six starters.
+After current eligibility, canonical deduplication and history rules, fresh
+profile candidates fill first. Six fresh profile results cause **no curated
+query**; fresh curated candidates can replace recently tried profile candidates.
+Recently tried items refill only after fresh supply is exhausted. Cold starts
+without viewing history get six starters.
 Qualified history or surviving profile candidates can identify matching editorial
-interest pools. Those pools precede `start` only within the missing positions.
+interest pools. Short-only history does not seed thematic pools. Those pools
+precede `start` only within the curated positions.
 No semantic score or scene match is invented for curated content.
 
 History covers up to 24 qualified videos within seven days, from at most eight
 authorized profile sessions and 32 finalized episodes per session. Completed
 videos and Core-prefix variants are excluded; partial videos move behind unwatched
 videos within their own candidate source. Unqualified, conflicted, late,
-superseded, expired or profile-ineligible outcomes do not become history.
+superseded, expired or profile-ineligible outcomes do not become qualified history.
+
+Separately, up to 24 recently tried videos use the shared backend rule: a real
+playback start and at least three seconds of accepted visible-playing interval
+coverage, with overlaps counted once, within 24 hours of server receipt. Read
+these facts before finalization so a 20-second watch affects the next request.
+Bare starts, passive previews and seeks alone do not qualify. Both homepage and
+below-player delivery apply this rule, including semantic and curated fallback.
+Canonical alternate editions receive the same preference. Existing rendered rows
+do not move until the client requests another delivery.
 
 The existing active-watch classifier, eligibility reconciler and profile
 projection jobs process playback. One useful qualified outcome can form a
-profile interest; no minimum watch-count gate was added. Only committed, current
+profile interest from any discovery source; no minimum watch-count gate was added.
+Qualified playback needs no selection/impression attribution. Click-only intent
+retains its attribution requirements. Only committed, current
 projections influence retrieval. A homepage visit before asynchronous projection
 finishes can still use curated candidates. Click-only session interests do not
 start personalization on this surface; a qualified-watch interest is required.

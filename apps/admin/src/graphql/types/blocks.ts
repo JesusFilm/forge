@@ -31,6 +31,7 @@ import type {
   InfoBlockItemSchema,
   InfoBlocksBlockSchema,
   LanguageGlobeBlockSchema,
+  WatchAudienceBlockSchema,
   MediaCollectionBlockSchema,
   MediaCollectionItemSchema,
   NavigationCarouselBlockSchema,
@@ -142,30 +143,16 @@ function optionalString(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
-function selectedBlockVideoDubArgs(
+function resolveSelectedBlockVideoDub(
   row: { videoId?: unknown; languageId?: unknown },
   query: object,
+  ctx: ContextShape,
 ) {
   const videoId = optionalString(row.videoId)
   const languageId = optionalString(row.languageId)
   if (!videoId || !languageId) return null
 
-  return {
-    ...query,
-    where: {
-      videoId,
-      languageId,
-      deletedAt: null,
-      published: true,
-      OR: [
-        { hls: { not: null } },
-        { dash: { not: null } },
-        { share: { not: null } },
-      ],
-      video: { deletedAt: null },
-    },
-    orderBy: [{ duration: "desc" as const }, { id: "asc" as const }],
-  }
+  return ctx.loaders.selectedBlockVideoDub.load({ videoId, languageId, query })
 }
 
 async function resolveMediaAssetPreviewUrl(
@@ -532,10 +519,8 @@ MediaCollectionItemRef.implement({
       nullable: true,
       description:
         "Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
-      resolve: (query, row, _args, ctx) => {
-        const args = selectedBlockVideoDubArgs(row, query)
-        return args ? ctx.prisma.videoDub.findFirst(args) : null
-      },
+      resolve: (query, row, _args, ctx) =>
+        resolveSelectedBlockVideoDub(row, query, ctx),
     }),
     videoSlug: t.string({
       nullable: true,
@@ -636,10 +621,8 @@ VideoCarouselItemRef.implement({
       nullable: true,
       description:
         "Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
-      resolve: (query, row, _args, ctx) => {
-        const args = selectedBlockVideoDubArgs(row, query)
-        return args ? ctx.prisma.videoDub.findFirst(args) : null
-      },
+      resolve: (query, row, _args, ctx) =>
+        resolveSelectedBlockVideoDub(row, query, ctx),
     }),
     imageAssetId: t.exposeString("imageAssetId", { nullable: true }),
     imageAsset: t.field({
@@ -1075,10 +1058,8 @@ VideoBlockRef.implement({
       nullable: true,
       description:
         "Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
-      resolve: (query, row, _args, ctx) => {
-        const args = selectedBlockVideoDubArgs(row, query)
-        return args ? ctx.prisma.videoDub.findFirst(args) : null
-      },
+      resolve: (query, row, _args, ctx) =>
+        resolveSelectedBlockVideoDub(row, query, ctx),
     }),
     mediaUrl: t.string({
       nullable: true,
@@ -1192,10 +1173,8 @@ VideoHeroBlockRef.implement({
       nullable: true,
       description:
         "Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.",
-      resolve: (query, row, _args, ctx) => {
-        const args = selectedBlockVideoDubArgs(row, query)
-        return args ? ctx.prisma.videoDub.findFirst(args) : null
-      },
+      resolve: (query, row, _args, ctx) =>
+        resolveSelectedBlockVideoDub(row, query, ctx),
     }),
     clipStartSeconds: t.exposeFloat("clipStartSeconds", { nullable: true }),
     clipEndSeconds: t.exposeFloat("clipEndSeconds", { nullable: true }),
@@ -1278,6 +1257,25 @@ WatchHomeCategoryRailBlockRef.implement({
       description:
         "Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.",
       resolve: (row) => row.tiles ?? null,
+    }),
+  }),
+})
+
+const WatchAudienceBlockRef =
+  builder.objectRef<z.infer<typeof WatchAudienceBlockSchema>>(
+    "WatchAudienceBlock",
+  )
+WatchAudienceBlockRef.implement({
+  description:
+    "Top-level audience questionnaire. Definitions use the shared published WatchSetting projection on public surfaces.",
+  fields: (t) => ({
+    // Match sibling union members: shared unaliased selections must have the
+    // same GraphQL response shape, including nullability.
+    t: t.exposeString("t", { nullable: true }),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    configurationJson: t.string({
+      nullable: false,
+      resolve: (row) => JSON.stringify(row.configuration),
     }),
   }),
 })
@@ -1401,6 +1399,7 @@ export const T_TO_TYPENAME = {
   easterDates: "EasterDatesBlock",
   infoBlocks: "InfoBlocksBlock",
   languageGlobe: "LanguageGlobeBlock",
+  watchAudience: "WatchAudienceBlock",
   mediaCollection: "MediaCollectionBlock",
   navigationCarousel: "NavigationCarouselBlock",
   promoBanner: "PromoBannerBlock",
@@ -1455,6 +1454,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     EasterDatesBlockRef,
     InfoBlocksBlockRef,
     LanguageGlobeBlockRef,
+    WatchAudienceBlockRef,
     MediaCollectionBlockRef,
     NavigationCarouselBlockRef,
     PromoBannerBlockRef,

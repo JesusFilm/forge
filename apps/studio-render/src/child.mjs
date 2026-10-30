@@ -1,13 +1,24 @@
 class StudioCompositionError extends Error {}
+const OUTPUT_MAX_BYTES = 134217728
 import { createReadStream } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { readFile as read, stat } from "node:fs/promises"
 import { createServer } from "node:http"
 import { pipeline } from "node:stream/promises"
 import { resolve } from "node:path"
+// Opt in before importing the pinned SDK: intermediate audio mixers bypass
+// renderMedia's encoder override and must obey the same fixed task budget.
+process.env.FORGE_STUDIO_CODEC_THREADS = "1"
+// The SDK otherwise accumulates every JPEG under its >2GB-free heuristic.
+// The paired opt-in streams frames with backpressure inside the same hard caps.
+process.env.FORGE_STUDIO_STREAM_FRAMES = "1"
+// Avoid Chromium surface-copy GPU crashes under the fixed contained profile.
+// The SDK preserves exact dimensions below 8192px; Studio admits at most 7680px.
+process.env.DISABLE_FROM_SURFACE = "1"
 const { selectComposition, renderMedia } = await import("/runtime/renderer.cjs")
 const input = JSON.parse(await read("/input/input.json", "utf8"))
 const served = new Map()
+const mediaUrls = {}
 let sourceIndex = 0
 for (const media of Object.values(input.media)) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(media.file))
@@ -70,6 +81,9 @@ for (const media of Object.values(input.media)) {
   )
   media.file = name
   served.set(name, output)
+  // Generated ASCII names refer only to this job's admitted remuxes. The paired
+  // SDK policy reuses these native files instead of copying them over HTTP.
+  mediaUrls[name] = `file://${output}`
 }
 const server = createServer((req, res) => {
   const name = (req.url ?? "").slice(1)
@@ -95,19 +109,50 @@ try {
       input,
       mode: "render",
       mediaBaseUrl: `http://127.0.0.1:${server.address().port}/`,
+      mediaUrls,
     },
     browserExecutable: "/runtime/chrome-launcher",
-    timeoutInMilliseconds: 7000,
+    // Remotion reserves 2s of this limit for reporting, so 7s allowed only 5s
+    // for a cold retained-video seek. Use its normal 30s frame allowance;
+    // the native guard and host watchdog still enforce the original job end.
+    timeoutInMilliseconds: 30000,
     logLevel: "error",
   }
   const composition = await selectComposition({ ...options, id: "Studio" })
+  // Budget the complete video before encoding. Default CRF18 can exceed the
+  // fixed output cap even when streaming keeps individual frames bounded.
+  // Reserve 16MiB for mux overhead/variation and two seconds of VBV capacity.
+  const durationSeconds = composition.durationInFrames / composition.fps
+  const audioBitsPerSecond = 320000
+  const maximumVideoKbps = Math.floor(
+    Math.min(
+      25000000,
+      ((OUTPUT_MAX_BYTES - 16 * 1024 * 1024) * 8 -
+        audioBitsPerSecond * durationSeconds) /
+        (durationSeconds + 2),
+    ) / 1000,
+  )
+  const targetVideoKbps = Math.floor(maximumVideoKbps * 0.9)
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0 ||
+    !Number.isSafeInteger(targetVideoKbps) ||
+    targetVideoKbps < 1
+  )
+    throw new StudioCompositionError("Duration cannot fit the output budget")
   await renderMedia({
     ...options,
     composition,
     codec: "h264",
     audioCodec: "aac",
     enforceAudioTrack: true,
-    audioSampleRate: 48000,
+    sampleRate: 48000,
+    audioBitrate: "320k",
+    videoBitrate: `${targetVideoKbps}k`,
+    encodingMaxRate: `${maximumVideoKbps}k`,
+    encodingBufferSize: `${maximumVideoKbps * 2}k`,
+    // Reduce encoder CPU and lookahead memory inside the existing hard caps.
+    x264Preset: "veryfast",
     concurrency: 1,
     // Pin all encoder/decoder/filter pools inside the fixed aggregate PID cap.
     // This exact override completed the retained 231-second validation fixture.
@@ -128,7 +173,7 @@ try {
     offthreadVideoThreads: 1,
   })
   const size = (await stat("/tmp/output.mp4")).size
-  if (size < 1 || size > 134217728)
+  if (size < 1 || size > OUTPUT_MAX_BYTES)
     throw new StudioCompositionError("Output size rejected")
   await pipeline(createReadStream("/tmp/output.mp4"), process.stdout)
 } finally {

@@ -38,6 +38,17 @@ and when a partial win is indistinguishable from a finished fix.
 
 Measured against `next@16.2.4` on `next build` + `next start`, not from docs.
 
+**Evidence correction, 2026-10-30:** the historical table below used unequal
+hero windows and reused a 19-second category-control window in the after
+column. Those measurements do not isolate a Next.js viewport refresh cycle,
+prove a permanent residual cost, or certify the current integrated build.
+Read the causal conclusions below as the original interpretation, superseded
+by this correction. The durable recommendation is to use matched windows,
+unchanged category controls, and actual routing/performance observations.
+The stable href, explicit hero prefetch opt-out, and identity-tagged resume
+ref remain the intended implementation; their current network and click
+latency effects still need those measurements.
+
 ## Context
 
 The Watch home hero CTA rendered its destination with the muted preview's live

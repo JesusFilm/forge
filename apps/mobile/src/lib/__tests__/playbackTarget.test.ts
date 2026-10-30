@@ -1,5 +1,6 @@
 import { CastState } from "react-native-google-cast"
 
+import { getT } from "../../i18n/useT"
 import {
   castButtonLabel,
   castDevicesAvailable,
@@ -152,37 +153,39 @@ describe("castDevicesAvailable (R2)", () => {
 })
 
 describe("cast labels", () => {
+  const t = getT("Cast")
+
   it("labels the button idle outside a session", () => {
-    expect(castButtonLabel("idle", null)).toBe("Cast")
-    expect(castButtonLabel("failed", "TV")).toBe("Cast")
-    expect(castButtonLabel("ended", "TV")).toBe("Cast")
+    expect(castButtonLabel("idle", null, t)).toBe("Cast")
+    expect(castButtonLabel("failed", "TV", t)).toBe("Cast")
+    expect(castButtonLabel("ended", "TV", t)).toBe("Cast")
   })
 
   it("labels the button with the device during a session", () => {
-    expect(castButtonLabel("connecting", "Living Room TV")).toBe(
+    expect(castButtonLabel("connecting", "Living Room TV", t)).toBe(
       "Casting to Living Room TV",
     )
-    expect(castButtonLabel("active", "Living Room TV")).toBe(
+    expect(castButtonLabel("active", "Living Room TV", t)).toBe(
       "Casting to Living Room TV",
     )
-    expect(castButtonLabel("active", null)).toBe("Casting")
+    expect(castButtonLabel("active", null, t)).toBe("Casting")
   })
 
   it("names the connecting state distinctly (R16)", () => {
-    expect(castIndicatorLabel("connecting", "Living Room TV")).toBe(
+    expect(castIndicatorLabel("connecting", "Living Room TV", t)).toBe(
       "Connecting to Living Room TV…",
     )
-    expect(castIndicatorLabel("connecting", null)).toBe("Connecting…")
+    expect(castIndicatorLabel("connecting", null, t)).toBe("Connecting…")
   })
 
   it("names the live session (R7)", () => {
-    expect(castIndicatorLabel("active", "Living Room TV")).toBe(
+    expect(castIndicatorLabel("active", "Living Room TV", t)).toBe(
       "Casting to Living Room TV",
     )
-    expect(castIndicatorLabel("finished", "Living Room TV")).toBe(
+    expect(castIndicatorLabel("finished", "Living Room TV", t)).toBe(
       "Casting to Living Room TV",
     )
-    expect(castIndicatorLabel("active", null)).toBe("Casting")
+    expect(castIndicatorLabel("active", null, t)).toBe("Casting")
   })
 })
 

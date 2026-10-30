@@ -16,6 +16,8 @@ import { extractMuxPlaybackId } from "../lib/muxUrl"
 import { buildMuxStoryboardUrl } from "../lib/tvScrubPreview"
 import type { UpNextTarget } from "../contexts/VideoPlayerContext"
 import { inPlayerMenuVisible } from "./watch/playerSwitch"
+import { audioSwitchConfirmation } from "./watch/dubEditionSwitch"
+import { useFeedbackQr } from "./feedback/useFeedbackQr"
 import type {
   NativePlayerMoment,
   NativePlayerOption,
@@ -34,6 +36,10 @@ if (Platform.OS === "ios") {
 }
 
 type NativeSwiftPlayerProps = {
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   streamingUrl: string
   playerVariant: "native-a" | "native-b"
   title?: string
@@ -55,6 +61,8 @@ function formatClock(totalSeconds: number): string {
 }
 
 export function NativeSwiftPlayer({
+  sourceGeneration = 0,
+  onPlaybackState,
   streamingUrl,
   playerVariant,
   title,
@@ -69,6 +77,16 @@ export function NativeSwiftPlayer({
   const session = useWatchSession()
   const baselineRef = useRef(startAtSeconds ?? 0)
   const lastPositionRef = useRef<PlaybackSnapshot | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackTimestamp, setFeedbackTimestamp] = useState<
+    string | undefined
+  >()
+  const feedback = useFeedbackQr(feedbackOpen, {
+    screen: "player",
+    player: playerVariant,
+    filmTitle: title,
+    timestamp: feedbackTimestamp,
+  })
   const meaningfulStateRef = useRef(initialMeaningfulState)
   const onMeaningfulPlaybackRef = useRef(onMeaningfulPlayback)
   const onPlaybackPositionRef = useRef(onPlaybackPosition)
@@ -118,12 +136,20 @@ export function NativeSwiftPlayer({
                       "Unknown language",
                     detail: variant.languageNameNative ?? "",
                     url: variant.hls,
+                    confirmationMessage: audioSwitchConfirmation(
+                      { editionId: session.activeVariant?.editionId },
+                      variant,
+                    ),
                   },
                 ]
               : [],
           ) ?? [])
         : [],
-    [sessionOwnsPlayback, session.video?.variants],
+    [
+      sessionOwnsPlayback,
+      session.video?.variants,
+      session.activeVariant?.editionId,
+    ],
   )
 
   const subtitleOptions = useMemo<NativePlayerOption[]>(
@@ -195,6 +221,24 @@ export function NativeSwiftPlayer({
       playerVariant={playerVariant}
       storyboardUrl={storyboardUrl ?? undefined}
       title={title}
+      feedbackAvailable={Boolean(process.env.EXPO_PUBLIC_TV_FEEDBACK_URL)}
+      feedbackVisible={feedbackOpen}
+      feedbackRows={feedback.qr?.rows.map((row) =>
+        row.map((cell) => (cell ? "1" : "0")).join(""),
+      )}
+      feedbackReference={feedback.verified?.referenceCode}
+      feedbackSimulator={feedback.mode !== "verified"}
+      feedbackHostedSimulator={feedback.mode === "signed-simulator"}
+      feedbackLoading={feedback.loading}
+      feedbackError={feedback.error}
+      onFeedbackOpen={() => {
+        setFeedbackTimestamp(
+          formatClock(lastPositionRef.current?.positionSeconds ?? 0),
+        )
+        setFeedbackOpen(true)
+      }}
+      onFeedbackClose={() => setFeedbackOpen(false)}
+      onFeedbackRetry={feedback.retry}
       startAtSeconds={startAtSeconds ?? undefined}
       audioOptions={audioOptions}
       selectedAudioId={session.activeVariant?.documentId ?? undefined}
@@ -211,6 +255,8 @@ export function NativeSwiftPlayer({
       upNextSlug={upNextTarget?.slug}
       upNextTitle={upNextTarget?.title ?? undefined}
       onDismiss={onDismiss}
+      sourceGeneration={sourceGeneration}
+      onPlaybackState={(event) => onPlaybackState?.(event.nativeEvent)}
       onEnded={onDismiss}
       onPlayNext={(event) => onPlayNext?.(event.nativeEvent.slug)}
       onAudioChange={(event) => {

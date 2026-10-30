@@ -106,19 +106,19 @@ async function main(): Promise<void> {
     throw new Error(
       "read-only verification refused: use --local or --production",
     )
-  const databaseUrl = process.env.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
+  const databaseUrl = process.env.FORGE_RAG_POSTGRESQL_READONLY_DB_URL?.trim()
   if (!databaseUrl)
     throw new Error(
-      "read-only verification refused: JFRAG_POSTGRESQL_READONLY_DB_URL is required",
+      "read-only verification refused: FORGE_RAG_POSTGRESQL_READONLY_DB_URL is required",
     )
   if (target === "--production") {
-    const expectedHost = process.env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
+    const expectedHost = process.env.FORGE_RAG_EXPECTED_POSTGRES_HOST?.trim()
     if (!expectedHost || new URL(databaseUrl).hostname !== expectedHost)
       throw new Error(
         "read-only verification refused: database target does not match the approved host",
       )
   }
-  const role = requireRoleName(process.env.JFRAG_READONLY_ROLE_NAME)
+  const role = requireRoleName(process.env.FORGE_RAG_READONLY_ROLE_NAME)
   await verifyReadonlyRole(databaseUrl, role)
   console.log(
     "read-only database verification passed: SELECT allowed; DDL, DML, and large-object writes denied",

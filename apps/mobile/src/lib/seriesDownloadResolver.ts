@@ -2,6 +2,7 @@ import { mapWithConcurrency } from "./concurrentMap"
 import { withTimeout } from "./withTimeout"
 import { selectSubtitle } from "./downloadUrlResolution"
 import {
+  QUALITY_TIERS,
   type QualityTier,
   type TieredDownload,
   tierDownloads,
@@ -115,13 +116,13 @@ export type SeriesDownloadResolution = {
   totalBytes: number
   /** Any resolved rendition had an unknown size — totalBytes understates. */
   totalIsLowerBound: boolean
-  /** Per-tier total size (Highest/High/Low) for the quality picker's hints. */
+  /** Per-tier total size (highest/high/low) for the quality picker's hints. */
   tierTotals: Record<QualityTier, TierTotal>
 }
 
-const TIER_ORDER: readonly QualityTier[] = ["Highest", "High", "Low"]
+const TIER_ORDER: readonly QualityTier[] = QUALITY_TIERS
 
-// Pick the rendition matching the requested tier label; fall back to the nearest
+// Pick the rendition matching the requested tier id; fall back to the nearest
 // available tier (ties prefer higher quality). NOT a positional index — the tier
 // array is variable-length, so a shared index would grab the wrong rendition.
 function selectTierRendition(
@@ -190,7 +191,7 @@ async function resolveEpisode(
 }
 
 /**
- * Per-tier (Highest/High/Low) total size across the resolved set for the quality
+ * Per-tier (highest/high/low) total size across the resolved set for the quality
  * picker's hints. Each resolved episode contributes its rendition size for that
  * tier — using the same nearest-tier fallback the download uses — so the totals
  * reflect what would actually download. A missing size makes that tier a lower
@@ -200,9 +201,9 @@ function computeTierTotals(
   resolved: readonly SeriesEpisodeResolution[],
 ): Record<QualityTier, TierTotal> {
   const totals: Record<QualityTier, TierTotal> = {
-    Highest: { bytes: 0, isLowerBound: false },
-    High: { bytes: 0, isLowerBound: false },
-    Low: { bytes: 0, isLowerBound: false },
+    highest: { bytes: 0, isLowerBound: false },
+    high: { bytes: 0, isLowerBound: false },
+    low: { bytes: 0, isLowerBound: false },
   }
   for (const episode of resolved) {
     const tiered = episode.tiered

@@ -4,7 +4,11 @@ import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { datadogLog } from "../lib/datadog"
 import { extractMuxPlaybackId } from "../lib/muxThumbnail"
-import { recoverPlayback, type RecoveryOutcome } from "../lib/recoverPlayback"
+import {
+  recoverPlayback,
+  type RecoveryOutcome,
+  type ReloadObserver,
+} from "../lib/recoverPlayback"
 
 /**
  * Rebuilds a failed source and resumes where the viewer was (todos/024).
@@ -23,19 +27,18 @@ export function useErrorRecovery(
   streamingUrl: string | null,
   /** True while a cast session owns playback; never start local audio then. */
   castRemoteActive = false,
-  /**
-   * The last position seen while the player was healthy, from the adapter's
-   * own 1s poll.
-   *
-   * Deliberately NOT expo-video's `timeUpdate`: that event only fires when
-   * `timeUpdateEventInterval` is set, which this app never does because the
-   * adapter polls instead. Listening for it left the resume position stuck at
-   * zero while every test passed, because the tests emitted the event by hand.
-   */
+  /** The last healthy position, from the adapter's 1s poll. Not `timeUpdate`:
+   *  the adapter never sets `timeUpdateEventInterval`, so it never fires, and
+   *  hand-emitted test events once hid a resume stuck at zero. */
   getHealthyPosition: () => number = () => 0,
+  /** The adapter's monitor facade (KTD16): told the URL each reload loads. */
+  onReload?: ReloadObserver,
 ): () => void {
   const getHealthyPositionRef = useRef(getHealthyPosition)
   getHealthyPositionRef.current = getHealthyPosition
+
+  const onReloadRef = useRef(onReload)
+  onReloadRef.current = onReload
 
   const castRemoteActiveRef = useRef(castRemoteActive)
   castRemoteActiveRef.current = castRemoteActive
@@ -78,6 +81,7 @@ export function useErrorRecovery(
       // Mirrors the adapter's swap resume: never start audio the viewer cannot
       // see, and never play locally while a cast session owns playback.
       () => AppState.currentState === "active" && !castRemoteActiveRef.current,
+      (url) => onReloadRef.current?.(url) ?? (() => {}),
     ).then(report, () => report("failed"))
     // Released on BOTH settlement paths, so the latch never outlives its
     // recovery. `.finally()` is wrong here — it re-throws the rejection as an

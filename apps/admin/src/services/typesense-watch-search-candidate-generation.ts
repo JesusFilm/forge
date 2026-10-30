@@ -767,6 +767,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     const updated = await this.prisma.$transaction(
       async (tx) => {
         if (input.nextState === "RETIRING" || input.nextState === "RETIRED") {
+          await this.assertNotPublishedCatalog(tx, input.generationId)
           const activeLease = await tx.watchSearchCandidateLease.findFirst({
             where: { generationId: input.generationId, expiresAt: { gt: now } },
             select: { resourceKey: true },
@@ -1249,11 +1250,26 @@ export class TypesenseWatchSearchCandidateGenerationService {
     return this.getPointer(kind)
   }
 
+  private async assertNotPublishedCatalog(
+    tx: Prisma.TransactionClient,
+    generationId: string,
+  ) {
+    const active = await tx.watchCatalogPublication.findFirst({
+      where: { generationId },
+      select: { id: true },
+    })
+    if (active)
+      throw new CandidateGenerationLeaseError(
+        `candidate generation ${generationId} is the active Watch catalog`,
+      )
+  }
+
   async beginRetirement(generationId: string) {
     const id = requiredString(generationId, "generation id")
     const now = this.now()
     return this.prisma.$transaction(
       async (tx) => {
+        await this.assertNotPublishedCatalog(tx, id)
         const generation = await tx.watchSearchCandidateGeneration.findUnique({
           where: { id },
         })
@@ -1353,8 +1369,9 @@ export class TypesenseWatchSearchCandidateGenerationService {
   async assertRetirementAllowed(generationId: string): Promise<void> {
     const now = this.now()
     const [pointer, lease] = await this.prisma.$transaction(
-      async (tx) =>
-        Promise.all([
+      async (tx) => {
+        await this.assertNotPublishedCatalog(tx, generationId)
+        return Promise.all([
           tx.watchSearchCandidatePointer.findFirst({
             where: { generationId },
             select: { kind: true },
@@ -1363,7 +1380,8 @@ export class TypesenseWatchSearchCandidateGenerationService {
             where: { generationId, expiresAt: { gt: now } },
             select: { resourceKey: true },
           }),
-        ]),
+        ])
+      },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     )
     if (pointer) {

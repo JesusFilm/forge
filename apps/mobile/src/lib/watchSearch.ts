@@ -1,5 +1,9 @@
 import { CombinedGraphQLErrors } from "@apollo/client/errors"
 
+import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import type { UiT } from "../i18n/useT"
+import { isBrowseTopicTerm } from "./browseTopics"
+
 import type {
   SearchResponse,
   SearchResult,
@@ -18,6 +22,32 @@ import type {
  */
 export const SEARCH_LANGUAGE_SLUG = "english"
 
+/** The languages one search asks in. Discover pins it per search (KTD16). */
+export type SearchLanguage = {
+  /** The UI's text slug: results come back in its text rows (R9). */
+  readonly display: string
+  /** The query's own language, when the app knows it; null lets Admin infer. */
+  readonly query: string | null
+}
+
+export const ENGLISH_SEARCH_LANGUAGE: SearchLanguage = {
+  display: SEARCH_LANGUAGE_SLUG,
+  query: null,
+}
+
+/** KTD9: the mapped text slug (`english` for a catalog with no Admin
+ *  language). A browse-topic term is English whatever the UI shows. */
+export function searchLanguageFor(
+  forms: AdminLanguageForms,
+  query: string,
+): SearchLanguage {
+  const display = forms.textSlug.trim()
+  return {
+    display: display === "" ? SEARCH_LANGUAGE_SLUG : display,
+    query: isBrowseTopicTerm(query) ? SEARCH_LANGUAGE_SLUG : null,
+  }
+}
+
 // Web's query cap (search-actions.ts truncatedQuery). One constant for the
 // screen's input truncation AND the log builder's cap, so they can't drift.
 export const MAX_QUERY_LENGTH = 200
@@ -27,6 +57,7 @@ export type WatchSearchInputArgs = {
   offset: number
   limit: number
   clientRequestId?: string
+  language: SearchLanguage
 }
 
 /**
@@ -39,10 +70,12 @@ export function buildWatchSearchInput({
   offset,
   limit,
   clientRequestId,
+  language,
 }: WatchSearchInputArgs) {
   return {
     query,
-    displayLanguageSlug: SEARCH_LANGUAGE_SLUG,
+    displayLanguageSlug: language.display,
+    ...(language.query ? { queryLanguageSlug: language.query } : {}),
     ...(clientRequestId ? { clientRequestId } : {}),
     limit,
     offset,
@@ -143,26 +176,36 @@ export function mapWatchSearchResponse(
   }
 }
 
-/**
- * User-facing copy for a failed search. Admin returns these in a 200 body, and
- * Apollo v4 throws CombinedGraphQLErrors. It never sets a domain `code`: the
- * rate limiter stamps `extensions.http.statusCode` and thrown service errors
- * mask to INTERNAL_SERVER_ERROR, so branch on what is actually sent.
- */
-export function parseSearchError(error: unknown): string {
-  if (!CombinedGraphQLErrors.is(error))
-    return "Search failed. Please try again."
+export type SearchErrorKind = "rateLimited" | "unavailable" | "failed"
+
+/** The kind of a failed search. Apollo v4 throws Admin's 200-body errors as
+ *  CombinedGraphQLErrors with no domain `code`, so branch on what is sent: the
+ *  limiter's `extensions.http.statusCode`, or INTERNAL_SERVER_ERROR (masked). */
+export function searchErrorKind(error: unknown): SearchErrorKind {
+  if (!CombinedGraphQLErrors.is(error)) return "failed"
 
   const extensions = error.errors[0]?.extensions
   const status = (extensions?.http as { statusCode?: unknown } | undefined)
     ?.statusCode
 
-  if (status === 429) return "Too many requests. Please try again in a minute."
-  if (typeof status === "number" && status >= 500) {
-    return "Search is temporarily unavailable. Please try again."
+  if (status === 429) return "rateLimited"
+  if (typeof status === "number" && status >= 500) return "unavailable"
+  if (extensions?.code === "INTERNAL_SERVER_ERROR") return "unavailable"
+  return "failed"
+}
+
+/** User-facing copy for a failed search. The screen keeps the kind, so the
+ *  message follows a language change while it shows (KTD15). */
+export function searchErrorMessage(
+  kind: SearchErrorKind,
+  t: UiT<"Discover">,
+): string {
+  switch (kind) {
+    case "rateLimited":
+      return t("rateLimitedError")
+    case "unavailable":
+      return t("unavailableError")
+    case "failed":
+      return t("failedError")
   }
-  if (extensions?.code === "INTERNAL_SERVER_ERROR") {
-    return "Search is temporarily unavailable. Please try again."
-  }
-  return "Search failed. Please try again."
 }

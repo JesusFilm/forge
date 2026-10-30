@@ -111,6 +111,7 @@ describe("media storage", () => {
       "media-assets/asset_123/original/hero.jpg",
       "image-bytes",
       "image/jpeg",
+      undefined,
     )
   })
 

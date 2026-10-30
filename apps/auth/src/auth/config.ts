@@ -1,3 +1,9 @@
+import {
+  advertisedMetadata,
+  ID_TOKEN_SIGNING_ALGORITHM,
+  getSelfRpDiscoveryUrl,
+} from "@/auth/openid-configuration"
+import { googlePreapprovalSignIn } from "@/auth/google-preapproval-evidence"
 import { refuseUnverifiedConsumerLink } from "@/auth/account-linking-guard"
 import { mobileAwareExpoPlugin } from "@/auth/mobile-expo-plugin"
 import { selfRpStateCookiePlugin } from "@/auth/self-rp-state-cookie-plugin"
@@ -35,6 +41,7 @@ import {
   assertProductionAuthSecrets,
   env,
   getAdminWatchProgressErasureConfig,
+  isWatchLearningErasureRequired,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
   getAuthCustomAudiences,
@@ -58,6 +65,7 @@ const accountDeletionHooks = buildAccountDeletionHooks({
     }),
   getAppleConfig: getAppleNativeClientConfig,
   getAdminErasureConfig: getAdminWatchProgressErasureConfig,
+  isLearningErasureRequired: isWatchLearningErasureRequired,
 })
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
@@ -126,6 +134,8 @@ async function appleProfileToUser(profile: { sub?: string; email?: string }) {
   return { email: account.user.email }
 }
 
+const googleSignIn = googlePreapprovalSignIn(env.GOOGLE_CLIENT_ID ?? "")
+
 const socialProviders = {
   ...(env.FACEBOOK_CLIENT_ID && env.FACEBOOK_CLIENT_SECRET
     ? {
@@ -143,6 +153,7 @@ const socialProviders = {
           clientId: env.GOOGLE_CLIENT_ID,
           clientSecret: env.GOOGLE_CLIENT_SECRET,
           prompt: "select_account" as const,
+          getUserInfo: googleSignIn.getUserInfo,
         },
       }
     : {}),
@@ -170,7 +181,7 @@ const mobileSelfRpClientId =
 
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
-  discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,
+  discoveryUrl: getSelfRpDiscoveryUrl(),
   requireIdTokenVerification: true,
   clientId: mobileSelfRpClientId,
   scopes: [...MOBILE_DEFAULT_SCOPES],
@@ -186,7 +197,7 @@ const jfpMobileSelfProvider = {
 const upstreamProviderPlugins = [
   genericOAuth({
     config: [
-      jfpMobileSelfProvider,
+      ...(isNextBuild ? [] : [jfpMobileSelfProvider]),
       ...(env.OKTA_CLIENT_ID && env.OKTA_CLIENT_SECRET && env.OKTA_ISSUER
         ? [
             okta({
@@ -248,8 +259,15 @@ const databaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> = {
         const clientKind = resolveSessionClientKind(
           (ctx ?? undefined) as { path?: string; body?: unknown } | undefined,
         )
-        if (!clientKind) return
-        return { data: { ...session, clientKind } }
+        const evidence = ctx ? googleSignIn.evidence(ctx.context) : undefined
+        if (!clientKind && !evidence) return
+        return {
+          data: {
+            ...session,
+            ...(clientKind ? { clientKind } : {}),
+            ...evidence,
+          },
+        }
       },
     },
   },
@@ -285,6 +303,9 @@ export const auth = betterAuth({
     },
   },
   user: {
+    validateUserInfo: ({ source }, ctx) => {
+      googleSignIn.capture(source, ctx.context)
+    },
     additionalFields: {
       actorType: {
         type: "string",
@@ -299,7 +320,8 @@ export const auth = betterAuth({
     },
     // No mailer platform-wide, so intent is verified by a fresh session
     // instead of an email (auth-owner direction, 2026-08-04). Side effects
-    // are beforeDelete: a failure aborts with the account intact.
+    // are beforeDelete: a failure retains the Auth user row, but external
+    // erasure may already have committed; see docs/watch-learning-erasure-recovery.md.
     deleteUser: {
       enabled: true,
       beforeDelete: accountDeletionHooks.beforeDelete,
@@ -317,6 +339,7 @@ export const auth = betterAuth({
     // Lean payload + short expiry: sign-out revokes the session but an
     // already-minted JWT lives to its exp — 15m bounds that window (KTD1).
     jwt({
+      jwks: { keyPairConfig: { alg: ID_TOKEN_SIGNING_ALGORITHM } },
       jwt: {
         expirationTime: "15m",
         definePayload: defineMobileAwareJwtPayload,
@@ -344,27 +367,7 @@ export const auth = betterAuth({
           })),
       clientRegistrationAllowedResources: isNextBuild ? [] : publicDcrResources,
       clientRegistrationDefaultResources: isNextBuild ? [] : publicDcrResources,
-      advertisedMetadata: {
-        scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
-        claims_supported: [
-          "sub",
-          "iss",
-          "aud",
-          "exp",
-          "iat",
-          "sid",
-          "scope",
-          "azp",
-          "email",
-          "email_verified",
-          "name",
-          "picture",
-          "https://jesusfilm.org/claims/actor_type",
-          "https://jesusfilm.org/claims/membership_status",
-          "https://jesusfilm.org/claims/environment",
-          "https://jesusfilm.org/claims/app",
-        ],
-      },
+      advertisedMetadata,
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
       clientRegistrationAllowedScopes: publicDcrAllowedScopes,
       clientCredentialGrantDefaultScopes: ["openid"],
@@ -464,8 +467,20 @@ export const auth = betterAuth({
       maxAge: 60,
     },
     additionalFields: {
-      // Stamped at creation for mobile entry points; surfaces as the JWT's
-      // client claim so admin can bind acceptance to mobile sessions.
+      // Server-only evidence from this session's verified Google sign-in.
+      googleEmail: {
+        type: "string",
+        required: false,
+        input: false,
+        returned: false,
+      },
+      googleSubject: {
+        type: "string",
+        required: false,
+        input: false,
+        returned: false,
+      },
+      // Stamped for mobile entry points and surfaced as the JWT client claim.
       clientKind: {
         type: "string",
         required: false,

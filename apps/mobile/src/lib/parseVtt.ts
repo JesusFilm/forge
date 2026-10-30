@@ -1,3 +1,7 @@
+// SYNC: apps/tv/src/lib/parseVtt.ts is a copy of this parser. Its SMPTE-offset
+// normalization is ported back here with the same rule; TV also exports its
+// own findActiveCue.
+
 export type VttCue = {
   start: number
   end: number
@@ -32,6 +36,27 @@ function stripVttTags(text: string): string {
     out = out.replace(/<[^>]*>/g, "")
   } while (out !== prev)
   return out
+}
+
+// Broadcast/SMPTE VTTs start the first cue at 01:00:00 ("program start"); our
+// playhead is media-relative, so unshifted cues land an hour late. Subtract
+// whole hours only — exact-hour multiples avoid corrupting a genuinely long film.
+const ONE_HOUR = 3600
+
+function normalizeSmpteOffset(cues: VttCue[]): VttCue[] {
+  if (cues.length === 0) return cues
+  let earliest = Infinity
+  for (const cue of cues) {
+    if (cue.start < earliest) earliest = cue.start
+  }
+  if (earliest < ONE_HOUR) return cues
+  const offset = Math.floor(earliest / ONE_HOUR) * ONE_HOUR
+  if (offset === 0) return cues
+  return cues.map((cue) => ({
+    start: cue.start - offset,
+    end: cue.end - offset,
+    text: cue.text,
+  }))
 }
 
 export function parseVtt(content: string): VttCue[] {
@@ -70,5 +95,5 @@ export function parseVtt(content: string): VttCue[] {
     }
     i++
   }
-  return cues
+  return normalizeSmpteOffset(cues)
 }

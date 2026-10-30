@@ -15,12 +15,15 @@ export default function ProposalPreview({
       revision: 1,
       selection: null,
       playhead: 0,
+      seekRequest: { frame: 0 },
       status: "saved",
       error: null,
       remote: null,
       canUndo: false,
       canRedo: false,
       editable: false,
+      hasUnsavedChanges: false,
+      authenticationRequired: false,
     }),
     [playing, setPlaying] = useState(false)
   const session = {
@@ -29,9 +32,16 @@ export default function ProposalPreview({
         ...previous,
         document: change(structuredClone(previous.document)),
       })),
+    reportPlaybackFrame: (frame: number) =>
+      setState((previous) =>
+        previous.playhead === frame
+          ? previous
+          : { ...previous, playhead: frame },
+      ),
     seek: (frame: number) =>
       setState((previous) => ({
         ...previous,
+        seekRequest: { frame },
         playhead: Math.max(
           0,
           Math.min(frame, previous.document.durationInFrames - 1),

@@ -1,3 +1,4 @@
+import type { RetentionExecutionContext } from "../retention-operation-diagnostics"
 import { type Prisma, WorkflowRunStatus } from "@prisma/client"
 import type { WorkflowRunStatus as RuntimeWorkflowRunStatus } from "@workflow/world"
 import { start } from "workflow/api"
@@ -12,10 +13,14 @@ import {
 import {
   purgeExpiredRecommendationRequests,
   RECOMMENDATION_RETENTION_HEALTH_HOURS,
+  type RecommendationRetentionMode,
   type RecommendationPurgeResult,
 } from "../retention.service"
 import { RecommendationInternalStateError } from "../errors"
-import { runRecommendationRetentionScheduler } from "@/workflows/recommendationRetention"
+import {
+  runRecommendationRetention,
+  runRecommendationRetentionScheduler,
+} from "@/workflows/recommendationRetention"
 
 export const RECOMMENDATION_RETENTION_SCHEDULER_WORKFLOW_KEY =
   "recommendation-retention-scheduler"
@@ -103,24 +108,53 @@ export function nextRecommendationRetentionCatchUpRunAt(
   return new Date(now.getTime() + CATCH_UP_CONTINUATION_DELAY_MS)
 }
 
+export function recommendationRetentionNeedsContinuation(
+  result: RecommendationPurgeResult,
+): boolean {
+  if (result.status === "skipped") return true
+  return (
+    result.continuationRequired ??
+    result.batchLimitReached ??
+    result.overdueAfterRun ??
+    false
+  )
+}
+
 export async function runRecommendationRetentionJob(
   input: {
     ledgerRunId?: string
+    mode?: RecommendationRetentionMode
+    executionContext?: RetentionExecutionContext
   } = {},
 ): Promise<RecommendationPurgeResult> {
   if (input.ledgerRunId) await markWorkflowRunStarted(input.ledgerRunId)
   try {
-    const result = await purgeExpiredRecommendationRequests(prisma)
+    const result = await purgeExpiredRecommendationRequests(
+      prisma,
+      new Date(),
+      undefined,
+      input.mode ?? "scheduled",
+      input.executionContext ?? "worker-job",
+    )
     if (input.ledgerRunId) {
       await prisma.workflowRun.update({
         where: { id: input.ledgerRunId },
         data: {
           status: WorkflowRunStatus.SUCCEEDED,
-          summary: `Purged ${result.rootsDeleted} recommendation request root(s).`,
+          summary:
+            result.status === "skipped"
+              ? "Recommendation retention purge skipped because its lock was held."
+              : result.status === "yielded"
+                ? `Recommendation retention yielded after purging ${result.rootsDeleted} request root(s); backlog is unmeasured and continuation is required.`
+                : `Purged ${result.rootsDeleted} recommendation request root(s).`,
           finishedAt: new Date(),
           details: {
             rootsDeleted: result.rootsDeleted,
             overdueAfterRun: result.overdueAfterRun,
+            batchLimitReached: result.batchLimitReached,
+            continuationRequired:
+              recommendationRetentionNeedsContinuation(result),
+            purgeStatus: result.status,
           },
         },
       })
@@ -152,6 +186,7 @@ export async function runRecommendationRetentionFromScheduler(): Promise<{
   try {
     const result = await runRecommendationRetentionJob({
       ledgerRunId: ledger.id,
+      executionContext: "scheduled-job",
     })
     return { ok: true, ledgerRunId: ledger.id, result }
   } catch (error) {
@@ -161,6 +196,98 @@ export async function runRecommendationRetentionFromScheduler(): Promise<{
       error: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+/** Queue one ordinary, bounded purge pass; the scheduler remains independent. */
+export async function dispatchManualRecommendationRetention(
+  actorId: string,
+  operationId: string,
+) {
+  const ledgerRunId = `manual-retention-${operationId}`
+  let ledger: { id: string }
+  try {
+    ledger = await createWorkflowRunLog({
+      id: ledgerRunId,
+      workflowKey: RECOMMENDATION_RETENTION_PURGE_WORKFLOW_KEY,
+      workflowName: "Recommendation Retention",
+      trigger: "manual",
+      actorId,
+      subjectType: "recommendation-request",
+      subjectId: "expired-roots",
+      summary:
+        "One bounded recommendation retention pass requested by an admin.",
+      details: { retention: "expired-records-only", batchesRequested: 1 },
+    })
+  } catch (error) {
+    // The unique ledger ID is the operation key. A lost HTTP response or
+    // concurrent submission with the same key must never launch another run.
+    const existing = await prisma.workflowRun.findUnique({
+      where: { id: ledgerRunId },
+    })
+    if (!existing || existing.actorId !== actorId) throw error
+    return {
+      ledgerRunId,
+      runtimeRunId: existing.runtimeRunId,
+      state: existing.runtimeRunId
+        ? ("existing" as const)
+        : ("uncertain" as const),
+    }
+  }
+
+  let runtime: Awaited<ReturnType<typeof start>>
+  try {
+    runtime = await start(runRecommendationRetention, [
+      { ledgerRunId: ledger.id },
+    ])
+  } catch {
+    // A rejected start can mean transport uncertainty after the runtime
+    // committed. Keep the reserved ledger for reconciliation, not replay.
+    await prisma.workflowRun
+      .updateMany({
+        // The worker may finish before a lost start response reaches us.
+        // Never replace its started or terminal receipt and row counts.
+        where: { id: ledgerRunId, status: WorkflowRunStatus.QUEUED },
+        data: {
+          summary:
+            "Manual dispatch outcome uncertain; inspect runtime and purge ledgers before retrying.",
+          details: {
+            retention: "expired-records-only",
+            batchesRequested: 1,
+            dispatchOutcome: "uncertain",
+          },
+        },
+      })
+      .catch(() => {})
+    return {
+      ledgerRunId,
+      runtimeRunId: null,
+      state: "uncertain" as const,
+    }
+  }
+  // A successful dispatch may outlive this attachment. The durable workflow
+  // ledger and purge ledger still reconcile an uncertain HTTP response.
+  await attachWorkflowRuntimeRunId(ledger.id, runtime.runId).catch(() => {})
+  return { ledgerRunId, runtimeRunId: runtime.runId, state: "queued" as const }
+}
+
+/** Operator command path for one pass in the deployed Admin image. */
+export async function runManualRecommendationRetentionOnce() {
+  const ledger = await createWorkflowRunLog({
+    workflowKey: RECOMMENDATION_RETENTION_PURGE_WORKFLOW_KEY,
+    workflowName: "Recommendation Retention",
+    trigger: "manual",
+    subjectType: "recommendation-request",
+    subjectId: "expired-roots",
+    summary:
+      "One bounded recommendation retention pass started by operator command.",
+    details: { retention: "expired-records-only", batchesRequested: 1 },
+  })
+  const result = await runRecommendationRetentionJob({
+    ledgerRunId: ledger.id,
+    mode: "stored-expiry-only",
+    executionContext: "manual-cli",
+  })
+  return { ledgerRunId: ledger.id, result }
 }
 
 export async function recordRecommendationRetentionSchedulerHeartbeat(

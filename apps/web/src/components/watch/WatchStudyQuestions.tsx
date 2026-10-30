@@ -205,7 +205,10 @@ function StudyQuestionRow({
       >
         <div className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-6 text-left md:grid-cols-[1.75rem_minmax(0,1fr)]">
           <WatchQuestionIcon />
-          <h3 className="text-base leading-[1.6] font-normal text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
+          {/* `overflow-wrap: anywhere` so a bare URL used as a "question"
+              wraps inside its row instead of running under the chevron or
+              off the viewport. */}
+          <h3 className="text-base leading-[1.6] font-normal [overflow-wrap:anywhere] text-stone-100 transition-colors group-hover:text-brand-red md:text-lg md:text-balance">
             {question}
           </h3>
         </div>

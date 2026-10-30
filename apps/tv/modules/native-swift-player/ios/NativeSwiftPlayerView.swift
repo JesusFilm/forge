@@ -9,6 +9,7 @@ private struct NativeListRow {
   let detail: String?
   let selected: Bool
   let selectable: Bool
+  var confirmationMessage: String? = nil
 }
 
 private final class NativeOptionsNavigationController: UINavigationController {
@@ -28,6 +29,7 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
   private let selectedId: String?
   private let onSelect: (String) -> Void
   private var visibleRows: [NativeListRow]
+  private var confirmation = NativeChoiceConfirmation()
 
   init(
     title: String,
@@ -117,7 +119,33 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     let row = visibleRows[indexPath.row]
     guard row.selectable else { return }
-    onSelect(row.id)
+    if let id = confirmation.request(id: row.id, message: row.confirmationMessage) {
+      commitChoice(id)
+      return
+    }
+    let alert = UIAlertController(
+      title: "Switch audio language?",
+      message: row.confirmationMessage,
+      preferredStyle: .alert
+    )
+    let cancel = UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      _ = self?.confirmation.resolve(accepted: false)
+    }
+    alert.addAction(cancel)
+    alert.addAction(UIAlertAction(title: "Continue", style: .default) { [weak self, weak alert] _ in
+      guard let self,
+            let id = self.confirmation.resolve(accepted: true),
+            self.viewIfLoaded?.window != nil else { return }
+      // Dismiss the confirmation first, so the following dismissal closes the
+      // option list rather than only its presented alert.
+      alert?.dismiss(animated: true) { [weak self] in self?.commitChoice(id) }
+    })
+    alert.preferredAction = cancel
+    present(alert, animated: true)
+  }
+
+  private func commitChoice(_ id: String) {
+    onSelect(id)
     dismiss(animated: true)
   }
 
@@ -137,6 +165,7 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
 
   override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if presses.contains(where: { $0.type == .menu }) {
+      _ = confirmation.resolve(accepted: false)
       dismiss(animated: true)
       return
     }
@@ -149,9 +178,15 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   let onEnded = EventDispatcher()
   let onPlayNext = EventDispatcher()
   let onPlaybackPosition = EventDispatcher()
+  let onPlaybackState = EventDispatcher()
+  var sourceGeneration = 0
+  private var observationTimer: Timer?
   let onError = EventDispatcher()
   let onAudioChange = EventDispatcher()
   let onSubtitleChange = EventDispatcher()
+  let onFeedbackOpen = EventDispatcher()
+  let onFeedbackClose = EventDispatcher()
+  let onFeedbackRetry = EventDispatcher()
 
   private let player = AVPlayer()
   private let playerController = NativePlayerViewController()
@@ -190,6 +225,21 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private var programmaticDismissal = false
   private var userDismissalHandled = false
   private var customScrubWasPlaying = false
+  private weak var feedbackController: NativeFeedbackQrController?
+
+  var feedbackAvailable = false {
+    didSet {
+      updateTransportItems()
+      customChromeView.setFeedbackAvailable(feedbackAvailable)
+    }
+  }
+  var feedbackVisible = false
+  var feedbackRows: [String] = []
+  var feedbackReference: String?
+  var feedbackSimulator = false
+  var feedbackHostedSimulator = false
+  var feedbackLoading = false
+  var feedbackError = false
 
   private var usesCustomChrome: Bool { playerVariant == "native-b" }
 
@@ -254,6 +304,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   var upNextTitle: String?
 
   func commitProps() {
+    syncFeedbackPanel()
     guard sourceUrl != loadedSourceUrl else { return }
     replaceSource(preservingPosition: loadedSourceUrl != nil)
   }
@@ -352,9 +403,13 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     ) { [weak self] time in
       self?.handleTimeUpdate(time.seconds)
     }
+    observationTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+      self?.emitPlaybackState()
+    }
   }
 
   deinit {
+    observationTimer?.invalidate()
     if let periodicObserver { player.removeTimeObserver(periodicObserver) }
     if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
     if let timeJumpObserver { NotificationCenter.default.removeObserver(timeJumpObserver) }
@@ -513,6 +568,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     customChromeView.onExplore = { [weak self] in self?.presentExplore() }
     customChromeView.onAudio = { [weak self] in self?.presentLanguages() }
     customChromeView.onSubtitles = { [weak self] in self?.presentSubtitles() }
+    customChromeView.onFeedback = { [weak self] in self?.openFeedback() }
     customChromeView.onScrubBegan = { [weak self] _ in
       guard let self else { return }
       self.customScrubWasPlaying = self.player.rate > 0
@@ -896,6 +952,25 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     subtitleLabel.isHidden = cue == nil
   }
 
+  private func emitPlaybackState() {
+    guard window != nil, sourceUrl == loadedSourceUrl else { return }
+    let position = player.currentTime().seconds
+    guard position.isFinite else { return }
+    let state: String
+    if playbackFailureHandled { state = "error" }
+    else if endHandled { state = "ended" }
+    else if sourceSeekPending || player.timeControlStatus == .waitingToPlayAtSpecifiedRate { state = "buffering" }
+    else if player.timeControlStatus == .playing { state = "playing" }
+    else { state = "paused" }
+    onPlaybackState([
+      "sourceGeneration": sourceGeneration,
+      "state": state,
+      "positionSeconds": max(0, position),
+      "durationSeconds": currentDuration > 0 ? currentDuration as Any : NSNull(),
+      "seeking": sourceSeekPending
+    ])
+  }
+
   public func playerViewControllerWillBeginDismissalTransition(
     _ playerViewController: AVPlayerViewController
   ) {
@@ -977,6 +1052,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private func handleEnded() {
     guard !endHandled else { return }
     endHandled = true
+    emitPlaybackState()
     guard let slug = upNextSlug, !slug.isEmpty else {
       if playerController.presentingViewController != nil {
         programmaticDismissal = true
@@ -1033,10 +1109,60 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     items.append(UIAction(title: "Subtitles", image: UIImage(systemName: "captions.bubble")) { [weak self] _ in
       self?.presentSubtitles()
     })
+    if feedbackAvailable {
+      items.append(UIAction(title: "Feedback", image: UIImage(systemName: "text.bubble")) { [weak self] _ in
+        self?.openFeedback()
+      })
+    }
     playerController.transportBarCustomMenuItems = items
   }
 
+  private func openFeedback() {
+    guard feedbackAvailable, !feedbackVisible else { return }
+    player.pause()
+    refreshCustomChromePlaybackState()
+    feedbackVisible = true
+    onFeedbackOpen()
+    DispatchQueue.main.async { [weak self] in self?.syncFeedbackPanel() }
+  }
+
+  private func syncFeedbackPanel() {
+    if !feedbackVisible {
+      feedbackController?.dismiss(animated: true)
+      return
+    }
+    if feedbackController == nil {
+      let controller = NativeFeedbackQrController()
+      controller.modalPresentationStyle = .fullScreen
+      controller.onClose = { [weak self] in
+        self?.feedbackVisible = false
+        self?.feedbackController = nil
+        self?.onFeedbackClose()
+        self?.customChromeView.revealControls(preferredFocus: true)
+        if self?.usesCustomChrome == true {
+          self?.customChromeView.focusPrimaryTransport()
+        } else {
+          self?.playerController.setNeedsFocusUpdate()
+          self?.playerController.updateFocusIfNeeded()
+        }
+      }
+      controller.onRetry = { [weak self] in self?.onFeedbackRetry() }
+      feedbackController = controller
+      playerController.present(controller, animated: true)
+    }
+    feedbackController?.update(
+      rows: feedbackRows,
+      code: feedbackReference,
+      loading: feedbackLoading,
+      error: feedbackError,
+      simulator: feedbackSimulator,
+      hostedSimulator: feedbackHostedSimulator
+    )
+  }
+
   private func presentLanguages() {
+    let expectedAudioId = selectedAudioId
+    let expectedSource = sourceUrl
     let sortedOptions = audioOptions.sorted { left, right in
       let byLabel = left.label.localizedCaseInsensitiveCompare(right.label)
       if byLabel != .orderedSame { return byLabel == .orderedAscending }
@@ -1045,7 +1171,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       return left.id < right.id
     }
     let rows = sortedOptions.map {
-      NativeListRow(id: $0.id, title: $0.label, detail: $0.detail, selected: $0.id == selectedAudioId, selectable: true)
+      NativeListRow(id: $0.id, title: $0.label, detail: $0.detail,
+        selected: $0.id == selectedAudioId, selectable: true,
+        confirmationMessage: $0.confirmationMessage)
     }
     presentList(
       title: "Audio Language",
@@ -1053,7 +1181,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       selectedId: selectedAudioId,
       searchPlaceholder: "Search audio languages"
     ) { [weak self] id in
-      self?.onAudioChange(["id": id])
+      guard let self, self.selectedAudioId == expectedAudioId,
+            self.sourceUrl == expectedSource else { return }
+      self.onAudioChange(["id": id])
     }
   }
 

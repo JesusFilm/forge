@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { AppState, Platform } from "react-native"
 
 import { getApolloClient } from "../lib/apolloClient"
 import {
@@ -38,7 +39,11 @@ import {
   parseStoredHomeSnapshot,
   serializeHomeSnapshotFromVideosJson,
 } from "../lib/watchHome/homeSnapshot"
-import { fetchTopUpVideos, type FetchPolicy } from "../lib/watchHome/topUpFetch"
+import {
+  fetchTopUpVideos,
+  homeFetchPolicy,
+  type HomeQueryContext,
+} from "../lib/watchHome/topUpFetch"
 import { withTimeout } from "../lib/withTimeout"
 
 // Errors surface as a retryable message (never a throw) so the screen renders
@@ -53,6 +58,11 @@ const TOPUP_FETCH_DEADLINE_MS = 8000
 
 type ExperienceBlockList = readonly ExperienceBlock[]
 
+export type WatchHomeOptions = {
+  refreshOnForeground?: boolean
+  refreshKey?: number
+}
+
 export type WatchHomeState = {
   model: WatchHomeModel | null
   /**
@@ -61,6 +71,8 @@ export type WatchHomeState = {
    * through background refreshes.
    */
   loading: boolean
+  /** Live refresh is outstanding, even when a disk snapshot has ended loading. */
+  refreshing: boolean
   error: string | null
   /** Network-only refetch suited to a retry action. */
   refetch: () => void
@@ -86,15 +98,32 @@ function persistHomeSnapshot(videosJson: string, blocksJson: string): void {
  * paint the prior launch's snapshot immediately, revalidate in the background, and
  * swap only when the live response actually differs.
  */
-export function useWatchHome(): WatchHomeState {
+export function useWatchHome({
+  refreshOnForeground = false,
+  refreshKey,
+}: WatchHomeOptions = {}): WatchHomeState {
   const [model, setModel] = useState<WatchHomeModel | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(true)
+  const [settledRefreshKey, setSettledRefreshKey] = useState(refreshKey)
   const [error, setError] = useState<string | null>(null)
   const requestIdRef = useRef(0)
+  const mountedRef = useRef(false)
+  const activeRequestRef = useRef<AbortController | null>(null)
+  const refreshKeyRef = useRef(refreshKey)
+  refreshKeyRef.current = refreshKey
+  const foregroundRefreshRef = useRef(refreshOnForeground)
+  foregroundRefreshRef.current = refreshOnForeground
+  const previousRefreshKeyRef = useRef(refreshKey)
+  // A beta/route refresh key requests fresh data on its first mount, without a
+  // second effect issuing an initial fetch followed by a redundant refetch.
+  const initialModeRef = useRef<"initial" | "refresh">(
+    refreshKey === undefined ? "initial" : "refresh",
+  )
   // Once live data lands, a late-arriving snapshot read must not paint over it.
   const networkLandedRef = useRef(false)
-  // JSON of the painted snapshot's videos/blocks (set only when a snapshot model was
-  // painted); the live fetch string-compares to decide keep-or-swap.
+  // JSON of the currently painted videos/blocks, seeded by disk or a successful
+  // fetch. Opt-in revalidation keeps the same model when its content is equal.
   const snapshotVideosJsonRef = useRef<string | null>(null)
   const snapshotBlocksJsonRef = useRef<string | null>(null)
   // Last Experience blocks that yielded >=1 rail — reused on a transient
@@ -102,17 +131,35 @@ export function useWatchHome(): WatchHomeState {
   const lastGoodExperienceBlocksRef = useRef<ExperienceBlockList | null>(null)
 
   const fetchHome = useCallback(async (mode: "initial" | "refresh") => {
+    activeRequestRef.current?.abort()
+    const controller = new AbortController()
+    activeRequestRef.current = controller
     const thisRequest = ++requestIdRef.current
+    const requestedKey = refreshKeyRef.current
+    const ownsRefresh =
+      requestedKey !== undefined || foregroundRefreshRef.current
+    // Default consumers keep Apollo's original sharing behavior. Explicit
+    // refresh owners carry their own signal on every request, including top-ups.
+    const requestContext: HomeQueryContext | undefined = ownsRefresh
+      ? {
+          fetchOptions: { signal: controller.signal },
+          queryDeduplication: false,
+        }
+      : undefined
+    const isCurrent = () =>
+      mountedRef.current &&
+      !controller.signal.aborted &&
+      requestIdRef.current === thisRequest &&
+      refreshKeyRef.current === requestedKey
     // Unconditional — a retry from the error state clears `error` below, so
     // without `loading` the model==null screen would fall through to the empty
     // state for the whole round trip. With a painted model it shows content.
     setLoading(true)
+    setRefreshing(true)
     setError(null)
 
     const client = getApolloClient()
-    // Initial load reuses the cache; explicit refetch forces the network.
-    const fetchPolicy: FetchPolicy =
-      mode === "initial" ? "cache-first" : "network-only"
+    const fetchPolicy = homeFetchPolicy(Platform.OS, mode)
 
     try {
       const [videosOutcome, experienceOutcome] = await Promise.allSettled([
@@ -124,17 +171,34 @@ export function useWatchHome(): WatchHomeState {
             languageSlug: ENGLISH_LANGUAGE_SLUG,
           },
           fetchPolicy,
+          ...(requestContext ? { context: requestContext } : {}),
         }),
         withTimeout(
           client.query({
             query: GET_WATCH_SETTING,
             variables: { locale: HOME_LOCALE },
             fetchPolicy,
+            ...(requestContext ? { context: requestContext } : {}),
           }),
           EXPERIENCE_FETCH_DEADLINE_MS,
         ),
       ])
-      if (requestIdRef.current !== thisRequest) return
+      if (!isCurrent()) return
+
+      const liveBlocks: ExperienceBlockList | null =
+        experienceOutcome.status === "fulfilled"
+          ? ((experienceOutcome.value.data?.watchSetting?.homepageExperience
+              ?.blocks as ExperienceBlockList | undefined) ?? null)
+          : null
+      // An explicit removal remains authoritative even if the parallel video
+      // request failed; a later watchSetting error must not restore old rails.
+      if (
+        experienceOutcome.status === "fulfilled" &&
+        (liveBlocks == null || liveBlocks.length === 0)
+      ) {
+        networkLandedRef.current = true
+        lastGoodExperienceBlocksRef.current = null
+      }
 
       // The load-bearing config-pool fetch. A rejected primary — or an empty-but-
       // successful response over a painted snapshot (never paint full-empty over
@@ -174,11 +238,6 @@ export function useWatchHome(): WatchHomeState {
       if (primary.kind === "ok") {
         // A rejected watchSetting reuses the last-good body (R9); a fulfilled-but-
         // null homepage is "absent"; otherwise the live blocks.
-        const liveBlocks: ExperienceBlockList | null =
-          experienceOutcome.status === "fulfilled"
-            ? ((experienceOutcome.value.data?.watchSetting?.homepageExperience
-                ?.blocks as ExperienceBlockList | undefined) ?? null)
-            : null
         experienceOutcomeKind =
           experienceOutcome.status === "rejected"
             ? "error"
@@ -201,15 +260,20 @@ export function useWatchHome(): WatchHomeState {
           if (divergent.length > 0) {
             try {
               const topUp = await withTimeout(
-                fetchTopUpVideos(client, divergent, fetchPolicy),
+                fetchTopUpVideos(
+                  client,
+                  divergent,
+                  fetchPolicy,
+                  requestContext,
+                ),
                 TOPUP_FETCH_DEADLINE_MS,
               )
               // The single post-allSettled guard does not cover this new await.
-              if (requestIdRef.current !== thisRequest) return
+              if (!isCurrent()) return
               mergedVideos = [...videos, ...topUp]
               videoByCoreId = buildVideoByCoreIdIndex(mergedVideos)
             } catch {
-              if (requestIdRef.current !== thisRequest) return
+              if (!isCurrent()) return
               topUpFailed = true
             }
           }
@@ -238,39 +302,107 @@ export function useWatchHome(): WatchHomeState {
       if (reconciled.nextLastGoodBlocks !== undefined) {
         lastGoodExperienceBlocksRef.current = reconciled.nextLastGoodBlocks
       }
+      // Keep the rendered last-good body while telling freshness-sensitive
+      // callers that its Journey input could not be revalidated this time.
+      if (
+        ownsRefresh &&
+        (experienceOutcome.status === "rejected" || topUpFailed)
+      )
+        setError(RETRYABLE_ERROR_MESSAGE)
 
-      // Keep the painted snapshot when the live result is identical, so a focused
-      // rail card isn't disturbed mid-navigation.
+      // Keep the painted body when initial/opt-in live data is identical, so a
+      // focused rail card isn't disturbed by foreground/selector revalidation.
       const videosJson = JSON.stringify(mergedVideos)
       const blocksJson =
         reconciled.usedExperience && experienceBlocks != null
           ? JSON.stringify(experienceBlocks)
           : "null"
       const snapshotStillCurrent =
-        mode === "initial" &&
+        (mode === "initial" || ownsRefresh) &&
         videosJson === snapshotVideosJsonRef.current &&
         blocksJson === snapshotBlocksJsonRef.current
       if (!snapshotStillCurrent) setModel(reconciled.model)
+      snapshotVideosJsonRef.current = videosJson
+      snapshotBlocksJsonRef.current = blocksJson
 
       // Never-silent (R12): every revert/degrade emits its structured reason.
       for (const reason of reconciled.logs) logWatchHomeFallback({ reason })
 
       if (mergedVideos.length > 0) persistHomeSnapshot(videosJson, blocksJson)
     } catch {
-      if (requestIdRef.current !== thisRequest) return
+      if (!isCurrent()) return
       // Keep any previously-built model (snapshot included) so a failed fetch
       // degrades to stale content + a retry affordance, not a blank screen.
       setError(RETRYABLE_ERROR_MESSAGE)
     } finally {
-      if (requestIdRef.current === thisRequest) {
+      if (isCurrent()) {
+        activeRequestRef.current = null
         setLoading(false)
+        setRefreshing(false)
+        setSettledRefreshKey(requestedKey)
       }
     }
   }, [])
 
   useEffect(() => {
-    void fetchHome("initial")
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      requestIdRef.current++
+      activeRequestRef.current?.abort()
+      activeRequestRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      void fetchHome(initialModeRef.current)
+      return
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => void fetchHome(initialModeRef.current), 0)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      if (timer != null) clearTimeout(timer)
+    }
   }, [fetchHome])
+
+  useEffect(() => {
+    if (previousRefreshKeyRef.current === refreshKey) return
+    previousRefreshKeyRef.current = refreshKey
+    void fetchHome("refresh")
+  }, [refreshKey, fetchHome])
+
+  useEffect(() => {
+    if (!refreshOnForeground) return
+    let previousState = AppState.currentState
+    const subscription = AppState.addEventListener("change", (state) => {
+      const returnedToForeground =
+        state === "active" &&
+        (previousState === "background" || previousState === "inactive")
+      previousState = state
+      if (returnedToForeground) void fetchHome("refresh")
+      else if (state !== "active") {
+        requestIdRef.current++
+        activeRequestRef.current?.abort()
+        activeRequestRef.current = null
+        setRefreshing(false)
+        setLoading(false)
+      }
+    })
+    return () => {
+      subscription.remove()
+      requestIdRef.current++
+      activeRequestRef.current?.abort()
+      activeRequestRef.current = null
+      if (mountedRef.current) {
+        setRefreshing(false)
+        setLoading(false)
+      }
+    }
+  }, [refreshOnForeground, fetchHome])
 
   // Snapshot paint, concurrent with the initial fetch. The disk read + model
   // build finish in tens of milliseconds; the network needs seconds — so this
@@ -314,7 +446,10 @@ export function useWatchHome(): WatchHomeState {
       } catch {
         // A snapshot the model builder rejects is corrupt — drop it so the next
         // launch goes back to a clean network-first start.
-        AsyncStorage.removeItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY).catch(() => {})
+        if (!cancelled)
+          AsyncStorage.removeItem(WATCH_HOME_SNAPSHOT_STORAGE_KEY).catch(
+            () => {},
+          )
       }
     })()
     return () => {
@@ -326,5 +461,13 @@ export function useWatchHome(): WatchHomeState {
     void fetchHome("refresh")
   }, [fetchHome])
 
-  return { model, loading, error, refetch }
+  return {
+    model,
+    loading,
+    // Fence publication during the key-changing render, before the effect can
+    // begin the request. Snapshot paint deliberately does not settle this flag.
+    refreshing: refreshing || settledRefreshKey !== refreshKey,
+    error,
+    refetch,
+  }
 }

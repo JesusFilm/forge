@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
+  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -20,13 +21,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
 import {
+  PLAYER_BAR_PADDING_H,
+  PLAYER_ROUTE_ROW_TOP,
+} from "../../lib/playerLayout"
+import {
   BLACK,
   SURFACE_COLOR,
   TEXT_ON_OVERLAY,
   hexToRgba,
 } from "../../lib/color"
+import { useControlsGlassVisible } from "../../hooks/useControlsVisibility"
 import { useTypography } from "../../hooks/useTypography"
+import { appDirection, insetPadding } from "../../i18n/layoutRtl"
+import { useT } from "../../i18n/useT"
 import { NativeCastButton } from "../../lib/cast/NativeCastButton"
+import type { ControlsVisibleReader } from "../../lib/controlsVisibility"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
 import {
@@ -35,7 +44,7 @@ import {
 } from "../../lib/playPressAction"
 import { playerCenterControl } from "../../lib/playerCenterControl"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
-import { PlatformBlur } from "../ui/PlatformBlur"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import { Scrubber, SCRUBBER_HIT_HEIGHT } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
@@ -77,11 +86,13 @@ type PlayerControlsProps = {
    *  this component stays free of the native network module — every suite that
    *  renders the transport would otherwise have to mock it. */
   isOnline?: boolean
+  /** Glass path only: the chrome's fade, which the host no longer applies to
+   *  this layer, because glass draws nothing inside a fading layer (KTD6). */
+  fade?: Animated.Value
+  /** The controls table's published `visible` value, which dissolves the
+   *  glass (KTD5). Without it the glass stays shown. */
+  visibleStore?: ControlsVisibleReader
 }
-
-// Side inset for the bar's text and icons. The inline seek bar cancels it so
-// the track reaches the player's edges.
-const BAR_PADDING_H = 12
 
 // Gap between the pill/exit row and the seek bar below it.
 const TIME_ROW_GAP = 6
@@ -114,24 +125,58 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-// Frosted backplate for every chrome control. Lighter than the hero blurs so a
-// 44pt control does not read as a solid block.
-function Frosted({
+// The frosted plate where Liquid Glass is unavailable. Lighter than the
+// hero blurs so a 44pt control does not read as a solid block.
+const PLATE_FALLBACK: GlassFallback = {
+  kind: "blur",
+  intensity: 40,
+  androidDim: hexToRgba(SURFACE_COLOR, 0.6),
+}
+
+// A surface with no auto-hide, such as the veil's route row, keeps its glass.
+const ALWAYS_VISIBLE: ControlsVisibleReader = {
+  get: () => true,
+  subscribe: () => () => {},
+}
+
+/** One chrome control's backplate: glass on iOS 26, else a blur. */
+function Plate({
   style,
+  fade,
+  visible,
+  interactive = false,
   children,
 }: {
   style: StyleProp<ViewStyle>
+  fade: Animated.Value | undefined
+  visible: boolean
+  /** True for a button; the time pill and the offline glyph are not buttons. */
+  interactive?: boolean
   children: ReactNode
 }) {
   return (
-    <PlatformBlur
+    <GlassSurface
       style={style}
-      intensity={40}
-      androidDim={hexToRgba(SURFACE_COLOR, 0.6)}
+      fallback={PLATE_FALLBACK}
+      fade={fade}
+      visible={visible}
+      interactive={interactive}
     >
       {children}
-    </PlatformBlur>
+    </GlassSurface>
   )
+}
+
+/** Fades a part outside any plate, such as the seek bar, on the glass path. */
+function FadedPart({
+  fade,
+  children,
+}: {
+  fade: Animated.Value | undefined
+  children: ReactNode
+}) {
+  if (fade == null) return <>{children}</>
+  return <Animated.View style={{ opacity: fade }}>{children}</Animated.View>
 }
 
 /**
@@ -144,6 +189,8 @@ export function RouteButtons({
   externalPlaybackActive = false,
   castUi = null,
   onOpenSettings,
+  fade,
+  glassVisible = true,
 }: {
   onInteract?: () => void
   externalPlaybackActive?: boolean
@@ -151,7 +198,12 @@ export function RouteButtons({
   /** Opens the player settings sheet. R1/R12: only the watch chrome threads
    *  it, so the veil route row and other surfaces render no gear. */
   onOpenSettings?: () => void
+  /** The chrome's fade and glass value. The veil row passes neither. */
+  fade?: Animated.Value
+  glassVisible?: boolean
 }) {
+  const t = useT("Player")
+  const tCast = useT("Cast")
   // Android renders the SDK's own button because only a native, attached
   // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
   // presents the dialog from the context, so it keeps the app-drawn glyph.
@@ -160,12 +212,17 @@ export function RouteButtons({
       // Deliberately NOT gated on `available`: getCastState() was measured
       // reporting noDevicesAvailable with devices already discovered, so the
       // gate never opens. mediarouter 1.8's button never self-hides.
-      <Frosted style={styles.iconButton}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <NativeCastButton
           accessibilityLabel={castUi.label}
           tintColor={TEXT_ON_OVERLAY}
         />
-      </Frosted>
+      </Plate>
     ) : castUi.available ? (
       <Pressable
         onPress={() => {
@@ -174,22 +231,33 @@ export function RouteButtons({
         }}
         accessibilityRole="button"
         accessibilityLabel={castUi.label}
+        {...{ "dd-action-name": "player-cast" }}
       >
-        <Frosted style={styles.iconButton}>
+        <Plate
+          style={styles.iconButton}
+          fade={fade}
+          visible={glassVisible}
+          interactive
+        >
           <MaterialIcons
             name={castUi.connected ? "cast-connected" : "cast"}
             size={22}
             color={TEXT_ON_OVERLAY}
           />
-        </Frosted>
+        </Plate>
       </Pressable>
     ) : null
 
   // Native AVRoutePickerView (iOS only) — it owns the press, so no Pressable
-  // wrapper; the Frosted backplate matches the sibling icon buttons.
+  // wrapper; the plate matches the sibling icon buttons.
   const airPlayButton =
     Platform.OS === "ios" ? (
-      <Frosted style={styles.iconButton}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <VideoAirPlayButton
           style={styles.airPlayPicker}
           tint={TEXT_ON_OVERLAY}
@@ -197,13 +265,16 @@ export function RouteButtons({
           onBeginPresentingRoutes={onInteract}
           accessibilityRole="button"
           accessibilityLabel={
-            externalPlaybackActive ? "AirPlay: connected" : "AirPlay"
+            // "AirPlay" is a name and stays as it is in every language.
+            externalPlaybackActive
+              ? tCast("airPlayConnectedAriaLabel")
+              : "AirPlay"
           }
         />
-      </Frosted>
+      </Plate>
     ) : null
 
-  // Same 44pt frosted backplate as its siblings, both platforms (R1).
+  // Same 44pt plate as its siblings, both platforms (R1).
   const settingsButton =
     onOpenSettings == null ? null : (
       <Pressable
@@ -212,11 +283,17 @@ export function RouteButtons({
           onOpenSettings()
         }}
         accessibilityRole="button"
-        accessibilityLabel="Video settings"
+        accessibilityLabel={t("settingsAriaLabel")}
+        {...{ "dd-action-name": "player-settings" }}
       >
-        <Frosted style={styles.iconButton}>
+        <Plate
+          style={styles.iconButton}
+          fade={fade}
+          visible={glassVisible}
+          interactive
+        >
           <MaterialIcons name="settings" size={22} color={TEXT_ON_OVERLAY} />
-        </Frosted>
+        </Plate>
       </Pressable>
     )
 
@@ -241,9 +318,13 @@ export function PlayerControls({
   onOpenSettings,
   onRecover,
   isOnline = true,
+  fade,
+  visibleStore = ALWAYS_VISIBLE,
 }: PlayerControlsProps) {
+  const glassVisible = useControlsGlassVisible(visibleStore)
   const typography = useTypography()
   const insets = useSafeAreaInsets()
+  const t = useT("Player")
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [scrubPreview, setScrubPreview] = useState<number | null>(null)
@@ -482,26 +563,30 @@ export function PlayerControls({
   // width, with the labels and the fullscreen control in the corners above it.
   // Fullscreen keeps the original centered bar above its button row.
   const scrubber = (
-    <Scrubber
-      currentTime={displayedTime}
-      duration={duration}
-      onSeek={handleSeek}
-      onScrubChange={handleScrubChange}
-      flush={!fullscreen}
-      // iOS-only: there the pop recognizer competes for this touch, so the bar
-      // yields the strip inline (fullscreen cannot pop, so it keeps full
-      // width). Android's back is an OS gesture popped in JS — nothing to
-      // yield to, so giving up the strip there would cost seek area for free.
-      edgeGuardWidth={
-        Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
-      }
-    />
+    <FadedPart fade={fade}>
+      <Scrubber
+        currentTime={displayedTime}
+        duration={duration}
+        onSeek={handleSeek}
+        onScrubChange={handleScrubChange}
+        flush={!fullscreen}
+        // iOS only: the pop recognizer competes for this touch, so the inline
+        // bar yields the edge strip; fullscreen cannot pop. Android's back is
+        // an OS gesture handled in JS, so yielding there only costs seek area.
+        edgeGuardWidth={
+          Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
+        }
+      />
+    </FadedPart>
   )
 
   const timeLabel = (
     <Text
       style={[styles.timeText, typography.caption]}
-      accessibilityLabel={`Elapsed ${formatTime(displayedTime)} of ${formatTime(duration)}`}
+      accessibilityLabel={t("elapsedAriaLabel", {
+        elapsed: formatTime(displayedTime),
+        duration: formatTime(duration),
+      })}
     >
       {formatTime(displayedTime)} / {formatTime(duration)}
     </Text>
@@ -509,7 +594,11 @@ export function PlayerControls({
 
   // The pill sits where the chrome scrim has already faded out, so the backplate
   // is what keeps it legible over bright footage.
-  const timePill = <Frosted style={styles.timePill}>{timeLabel}</Frosted>
+  const timePill = (
+    <Plate style={styles.timePill} fade={fade} visible={glassVisible}>
+      {timeLabel}
+    </Plate>
+  )
 
   const fullscreenButton = (
     <Pressable
@@ -518,15 +607,27 @@ export function PlayerControls({
         onFullscreen?.()
       }}
       accessibilityRole="button"
-      accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+      accessibilityLabel={
+        fullscreen ? t("exitFullscreenAriaLabel") : t("fullscreenAriaLabel")
+      }
+      {...{
+        "dd-action-name": fullscreen
+          ? "player-fullscreen-exit"
+          : "player-fullscreen-enter",
+      }}
     >
-      <Frosted style={styles.iconButton}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <Ionicons
           name={fullscreen ? "contract" : "expand"}
           size={20}
           color={TEXT_ON_OVERLAY}
         />
-      </Frosted>
+      </Plate>
     </Pressable>
   )
 
@@ -536,40 +637,57 @@ export function PlayerControls({
       externalPlaybackActive={externalPlaybackActive}
       castUi={castUi}
       onOpenSettings={onOpenSettings}
+      fade={fade}
+      glassVisible={glassVisible}
     />
   )
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* External routes live at the top-right corner, clear of the
-          bottom transport rows; fullscreen clears the notch and side inset. */}
+      {/* External routes live at the top end corner, clear of the bottom
+          transport rows; fullscreen clears the notch and side inset. They are
+          not playback controls, so they mirror with the app (feat-695 R11). */}
       <View
-        style={[
-          styles.routeRow,
-          fullscreen && {
-            top: Math.max(insets.top, 8),
-            right: Math.max(insets.right, 12),
-          },
-        ]}
+        style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
         pointerEvents="box-none"
       >
-        {routeButtons}
+        <View
+          style={[
+            styles.routeRow,
+            fullscreen && {
+              top: Math.max(insets.top, 8),
+              right: Math.max(
+                insetPadding(insets).paddingRight,
+                PLAYER_BAR_PADDING_H,
+              ),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          {routeButtons}
+        </View>
       </View>
 
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
           accessibilityRole="button"
-          accessibilityLabel={`Back ${SKIP_SECONDS} seconds`}
+          accessibilityLabel={t("skipBackAriaLabel", { seconds: SKIP_SECONDS })}
+          {...{ "dd-action-name": "player-skip-back" }}
         >
-          <Frosted style={styles.skipButton}>
+          <Plate
+            style={styles.skipButton}
+            fade={fade}
+            visible={glassVisible}
+            interactive
+          >
             <Ionicons
               name="play-back"
               size={24}
               color={TEXT_ON_OVERLAY}
               style={styles.centerIcon}
             />
-          </Frosted>
+          </Plate>
         </Pressable>
 
         {centerControl === "offline" ? (
@@ -579,16 +697,16 @@ export function PlayerControls({
           // control again the moment the connection returns.
           <View
             accessibilityRole="image"
-            accessibilityLabel="No connection. The video cannot play."
+            accessibilityLabel={t("offlineAriaLabel")}
           >
-            <Frosted style={styles.playButton}>
+            <Plate style={styles.playButton} fade={fade} visible={glassVisible}>
               <MaterialIcons
                 name="wifi-off"
                 size={24}
                 color={TEXT_ON_OVERLAY}
                 style={styles.centerIcon}
               />
-            </Frosted>
+            </Plate>
           </View>
         ) : (
           <Pressable
@@ -596,13 +714,19 @@ export function PlayerControls({
             accessibilityRole="button"
             accessibilityLabel={
               centerControl === "replay"
-                ? "Replay"
+                ? t("replayAriaLabel")
                 : centerControl === "pause"
-                  ? "Pause"
-                  : "Play"
+                  ? t("pauseAriaLabel")
+                  : t("playAriaLabel")
             }
+            {...{ "dd-action-name": `player-${centerControl}` }}
           >
-            <Frosted style={styles.playButton}>
+            <Plate
+              style={styles.playButton}
+              fade={fade}
+              visible={glassVisible}
+              interactive
+            >
               <Ionicons
                 name={
                   centerControl === "replay"
@@ -619,23 +743,31 @@ export function PlayerControls({
                   centerControl === "play" ? styles.playGlyphNudge : null,
                 ])}
               />
-            </Frosted>
+            </Plate>
           </Pressable>
         )}
 
         <Pressable
           onPress={() => skip(SKIP_SECONDS)}
           accessibilityRole="button"
-          accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
+          accessibilityLabel={t("skipForwardAriaLabel", {
+            seconds: SKIP_SECONDS,
+          })}
+          {...{ "dd-action-name": "player-skip-forward" }}
         >
-          <Frosted style={styles.skipButton}>
+          <Plate
+            style={styles.skipButton}
+            fade={fade}
+            visible={glassVisible}
+            interactive
+          >
             <Ionicons
               name="play-forward"
               size={24}
               color={TEXT_ON_OVERLAY}
               style={styles.centerIcon}
             />
-          </Frosted>
+          </Plate>
         </Pressable>
       </View>
 
@@ -647,8 +779,8 @@ export function PlayerControls({
             // the home indicator.
             {
               paddingBottom: Math.max(insets.bottom, 8),
-              paddingLeft: Math.max(insets.left, 12),
-              paddingRight: Math.max(insets.right, 12),
+              paddingLeft: Math.max(insets.left, PLAYER_BAR_PADDING_H),
+              paddingRight: Math.max(insets.right, PLAYER_BAR_PADDING_H),
             },
           ]}
         >
@@ -683,6 +815,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
+    // Playback does not mirror (feat-695 R12): the transport order and the
+    // fullscreen bar's side insets stay physical in a right-to-left app.
+    direction: "ltr",
   },
   controlsRow: {
     flex: 1,
@@ -699,9 +834,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     overflow: "hidden",
   },
-  // Every glyph now sits on a frosted backplate. The shadow halo stays as a
-  // second line of defence for WCAG 1.4.11's 3:1 bar, since blur only softens
-  // bright footage rather than guaranteeing contrast against it.
+  // Every glyph sits on a glass or frosted plate. The shadow halo stays as a
+  // second line of defence for WCAG 1.4.11's 3:1 bar, since a plate only
+  // softens bright footage rather than guaranteeing contrast against it.
   centerIcon: {
     textShadowColor: hexToRgba(BLACK, 0.6),
     textShadowOffset: { width: 0, height: 1 },
@@ -739,7 +874,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: BAR_PADDING_H,
+    paddingHorizontal: PLAYER_BAR_PADDING_H,
     marginBottom: 12,
   },
   cornerButtons: {
@@ -749,13 +884,13 @@ const styles = StyleSheet.create({
   },
   routeRow: {
     position: "absolute",
-    top: 8,
-    right: BAR_PADDING_H,
+    top: PLAYER_ROUTE_ROW_TOP,
+    right: PLAYER_BAR_PADDING_H,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  // Fill the frosted circle so the native tap target is the whole control.
+  // Fill the plate's circle so the native tap target is the whole control.
   airPlayPicker: {
     width: 44,
     height: 44,
@@ -777,7 +912,6 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   iconRow: {
     flexDirection: "row",

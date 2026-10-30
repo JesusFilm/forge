@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-29T03:34:00.326Z",
+  "deploymentId": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+  "collectors": [
+    {
+      "id": "9afb9b03-b356-46d8-82a0-2a50ee77688e",
+      "deployment_id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "started_at": "2026-09-29T03:33:37.132Z",
+      "heartbeat_at": "2026-09-29T03:33:57.238Z",
+      "complete_through": "2026-09-29T03:33:57.238Z",
+      "stopped_at": null,
+      "heartbeat_fresh": true
+    }
+  ],
+  "inventory": [],
+  "operatorWrites": false
+}

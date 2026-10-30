@@ -32,6 +32,7 @@ describe("decideCancelAction (cancel semantics)", () => {
     const swap = {
       committedPath: "/old",
       renditionDocumentId: "r0",
+      dubDocumentId: "d0",
       qualityLabel: "low",
       subtitleLanguageSlug: null,
       totalBytes: 5,

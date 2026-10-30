@@ -1,3 +1,5 @@
+import type { UiT } from "../i18n/useT"
+import { compareIds } from "./collation"
 import type {
   OfflineDownloadRecord,
   OfflineDownloadState,
@@ -16,6 +18,19 @@ const IN_FLIGHT_STATES: ReadonlySet<OfflineDownloadState> = new Set([
   "paused",
   "queued",
 ])
+
+/** A record's display title. A legacy record stored without one shows its
+ *  slug as words, so the list row and the rail tile always agree. */
+export function recordTitle(record: OfflineDownloadRecord): string {
+  return (
+    record.title ||
+    record.videoSlug
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
+  )
+}
 
 /**
  * Bytes credited for storage/selection math: a finished copy's full size, an
@@ -71,55 +86,77 @@ export type LibraryRowAffordance =
   | "retry"
   | "none"
 
-export type LibraryRowState = {
-  subtitle: string
+/** A row's control and progress, with no text. */
+export type LibraryRowAffordanceState = {
   affordance: LibraryRowAffordance
   /** 0..1; present only when affordance === "ring". */
   progress?: number
 }
 
-/**
- * One offline record's Library row descriptor — the single source of truth U4
- * renders. A mid-swap record's `state` is "downloading" even though the old
- * copy is still the playable truth (R6) — `swapFrom`, not `state`, decides.
- */
-export function libraryRowState(
+export type LibraryRowState = LibraryRowAffordanceState & {
+  subtitle: string
+}
+
+/** One record's row state, shared by the list row and the My Watch rail tile.
+ *  Mid-swap, `swapFrom` decides, not `state`: the old copy still plays (R6). */
+export function libraryRowAffordance(
   record: OfflineDownloadRecord,
-): LibraryRowState {
-  if (record.swapFrom != null) {
-    return {
-      subtitle: `${formatLibraryBytes(record.swapFrom.totalBytes)} · Downloaded`,
-      affordance: "check",
-    }
-  }
+): LibraryRowAffordanceState {
+  if (record.swapFrom != null) return { affordance: "check" }
   switch (record.state) {
     case "downloaded":
+      return { affordance: "check" }
+    case "downloading":
       return {
-        subtitle: `${formatLibraryBytes(record.totalBytes)} · Downloaded`,
-        affordance: "check",
-      }
-    case "downloading": {
-      const fraction =
-        record.totalBytes > 0
-          ? Math.max(0, Math.min(1, record.bytesWritten / record.totalBytes))
-          : 0
-      return {
-        subtitle: `${Math.round(fraction * 100)}% · ${formatLibraryBytes(record.totalBytes)}`,
         affordance: "ring",
-        progress: fraction,
+        progress:
+          record.totalBytes > 0
+            ? Math.max(0, Math.min(1, record.bytesWritten / record.totalBytes))
+            : 0,
       }
-    }
     case "queued":
-      return { subtitle: "Queued", affordance: "none" }
+      return { affordance: "none" }
     case "paused":
-      return { subtitle: "Paused", affordance: "resume" }
+      return { affordance: "resume" }
     case "failed":
-      return { subtitle: "Download failed", affordance: "retry" }
+      return { affordance: "retry" }
     case "canceled":
     default:
       // Unreachable — the provider filters canceled out of offlineRecords.
       // Degrade to the idle shape rather than throw.
-      return { subtitle: "Queued", affordance: "none" }
+      return { affordance: "none" }
+  }
+}
+
+/** The list row's descriptor: the shared state plus its subtitle. */
+export function libraryRowState(
+  record: OfflineDownloadRecord,
+  t: UiT<"Library">,
+): LibraryRowState {
+  const state = libraryRowAffordance(record)
+  return { ...state, subtitle: rowSubtitle(record, state, t) }
+}
+
+function rowSubtitle(
+  record: OfflineDownloadRecord,
+  state: LibraryRowAffordanceState,
+  t: UiT<"Library">,
+): string {
+  switch (state.affordance) {
+    case "check":
+      return t("downloadedStatus", {
+        size: formatLibraryBytes((record.swapFrom ?? record).totalBytes),
+      })
+    case "ring":
+      // No words, so the format stays here rather than in the catalog.
+      return `${Math.round((state.progress ?? 0) * 100)}% · ${formatLibraryBytes(record.totalBytes)}`
+    case "resume":
+      return t("paused")
+    case "retry":
+      return t("failed")
+    case "none":
+    default:
+      return t("queued")
   }
 }
 
@@ -162,14 +199,14 @@ export function seriesGroupContentEqual(
 
 /** Shared comparator: a known time wins; missing time sorts last, tie-broken
  *  by a stable key so output order never depends on input order. */
-function compareByTime(
+export function compareByTime(
   aTime: number | undefined,
   bTime: number | undefined,
   aKey: string,
   bKey: string,
   order: "newestFirst" | "oldestFirst",
 ): number {
-  if (aTime == null && bTime == null) return aKey.localeCompare(bKey)
+  if (aTime == null && bTime == null) return compareIds(aKey, bKey)
   if (aTime == null) return 1
   if (bTime == null) return -1
   return order === "newestFirst" ? bTime - aTime : aTime - bTime
@@ -194,7 +231,7 @@ function compareEpisodes(
   )
 }
 
-function newestEnqueuedAt(
+export function newestEnqueuedAt(
   records: readonly OfflineDownloadRecord[],
 ): number | undefined {
   let max: number | undefined

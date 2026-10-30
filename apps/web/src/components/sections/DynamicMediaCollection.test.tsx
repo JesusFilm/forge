@@ -12,6 +12,25 @@ import {
 } from "@/lib/dynamic-collection-contract"
 
 const loadPage = vi.hoisted(() => vi.fn())
+vi.mock("@/components/recommendations/WatchExposureBoundary", () => ({
+  WatchExposureBoundary: ({
+    children,
+    config,
+    manifest,
+  }: {
+    children: import("react").ReactNode
+    config: { placement: string }
+    manifest?: { signature: string }
+  }) => (
+    <div
+      data-testid="feed-exposure"
+      data-placement={config.placement}
+      data-signature={manifest?.signature}
+    >
+      {children}
+    </div>
+  ),
+}))
 
 vi.mock("@/lib/dynamic-collection-client", () => ({
   loadDynamicCollectionFeedPage: loadPage,
@@ -287,6 +306,44 @@ function observeRows(
 }
 
 describe("DynamicMediaCollection", () => {
+  it("transports section authority into its independent mounted exposure boundary", async () => {
+    const surfaceManifest: import("@/lib/watch-surface-manifest").SignedWatchSurfaceManifest =
+      {
+        manifest: {
+          surface: "watch-home",
+          block: "authored",
+          presentation: "authored-block",
+          placement: "dynamic-proof",
+          policyVersion: "watch-exposure-v2",
+          items: [{ position: 0, itemPath: "/watch/jesus.html" }],
+          sourceVersion: "a".repeat(64),
+          expiresAt: "2026-09-30T00:00:00.000Z",
+        },
+        signature: "a".repeat(43),
+      }
+    loadPage.mockResolvedValue({
+      sections: [{ ...section("proof", "Proof"), surfaceManifest }],
+      endCursor: null,
+      hasNextPage: false,
+    })
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ sectionKey: "feed" }}
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+    await intersect()
+    const exposure = container.querySelector('[data-testid="feed-exposure"]')
+    expect(exposure?.getAttribute("data-placement")).toBe("dynamic-proof")
+    expect(exposure?.getAttribute("data-signature")).toBe(
+      surfaceManifest.signature,
+    )
+    expect(exposure?.querySelector('[data-title="Proof"]')).toBeTruthy()
+  })
+
   it("stays lazy, uses the desktop profile, and deduplicates authored sections", async () => {
     loadPage.mockResolvedValue({
       sections: [

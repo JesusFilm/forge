@@ -1,3 +1,9 @@
+vi.mock("@/services/core-sync/phase-execution", () => ({
+  ensureCoreSyncPhaseWorkerStarted: vi.fn(),
+}))
+vi.mock("@/services/watch-catalog-publication-worker", () => ({
+  ensureWatchCatalogPublicationWorkerStarted: vi.fn(),
+}))
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -20,6 +26,7 @@ const mockEnv = vi.hoisted(() => ({
       | undefined,
     TYPESENSE_HOST: undefined as string | undefined,
     TYPESENSE_OPERATOR_API_KEY: undefined as string | undefined,
+    EXPO_ACCESS_TOKEN: undefined as string | undefined,
   },
   resolveWatchSearchTranscriptPublicationEnabled: vi.fn(
     (value?: unknown) =>
@@ -44,7 +51,13 @@ const ensureCoreSyncSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureRecommendationRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
+const ensureRecommendationCowatchRefreshSchedulerStarted = vi.hoisted(() =>
+  vi.fn(),
+)
 const ensureRecommendationControlReadinessSchedulerStarted = vi.hoisted(() =>
+  vi.fn(),
+)
+const ensurePlaybackObservationSnapshotBootstrapStarted = vi.hoisted(() =>
   vi.fn(),
 )
 const ensureRecommendationProfileReconciliationSchedulerStarted = vi.hoisted(
@@ -57,6 +70,15 @@ const ensureWatchSearchTranscriptPublicationWorkerStarted = vi.hoisted(() =>
   vi.fn(async () => ({ started: false, reason: "disabled" as const })),
 )
 const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
+const ensurePushCampaignRecovery = vi.hoisted(() =>
+  vi.fn(async () => ({
+    campaignsInspected: 0,
+    campaignsSwept: 0,
+    zonesMissed: 0,
+    deliveriesMissed: 0,
+    failures: 0,
+  })),
+)
 const prisma = vi.hoisted(() => ({ id: "mock-prisma" }))
 
 function clearWorkflowStartupState() {
@@ -69,6 +91,9 @@ function clearWorkflowStartupState() {
       retryTimer?: ReturnType<typeof setTimeout>
     }
     __forgeAdminProfileReconciliationRecovery?: {
+      retryTimer?: ReturnType<typeof setTimeout>
+    }
+    __forgeAdminCowatchRefreshRecovery?: {
       retryTimer?: ReturnType<typeof setTimeout>
     }
   }
@@ -87,6 +112,9 @@ function clearWorkflowStartupState() {
     )
   }
   delete workflowGlobal.__forgeAdminProfileReconciliationRecovery
+  if (workflowGlobal.__forgeAdminCowatchRefreshRecovery?.retryTimer)
+    clearTimeout(workflowGlobal.__forgeAdminCowatchRefreshRecovery.retryTimer)
+  delete workflowGlobal.__forgeAdminCowatchRefreshRecovery
 }
 
 vi.mock("@/config/env", () => mockEnv)
@@ -106,8 +134,14 @@ vi.mock("@/services/search-trace-retention/job", () => ({
 vi.mock("@/services/recommendations/retention/job", () => ({
   ensureRecommendationRetentionSchedulerStarted,
 }))
+vi.mock("@/services/recommendations/cowatch/refresh.job", () => ({
+  ensureRecommendationCowatchRefreshSchedulerStarted,
+}))
 vi.mock("@/services/recommendations/control-readiness/job", () => ({
   ensureRecommendationControlReadinessSchedulerStarted,
+}))
+vi.mock("@/services/recommendations/playback-observation-snapshot.job", () => ({
+  ensurePlaybackObservationSnapshotBootstrapStarted,
 }))
 vi.mock("@/services/recommendations/profiles/reconciliation.job", () => ({
   ensureRecommendationProfileReconciliationSchedulerStarted,
@@ -118,15 +152,17 @@ vi.mock("@/services/recommendations/finalization/job", () => ({
 vi.mock("@/services/typesense-watch-search-transcript-publication", () => ({
   ensureWatchSearchTranscriptPublicationWorkerStarted,
 }))
+vi.mock("@/services/push/recovery", () => ({ ensurePushCampaignRecovery }))
 vi.mock("@/services/watch-search.service", () => ({
   prewarmWatchSearchQueryEmbeddings,
 }))
-vi.mock("@/db/client", () => ({ prisma }))
+vi.mock("@/db/client", () => ({ prisma, syncPrisma: prisma }))
 
 describe("workflow instrumentation", () => {
   beforeEach(() => {
     vi.useRealTimers()
     vi.resetModules()
+    ensurePushCampaignRecovery.mockClear()
     ensureStudioCalendarSchedulerStarted.mockReset()
     ensureStudioCalendarPublicationSchedulerStarted.mockReset()
     worldStart.mockReset()
@@ -137,7 +173,9 @@ describe("workflow instrumentation", () => {
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     ensureRecommendationRetentionSchedulerStarted.mockReset()
+    ensureRecommendationCowatchRefreshSchedulerStarted.mockReset()
     ensureRecommendationControlReadinessSchedulerStarted.mockReset()
+    ensurePlaybackObservationSnapshotBootstrapStarted.mockReset()
     ensureRecommendationProfileReconciliationSchedulerStarted.mockReset()
     ensureRecommendationEpisodeFinalizationRecovery.mockReset()
     ensureWatchSearchTranscriptPublicationWorkerStarted.mockReset()
@@ -158,6 +196,7 @@ describe("workflow instrumentation", () => {
     mockEnv.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED = "false"
     mockEnv.env.TYPESENSE_HOST = undefined
     mockEnv.env.TYPESENSE_OPERATOR_API_KEY = undefined
+    mockEnv.env.EXPO_ACCESS_TOKEN = undefined
   })
 
   afterEach(() => {
@@ -224,6 +263,39 @@ describe("workflow instrumentation", () => {
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
     expect(prewarmWatchSearchQueryEmbeddings).not.toHaveBeenCalled()
+  })
+
+  it("refuses the Expo access token on production web replicas", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register, WorkflowStartupConfigurationError } =
+      await import("./instrumentation")
+
+    await expect(register()).rejects.toThrow(
+      new WorkflowStartupConfigurationError(
+        "EXPO_ACCESS_TOKEN is restricted to the dedicated Postgres worker in production",
+      ),
+    )
+    expect(getWorld).not.toHaveBeenCalled()
+    expect(ensurePushCampaignRecovery).not.toHaveBeenCalled()
+  })
+
+  it("allows the Expo access token on the production worker", async () => {
+    mockEnv.env.NODE_ENV = "production"
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
+    expect(ensurePushCampaignRecovery).toHaveBeenCalledTimes(1)
+  })
+
+  it("allows the Expo access token outside production", async () => {
+    mockEnv.env.EXPO_ACCESS_TOKEN = "expo-access-token"
+    const { register } = await import("./instrumentation")
+
+    await expect(register()).resolves.toBeUndefined()
   })
 
   it("allows a staged operator credential on the production worker while publication remains disabled", async () => {
@@ -358,11 +430,17 @@ describe("workflow instrumentation", () => {
     expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
+    expect(
+      ensureRecommendationCowatchRefreshSchedulerStarted,
+    ).not.toHaveBeenCalled()
     expect(ensureRecommendationRetentionSchedulerStarted).toHaveBeenCalledTimes(
       1,
     )
     expect(
       ensureRecommendationControlReadinessSchedulerStarted,
+    ).toHaveBeenCalledTimes(1)
+    expect(
+      ensurePlaybackObservationSnapshotBootstrapStarted,
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureWatchSearchTranscriptPublicationWorkerStarted,
@@ -372,28 +450,51 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledWith(prisma)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
+    expect(ensurePushCampaignRecovery).toHaveBeenCalledTimes(1)
   })
 
-  it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {
+  it("keeps other startup work running when playback snapshot bootstrap cannot queue", async () => {
+    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
+    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
+    ensurePlaybackObservationSnapshotBootstrapStarted.mockRejectedValueOnce(
+      new Error("snapshot store unavailable"),
+    )
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const { register } = await import("./instrumentation")
+      await register()
+      expect(
+        ensureRecommendationProfileReconciliationSchedulerStarted,
+      ).not.toHaveBeenCalled()
+      expect(
+        ensureRecommendationEpisodeFinalizationRecovery,
+      ).toHaveBeenCalledOnce()
+      expect(warn).toHaveBeenCalledWith(
+        "Playback observation bootstrap could not be queued",
+        { error: "Error" },
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("never starts or recovers retired behavioral learners", async () => {
     vi.useFakeTimers()
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
     mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
     const { register } = await import("./instrumentation")
-
     await register()
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(5 * 60_000)
-
+    ).not.toHaveBeenCalled()
     expect(
-      ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(2)
+      ensureRecommendationCowatchRefreshSchedulerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not block worker startup when recommendation recovery fails", async () => {
@@ -510,7 +611,7 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
@@ -534,45 +635,78 @@ describe("workflow instrumentation", () => {
 })
 
 describe("Admin worker Railway credential isolation", () => {
-  function workerCommands(): Record<string, string> {
-    const config = readFileSync(
-      fileURLToPath(new URL("../railway.worker.toml", import.meta.url)),
-      "utf8",
-    )
+  const readers = ["TYPESENSE_API_KEY", "TYPESENSE_SEARCH_API_KEY"]
+  const workerAuthority = [
+    "EXPO_ACCESS_TOKEN",
+    "TYPESENSE_OPERATOR_API_KEY",
+    "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED",
+    "WATCH_CATALOG_PUBLICATION_ENABLED",
+  ]
 
-    return Object.fromEntries(
-      ["buildCommand", "preDeployCommand", "startCommand"].map((command) => {
-        const value = config.match(
-          new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
-        )?.[1]
-        expect(value, `${command} must exist`).toBeDefined()
-        return [command, value!]
-      }),
+  function workerScripts() {
+    const read = (name: string) =>
+      readFileSync(
+        fileURLToPath(new URL(`../${name}`, import.meta.url)),
+        "utf8",
+      )
+    const config = read("railway.worker.toml")
+    expect(config).toMatch(/^builder = "DOCKERFILE"$/m)
+    expect(config).toMatch(/^dockerfilePath = "apps\/admin\/Dockerfile"$/m)
+    for (const [command, script] of [
+      ["preDeployCommand", "predeploy-production.sh"],
+      ["startCommand", "start-production.sh"],
+    ]) {
+      expect(config).toContain(
+        `${command} = "sh /app/apps/admin/${script} worker"`,
+      )
+    }
+    expect(config).not.toMatch(/^buildCommand =/m)
+    return {
+      build: read("Dockerfile").replace(/\\\n/g, " "),
+      predeploy: read("predeploy-production.sh"),
+      runtime: read("start-production.sh"),
+      ignore: read("Dockerfile.dockerignore"),
+    }
+  }
+
+  function unsetVariables(script: string) {
+    expect(script).toContain('if [ "${1:-web}" = worker ]; then')
+    return (
+      script
+        .match(/^\s*unset ([^\n]+)$/m)?.[1]
+        .trim()
+        .split(/\s+/) ?? []
     )
   }
 
-  it("removes inherited Typesense reader credentials from every worker phase", () => {
-    for (const value of Object.values(workerCommands())) {
-      expect(value).toMatch(
-        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY(?:\s|$)/,
+  it("keeps inherited Typesense reader credentials outside the image and both worker phases", () => {
+    const scripts = workerScripts()
+    for (const script of [scripts.predeploy, scripts.runtime]) {
+      expect(unsetVariables(script)).toEqual(expect.arrayContaining(readers))
+    }
+    // Docker only receives explicitly declared build arguments. Nested env files
+    // must stay outside the context copied by COPY apps/admin.
+    for (const name of [...readers, ...workerAuthority]) {
+      expect(scripts.build).not.toMatch(
+        new RegExp(`^(?:ARG|ENV) .*\\b${name}\\b`, "m"),
       )
     }
+    expect(scripts.ignore.split("\n")).toEqual(
+      expect.arrayContaining(["**/.env", "**/.env.*"]),
+    )
   })
 
-  it("exposes the Typesense operator credential only to the runtime publisher", () => {
-    const commands = workerCommands()
+  it("removes the Expo access token before pre-deploy and retains it at runtime", () => {
+    const scripts = workerScripts()
+    expect(unsetVariables(scripts.predeploy)).toContain("EXPO_ACCESS_TOKEN")
+    expect(unsetVariables(scripts.runtime)).not.toContain("EXPO_ACCESS_TOKEN")
+  })
 
-    for (const command of ["buildCommand", "preDeployCommand"]) {
-      expect(commands[command]).toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED && /,
-      )
-    }
-
-    expect(commands.startCommand).not.toMatch(
-      /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+  it("exposes Typesense operator and publication authority only to the runtime publisher", () => {
+    const scripts = workerScripts()
+    expect(unsetVariables(scripts.predeploy)).toEqual(
+      expect.arrayContaining(workerAuthority),
     )
-    expect(commands.startCommand).not.toMatch(
-      /^unset [^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED(?:\s|$)/,
-    )
+    expect(unsetVariables(scripts.runtime)).toEqual(readers)
   })
 })

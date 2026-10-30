@@ -1,3 +1,7 @@
+import {
+  redeemChangelogPreapprovals,
+  type PreapprovalRedemptionInput,
+} from "./changelog-preapproval-redemption.service"
 import { isChangelogProductionEnabled } from "@/config/env"
 import { prisma } from "@/db/client"
 import { CHANGELOG_APP_KEY } from "@/domain/apps"
@@ -33,11 +37,15 @@ export type ChangelogOAuthGrantDependencies = {
     environmentId: string
     userId: string
   }): Promise<ChangelogGrant[]>
+  redeemPreapprovals(input: PreapprovalRedemptionInput): Promise<void>
+  findMembershipStatus(userId: string): Promise<string | null>
   productionEnabled(): boolean
 }
 
 export type ChangelogOAuthGrantInput = {
   lifecycle: ChangelogOAuthLifecycle
+  sessionId?: string
+  redirectUri?: string
   userId?: string | null
   membershipStatus?: unknown
   clientId?: string | null
@@ -103,6 +111,14 @@ const defaultDependencies: ChangelogOAuthGrantDependencies = {
         scopes: { select: { scope: { select: { key: true } } } },
       },
     }),
+  redeemPreapprovals: redeemChangelogPreapprovals,
+  findMembershipStatus: async (userId) =>
+    (
+      await prisma.user.findUnique({
+        where: { id: userId },
+        select: { membershipStatus: true },
+      })
+    )?.membershipStatus ?? null,
   productionEnabled: isChangelogProductionEnabled,
 }
 
@@ -113,7 +129,8 @@ export async function createChangelogOAuthGrantDecision(
   if (
     !isChangelogOAuthLifecycle(input.lifecycle) ||
     !input.userId ||
-    input.membershipStatus !== "ACTIVE" ||
+    (input.lifecycle !== "authorization" &&
+      input.membershipStatus !== "ACTIVE") ||
     !isStringArray(input.requestedScopes) ||
     (input.resources != null && !isStringArray(input.resources)) ||
     (input.scopeCeiling != null && !isStringArray(input.scopeCeiling))
@@ -152,6 +169,31 @@ export async function createChangelogOAuthGrantDecision(
     ) {
       return deny()
     }
+
+    if (
+      input.lifecycle === "authorization" &&
+      input.sessionId &&
+      input.clientId &&
+      input.redirectUri &&
+      (target.environmentKind !== "production" ||
+        dependencies.productionEnabled())
+    ) {
+      await dependencies.redeemPreapprovals({
+        userId: input.userId,
+        sessionId: input.sessionId,
+        environmentId: environment.id,
+        clientId: input.clientId,
+        redirectUri: input.redirectUri,
+      })
+    }
+
+    // Redemption can activate membership after the session was read. Use the
+    // authority's current value, including on later sign-ins without redemption.
+    if (
+      input.lifecycle === "authorization" &&
+      (await dependencies.findMembershipStatus(input.userId)) !== "ACTIVE"
+    )
+      return deny()
 
     const grants = await dependencies.findApprovedUserGrants({
       appId: environment.app.id,

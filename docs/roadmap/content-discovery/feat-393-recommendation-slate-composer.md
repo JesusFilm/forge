@@ -3,17 +3,11 @@ id: "feat-393"
 title: "Recommendation slate composer"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-09-15"
 duration: 5
-depends_on:
-  - "feat-382"
-  - "feat-383"
-  - "feat-388"
-blocks:
-  - "feat-394"
-  - "feat-395"
-  - "feat-449"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "recommendations"
@@ -96,3 +90,17 @@ provenance and the authorized Admin view show that coverage. The candidate
 evaluation decision still cannot approve the separate composition policy.
 Published editorial adapters, series/speaker metadata, calibration and a terminal
 composition decision remain incomplete; no live MMR policy is enabled.
+
+## October 2 disposition
+
+Cancel the original broad composer expansion. The owner approved a narrower
+direct live policy under feat-565: bounded source/interest/theme MMR for the
+implemented non-editorial bundle, with exact authority checks and incumbent
+fallback. This does not complete the wider requirements above. Editorial pins,
+series/speaker saturation, familiar/discovery calibration and a terminal shadow
+composition decision were not built or qualified for the direct release.
+
+The shadow implementation and its evidence remain available, but this cancelled
+historical ticket does not authorize future expansion. Any new request for
+editorial-aware composition or those absent inputs needs its own decision and
+scope. No controlled benefit claim follows from cancellation.

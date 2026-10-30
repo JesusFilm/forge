@@ -109,7 +109,7 @@ const REGION_THEMES: Record<
     accent: string
     bg: string
     border: string
-    image: StaticImageData
+    image: StaticImageData | string
     text: string
   }
 > = {

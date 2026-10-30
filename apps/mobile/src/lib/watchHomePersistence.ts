@@ -5,6 +5,7 @@
  * @see useWatchHomeCarouselMemory
  * @see useWatchHome
  */
+import type { HomepageSource } from "./watchHome/experienceAdapter"
 import type { WatchHomeVideoInput } from "./watchHome/model"
 
 export const WATCH_HOME_PLAYED_IDS_STORAGE_KEY = "watch-home-played-ids"
@@ -139,6 +140,22 @@ export type WatchHomeSnapshot = {
    */
   hydrationVideos: readonly WatchHomeVideoInput[]
   persistedAt: number
+  /** KTD16: the UI catalog tag the snapshot's text is in. A snapshot from
+   *  before U6 has none and was English, so it reads as `en`. */
+  locale: string
+  /** Which homepage `blocks` came from; the cards' precedence follows it. */
+  homepageSource: HomepageSource
+}
+
+/** The text context a snapshot was written in (KTD16). */
+export type WatchHomeSnapshotText = {
+  locale: string
+  homepageSource: HomepageSource
+}
+
+const ENGLISH_SNAPSHOT_TEXT: WatchHomeSnapshotText = {
+  locale: "en",
+  homepageSource: "locale",
 }
 
 /**
@@ -158,6 +175,8 @@ export function parseStoredHomeSnapshot(
       videos?: unknown
       blocks?: unknown
       hydrationVideos?: unknown
+      locale?: unknown
+      homepageSource?: unknown
     } | null
     if (data == null || typeof data !== "object") return null
     if (data.version !== WATCH_HOME_SNAPSHOT_VERSION) return null
@@ -185,7 +204,20 @@ export function parseStoredHomeSnapshot(
             video != null && typeof video === "object",
         )
       : []
-    return { videos, blocks, hydrationVideos, persistedAt: data.persistedAt }
+    const locale =
+      typeof data.locale === "string" && data.locale !== ""
+        ? data.locale
+        : ENGLISH_SNAPSHOT_TEXT.locale
+    const homepageSource: HomepageSource =
+      data.homepageSource === "en-fallback" ? "en-fallback" : "locale"
+    return {
+      videos,
+      blocks,
+      hydrationVideos,
+      persistedAt: data.persistedAt,
+      locale,
+      homepageSource,
+    }
   } catch {
     return null
   }
@@ -202,13 +234,17 @@ export function serializeHomeSnapshot(
  * Envelope around an ALREADY-serialized videos array so the hot path stringifies
  * the payload once (reused for the equality compare and the blob). `blocksJson` is
  * a JSON array string (Experience body) or the literal `"null"` (config body);
- * `hydrationVideosJson` is the top-up records array (default `"[]"`).
+ * `hydrationVideosJson` is the top-up records array (default `"[]"`); `text`
+ * is the locale and homepage source the text is in (default English).
  */
 export function serializeHomeSnapshotFromVideosJson(
   videosJson: string,
   now: Date,
   blocksJson: string = "null",
   hydrationVideosJson: string = "[]",
+  text: WatchHomeSnapshotText = ENGLISH_SNAPSHOT_TEXT,
 ): string {
-  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"videos":${videosJson},"blocks":${blocksJson},"hydrationVideos":${hydrationVideosJson}}`
+  const locale = JSON.stringify(text.locale)
+  const source = JSON.stringify(text.homepageSource)
+  return `{"version":${WATCH_HOME_SNAPSHOT_VERSION},"persistedAt":${now.getTime()},"locale":${locale},"homepageSource":${source},"videos":${videosJson},"blocks":${blocksJson},"hydrationVideos":${hydrationVideosJson}}`
 }

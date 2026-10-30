@@ -18,6 +18,7 @@ const STATUS_COLORS: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-700 border-stone-600 hover:bg-stone-600",
   "in-progress": "bg-blue-900/60 border-blue-500/50 hover:bg-blue-900/80",
   complete: "bg-green-900/60 border-green-500/50 hover:bg-green-900/80",
+  cancelled: "bg-slate-800/60 border-slate-500/50 hover:bg-slate-800/80",
   blocked: "bg-red-900/60 border-red-500/50 hover:bg-red-900/80",
 }
 
@@ -25,6 +26,7 @@ const STATUS_DOT: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-400",
   "in-progress": "bg-blue-400",
   complete: "bg-green-400",
+  cancelled: "bg-slate-400",
   blocked: "bg-red-400",
 }
 

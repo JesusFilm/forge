@@ -1,0 +1,11 @@
+.git
+.github
+**/node_modules
+**/.env
+**/.env.*
+**/.mastra
+**/dist
+**/coverage
+**/.next
+**/data
+**/storage

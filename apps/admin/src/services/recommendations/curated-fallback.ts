@@ -9,6 +9,7 @@ import {
 import { CuratedPoolsService } from "./curated-pools.service"
 import type { CuratedRecommendationCandidate } from "./curated-pools.types"
 import { runRecommendationRetrievalQuery } from "./delivery-runtime"
+import type { CuratedDeliveryDiagnostics } from "./delivery-diagnostics"
 
 export const SEEDED_CURATED_FALLBACK_VERSION =
   "seeded-curated-empty-fallback-v1"
@@ -20,6 +21,7 @@ type FallbackInput = {
   audioLanguageSlug: string
   excludedMediaIds: readonly string[]
   deadlineAt: number
+  onDiagnostics?: (diagnostics: CuratedDeliveryDiagnostics) => void
 }
 
 /** Approved inventory only; no fallback across audio/locale or catalog scan. */
@@ -50,7 +52,20 @@ export async function retrieveCuratedFallback(
   ])
   // A missing embedding may fall back; an unknown seed must not create a row.
   if (!excluded.some((video) => video.videoId === input.seedMediaId)) return []
-  return curatedFallbackNominations(pool.items, excludedIds, excluded)
+  const nominations = curatedFallbackNominations(
+    pool.items,
+    excludedIds,
+    excluded,
+  )
+  input.onDiagnostics?.({
+    state: !pool.version
+      ? "missing_generation"
+      : !pool.contextAvailable
+        ? "missing_context"
+        : "available",
+    nominatedCount: nominations.length,
+  })
+  return nominations
 }
 
 export function curatedFallbackNominations(

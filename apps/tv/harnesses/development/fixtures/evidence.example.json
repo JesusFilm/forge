@@ -1,0 +1,26 @@
+{
+  "sourceDigest": "COPY_CURRENT_SOURCE_DIGEST_FROM_REPORT",
+  "judge": "Name the human or agent that inspected the evidence",
+  "gates": [
+    {
+      "id": "runtime:apple-tv",
+      "status": "not-run",
+      "target": "REPLACE_WITH_SELECTED_SIMULATOR_UUID",
+      "observed": "Replace with actual observations, build identity and tool/OS versions.",
+      "evidence": []
+    },
+    {
+      "id": "performance:apple-tv",
+      "status": "not-run",
+      "target": "REPLACE_WITH_SELECTED_SIMULATOR_UUID",
+      "observed": "Record comparable baseline/candidate timing samples and conditions.",
+      "evidence": []
+    },
+    {
+      "id": "acceptance:search-back",
+      "status": "not-run",
+      "observed": "Record the actual destination and restored focus after remote Back.",
+      "evidence": []
+    }
+  ]
+}

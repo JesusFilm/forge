@@ -69,7 +69,7 @@ describe("external playback (AirPlay, U1)", () => {
 
   it("shows an external-playback indicator that never blocks the controls (R5)", () => {
     const gate = at("{externalRouteActive && (")
-    const indicator = SOURCE.slice(gate, at("Playing on AirPlay", gate))
+    const indicator = SOURCE.slice(gate, at('tCast("playingOnAirPlay")', gate))
     expect(indicator).toContain('pointerEvents="none"')
   })
 

@@ -9,7 +9,9 @@
 environment contract requires a complete gateway tuple when
 `EMBED_BASE_URL` is set and keeps the canonical model separate from the optional
 wire alias. Retry budgets are the `EMBED_*` and `QUERY_EMBED_*` settings defined
-in `src/config/env.ts`.
+in `src/config/env.ts`. The `JFRAG_*` production names recorded below describe
+the contract at decision time; feat-532 supersedes them with the
+[current canonical names](../ops/environment-and-secrets.md).
 
 ## Context
 

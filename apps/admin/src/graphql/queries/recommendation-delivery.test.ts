@@ -38,6 +38,69 @@ beforeEach(() => {
 })
 
 describe("semanticRecommendationDelivery resolver", () => {
+  it("rejects anonymous callers before private saved-result preview work", async () => {
+    const preview = schema.getQueryType()!.getFields()
+      .precomputedWatchPreviewDelivery!.resolve!
+    await expect(
+      preview(null, args, { user: null }, {} as never),
+    ).rejects.toThrow("Web consumer authentication required")
+    await expect(
+      preview(
+        null,
+        args,
+        { user: { role: "WORKFLOW_TRIGGER", id: null } },
+        {} as never,
+      ),
+    ).rejects.toThrow("Web consumer authentication required")
+    expect(deliverMock).not.toHaveBeenCalled()
+  })
+
+  it.skipIf(process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED === "1")(
+    "keeps the separate private saved-result query disabled by default",
+    async () => {
+      const preview = schema.getQueryType()!.getFields()
+        .precomputedWatchPreviewDelivery!.resolve!
+      await expect(
+        preview(
+          null,
+          args,
+          {
+            user: {
+              role: "CONSUMER_BEARER",
+              id: null,
+              fleet: false,
+              rateLimitBucketKey: "web-key",
+            },
+          },
+          {} as never,
+        ),
+      ).rejects.toThrow("Web consumer authentication required")
+      expect(deliverMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it.skipIf(process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED === "1")(
+    "refuses private incumbent recovery when the Admin preview flag is off",
+    async () => {
+      await expect(
+        resolver()(
+          null,
+          { ...args, privatePreviewFallback: true },
+          {
+            user: {
+              role: "CONSUMER_BEARER",
+              id: null,
+              fleet: false,
+              rateLimitBucketKey: "web-key",
+            },
+          },
+          {} as never,
+        ),
+      ).rejects.toThrow("Web consumer authentication required")
+      expect(deliverMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("exposes an additive nullable video runtime on delivery items", () => {
     const item = schema.getType("SemanticRecommendationDeliveryItem") as {
       getFields(): Record<string, { type: { toString(): string } }>
@@ -92,6 +155,8 @@ describe("semanticRecommendationDelivery resolver", () => {
       consentReceiptDigest: null,
       profileTokenDigest: null,
       eligibleHuman: true,
+      trafficCategory: undefined,
+      clientDeliveryContract: null,
       caller: {
         role: "CONSUMER_BEARER",
         id: null,
@@ -119,5 +184,39 @@ describe("semanticRecommendationDelivery resolver", () => {
     expect(deliverMock).toHaveBeenCalledWith(
       expect.objectContaining({ eligibleHuman: false }),
     )
+  })
+  it("exposes an optional parser capability and forwards it without bypassing Web caller authorization", async () => {
+    const field = schema
+      .getQueryType()!
+      .getFields().semanticRecommendationDelivery!
+    expect(
+      field.args
+        .find((arg) => arg.name === "clientDeliveryContract")
+        ?.type.toString(),
+    ).toBe("String")
+    await resolver()(
+      null,
+      { ...args, clientDeliveryContract: "cowatch-mmr-v1" },
+      {
+        user: {
+          role: "CONSUMER_BEARER",
+          id: null,
+          fleet: false,
+          rateLimitBucketKey: "web-key",
+        },
+      },
+      {} as never,
+    )
+    expect(deliverMock).toHaveBeenCalledWith(
+      expect.objectContaining({ clientDeliveryContract: "cowatch-mmr-v1" }),
+    )
+    await expect(
+      resolver()(
+        null,
+        { ...args, clientDeliveryContract: "cowatch-mmr-v1" },
+        { user: null },
+        {} as never,
+      ),
+    ).rejects.toThrow("Web consumer authentication required")
   })
 })

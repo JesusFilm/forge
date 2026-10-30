@@ -91,6 +91,7 @@ const LOCALE_ROW = {
   locale: "es",
   slug: "esperanza",
   isHomepage: false,
+  homepageLayout: false,
   pathSegment: null,
   title: "Esperanza",
   metaDescription: null,
@@ -767,6 +768,32 @@ describe("ExperienceLocaleMcpService", () => {
         user: ADMIN,
       }),
     ).rejects.toThrow()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplication-owned homepageLayout in locale draft updates", async () => {
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue({
+      ...LOCALE_ROW,
+      homepageLayout: true,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+    })
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          expectedDraftRevision: null,
+          draft: { homepageLayout: false },
+        },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow(
+      "The homepage layout context cannot be changed by a draft update.",
+    )
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 

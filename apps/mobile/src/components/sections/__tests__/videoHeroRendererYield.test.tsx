@@ -6,6 +6,9 @@
  * call site, because this hero renders in two places: `CuratedHomeLayout`
  * (which passes `paused`) and `SectionDispatcher` (which passes nothing). A
  * per-call-site prop would leave the second one holding the decoder.
+ *
+ * The same hero's mute glyph shows glass (R8) inside the box that
+ * `CuratedHomeLayout` measures for its tap target.
  */
 
 jest.mock("expo-image", () => ({ Image: () => null }))
@@ -22,6 +25,14 @@ jest.mock("../../../contexts/ExperienceProvider", () => ({
 jest.mock("expo-video", () =>
   jest.requireActual("../../../test-utils/expoVideoMock").createExpoVideoMock(),
 )
+// The `mock` prefix lets babel-plugin-jest-hoist accept this name. A case
+// takes the glass branch unless it turns the gate off.
+const mockGlass = { on: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.on,
+}))
+// A host stand-in, so a case can see where the glass draws.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 // Live subscription, so the hero's first-frame latch flips exactly as on device.
 jest.mock("expo", () => ({
@@ -46,6 +57,7 @@ jest.mock("expo", () => ({
 }))
 
 import { act, type ReactElement } from "react"
+import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 
 import { VideoHeroRenderer } from "../VideoHeroRenderer"
 import { getMiniPlayerStore } from "../../../lib/miniPlayer/store"
@@ -123,6 +135,7 @@ afterEach(async () => {
     mounted = null
   }
   sessionStore.end("abandoned")
+  mockGlass.on = true
 })
 
 describe("VideoHeroRenderer and the one decoder", () => {
@@ -206,5 +219,77 @@ describe("VideoHeroRenderer and the one decoder", () => {
     })
 
     expect(video.__player.playing).toBe(false)
+  })
+})
+
+describe("VideoHeroRenderer's mute glyph (R8)", () => {
+  function withMute(onMuteButtonLayout = jest.fn()): ReactElement {
+    return (
+      <VideoHeroRenderer
+        section={SECTION}
+        paused={false}
+        onMuteToggle={jest.fn()}
+        onMuteButtonLayout={onMuteButtonLayout}
+      />
+    )
+  }
+
+  /** The host node right behind the mute glyph. */
+  function behindGlyph(renderer: TestInstance): RenderedNode {
+    const [glyph] = renderer.root.findAll((n) => n.props.name === "volume-mute")
+    let at = glyph?.parent
+    while (at != null && typeof at.type !== "string") at = at.parent
+    if (at == null) throw new Error("no host node behind the mute glyph")
+    return at
+  }
+
+  const ownStyle = (node: RenderedNode) =>
+    StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {}
+
+  it("draws the glyph on glass inside the measured box, and still reports that box", async () => {
+    const onMuteButtonLayout = jest.fn()
+    const renderer = await render(withMute(onMuteButtonLayout))
+
+    const glass = behindGlyph(renderer)
+    expect(glass.type).toBe("GlassView")
+    expect(glass.props.glassEffectStyle).toMatchObject({ style: "regular" })
+    expect(ownStyle(glass)).toMatchObject({ width: 48, height: 48 })
+    expect(ownStyle(glass).backgroundColor).toBeUndefined()
+
+    // The overlay's tap target copies the box that holds the glass.
+    const [box] = renderer.root.findAll(
+      (n) => n.props.testID === "video-hero-mute" && typeof n.type !== "string",
+    )
+    const [boxHost] = renderer.root.findAll(
+      (n) => n.props.testID === "video-hero-mute" && typeof n.type === "string",
+    )
+    let above = glass.parent
+    while (above != null && typeof above.type !== "string") above = above.parent
+    expect(above).toBe(boxHost)
+
+    const instance = (box as unknown as { instance: Record<string, unknown> })
+      .instance
+    instance.measureLayout = jest.fn(
+      (_to: unknown, done: (...rect: number[]) => void) =>
+        done(311, 640, 48, 48),
+    )
+    await act(async () => {
+      ;(boxHost.props.onLayout as (e: unknown) => void)({
+        nativeEvent: { layout: { x: 0, y: 0, width: 48, height: 48 } },
+      })
+    })
+    expect(onMuteButtonLayout).toHaveBeenCalledWith(311, 640, 48, 48)
+  })
+
+  it("keeps today's dark circle where Liquid Glass is unavailable", async () => {
+    mockGlass.on = false
+    const renderer = await render(withMute())
+    expect(ownStyle(behindGlyph(renderer))).toMatchObject({
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    })
+    expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
   })
 })

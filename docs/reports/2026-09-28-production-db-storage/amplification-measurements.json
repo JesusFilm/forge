@@ -1,0 +1,333 @@
+{
+  "measured_at": "2026-09-27T20:38:19.719569+00:00",
+  "service": "@forge/admin/pg",
+  "environment": "production",
+  "transport": "Railway SSH / read-only psql",
+  "probes": {
+    "daily_candidate_amplification": {
+      "rows": [
+        {
+          "runs": 7873,
+          "day_utc": "2026-09-01T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.5,
+          "mean_nominated": 12.37,
+          "mean_stage_rows": 61.81,
+          "stage_rows_from_counters": 486640
+        },
+        {
+          "runs": 6700,
+          "day_utc": "2026-09-02T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.53,
+          "mean_nominated": 13.22,
+          "mean_stage_rows": 65.63,
+          "stage_rows_from_counters": 439732
+        },
+        {
+          "runs": 7160,
+          "day_utc": "2026-09-03T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.07,
+          "mean_nominated": 11.04,
+          "mean_stage_rows": 55.25,
+          "stage_rows_from_counters": 395621
+        },
+        {
+          "runs": 8771,
+          "day_utc": "2026-09-04T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.68,
+          "mean_nominated": 14.72,
+          "mean_stage_rows": 72.73,
+          "stage_rows_from_counters": 637953
+        },
+        {
+          "runs": 7762,
+          "day_utc": "2026-09-05T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.5,
+          "mean_nominated": 11.91,
+          "mean_stage_rows": 59.89,
+          "stage_rows_from_counters": 464832
+        },
+        {
+          "runs": 7763,
+          "day_utc": "2026-09-06T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.44,
+          "mean_nominated": 11.75,
+          "mean_stage_rows": 58.89,
+          "stage_rows_from_counters": 457126
+        },
+        {
+          "runs": 9310,
+          "day_utc": "2026-09-07T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.58,
+          "mean_nominated": 12.09,
+          "mean_stage_rows": 60.29,
+          "stage_rows_from_counters": 561309
+        },
+        {
+          "runs": 10930,
+          "day_utc": "2026-09-08T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.48,
+          "mean_nominated": 11.99,
+          "mean_stage_rows": 59.6,
+          "stage_rows_from_counters": 651381
+        },
+        {
+          "runs": 9432,
+          "day_utc": "2026-09-09T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.98,
+          "mean_nominated": 13.95,
+          "mean_stage_rows": 69.07,
+          "stage_rows_from_counters": 651465
+        },
+        {
+          "runs": 7945,
+          "day_utc": "2026-09-10T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.97,
+          "mean_nominated": 13.05,
+          "mean_stage_rows": 65.08,
+          "stage_rows_from_counters": 517033
+        },
+        {
+          "runs": 11040,
+          "day_utc": "2026-09-11T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.68,
+          "mean_nominated": 11.94,
+          "mean_stage_rows": 59.8,
+          "stage_rows_from_counters": 660217
+        },
+        {
+          "runs": 10538,
+          "day_utc": "2026-09-12T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.63,
+          "mean_nominated": 11.32,
+          "mean_stage_rows": 56.83,
+          "stage_rows_from_counters": 598927
+        },
+        {
+          "runs": 9012,
+          "day_utc": "2026-09-13T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.64,
+          "mean_nominated": 11.85,
+          "mean_stage_rows": 59.07,
+          "stage_rows_from_counters": 532355
+        },
+        {
+          "runs": 10414,
+          "day_utc": "2026-09-14T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 3.97,
+          "mean_nominated": 14.81,
+          "mean_stage_rows": 72.98,
+          "stage_rows_from_counters": 760058
+        },
+        {
+          "runs": 10002,
+          "day_utc": "2026-09-15T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.1,
+          "mean_nominated": 15.76,
+          "mean_stage_rows": 77.25,
+          "stage_rows_from_counters": 772664
+        },
+        {
+          "runs": 9978,
+          "day_utc": "2026-09-16T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.54,
+          "mean_nominated": 20.93,
+          "mean_stage_rows": 102.32,
+          "stage_rows_from_counters": 1020964
+        },
+        {
+          "runs": 9049,
+          "day_utc": "2026-09-17T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.48,
+          "mean_nominated": 20.73,
+          "mean_stage_rows": 100.92,
+          "stage_rows_from_counters": 913267
+        },
+        {
+          "runs": 10516,
+          "day_utc": "2026-09-18T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.49,
+          "mean_nominated": 20.57,
+          "mean_stage_rows": 100.15,
+          "stage_rows_from_counters": 1053193
+        },
+        {
+          "runs": 10511,
+          "day_utc": "2026-09-19T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.37,
+          "mean_nominated": 20.16,
+          "mean_stage_rows": 98.67,
+          "stage_rows_from_counters": 1037149
+        },
+        {
+          "runs": 10879,
+          "day_utc": "2026-09-20T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.46,
+          "mean_nominated": 20.22,
+          "mean_stage_rows": 98.7,
+          "stage_rows_from_counters": 1073733
+        },
+        {
+          "runs": 8481,
+          "day_utc": "2026-09-21T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.78,
+          "mean_nominated": 25.57,
+          "mean_stage_rows": 123.71,
+          "stage_rows_from_counters": 1049189
+        },
+        {
+          "runs": 8709,
+          "day_utc": "2026-09-22T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.65,
+          "mean_nominated": 23.59,
+          "mean_stage_rows": 114.67,
+          "stage_rows_from_counters": 998661
+        },
+        {
+          "runs": 9224,
+          "day_utc": "2026-09-23T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.76,
+          "mean_nominated": 25.05,
+          "mean_stage_rows": 121.94,
+          "stage_rows_from_counters": 1124755
+        },
+        {
+          "runs": 11200,
+          "day_utc": "2026-09-24T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.31,
+          "mean_nominated": 20.08,
+          "mean_stage_rows": 98.74,
+          "stage_rows_from_counters": 1105893
+        },
+        {
+          "runs": 11734,
+          "day_utc": "2026-09-25T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.37,
+          "mean_nominated": 19.13,
+          "mean_stage_rows": 94.27,
+          "stage_rows_from_counters": 1106185
+        },
+        {
+          "runs": 10761,
+          "day_utc": "2026-09-26T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.4,
+          "mean_nominated": 19.19,
+          "mean_stage_rows": 94.77,
+          "stage_rows_from_counters": 1019824
+        },
+        {
+          "runs": 8666,
+          "day_utc": "2026-09-27T00:00:00+00:00",
+          "purpose": "watch",
+          "mean_composed": 4.41,
+          "mean_nominated": 20.45,
+          "mean_stage_rows": 100.69,
+          "stage_rows_from_counters": 872566
+        }
+      ]
+    },
+    "actual_recent_stage_sample": {
+      "rows": [
+        {
+          "rows": 2908,
+          "stage": "canonicalized",
+          "mean_tuple_bytes": 580.0,
+          "mean_source_evidence_bytes": 306.1
+        },
+        {
+          "rows": 468,
+          "stage": "composed",
+          "mean_tuple_bytes": 659.9,
+          "mean_source_evidence_bytes": 353.8
+        },
+        {
+          "rows": 2341,
+          "stage": "deduplicated",
+          "mean_tuple_bytes": 606.3,
+          "mean_source_evidence_bytes": 365.6
+        },
+        {
+          "rows": 2908,
+          "stage": "nominated",
+          "mean_tuple_bytes": 557.8,
+          "mean_source_evidence_bytes": 306.1
+        },
+        {
+          "rows": 2339,
+          "stage": "ordered",
+          "mean_tuple_bytes": 644.7,
+          "mean_source_evidence_bytes": 365.7
+        },
+        {
+          "rows": 335,
+          "stage": "rejected",
+          "mean_tuple_bytes": 866.0,
+          "mean_source_evidence_bytes": 614.3
+        },
+        {
+          "rows": 2339,
+          "stage": "scored",
+          "mean_tuple_bytes": 642.9,
+          "mean_source_evidence_bytes": 365.7
+        }
+      ]
+    },
+    "actual_request_count": {
+      "rows": [
+        {
+          "request_roots": 255244
+        }
+      ]
+    },
+    "candidate_generator_totals": {
+      "rows": [
+        {
+          "runs": 222235,
+          "latest": "2026-09-27T20:37:53.951+00:00",
+          "earliest": "2026-09-01T00:20:48.75+00:00",
+          "mean_stage_rows": 62.86,
+          "generator_version": "semantic-transcript-candidate-v1"
+        },
+        {
+          "runs": 26638,
+          "latest": "2026-09-27T20:37:58.748+00:00",
+          "earliest": "2026-09-01T03:24:50.771+00:00",
+          "mean_stage_rows": 195.88,
+          "generator_version": "semantic-profile-hybrid-generators-v1"
+        },
+        {
+          "runs": 5487,
+          "latest": "2026-09-27T20:32:44.828+00:00",
+          "earliest": "2026-09-16T01:53:50.103+00:00",
+          "mean_stage_rows": 323.57,
+          "generator_version": "seeded-curated-empty-fallback-v1"
+        }
+      ]
+    }
+  }
+}

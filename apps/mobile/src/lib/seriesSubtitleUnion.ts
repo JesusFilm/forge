@@ -1,3 +1,4 @@
+import { nameComparator } from "./collation"
 import { mapWithConcurrency } from "./concurrentMap"
 import { withTimeout } from "./withTimeout"
 import type {
@@ -18,6 +19,8 @@ export type SubtitleUnionDeps = {
   getEpisodeVariants: (slug: string) => Promise<WatchVariant[]>
   /** The dub's downloads + subtitles (GET_VIDEO_DUB normalized). */
   getDubMedia: (dubDocumentId: string) => Promise<VariantMedia>
+  /** The UI language tag the union's names collate in (KTD15). */
+  uiTag: string
 }
 
 export type SubtitleUnionResult = {
@@ -76,8 +79,9 @@ export async function resolveSeriesSubtitleUnion(
     }
   }
 
+  const compareNames = nameComparator(deps.uiTag)
   const subtitles = [...byLanguage.values()].sort((a, b) =>
-    a.languageName.toLowerCase().localeCompare(b.languageName.toLowerCase()),
+    compareNames(a.languageName, b.languageName),
   )
   return { subtitles, failedEpisodes }
 }

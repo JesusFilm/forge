@@ -363,11 +363,36 @@ describe("first-party app seeds", () => {
             "experience:publish",
             "experience:create",
             "experience:generate",
+            "push:campaign:read",
+            "push:campaign:draft",
           ]),
           autoApprove: true,
         }),
       ]),
     )
+  })
+
+  it("grants the push campaign scopes to every Admin MCP client and its resource ceiling", () => {
+    expect(ADMIN_MCP_DEFAULT_SCOPES).toEqual(
+      expect.arrayContaining(["push:campaign:read", "push:campaign:draft"]),
+    )
+    for (const environment of ADMIN_MCP_APP_SEED.environments) {
+      expect(environment.defaultScopes).toEqual(
+        expect.arrayContaining(["push:campaign:read", "push:campaign:draft"]),
+      )
+    }
+  })
+
+  it("keeps the push campaign scopes off every client outside the Admin MCP app", () => {
+    const otherEnvironments = FIRST_PARTY_APP_SEEDS.filter(
+      (app) => app.key !== ADMIN_MCP_APP_KEY,
+    ).flatMap((app) => app.environments)
+
+    expect(otherEnvironments.length).toBeGreaterThan(0)
+    for (const environment of otherEnvironments) {
+      expect(environment.defaultScopes).not.toContain("push:campaign:read")
+      expect(environment.defaultScopes).not.toContain("push:campaign:draft")
+    }
   })
 
   it("keeps experience-level create and generate scopes distinct from publish", () => {

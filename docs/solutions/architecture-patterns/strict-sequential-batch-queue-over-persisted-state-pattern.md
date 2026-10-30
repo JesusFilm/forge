@@ -176,6 +176,18 @@ if (midSwap?.state !== "downloading" || !midSwap.swapFrom) {
 }
 ```
 
+A swap must also REWRITE the record's dub to the incoming one. The sheet sends
+the ACTIVE dub on the swap path exactly as it does on the fresh-download path
+(`apps/mobile/app/watch/download.tsx:139-143`), so a swap can change the audio
+language, not only the quality. The swap's record write spreads the existing
+record, so every field it does not name keeps the OLD value — `dubDocumentId`
+was missed, and a language re-download left the record naming audio its own file
+did not contain. PR #2376 added `dubDocumentId: request.dubDocumentId`
+(`apps/mobile/src/lib/downloadLifecycle.ts:658`) plus a nullable
+`swapFrom.dubDocumentId` (`apps/mobile/src/lib/offlineManifest.ts:44`) so a
+revert still names the OLD file's dub. Full writeup:
+`docs/solutions/logic-errors/download-is-one-dub-identity-travels-with-the-file.md`.
+
 Generic lesson: when you add a queue in front of an existing async function, every await inside that function gets a longer effective cancel window than it was built for. Audit each one, not just the new queueing code.
 
 **Hazard 2 — Persisted state outlives the in-memory queue.** On relaunch, `batchQueueRef` and `batchSlugsRef` are empty (they're refs, not persisted), but the `queued` placeholders written to disk survive. Launch reconciliation (`reconcile()` in `downloadReconciliation.ts`) used to restart every surviving record directly — which, applied to a pile of `queued` placeholders, fanned them all out as concurrent native tasks. The ordering contract silently vanished exactly on the longest, most-likely-to-be-interrupted batches.

@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
+    "harness": "node harnesses/development/scripts/harness.mjs",
+    "harness:eval": "node --test harnesses/development/scripts/harness.test.mjs",
     "build": "echo 'Expo TV app has no production bundle step; use EAS when needed.'",
     "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
     "eas-build-on-success": "bash scripts/eas-build-on-success.sh"
@@ -68,6 +70,8 @@
       "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
     ],
     "moduleNameMapper": {
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   },

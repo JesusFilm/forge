@@ -1,0 +1,24 @@
+{
+  "nativeDatabase": "owned loopback forge_cowatch_query_test, PostgreSQL18 migrated through0126",
+  "privateProductionMaterialCopied": false,
+  "cases": [
+    "retained exact-episode priority",
+    "retained same-session recovery after link expiry/removal",
+    "current link priority over retained identity",
+    "qualified negative raw row retained",
+    "nonaggregate eligibility denied",
+    "conflict denied",
+    "replay threshold denied",
+    "episode expiry denied",
+    "pending episode excluded from graph",
+    "privacy suppression denied",
+    "fact watermark mismatch denied",
+    "later correction beyond cutoff still invalidates captured source",
+    "late fact denied",
+    "known retained privacy generation mismatch blocks anonymous fallback"
+  ],
+  "comparison": "all raw fields and graph outputs equal frozen original query, before and after direct-link and privacy changes",
+  "focusedTestsPassed": 59,
+  "scopedLint": "passed",
+  "productionReadOnlyComparison": "source-same-snapshot-comparison.json"
+}

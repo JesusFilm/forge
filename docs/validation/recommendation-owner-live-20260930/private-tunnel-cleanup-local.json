@@ -1,0 +1,26 @@
+[
+  {
+    "productionExecuted": false,
+    "wrapperExitsLeavingChild": false,
+    "independentWatchdogRemovedOwnedListener": true,
+    "transport": "railway-supported-ssh-tunnel",
+    "port": 55439,
+    "rawOutputRetained": false,
+    "ready": true,
+    "cleanupVerified": true,
+    "listenerOwnedByExactProcessGroup": true,
+    "watchdogWallSeconds": 3
+  },
+  {
+    "productionExecuted": false,
+    "wrapperExitsLeavingChild": true,
+    "independentWatchdogRemovedOwnedListener": true,
+    "transport": "railway-supported-ssh-tunnel",
+    "port": 55439,
+    "rawOutputRetained": false,
+    "ready": true,
+    "cleanupVerified": true,
+    "listenerOwnedByExactProcessGroup": true,
+    "watchdogWallSeconds": 3
+  }
+]

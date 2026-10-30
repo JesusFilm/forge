@@ -38,6 +38,7 @@ import {
 } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
 import { VideoCard } from "./search/VideoCard"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
 import { SpinnerIcon } from "@/components/ui/spinner"
 import {
@@ -69,6 +70,7 @@ import {
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
 import { localizedSearchLanguageName } from "@/lib/search-language-display-name"
+import { splitSearchLanguageTemplate } from "@/lib/search-language-template"
 import {
   parseWatchPath,
   tryAsContentSlug,
@@ -224,8 +226,8 @@ export function SearchOverlay() {
     query,
     submittedQuery,
     displayResults,
+    displayResultPages,
     exiting,
-    resultsKey,
     hasMore,
     loading,
     showSkeleton,
@@ -909,6 +911,7 @@ export function SearchOverlay() {
                 searchAliasSlug: language.aliasOwnerSlug ?? null,
                 name: language.englishName,
                 nativeName: language.nativeName,
+                nativeNameLang: language.nativeNameLang,
                 bcp47: language.bcp47,
               },
             ]
@@ -986,8 +989,13 @@ export function SearchOverlay() {
   )
   const renderSemanticLanguageCombobox = (
     takeoverRect?: SuggestionListPosition,
+    attached?: { start: boolean; end: boolean },
   ) => (
-    <span className="pointer-events-auto relative mx-1 inline-flex shrink-0">
+    <span
+      className={`pointer-events-auto relative inline-flex shrink-0 ${
+        attached?.start ? "" : "ms-1"
+      } ${attached?.end ? "" : "me-1"}`}
+    >
       <LanguageCombobox
         options={semanticLanguageComboboxOptions}
         value={semanticLanguageComboboxValue}
@@ -1011,44 +1019,51 @@ export function SearchOverlay() {
     hasUnsubmittedSearchIntent ? (
       <>
         <span className="min-w-0 flex-1 truncate">
-          {(t.raw("searchSuggestionWithLanguage") as string)
-            .split(/(\{language\}|\{suggestion\})/u)
-            .map((part, index) => {
-              if (part === "{language}") {
-                return (
-                  <span key={`language-${index}`}>
-                    {renderSemanticLanguageCombobox(takeoverRect)}
-                  </span>
-                )
-              }
-              if (part === "{suggestion}") {
-                return (
-                  <strong
-                    key={`suggestion-${index}`}
-                    className="font-semibold text-white"
-                  >
-                    <bdi dir="auto">{query.trim()}</bdi>
-                  </strong>
-                )
-              }
-              return <span key={`copy-${index}`}>{part}</span>
-            })}
+          {splitSearchLanguageTemplate(
+            t.raw("searchSuggestionWithLanguage") as string,
+            ["{language}", "{suggestion}"],
+          ).map((segment, index) => {
+            if (segment.kind === "text") {
+              return <span key={`copy-${index}`}>{segment.text}</span>
+            }
+            if (segment.token === "{language}") {
+              return (
+                <span key={`language-${index}`}>
+                  {renderSemanticLanguageCombobox(takeoverRect, {
+                    start: segment.attachedStart,
+                    end: segment.attachedEnd,
+                  })}
+                </span>
+              )
+            }
+            return (
+              <strong
+                key={`suggestion-${index}`}
+                className="font-semibold text-white"
+              >
+                <bdi dir="auto">{query.trim()}</bdi>
+              </strong>
+            )
+          })}
         </span>
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
       <span className="min-w-0 flex-1 truncate text-base sm:text-sm">
-        {languageContextMessage
-          .split(/(\{language\})/u)
-          .map((part, index) =>
-            part === "{language}" ? (
-              <span key={`language-${index}`}>
-                {renderSemanticLanguageCombobox(takeoverRect)}
-              </span>
-            ) : (
-              <span key={`copy-${index}`}>{part}</span>
-            ),
-          )}
+        {splitSearchLanguageTemplate(languageContextMessage, [
+          "{language}",
+        ]).map((segment, index) =>
+          segment.kind === "placeholder" ? (
+            <span key={`language-${index}`}>
+              {renderSemanticLanguageCombobox(takeoverRect, {
+                start: segment.attachedStart,
+                end: segment.attachedEnd,
+              })}
+            </span>
+          ) : (
+            <span key={`copy-${index}`}>{segment.text}</span>
+          ),
+        )}
       </span>
     )
   const headerTopClass = headerPinned
@@ -1523,58 +1538,78 @@ export function SearchOverlay() {
           {displayResults.length > 0 && (
             <>
               <div
-                key={resultsKey}
                 className={`grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4${exiting ? " animate-card-exit" : ""}`}
               >
-                {displayResults.map((result, index) => (
-                  <VideoCard
-                    key={`${result.id}-${index}`}
-                    result={result}
-                    index={exiting ? 0 : index}
-                    requestedLanguageSlug={completedSearchLanguageSlug}
-                    requestedLanguageName={completedSearchLanguageName}
-                    onResultClick={
-                      searchResultAnalytics
-                        ? (clickedResult) => {
-                            closeAfterResultNavigation()
-                            const clickKey = [
-                              searchResultAnalytics.searchRequestId,
-                              clickedResult.id,
-                              index + 1,
-                            ].join(":")
-                            if (
-                              recordedResultClickKeysRef.current.has(clickKey)
-                            ) {
-                              return
-                            }
-                            recordedResultClickKeysRef.current.add(clickKey)
-                            reportDatadogRumAction(
-                              WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
-                              buildWatchSearchResultClickRumContext(
-                                clickedResult,
-                                {
-                                  ...searchResultAnalytics,
-                                  position: index + 1,
-                                },
-                              ),
-                            )
-                            void recordWatchSearchResultClick({
-                              requestId: searchResultAnalytics.searchRequestId,
-                              resultId: clickedResult.id,
-                              resultType: clickedResult.type,
-                              position: index + 1,
-                              visibleResultIds,
-                              routeLanguageSlug:
-                                searchResultAnalytics.routeLanguageSlug,
-                              searchLanguageSlug:
-                                searchResultAnalytics.searchLanguageSlug,
-                            })
+                {displayResultPages.map((page) => (
+                  <WatchExposureBoundary
+                    key={page.key}
+                    config={{
+                      surface: "watch-search",
+                      block: "results",
+                      presentation: "result-list",
+                      placement: "search-results",
+                    }}
+                    manifest={page.surfaceManifest}
+                  >
+                    {page.results.map((result, pageIndex) => {
+                      const index = page.startIndex + pageIndex
+                      return (
+                        <VideoCard
+                          key={`${result.id}-${index}`}
+                          result={result}
+                          index={exiting ? 0 : index}
+                          requestedLanguageSlug={completedSearchLanguageSlug}
+                          requestedLanguageName={completedSearchLanguageName}
+                          onResultClick={
+                            searchResultAnalytics
+                              ? (clickedResult) => {
+                                  closeAfterResultNavigation()
+                                  const clickKey = [
+                                    searchResultAnalytics.searchRequestId,
+                                    clickedResult.id,
+                                    index + 1,
+                                  ].join(":")
+                                  if (
+                                    recordedResultClickKeysRef.current.has(
+                                      clickKey,
+                                    )
+                                  ) {
+                                    return
+                                  }
+                                  recordedResultClickKeysRef.current.add(
+                                    clickKey,
+                                  )
+                                  reportDatadogRumAction(
+                                    WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION,
+                                    buildWatchSearchResultClickRumContext(
+                                      clickedResult,
+                                      {
+                                        ...searchResultAnalytics,
+                                        position: index + 1,
+                                      },
+                                    ),
+                                  )
+                                  void recordWatchSearchResultClick({
+                                    requestId:
+                                      searchResultAnalytics.searchRequestId,
+                                    resultId: clickedResult.id,
+                                    resultType: clickedResult.type,
+                                    position: index + 1,
+                                    visibleResultIds,
+                                    routeLanguageSlug:
+                                      searchResultAnalytics.routeLanguageSlug,
+                                    searchLanguageSlug:
+                                      searchResultAnalytics.searchLanguageSlug,
+                                  })
+                                }
+                              : () => {
+                                  closeAfterResultNavigation()
+                                }
                           }
-                        : () => {
-                            closeAfterResultNavigation()
-                          }
-                    }
-                  />
+                        />
+                      )
+                    })}
+                  </WatchExposureBoundary>
                 ))}
               </div>
 

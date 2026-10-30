@@ -4,7 +4,6 @@ import { PrismaClient } from "@prisma/client"
 import { describe, it, expect } from "vitest"
 import { env } from "@/config/env"
 import { StudioSourceService, assertStudioRenderSources } from "./sources"
-import { ContentPackService } from "./packs"
 import { StudioAuthoringService } from "./index"
 import { studioDocumentSchema } from "@forge/studio-contracts"
 import { StudioAssetService, byteDigest } from "./assets"
@@ -12,7 +11,7 @@ class SourceRevisionHarnessError extends Error {}
 const url = env.STUDIO_TEST_DATABASE_URL
 const suite = url ? describe : describe.skip
 const user = { id: "source-revision-operator", role: "ADMIN" as const }
-suite("retained source and pack revision INSERT", () => {
+suite("retained source revision INSERT", () => {
   it("persists actual source items and rejects a mismatched retained tuple", async () => {
     const parsed = new URL(url!)
     if (
@@ -118,23 +117,6 @@ suite("retained source and pack revision INSERT", () => {
         capture.capture(user, { ...selected, editionId: randomUUID() }),
       ).rejects.toThrow()
       const source = await capture.capture(user, selected)
-      const pack = await new ContentPackService(db).write(user, {
-        packId: randomUUID(),
-        expectedRevision: 0,
-        idempotencyKey: randomUUID(),
-        document: {
-          title: "Evidence",
-          guidance: "Reflect",
-          sources: [
-            {
-              label: "Actual passage",
-              excerpt: "Source words",
-              sourceSnapshotId: source.id,
-              asset: source.source.subtitle.asset,
-            },
-          ],
-        },
-      })
       // Restriction was added AFTER selection. Current policy must flow to output.
       await db.video.update({
         where: { id: sourceId },
@@ -162,7 +144,6 @@ suite("retained source and pack revision INSERT", () => {
             volume: 1,
           },
         ],
-        packRevisionIds: [pack.id],
       }
       const author = new StudioAuthoringService(db)
       await author.create(user, {
@@ -173,13 +154,12 @@ suite("retained source and pack revision INSERT", () => {
       })
       const saved = await author.read(user, projectId)
       expect(saved.document.items).toEqual(document.items)
-      expect(saved.document.packRevisionIds).toEqual([pack.id])
       const canonicalBytes = await new StudioAssetService(db).readBytes(
         user,
-        source.source.subtitle.asset,
+        source.source.subtitle!.asset,
       )
       expect(byteDigest(canonicalBytes)).toBe(
-        source.source.subtitle.asset.digest,
+        source.source.subtitle!.asset.digest,
       )
       expect(new TextDecoder().decode(canonicalBytes)).toContain(
         "<script>Distant words</script>",

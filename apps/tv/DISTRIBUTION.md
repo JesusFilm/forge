@@ -58,9 +58,12 @@ Give stakeholders the link. They install it by either:
 First they must enable _Settings → Developer options → Install unknown apps_ for
 whichever app opens the APK.
 
-For managed invites/feedback instead of a raw link: upload the same APK to
-**Firebase App Distribution** (invite testers by email) or a **Play Console
-Internal testing** track (up to 100 testers, no public listing).
+For managed invites/feedback instead of a raw link: upload the APK to
+**Firebase App Distribution** (invite testers by email). For **Play Console
+Internal testing**, build a production AAB with a new version code and the
+registered Play upload key; the internal track has up to 100 testers and no
+public listing. Before publishing, check Play's preview keeps TV device coverage
+without adding phone or tablet availability.
 
 ## Apple TV (tvOS) — TestFlight (no full App Store review)
 
@@ -139,6 +142,22 @@ xcrun altool --upload-app   -f /tmp/jfw.ipa -t appletvos \
 delivery, so you confirm a clean "VERIFY SUCCEEDED" before uploading. The
 Transporter Mac app also works (it auto-detects tvOS from the binary).
 `eas submit` does not, and there is no flag to make it.
+
+Inspect every embedded extension as well as the containing app before validation.
+The ARM64-only Top Shelf extension must declare `UIRequiredDeviceCapabilities`
+with `arm64`; a valid signature and matching provisioning profile do not catch
+this metadata requirement. Missing it caused Apple ITMS-90502 for build 14.
+Keep the declaration in `top-shelf/Info.plist`, which `plugins/withTopShelf.js`
+copies into both generated extension plists, and rebuild instead of editing a
+signed IPA. The plugin regression reads the canonical template and verifies both
+Debug and Release output.
+
+After upload, verify the build separately in App Store Connect: `VALID` processing
+on `TV_OS` is not the same as tester access. Check that the intended internal
+beta groups contain the new build and have testers. `eas submit:status` may fail
+to find this unified tvOS app even when `altool` upload and App Store Connect
+API checks succeed; use the App Store Connect build/group state as the source
+of truth.
 
 For the same reason, `apps/tv/eas.json` deliberately has **no `submit` section**:
 an accidental `eas submit` fails fast with "Missing submit profile" instead of

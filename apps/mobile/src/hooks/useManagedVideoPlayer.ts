@@ -36,6 +36,14 @@ import {
 } from "../lib/videoQoe"
 import type { RecommendationPlaybackRecorder } from "../lib/recommendations/playbackRecorder"
 import { createPlaybackRecorderForMedia } from "../lib/recommendations/playbackRecorderClient"
+import type { MuxPlayerSize } from "../lib/muxData/monitor"
+import {
+  NO_SETTLE,
+  createMuxMonitorSession,
+  type MonitorSession,
+  type MuxDataOption,
+  type MuxMonitorFacade,
+} from "../lib/muxData/monitorSession"
 
 // Playhead watchdog (R39): poll currentTime while the player reports playing and
 // is NOT buffering; if it stays frozen this long, emit one stall. 3s (not sub-1s)
@@ -62,6 +70,40 @@ export type ProgressFeed = {
   flush: (trigger: FlushTrigger) => void
 }
 
+/** KTD12: no progress write while set, the dismiss flush included. The clock
+ *  starts at the first frame; after `durationMs`, writes resume even while
+ *  the request still carries the hold. */
+export type ProgressHold = {
+  /** Names one hold. The same id never restarts its clock; a new id does. */
+  id: string
+  durationMs: number
+}
+
+type HoldClock = {
+  id: string
+  durationMs: number
+  /** The first frame under this hold, or null until then. */
+  startedAt: number | null
+  /** False while no hold is set. The clock stays, so its id stays spent. */
+  active: boolean
+}
+
+function holdBlocksWrites(clock: HoldClock | null, now: number): boolean {
+  if (clock == null || !clock.active) return false
+  // Before the first frame there is no deadline yet, and nothing to write.
+  return clock.startedAt == null || now < clock.startedAt + clock.durationMs
+}
+
+function startHoldClock(ref: { current: HoldClock | null }): void {
+  const clock = ref.current
+  if (clock != null && clock.active && clock.startedAt == null)
+    clock.startedAt = Date.now()
+}
+
+/** The host's answer for a swap it classified: seek first, and whether the
+ *  content (and so the QoE session) is the same. False is no claim. */
+export type SwapPositionClaim = false | "same-content" | "new-content"
+
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
  * creation source, replaceAsync swap with Mux-ID compare + resume, AppState
@@ -77,6 +119,8 @@ export function useManagedVideoPlayer(
   setup?: (player: VideoPlayer) => void,
   options?: {
     progress?: ProgressIdentity | null
+    /** KTD12's bounded hold on every progress write. Null or absent: no hold. */
+    progressHold?: ProgressHold | null
     /**
      * Only the root playback host owns the mini-player session. The session's
      * end event carries no adapter identity, so a second adapter (the two
@@ -97,10 +141,15 @@ export function useManagedVideoPlayer(
      * the stream (same video) from a dub change (different asset) — the host
      * knows, and answers here.
      *
-     * True means the host owns the resume: it seeks on `sourceLoad` and plays
-     * afterwards, so a play at promise time would start at 0:00 first.
+     * Any claim means the host owns the resume: it seeks on `sourceLoad` and
+     * plays afterwards, so a play at promise time would start at 0:00 first.
+     * "same-content" also keeps the QoE session; "new-content" (a dub change)
+     * re-keys it, because the audio asset changed.
      */
-    preservesPosition?: (previousUrl: string | null, nextUrl: string) => boolean
+    preservesPosition?: (
+      previousUrl: string | null,
+      nextUrl: string,
+    ) => SwapPositionClaim
     /** KTD4: true while a cast session drives playback. The AppState pair,
      *  the local recorder tick and the stall watchdog are suppressed; the
      *  background flush and the QoE time read stay on. */
@@ -122,6 +171,12 @@ export function useManagedVideoPlayer(
      * navigates, and the recorder only ever learns the Admin id otherwise.
      */
     mediaSlug?: string | null
+    /**
+     * Mux Data for this request (KTD4). Absent: the stream is not monitored,
+     * as for the series trailer. The gate in `muxData/config.ts` decides
+     * whether any monitor exists at all.
+     */
+    muxData?: MuxDataOption | null
   },
 ) {
   const ownsSession = options?.ownsSession === true
@@ -214,6 +269,28 @@ export function useManagedVideoPlayer(
     startQoeSession(creationSource)
   }
 
+  // Applied in an effect, never in render: a departing recorder flushes in its
+  // cleanup, which runs before this, and that flush must still be held.
+  const holdId = options?.progressHold?.id ?? null
+  const holdDurationMs = options?.progressHold?.durationMs ?? 0
+  const holdClockRef = useRef<HoldClock | null>(null)
+  useEffect(() => {
+    const clock = holdClockRef.current
+    if (holdId == null) {
+      if (clock != null) clock.active = false
+    } else if (clock?.id === holdId) {
+      clock.active = true
+      clock.durationMs = holdDurationMs
+    } else {
+      holdClockRef.current = {
+        id: holdId,
+        durationMs: holdDurationMs,
+        startedAt: null,
+        active: true,
+      }
+    }
+  }, [holdId, holdDurationMs])
+
   // Progress recorder (KTD5): one per identity, so an episode swap flushes
   // the departing video before re-keying.
   const progressIdentity = options?.progress ?? null
@@ -240,6 +317,7 @@ export function useManagedVideoPlayer(
             void getProgressSync().drainIntents(drainOptions),
           applyLocal: applyLocalProgress,
           onSignedOutStop: noteSignedOutPlaybackStop,
+          isHeld: () => holdBlocksWrites(holdClockRef.current, Date.now()),
         })
       : null
     return () => {
@@ -334,9 +412,60 @@ export function useManagedVideoPlayer(
   // time, so a dub switch's rebuild cannot strand cast-side writes in the
   // flushed, dead instance.
   const progressFeed = useRef<ProgressFeed>({
-    onTick: (positionSeconds, durationSeconds) =>
-      recorderRef.current?.onTick(positionSeconds, durationSeconds),
+    onTick: (positionSeconds, durationSeconds) => {
+      // A receiver's first report is the first frame of a cast session.
+      startHoldClock(holdClockRef)
+      recorderRef.current?.onTick(positionSeconds, durationSeconds)
+    },
     flush: (trigger) => recorderRef.current?.flush(trigger),
+  }).current
+
+  // Ref-mirrored, like the other listener-read options: the swap effect and
+  // the reload facade read the request that is current when they run.
+  const muxDataRef = useRef(options?.muxData ?? null)
+  muxDataRef.current = options?.muxData ?? null
+  const muxSessionRef = useRef<MonitorSession | null>(null)
+  // Kept here, so a session created later still starts with the last size.
+  const muxPlayerSizeRef = useRef<MuxPlayerSize | null>(null)
+  // Created in the effect, so StrictMode's setup, cleanup, setup cycle leaves
+  // one live monitor. The mount attach covers a non-null creation source.
+  useEffect(() => {
+    let session: MonitorSession | null = null
+    try {
+      session = createMuxMonitorSession(player)
+    } catch {
+      // A backend that cannot load leaves this player unmonitored (R27).
+    }
+    muxSessionRef.current = session
+    session?.setPlayerSize(muxPlayerSizeRef.current)
+    session?.onStream(loadedUrlRef.current, muxDataRef.current)
+    return () => {
+      session?.release()
+      if (muxSessionRef.current === session) muxSessionRef.current = null
+    }
+  }, [player])
+
+  // A late id or title for the open view. The predicate decides whether it
+  // is the same video, so a new video's data waits for its own view.
+  const muxIdentity = options?.muxData?.identity ?? null
+  const muxSurface = options?.muxData?.surface ?? null
+  const muxVideoId = muxIdentity?.videoId ?? null
+  const muxVideoSlug = muxIdentity?.videoSlug ?? null
+  const muxTitle = muxIdentity?.title ?? null
+  useEffect(() => {
+    muxSessionRef.current?.onStream(null, muxDataRef.current)
+  }, [muxSurface, muxVideoId, muxVideoSlug, muxTitle])
+
+  // KTD16: ref-stable, like progressFeed. Its callers run outside this hook's
+  // render inputs, so it reads the current session at call time.
+  const muxMonitor = useRef<MuxMonitorFacade>({
+    beginReload: (url) =>
+      muxSessionRef.current?.onStream(url, muxDataRef.current, true) ??
+      NO_SETTLE,
+    setPlayerSize: (size) => {
+      muxPlayerSizeRef.current = size
+      muxSessionRef.current?.setPlayerSize(size)
+    },
   }).current
 
   useEffect(() => {
@@ -354,11 +483,17 @@ export function useManagedVideoPlayer(
       previousUrl != null &&
       !sameQualityConstraint(previousUrl, sourceUrl)
     // The host's answer for swaps this module cannot classify from URLs alone
-    // — today, a completed download replacing the stream. Same consequence as
-    // a constraint swap: the host seeks first, so this module must not play.
-    const hostPreservesPosition =
+    // — a completed download replacing the stream, or a dub change. Same
+    // consequence as a constraint swap: the host seeks first, so no play here.
+    const hostClaim =
       preservesPositionRef.current?.(previousUrl, sourceUrl) ?? false
-    const positionPreserved = constraintSwap || hostPreservesPosition
+    const positionPreserved = constraintSwap || hostClaim !== false
+    const sameContent = constraintSwap || hostClaim === "same-content"
+    // KTD4/KTD5: attach, detach, or stage BEFORE the load starts, for every
+    // swap; the new view opens at the settle, and only for the latest swap.
+    const settleMuxView =
+      muxSessionRef.current?.onStream(sourceUrl, muxDataRef.current) ??
+      NO_SETTLE
     loadedUrlRef.current = sourceUrl
     if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
@@ -368,14 +503,10 @@ export function useManagedVideoPlayer(
     // Swap-log content id (the QoE session id below tracks it separately).
     const nextId = extractMuxPlaybackId(sourceUrl)
 
-    // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). A
-    // constraint swap is the SAME asset, so its session continues (R14).
-    // A position-preserving swap is the SAME content, so its QoE session
-    // continues: ending it "abandoned" would split one watch into two and
-    // attribute the second to a fresh start. Deliberate, not a side effect of
-    // the resume fix.
-    if (!positionPreserved) {
+    // Re-key so watched_ms/rebuffers/source attribute to the right asset
+    // (R36/R38). A constraint swap, and a download replacing the stream, are
+    // the same asset or content, so the session continues (R14). A dub is not.
+    if (!sameContent) {
       endSession("abandoned")
       startQoeSession(sourceUrl)
     }
@@ -408,6 +539,7 @@ export function useManagedVideoPlayer(
       .replaceAsync(sourceUrl)
       .then(() => {
         onSourceAppliedRef.current?.(sourceUrl)
+        settleMuxView()
         resume()
       })
       .catch(() => {
@@ -415,6 +547,7 @@ export function useManagedVideoPlayer(
         try {
           player.replace(sourceUrl, true)
           onSourceAppliedRef.current?.(sourceUrl)
+          settleMuxView()
           resume()
         } catch {
           datadogLog.error("video.swap_failed", { content_id: nextId })
@@ -441,6 +574,9 @@ export function useManagedVideoPlayer(
     if (isPlaying) {
       hasStartedRef.current = true
       qoeRef.current?.onFirstPlaying()
+      // Mid-swap, `playing` still describes the outgoing video; the poll
+      // below starts the clock once the swap settles.
+      if (!isSwappingRef.current) startHoldClock(holdClockRef)
     } else if (wasPlaying) {
       // A real pause (not initial mount) forces a progress write (KTD5).
       recorderRef.current?.flush("pause")
@@ -716,6 +852,9 @@ export function useManagedVideoPlayer(
       // Under a cast session the feed owns the recorder — skipping the local
       // tick makes double-write prevention structural (KTD6).
       if (!castActiveRef.current) {
+        // A hold set while playback already runs has no playing edge to start
+        // its clock, so the first tick after it does.
+        if (!isSwappingRef.current) startHoldClock(holdClockRef)
         recorderRef.current?.onTick(position, duration)
         recommendationRef.current?.onTick(position, duration)
       }
@@ -764,5 +903,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying, progressFeed, getHealthyPosition }
+  return { player, isPlaying, progressFeed, getHealthyPosition, muxMonitor }
 }

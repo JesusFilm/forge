@@ -1,5 +1,5 @@
+import { lapseReminderBody } from "../copy"
 import {
-  LAPSE_REMINDER_COPY,
   LAPSE_REMINDER_DAY_OFFSETS,
   LAPSE_REMINDER_IDENTIFIERS,
   LAPSE_REMINDER_WINDOW_END_HOUR,
@@ -73,17 +73,17 @@ describe("the reminder constants", () => {
   // R14's placeholder copy, pinned verbatim. The stakeholder still has to sign
   // it off, and this is where a swap announces itself.
   it("carries the two fixed English strings R14 fixes", () => {
-    expect(LAPSE_REMINDER_COPY).toEqual({
-      day1: "Pick up where you left off.",
-      day7: "Your video is still here whenever you are ready.",
-    })
+    expect(lapseReminderBody("day1", null)).toBe("Pick up where you left off.")
+    expect(lapseReminderBody("day7", null)).toBe(
+      "Your video is still here whenever you are ready.",
+    )
   })
 
-  it("never lets the copy name the video", () => {
+  it("never lets the untitled copy name the video", () => {
     // The machine-checkable half of R14: no interpolation, so no slug or title
     // can reach a notification a stranger may read over a shoulder.
-    for (const copy of Object.values(LAPSE_REMINDER_COPY)) {
-      expect(copy).not.toMatch(/[{}$]|%[sd]/)
+    for (const kind of ["day1", "day7"] as const) {
+      expect(lapseReminderBody(kind, null)).not.toMatch(/[{}$]|%[sd]/)
     }
   })
 

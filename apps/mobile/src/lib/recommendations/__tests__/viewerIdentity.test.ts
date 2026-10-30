@@ -420,6 +420,36 @@ describe("createViewerIdentityStore — invalidate and update", () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
+  it("ignores a refusal of a handle the store no longer holds", async () => {
+    // A push refusal can land after a recommendation call already replaced the
+    // handle; marking the replacement suspect would also arm the cooldown.
+    const storage = fakeStorage(JSON.stringify(record()))
+    const { store, updateViewer, report } = makeStore({ storage })
+    await store.get()
+    await store.invalidate("x".repeat(43))
+    expect(await store.get()).toMatchObject({
+      kind: "ready",
+      identity: { viewerToken: VIEWER },
+    })
+    expect(updateViewer).not.toHaveBeenCalled()
+    expect(report).not.toHaveBeenCalledWith(
+      "handle_rejected",
+      expect.anything(),
+    )
+  })
+
+  it("re-checks the stored handle when the refusal names it", async () => {
+    const storage = fakeStorage(JSON.stringify(record()))
+    const { store, updateViewer } = makeStore({ storage })
+    await store.get()
+    await store.invalidate(VIEWER)
+    await store.get()
+    expect(updateViewer).toHaveBeenCalledWith(
+      { viewerToken: VIEWER, sessionToken: SESSION },
+      "status",
+    )
+  })
+
   it("keeps the stored viewer when the bearer itself is rejected", async () => {
     const storage = fakeStorage(JSON.stringify(record()))
     const { store, advance, bootstrap } = makeStore({

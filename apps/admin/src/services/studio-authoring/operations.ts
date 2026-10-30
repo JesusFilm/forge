@@ -66,10 +66,6 @@ export function applyOperations(
       doc.components.push(op.component)
       continue
     }
-    if (op.kind === "assign-content-packs") {
-      doc.packRevisionIds = op.packRevisionIds
-      continue
-    }
     const item = doc.items.find((i) => i.id === op.itemId)
     if (!item) throw new StudioCommandError("INVALID")
     switch (op.kind) {
@@ -83,6 +79,10 @@ export function applyOperations(
       case "set-timing":
         item.durationInFrames = op.durationInFrames
         item.timingLocked = op.timingLocked
+        break
+      case "set-source-focus":
+        if (item.kind !== "video") throw new StudioCommandError("INVALID")
+        item.focus = op.focus
         break
       case "set-transform":
         item.transform = op.transform
@@ -109,7 +109,8 @@ export function applyOperations(
         item.source.startMs = op.startMs
         item.source.endMs = op.endMs
         item.durationInFrames = Math.round(
-          ((op.endMs - op.startMs) * doc.fps) / 1000,
+          ((op.endMs - op.startMs) * doc.fps) /
+            (1000 * (item.playbackRate ?? 1)),
         )
         break
     }

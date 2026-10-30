@@ -175,13 +175,6 @@ type ContainerSlotSpans {
   xs: Int
 }
 
-type ContentPackRevision {
-  document: JSON
-  id: ID
-  number: Int
-  packId: ID
-}
-
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -307,7 +300,21 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchAudienceBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+
+"""
+Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.
+"""
+enum ExperienceDuplicationSourceVersion {
+  """
+  The stored canonical row only; for a published locale, the live published content.
+  """
+  CANONICAL
+  """
+  The locale's active saved draft when one exists, otherwise its canonical row.
+  """
+  EFFECTIVE
+}
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -319,6 +326,10 @@ type ExperienceLocale {
   blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
+  """
+  Renders with the Watch home layout and admits homepage-only blocks without being the live homepage (see isHomepage).
+  """
+  homepageLayout: Boolean
   id: ID
   isHomepage: Boolean
   locale: String
@@ -364,6 +375,7 @@ type ExperienceLocaleEffective {
   blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
+  homepageLayout: Boolean
   id: ID
   isHomepage: Boolean
   locale: String
@@ -383,7 +395,22 @@ type ExperienceLocaleEffective {
 type ExperiencePreview {
   blocks: [ExperienceBlock!]!
   experienceId: ID!
+  """
+  Render this draft with the Watch home layout even though it is not the live homepage. Renderers use isHomepage OR homepageLayout.
+  """
+  homepageLayout: Boolean!
+  """
+  Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.
+  """
+  isDefaultTemplate: Boolean!
+  """
+  Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.
+  """
   isHomepage: Boolean!
+  """
+  Whether the parent Experience is a route template. Multiple Experiences may be route templates.
+  """
+  isTemplate: Boolean!
   locale: String!
   localeId: ID!
   metaDescription: String
@@ -393,6 +420,73 @@ type ExperiencePreview {
   pathSegment: String
   slug: String!
   title: String
+}
+
+"""
+Sent only when the person left the device-details switch on. All four fields travel together.
+"""
+input FeedbackDeviceDetailsInput {
+  appBuild: String!
+  appVersion: String!
+  deviceModel: String!
+  osVersion: String!
+}
+
+"""What the person said the feedback was about."""
+enum FeedbackKind {
+  BROKEN
+  IDEA
+  OTHER
+  """A translation in the app is wrong. The phone sends `uiLocale` with it."""
+  TRANSLATION
+}
+
+enum FeedbackPlatform {
+  ANDROID
+  IOS
+}
+
+enum FeedbackRefusal {
+  DAILY_CAP
+  INVALID_INPUT
+  NOT_CONFIGURED
+  RATE_LIMITED
+  UNAVAILABLE
+}
+
+input FeedbackSubmissionInput {
+  deviceDetails: FeedbackDeviceDetailsInput
+  email: String
+  kind: FeedbackKind!
+  message: String!
+  name: String
+  platform: FeedbackPlatform!
+  """Client-generated UUID. Carried into the ticket for support."""
+  submissionId: String!
+  """
+  The catalog tag of the language that the app showed, such as `zh-Hans`. Sent with a TRANSLATION report.
+  """
+  uiLocale: String
+  video: FeedbackVideoContextInput
+}
+
+"""
+Outcome of one submission. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type FeedbackSubmissionResult {
+  accepted: Boolean!
+  """
+  Null when accepted. Every value renders the same message on the phone; it exists so operators can tell them apart.
+  """
+  refusal: FeedbackRefusal
+}
+
+"""The video the person tagged. Absent when they tagged nothing."""
+input FeedbackVideoContextInput {
+  languageSlug: String
+  positionSeconds: Float
+  slug: String
+  title: String!
 }
 
 """
@@ -1962,9 +2056,9 @@ type Mutation {
   discardExperienceLocaleDraft(id: ID!): ExperienceLocale
   dispositionManagerSubtitleEvalReferenceIssue(input: ManagerSubtitleEvalDispositionReferenceIssueInput!): ManagerSubtitleEvalOperationResult
   """
-  Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
+  Duplicate every locale of an Experience into a new unpublished draft owned by the caller. Each copied locale starts with an active draft and preview capability; the copy never becomes the live homepage, and a homepage copy keeps homepageLayout instead.
   """
-  duplicateExperience(id: ID!): Experience!
+  duplicateExperience(id: ID!, sourceVersion: ExperienceDuplicationSourceVersion = EFFECTIVE): Experience!
   failManagerSubtitleEvalCell(input: ManagerSubtitleEvalFailCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalCell(input: ManagerSubtitleEvalFinalizeCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalRun(input: ManagerSubtitleEvalFinalizeRunInput!): ManagerSubtitleEvalOperationResult
@@ -1972,6 +2066,7 @@ type Mutation {
   issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
   issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
   issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
+  issueWatchSurfaceDelivery(attemptId: String!, manifest: JSON!, trafficCategory: String!): JSON!
   materializeShortsSource(input: JSON!): ShortsSourceSnapshot
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
@@ -1984,15 +2079,19 @@ type Mutation {
   recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
+  recordWatchSurfaceExposure(events: JSON!): [WatchSurfaceExposureReceipt!]!
   recoverManagerSubtitleEvalMachineRun(input: ManagerSubtitleEvalMachineRecoverRunInput!): ManagerSubtitleEvalOperationResult
   recoverManagerSubtitleEvalRun(input: ManagerSubtitleEvalRecoverRunInput!): ManagerSubtitleEvalOperationResult
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
+  registerPushDevice(input: RegisterPushDeviceInput!): PushDeviceRegistrationReceipt!
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
+  resetMyWatchLearningProgress(contentVersion: String!, courseId: String!, expectedRevision: Int!, lessonId: String!): WatchLearningSaveResult!
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -2002,9 +2101,14 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
+  saveMyWatchLearningProgress(input: WatchLearningProgressSaveInput!): WatchLearningSaveResult!
+  selectSemanticRecommendation(browserDigest: String, capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
+  """
+  File one piece of mobile feedback. Signed in or not. The Linear issue exists before this answers.
+  """
+  submitFeedback(input: FeedbackSubmissionInput!): FeedbackSubmissionResult!
   submitManagerSubtitleEvalReview(input: ManagerSubtitleEvalSubmitReviewInput!): ManagerSubtitleEvalOperationResult
   transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
@@ -2100,7 +2204,6 @@ type Mutation {
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
-  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -2139,12 +2242,41 @@ type Passage {
   content: String
   copyright: String
   humanReference: String
+  """
+  Content language of the selected Bible version, including English fallback; absent in older snapshots.
+  """
+  languageSlug: String
   provider: String
   publisherUrl: String
   reference: String
   versionAbbreviation: String
   versionId: Int
   versionTitle: String
+}
+
+type PrecomputedWatchPublicVisitDelivery {
+  arm: String
+  delivery: SemanticRecommendationDelivery
+  disposition: String!
+  experimentId: String
+  generationId: String
+  measurementStatus: String!
+  qualification: String
+  reason: String
+  status: String!
+  visitId: ID!
+}
+
+type PrivatePrecomputedWatchVisitDelivery {
+  arm: String
+  delivery: SemanticRecommendationDelivery
+  experimentId: String
+  generationId: String
+  measurementStatus: String!
+  qualification: String
+  reason: String
+  status: String!
+  visitId: ID!
 }
 
 """Promotional banner with heading, description, and CTA."""
@@ -2161,6 +2293,43 @@ type PromoBannerBlock {
   sectionKey: String
   t: String
   widthPercent: Int
+}
+
+enum PushDevicePlatform {
+  ANDROID
+  IOS
+}
+
+"""
+What one registration answers. The test ID is the identifier the app reveals on its mission screen; it is never the push token.
+"""
+type PushDeviceRegistrationReceipt {
+  status: PushRegistrationState!
+  testDeviceId: String!
+}
+
+enum PushOpenOutcome {
+  DUPLICATE
+  STORED
+  UNKNOWN
+}
+
+"""
+What one open report answers. A duplicate and an unknown nonce are both normal outcomes, never errors.
+"""
+type PushOpenReceipt {
+  outcome: PushOpenOutcome!
+}
+
+enum PushPermissionState {
+  denied
+  granted
+}
+
+enum PushRegistrationState {
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
 }
 
 type Query {
@@ -2224,7 +2393,11 @@ type Query {
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myWatchLearningProgress(contentVersion: String!, courseId: String!): [WatchLearningLessonProgress!]!
   myWatchProgress: [WatchProgressEntry!]
+  precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  precomputedWatchPublicVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, humanVerificationReceipt: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrecomputedWatchPublicVisitDelivery!
+  privatePrecomputedWatchVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrivatePrecomputedWatchVisitDelivery!
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
@@ -2233,15 +2406,13 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, privatePreviewFallback: Boolean, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
   shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
   shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
   shortsCatalogRelease(id: ID!): ShortsCatalogRelease
-  shortsContentPackRevision(id: ID!): ContentPackRevision
-  shortsContentPacks(input: JSON): [ContentPackRevision!]
   shortsExperiment(id: ID!): JSON
   shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
   shortsNarrationIdentity(language: String!, speech: JSON!): JSON
@@ -2254,7 +2425,7 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
-  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, viewerToken: String): UserRecommendationDelivery!
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, trafficCategory: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -2291,6 +2462,10 @@ type Query {
     """Collection slugs. Deduplicated; capped at 400 entries."""
     slugs: [String!]!
   ): [WatchCollectionLanguageCounts!]!
+  """
+  Bounded film finder over a fixed set of Watch collections. Exact playable audio only; empty supply returns an empty page.
+  """
+  watchFilmFinder(input: WatchFilmFinderInput!): WatchFilmFinderPage!
   """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
@@ -2413,6 +2588,19 @@ type RecommendationViewerStatus {
   state: String!
 }
 
+input RegisterPushDeviceInput {
+  appBuild: String!
+  appLanguageSlug: String!
+  expoPushToken: String!
+  installId: String!
+  permission: PushPermissionState!
+  phoneLocale: String!
+  platform: PushDevicePlatform!
+  sessionToken: String
+  timeZone: String!
+  viewerToken: String
+}
+
 """Single entry in RelatedQuestionsBlock.questions."""
 type RelatedQuestionItem {
   answer: String
@@ -2431,6 +2619,12 @@ type RelatedQuestionsBlock {
   questions: [RelatedQuestionItem!]!
   sectionKey: String
   t: String
+}
+
+input ReportPushOpenInput {
+  nonce: String!
+  sessionToken: String
+  viewerToken: String
 }
 
 """
@@ -2476,6 +2670,7 @@ type SemanticRecommendationDelivery {
   composedCount: Int
   contractVersion: String!
   expiresAt: String
+  generationId: String
   items: [SemanticRecommendationDeliveryItem!]!
   personalization: RecommendationPersonalizationDelivery
   reason: String
@@ -3324,6 +3519,25 @@ type VideoTranscriptChunk {
 }
 
 """
+Top-level audience questionnaire. Definitions use the shared published WatchSetting projection on public surfaces.
+"""
+type WatchAudienceBlock {
+  configurationJson: String!
+  sectionKey: String
+  t: String
+}
+
+"""
+Published default-template audience definition. Null configJson with rejected=true preserves authored presence; consumers must not substitute baked-in copy.
+"""
+type WatchAudienceConfiguration {
+  configJson: String
+  rejected: Boolean!
+  sourceBlockId: String!
+  sourceLocale: String!
+}
+
+"""
 Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.
 """
 type WatchCollectionFeed {
@@ -3392,6 +3606,70 @@ type WatchEvent {
 enum WatchEventType {
   download
   meaningful_playback
+}
+
+"""
+One film in a finder lane, in the requested audio language. Hrefs are derived by the consumer from slug + the requested language.
+"""
+type WatchFilmFinderCard {
+  durationSeconds: Int
+  imageUrl: String
+  laneId: WatchFilmFinderLane!
+  """
+  Mux playback id of the audio Dub, for a frame thumbnail when imageUrl is null.
+  """
+  muxPlaybackId: String
+  slug: String!
+  """
+  Localized title: requested language, then English, then any published locale.
+  """
+  title: String!
+  """The playable Dub in the requested audio language."""
+  videoDubId: ID!
+  videoId: ID!
+}
+
+"""
+Runtime cap for the requested audio Dub. SHORT is up to 6 minutes, MEDIUM up to 25 minutes, ANY applies no cap.
+"""
+enum WatchFilmFinderDuration {
+  ANY
+  MEDIUM
+  SHORT
+}
+
+input WatchFilmFinderInput {
+  """Opaque cursor from a previous page's endCursor."""
+  after: String
+  duration: WatchFilmFinderDuration
+  """Page size, 1 to 24. Defaults to 24."""
+  first: Int
+  """1 to 8 lanes; duplicates collapse, requested order is kept."""
+  laneIds: [WatchFilmFinderLane!]!
+  """
+  Public Watch language slug. Only Videos with playable audio in exactly this language are returned.
+  """
+  languageSlug: String!
+}
+
+"""
+Allowlisted Watch film-finder lanes. Each maps to one fixed collection inside Admin.
+"""
+enum WatchFilmFinderLane {
+  ANIMATED
+  CONVERSATION
+  CULTURE
+  GETTING_STARTED
+  KIDS
+  QUESTIONS
+  SEVEN_DAYS
+  WOMEN
+}
+
+type WatchFilmFinderPage {
+  cards: [WatchFilmFinderCard!]!
+  endCursor: String
+  hasNextPage: Boolean!
 }
 
 """
@@ -3501,6 +3779,40 @@ type WatchLanguageInventoryLanguage {
   slug: String!
 }
 
+type WatchLearningLessonProgress {
+  completed: Boolean!
+  completedAt: String
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  lessonId: String!
+  resumeCardId: String
+  revision: Int!
+  updatedAt: String
+}
+
+input WatchLearningProgressSaveInput {
+  completed: Boolean!
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  expectedRevision: Int!
+  lessonId: String!
+  resumeCardId: String
+}
+
+type WatchLearningSaveResult {
+  progress: WatchLearningLessonProgress!
+  status: WatchLearningSaveStatus!
+}
+
+enum WatchLearningSaveStatus {
+  CONFLICT
+  SAVED
+}
+
 type WatchPlaybackContextReceipt {
   claimNonce: String!
   contextVersion: String!
@@ -3545,6 +3857,10 @@ type WatchRouteSnapshot {
   preferredVariant: WatchRouteSnapshotPreferredVariant
   primaryLanguage: WatchRouteSnapshotLanguage
   publishedAt: String
+  """
+  Active catalog language whose slug exactly matches the requested languageSlug, independent of whether this video has a playable dub in it. Null when no languageSlug was requested or no active language has that slug. Never taken from preferredVariant, which may be a fallback dub.
+  """
+  requestedLanguage: WatchRouteSnapshotLanguage
   slug: String
 }
 
@@ -3797,6 +4113,7 @@ type WatchSearchResponse {
   requestId: String
   results: [WatchSearchResult!]
   searchMode: String
+  surfaceManifest: JSON
 }
 
 type WatchSearchResult {
@@ -3868,6 +4185,15 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+  """
+  Shared audience configuration from the same published default template. Requested locale only (STRICT NULL); an omitted locale uses watchSetting's locale. Never reads homepage configuration or drafts.
+  """
+  watchAudience(locale: String): WatchAudienceConfiguration
+}
+
+type WatchSurfaceExposureReceipt {
+  eventId: String!
+  status: String!
 }
 
 enum WhatsNewFeatureVoteRefusal {

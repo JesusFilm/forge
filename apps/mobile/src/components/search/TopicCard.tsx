@@ -5,7 +5,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import type { BrowseTopic } from "../../lib/browseTopics"
 import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
+import { stretchedDecodeStyle } from "../../lib/stretchedDecode"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { feedback } from "../../styles/shared"
 
 // Cinematic top + bottom darkening — fixed across all cards, so compute once.
@@ -15,9 +17,13 @@ const SCRIM_COLORS = [
   hexToRgba("#000000", 0.65),
 ] as const
 
-// expo-image's blurRadius isn't calibrated equally across platforms — the same
-// value blurs noticeably harder on Android than iOS — so bump iOS to match.
-const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
+// iOS only. On Android, expo-image blurs with RenderScript, and the six cards
+// blur at the same time, which can crash the app (feat-784).
+const IOS_THUMBNAIL_BLUR_RADIUS = 12
+// Android stretches a decode 15 times smaller instead: 16.5 px per bitmap
+// pixel. That matches the old Android blur (radius 4, Glide sampling 4).
+const ANDROID_THUMBNAIL_SHRINK = 15
+const CARD_ASPECT_RATIO = 1.05
 
 export interface TopicCardProps {
   topic: BrowseTopic
@@ -38,6 +44,8 @@ export function TopicCard({
   cardWidth,
 }: TopicCardProps) {
   const typography = useTypography()
+  const t = useT("BrowseTopics")
+  const label = t(topic.labelKey)
 
   return (
     <Pressable
@@ -46,9 +54,11 @@ export function TopicCard({
         { width: cardWidth },
         pressed && feedback.pressed,
       ]}
+      // The English term, in every UI language: U7 searches it in English.
       onPress={() => onSelect(topic.searchTerm)}
       accessibilityRole="button"
-      accessibilityLabel={`Search ${topic.label}`}
+      accessibilityLabel={t("searchTopicAriaLabel", { topic: label })}
+      {...{ "dd-action-name": "browse-topic" }}
     >
       <LinearGradient
         colors={[...topic.gradient]}
@@ -59,9 +69,20 @@ export function TopicCard({
       {thumbnailUrl ? (
         <Image
           source={thumbnailUrl}
-          style={[StyleSheet.absoluteFill, styles.thumbnail]}
+          style={[
+            Platform.OS === "ios"
+              ? StyleSheet.absoluteFill
+              : stretchedDecodeStyle(
+                  cardWidth,
+                  cardWidth / CARD_ASPECT_RATIO,
+                  ANDROID_THUMBNAIL_SHRINK,
+                ),
+            styles.thumbnail,
+          ]}
           contentFit="cover"
-          blurRadius={THUMBNAIL_BLUR_RADIUS}
+          blurRadius={
+            Platform.OS === "ios" ? IOS_THUMBNAIL_BLUR_RADIUS : undefined
+          }
           transition={400}
           cachePolicy="memory-disk"
           recyclingKey={topic.searchTerm}
@@ -82,7 +103,7 @@ export function TopicCard({
         <Ionicons name={topic.glyph} size={26} color={TEXT_ON_OVERLAY} />
       </View>
       <Text style={[styles.label, typography.titleSmall]} numberOfLines={1}>
-        {topic.label}
+        {label}
       </Text>
     </Pressable>
   )
@@ -90,8 +111,9 @@ export function TopicCard({
 
 const styles = StyleSheet.create({
   card: {
-    aspectRatio: 1.05,
+    aspectRatio: CARD_ASPECT_RATIO,
     borderRadius: 20,
+    // Also clips the stretched Android thumbnail, which is larger than the card.
     overflow: "hidden",
     justifyContent: "flex-end",
     padding: 14,
@@ -106,7 +128,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
     textShadowColor: "rgba(0, 0, 0, 0.35)",
     textShadowOffset: { width: 0, height: 1 },

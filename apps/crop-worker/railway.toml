@@ -2,24 +2,22 @@
 # apps/crop-worker/railway.toml. Otherwise configure the same commands in the
 # Railway dashboard and treat that dashboard config as canonical.
 #
-# FFmpeg/ffprobe at runtime: this service uses the NIXPACKS builder, and the
-# repo-root nixpacks.toml extends the setup phase with ffmpeg (which includes
-# ffprobe). Verify both binaries on first deploy — the app classifies a
-# missing binary into an actionable error instead of assuming presence.
+# The source Dockerfile supplies FFmpeg/ffprobe and a patched Node before any
+# dependency download. Keep the existing single-replica and health contracts.
 
 [build]
-builder = "NIXPACKS"
-# The repo-root nixpacks.toml overrides the install phase with
-# NODE_ENV=development so devDependencies are present for monorepo lifecycle
-# scripts and this TypeScript build. Keep this command focused on compiling the
-# worker; Railway's Nixpacks install phase has already run by this point.
-buildCommand = "pnpm --filter @forge/crop-worker build"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/crop-worker/Dockerfile"
 watchPatterns = [
   "/apps/crop-worker/**",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
   "/turbo.json",
+  "/.nvmrc",
+  "/nixpacks.toml",
+  "/scripts/install-security-node.sh",
+  "/scripts/update-security-ca.sh",
 ]
 
 [deploy]
@@ -32,7 +30,7 @@ watchPatterns = [
 # the service's Config-as-code Path is set — keep the dashboard replica
 # setting at 1 as well.
 numReplicas = 1
-startCommand = "pnpm --filter @forge/crop-worker start"
+startCommand = "node /app/apps/crop-worker/dist/server.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

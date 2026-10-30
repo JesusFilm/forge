@@ -32,9 +32,9 @@ describe("dashboard production snapshot validation", () => {
 
 describe("dashboard production target", () => {
   const env = {
-    JFRAG_POSTGRESQL_READONLY_DB_URL:
+    FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
       "postgresql://forge_rag_evaluator:redacted@prod.example/rag",
-    JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+    FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
   }
 
   it("requires the explicit production-read target and namespaced credential", () => {
@@ -50,7 +50,7 @@ describe("dashboard production target", () => {
     expect(() =>
       requireProductionDashboardTarget(["--target", "production-read"], {
         ...env,
-        JFRAG_EXPECTED_POSTGRES_HOST: "other.example",
+        FORGE_RAG_EXPECTED_POSTGRES_HOST: "other.example",
       }),
     ).toThrow(/approved host/)
   })
@@ -59,7 +59,7 @@ describe("dashboard production target", () => {
     expect(() =>
       requireProductionDashboardTarget(["--target", "production-read"], {
         ...env,
-        JFRAG_POSTGRESQL_READONLY_DB_URL:
+        FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
           "postgresql://owner:redacted@prod.example/rag",
       }),
     ).toThrow(/username must match/)

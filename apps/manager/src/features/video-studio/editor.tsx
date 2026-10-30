@@ -9,17 +9,6 @@ import {
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
-  ArrowLeft,
-  Play,
-  Pause,
-  Save,
-  Undo2,
-  Redo2,
-  History,
-  SkipBack,
-  Maximize2,
-} from "lucide-react"
-import {
   studioProjectSchema,
   studioDocumentSchema,
   type Short,
@@ -29,10 +18,27 @@ import {
 } from "@forge/studio-contracts"
 import { studioCall } from "./client"
 import { EditorSession } from "./editor-session"
-import { Inspector, defaultTransform } from "./inspector"
-import { Timeline, itemLabel } from "./timeline"
-import { Library } from "./library"
+import { startEditorAutosave } from "./editor-autosave"
+import { guardEditorNavigation } from "./editor-navigation"
+import { Inspector } from "./inspector"
+import { EditorHeader } from "./editor-header"
+import { EditorLoading } from "./editor-loading"
+import { useInspectorPreview } from "./use-inspector-preview"
+import { InspectorSplit } from "./inspector-split"
+import { Timeline } from "./timeline"
+import { PreviewTransport } from "./preview-transport"
+import { TimelineSplit } from "./timeline-split"
+import { CanvasSelection } from "./canvas-selection"
+import { ViewportFileDrop } from "./viewport-file-drop"
+import { MediaDragProvider } from "./media-drag"
 import "./studio.css"
+const Library = dynamic(() => import("./library").then((m) => m.Library), {
+  ssr: false,
+})
+const ProjectSettings = dynamic(
+  () => import("./project-settings").then((m) => m.ProjectSettings),
+  { ssr: false },
+)
 const RenderPanel = dynamic(() => import("./render-panel"), { ssr: false })
 const ProductionPanel = dynamic(() => import("./production-panel"), {
   ssr: false,
@@ -45,7 +51,13 @@ const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
 })
-export function StudioEditor({ projectId }: { projectId: string }) {
+export function StudioEditor({
+  projectId,
+  handoff,
+}: {
+  projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
+}) {
   const [session, setSession] = useState<EditorSession | null>(null),
     [error, setError] = useState("")
   useEffect(() => {
@@ -90,17 +102,19 @@ export function StudioEditor({ projectId }: { projectId: string }) {
       </section>
     )
   return session ? (
-    <Editor projectId={projectId} session={session} />
+    <Editor projectId={projectId} session={session} handoff={handoff} />
   ) : (
-    <p className="nle-empty">Opening project…</p>
+    <EditorLoading />
   )
 }
 function Editor({
   session,
   projectId,
+  handoff,
 }: {
   session: EditorSession
   projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
 }) {
   const state = useSyncExternalStore(
       session.subscribe,
@@ -108,25 +122,43 @@ function Editor({
       session.getSnapshot,
     ),
     doc = state.document
-  const [playing, setPlaying] = useState(false),
+  const inspectorPreview = useInspectorPreview(state)
+  const playbackRef = useRef<import("./preview").PreviewPlaybackHandle>(null)
+  const [playing, updatePlaying] = useState(false),
+    [looping, setLooping] = useState(false),
     [error, setError] = useState(""),
     [history, setHistory] = useState<StudioRevision[] | null>(null),
-    [selectCanvas, setSelectCanvas] = useState(true),
     [agentOpen, setAgentOpen] = useState(false),
-    [renderOpen, setRenderOpen] = useState(false),
+    [renderOpen, setRenderOpen] = useState(Boolean(handoff)),
     [productionOpen, setProductionOpen] = useState(false),
-    [generationOpen, setGenerationOpen] = useState(false)
-  const canvas = useRef<HTMLDivElement>(null),
-    drag = useRef<{
-      id: string
-      x: number
-      y: number
-      original: typeof defaultTransform
-    } | null>(null)
+    [generationOpen, setGenerationOpen] = useState(false),
+    [workspace, setWorkspace] = useState<"preview" | "media">("preview"),
+    [libraryOpened, setLibraryOpened] = useState(false),
+    [settingsOpen, setSettingsOpen] = useState(false)
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([])
+  const setPlaying = useCallback((value: boolean) => {
+    if (!value) playbackRef.current?.pause()
+    updatePlaying(value)
+  }, [])
+  const receiveFiles = useCallback(
+    (files: File[]) => {
+      setPlaying(false)
+      setDroppedFiles((pending) => [...pending, ...files])
+      setLibraryOpened(true)
+      setWorkspace("media")
+    },
+    [setPlaying],
+  )
+  const consumeFiles = useCallback(
+    (count: number) => setDroppedFiles((pending) => pending.slice(count)),
+    [],
+  )
   const report = useCallback((s: string) => setError(s), [])
+  useEffect(() => startEditorAutosave(session), [session])
+  useEffect(() => guardEditorNavigation(session, window, document), [session])
   useEffect(() => {
     try {
-      if (state.status === "saved")
+      if (!state.hasUnsavedChanges)
         sessionStorage.removeItem(`studio-recovery:${projectId}`)
       else
         sessionStorage.setItem(
@@ -136,12 +168,21 @@ function Editor({
     } catch {
       /* Saving still works when browser recovery storage is unavailable. */
     }
-  }, [state.document, state.revision, state.status, projectId, session])
+  }, [
+    state.document,
+    state.revision,
+    state.status,
+    state.hasUnsavedChanges,
+    projectId,
+    session,
+  ])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (
         e.target instanceof HTMLElement &&
-        e.target.closest("input,textarea,select,[contenteditable]")
+        e.target.closest(
+          "input,textarea,select,[contenteditable],[role=separator]",
+        )
       )
         return
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
@@ -154,14 +195,14 @@ function Editor({
         else session.undo()
       }
       if (e.code === "Space") {
+        if (workspace !== "preview") return
         e.preventDefault()
-        setPlaying((v) => !v)
+        setPlaying(!playing)
       }
     }
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
-  }, [session])
-  const selected = doc.items.find((i) => i.id === state.selection)
+  }, [session, workspace, playing, setPlaying])
   async function showHistory() {
     try {
       setHistory(await studioCall("history", { projectId }))
@@ -170,297 +211,234 @@ function Editor({
     }
   }
   return (
-    <div className="nle-editor">
-      <header className="nle-editor-header">
-        <Link href="/dashboard/shorts" title="Back to projects">
-          <ArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1>{doc.title}</h1>
-          <span>
-            {doc.width} × {doc.height} · {doc.fps} fps
-          </span>
-        </div>
-        <div className="nle-header-actions">
-          <button
-            title="Undo"
-            aria-label="Undo"
-            disabled={!state.canUndo || !state.editable}
-            onClick={() => session.undo()}
-          >
-            <Undo2 size={17} />
-          </button>
-          <button
-            title="Redo"
-            aria-label="Redo"
-            disabled={!state.canRedo || !state.editable}
-            onClick={() => session.redo()}
-          >
-            <Redo2 size={17} />
-          </button>
-          <button onClick={() => setAgentOpen(true)}>Assistant</button>
-          <button onClick={() => setGenerationOpen(true)}>
-            Generate scripts
-          </button>
-          <button onClick={() => setProductionOpen(true)}>
-            Speech and production
-          </button>
-          <button onClick={() => setRenderOpen(true)}>
-            Render and publish
-          </button>
-          <button onClick={showHistory}>
-            <History size={16} />
-            History
-          </button>
-          <span className="nle-save-status" role="status">
-            {state.status === "saved"
-              ? `Saved · r${state.revision}`
-              : state.status === "saving"
-                ? "Saving…"
-                : state.status === "conflict"
-                  ? "Save conflict"
-                  : state.status === "failed"
-                    ? "Save failed"
-                    : "Unsaved changes"}
-          </span>
-          <button
-            className="nle-primary"
-            disabled={
-              !state.editable ||
-              state.status === "saving" ||
-              state.status === "conflict"
-            }
-            onClick={() => void session.save()}
-          >
-            <Save size={15} />
-            {state.status === "failed" ? "Retry save" : "Save"}
-          </button>
-        </div>
-      </header>
-      {(error || state.error) && (
-        <div className="nle-notice" role="alert">
-          <span>{error || state.error}</span>
-          <button onClick={() => setError("")}>Dismiss</button>
-        </div>
-      )}
-      {!state.editable && (
-        <div className="nle-notice">
-          This published project is permanently read-only.
-        </div>
-      )}
-      {state.status === "conflict" && (
-        <div className="nle-conflict">
-          <strong>Another session saved a newer version.</strong>
-          <p>
-            Your version: {doc.title}. Saved version:{" "}
-            {state.remote?.document.title ?? "Reload to compare"} (r
-            {state.remote?.revision ?? "unknown"}).
-          </p>
-          <button onClick={() => void session.reload()}>
-            Load saved version
-          </button>
-          <button
-            disabled={!state.remote}
-            onClick={() => void session.useLocalVersion()}
-          >
-            Replace with my reviewed version
-          </button>
-        </div>
-      )}
-      <div className="nle-workspace">
-        <Library session={session} state={state} onError={report} />
-        <section className="nle-stage">
-          <div className="nle-stage-toolbar">
-            <span>Canvas</span>
-            <button
-              aria-pressed={selectCanvas}
-              onClick={() => setSelectCanvas((v) => !v)}
-            >
-              <Maximize2 size={13} />
-              {selectCanvas ? "Select & move" : "Playback view"}
-            </button>
+    <MediaDragProvider>
+      <div className="nle-editor">
+        <ViewportFileDrop enabled={state.editable} onFiles={receiveFiles} />
+        <EditorHeader
+          state={state}
+          session={session}
+          workspace={workspace}
+          onWorkspaceChange={(next) => {
+            setPlaying(false)
+            if (next === "media") setLibraryOpened(true)
+            setWorkspace(next)
+          }}
+          onSettings={() => {
+            setPlaying(false)
+            setSettingsOpen(true)
+          }}
+          onAssistant={() => setAgentOpen(true)}
+          onScripts={() => setGenerationOpen(true)}
+          onProduction={() => setProductionOpen(true)}
+          onRender={() => setRenderOpen(true)}
+          onHistory={showHistory}
+        />
+        {state.authenticationRequired && (
+          <div className="nle-notice" role="alert">
+            <span>
+              {state.hasUnsavedChanges
+                ? "Your changes are not saved — sign in again, then retry saving. Your edits are retained in this tab."
+                : "Your session has expired — sign in again to continue. Your saved edits are safe."}
+            </span>
+            <a href="/login" target="_blank" rel="noopener noreferrer">
+              Sign in again in a new tab
+            </a>
           </div>
-          <div className="nle-canvas-space">
-            <div
-              ref={canvas}
-              className="nle-canvas"
-              style={{ aspectRatio: `${doc.width}/${doc.height}` }}
-            >
-              <Preview
-                projectId={projectId}
-                session={session}
-                state={state}
-                playing={playing}
-                onPlaying={setPlaying}
-              />
-              {selectCanvas && (
-                <div className="nle-canvas-overlay">
-                  {doc.items
-                    .filter(
-                      (i) =>
-                        i.kind !== "audio" &&
-                        state.playhead >= i.startFrame &&
-                        state.playhead < i.startFrame + i.durationInFrames,
-                    )
-                    .map((i) => {
-                      const t = i.transform ?? defaultTransform
-                      return (
-                        <button
-                          aria-label={`Select ${itemLabel(i)}`}
-                          key={i.id}
-                          className="nle-canvas-item"
-                          aria-pressed={selected?.id === i.id}
-                          style={{
-                            transform: `translate(${(t.x / doc.width) * 100}%,${(t.y / doc.height) * 100}%) rotate(${t.rotation}deg) scale(${t.scaleX},${t.scaleY})`,
-                          }}
-                          onClick={() => session.select(i.id)}
-                          onPointerDown={(e) => {
-                            if (!state.editable) return
-                            session.select(i.id)
-                            e.currentTarget.setPointerCapture(e.pointerId)
-                            drag.current = {
-                              id: i.id,
-                              x: e.clientX,
-                              y: e.clientY,
-                              original: t,
-                            }
-                          }}
-                          onPointerMove={(e) => {
-                            if (!drag.current) return
-                            e.currentTarget.style.translate = `${e.clientX - drag.current.x}px ${e.clientY - drag.current.y}px`
-                          }}
-                          onPointerUp={(e) => {
-                            const a = drag.current
-                            drag.current = null
-                            e.currentTarget.style.translate = ""
-                            if (!a || !canvas.current) return
-                            const scale =
-                              doc.width /
-                              canvas.current.getBoundingClientRect().width
-                            session.edit((d) => ({
-                              ...d,
-                              items: d.items.map((x) =>
-                                x.id === a.id
-                                  ? {
-                                      ...x,
-                                      transform: {
-                                        ...a.original,
-                                        x:
-                                          a.original.x +
-                                          (e.clientX - a.x) * scale,
-                                        y:
-                                          a.original.y +
-                                          (e.clientY - a.y) * scale,
-                                      },
-                                    }
-                                  : x,
-                              ),
-                            }))
-                          }}
-                          onPointerCancel={() => {
-                            drag.current = null
-                          }}
-                        >
-                          <span>{itemLabel(i).slice(0, 36)}</span>
-                        </button>
-                      )
-                    })}
-                </div>
-              )}
-            </div>
+        )}
+        {!state.authenticationRequired && (error || state.error) && (
+          <div className="nle-notice" role="alert">
+            <span>{state.error || error}</span>
+            <button onClick={() => setError("")}>Dismiss</button>
           </div>
-          <div className="nle-transport">
-            <button title="Go to start" onClick={() => session.seek(0)}>
-              <SkipBack size={16} />
+        )}
+        {!state.editable && (
+          <div className="nle-notice">
+            This published project is permanently read-only.
+          </div>
+        )}
+        {state.status === "conflict" && (
+          <div className="nle-conflict">
+            <strong>Another session saved a newer version.</strong>
+            <p>
+              Your version: {doc.title}. Saved version:{" "}
+              {state.remote?.document.title ?? "Reload to compare"} (r
+              {state.remote?.revision ?? "unknown"}).
+            </p>
+            <button onClick={() => void session.reload()}>
+              Load saved version
             </button>
             <button
-              aria-label={playing ? "Pause" : "Play"}
-              onClick={() => setPlaying((v) => !v)}
+              disabled={!state.remote}
+              onClick={() => void session.useLocalVersion()}
             >
-              {playing ? <Pause size={20} /> : <Play size={20} />}
+              Replace with my reviewed version
             </button>
-            <output>
-              {(state.playhead / doc.fps).toFixed(2)} /{" "}
-              {(doc.durationInFrames / doc.fps).toFixed(2)}s
-            </output>
-            <input
-              type="range"
-              aria-label="Playhead"
-              min={0}
-              max={doc.durationInFrames - 1}
-              value={state.playhead}
-              onChange={(e) => session.seek(+e.target.value)}
-            />
           </div>
-        </section>
-        <Inspector session={session} state={state} onError={report} />
-      </div>
-      <Timeline session={session} state={state} onError={report} />
-      {generationOpen && (
-        <GenerationPanel
-          session={session}
-          projectId={projectId}
-          onClose={() => setGenerationOpen(false)}
-        />
-      )}
-      {renderOpen && (
-        <RenderPanel
-          session={session}
-          projectId={projectId}
-          onClose={() => setRenderOpen(false)}
-        />
-      )}
-      {productionOpen && (
-        <ProductionPanel
-          key={projectId}
-          session={session}
-          projectId={projectId}
-          onClose={() => setProductionOpen(false)}
-        />
-      )}
-      {agentOpen && (
-        <AgentPanel
-          session={session}
-          projectId={projectId}
-          onClose={() => setAgentOpen(false)}
-        />
-      )}
-      {history && (
-        <div className="nle-dialog-backdrop">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-label="Revision history"
-            className="nle-dialog"
-          >
-            <header>
-              <h2>Revision history</h2>
-              <button onClick={() => setHistory(null)}>Close</button>
-            </header>
-            {history.map((revision) => (
-              <div className="nle-history-row" key={revision.revision}>
-                <div>
-                  <strong>Revision {revision.revision}</strong>
-                  <p>
-                    {revision.document.title} · {revision.actor.kind}:{" "}
-                    {revision.actor.id} · {revision.actor.authority ?? "legacy"}{" "}
-                    {revision.actor.clientId ?? ""}
-                  </p>
-                </div>
-                <button
-                  disabled={!state.editable}
-                  onClick={() => {
-                    session.edit(() => revision.document)
-                    setHistory(null)
-                  }}
-                >
-                  Restore as draft
-                </button>
+        )}
+        <TimelineSplit
+          workspace={
+            <>
+              <div
+                id="nle-media-panel"
+                role="tabpanel"
+                aria-labelledby="nle-media-tab"
+                className="nle-workspace-panel"
+                hidden={workspace !== "media"}
+              >
+                {libraryOpened && (
+                  <Library
+                    session={session}
+                    state={state}
+                    active={workspace === "media"}
+                    incomingFiles={droppedFiles}
+                    onIncomingFilesHandled={consumeFiles}
+                  />
+                )}
               </div>
-            ))}
-          </section>
-        </div>
-      )}
-    </div>
+              <div
+                id="nle-preview-panel"
+                role="tabpanel"
+                aria-labelledby="nle-preview-tab"
+                className="nle-workspace-panel"
+                hidden={workspace !== "preview"}
+              >
+                <InspectorSplit
+                  inspector={
+                    <Inspector
+                      session={session}
+                      state={state}
+                      onError={report}
+                      onPreview={inspectorPreview.onPreview}
+                    />
+                  }
+                >
+                  <section className="nle-stage">
+                    <div className="nle-canvas-space">
+                      <div
+                        className="nle-canvas"
+                        style={{
+                          aspectRatio: `${doc.width}/${doc.height}`,
+                          width: `min(100cqw, ${(100 * doc.width) / doc.height}cqh)`,
+                          height: `min(100cqh, ${(100 * doc.height) / doc.width}cqw)`,
+                        }}
+                      >
+                        {workspace === "preview" && (
+                          <Preview
+                            projectId={projectId}
+                            session={session}
+                            state={inspectorPreview.state}
+                            playbackRef={playbackRef}
+                            looping={looping}
+                            playing={playing}
+                            onPlaying={setPlaying}
+                          />
+                        )}
+                        <div onPointerDownCapture={() => setPlaying(false)}>
+                          <CanvasSelection
+                            session={session}
+                            state={inspectorPreview.state}
+                            onError={report}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <PreviewTransport
+                      session={session}
+                      state={state}
+                      playing={playing}
+                      onPlaying={setPlaying}
+                      looping={looping}
+                      onLooping={setLooping}
+                    />
+                  </section>
+                </InspectorSplit>
+              </div>
+            </>
+          }
+        >
+          <Timeline
+            projectId={projectId}
+            session={session}
+            state={state}
+            onError={report}
+            onScrub={() => setPlaying(false)}
+          />
+        </TimelineSplit>
+        {settingsOpen && (
+          <ProjectSettings
+            session={session}
+            state={state}
+            onClose={() => setSettingsOpen(false)}
+          />
+        )}
+        {generationOpen && (
+          <GenerationPanel
+            session={session}
+            projectId={projectId}
+            onClose={() => setGenerationOpen(false)}
+          />
+        )}
+        {renderOpen && (
+          <RenderPanel
+            handoff={handoff}
+            session={session}
+            projectId={projectId}
+            onClose={() => setRenderOpen(false)}
+          />
+        )}
+        {productionOpen && (
+          <ProductionPanel
+            key={projectId}
+            session={session}
+            projectId={projectId}
+            onClose={() => setProductionOpen(false)}
+          />
+        )}
+        {agentOpen && (
+          <AgentPanel
+            session={session}
+            projectId={projectId}
+            onClose={() => setAgentOpen(false)}
+          />
+        )}
+        {history && (
+          <div className="nle-dialog-backdrop">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Revision history"
+              className="nle-dialog"
+            >
+              <header>
+                <h2>Revision history</h2>
+                <button onClick={() => setHistory(null)}>Close</button>
+              </header>
+              {history.map((revision) => (
+                <div className="nle-history-row" key={revision.revision}>
+                  <div>
+                    <strong>Revision {revision.revision}</strong>
+                    <p>
+                      {revision.document.title} · {revision.actor.kind}:{" "}
+                      {revision.actor.id} ·{" "}
+                      {revision.actor.authority ?? "legacy"}{" "}
+                      {revision.actor.clientId ?? ""}
+                    </p>
+                  </div>
+                  <button
+                    disabled={!state.editable}
+                    onClick={() => {
+                      session.edit(() => revision.document)
+                      setHistory(null)
+                    }}
+                  >
+                    Restore as draft
+                  </button>
+                </div>
+              ))}
+            </section>
+          </div>
+        )}
+      </div>
+    </MediaDragProvider>
   )
 }
