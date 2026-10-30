@@ -31,7 +31,6 @@ const document = studioDocumentSchema.parse({
   fps: 30,
   durationInFrames: 30,
   components: [],
-  packRevisionIds: [],
   tracks: [{ id: "video", kind: "visual" }],
   items: [
     {

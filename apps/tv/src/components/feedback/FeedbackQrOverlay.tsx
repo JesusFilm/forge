@@ -2,6 +2,12 @@ import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../../lib/scale"
+import {
+  HOSTED_SIMULATOR_FEEDBACK_DESCRIPTION,
+  HOSTED_SIMULATOR_FEEDBACK_REFERENCE,
+  SIMULATOR_FEEDBACK_DESCRIPTION,
+  SIMULATOR_FEEDBACK_REFERENCE,
+} from "../../lib/feedbackSimulator"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import type { useFeedbackQr } from "./useFeedbackQr"
@@ -17,6 +23,8 @@ export function FeedbackQrOverlay({
 }) {
   const [backFocused, setBackFocused] = useState(false)
   const [retryFocused, setRetryFocused] = useState(false)
+  const simulator = feedback.mode !== "verified"
+  const hosted = feedback.mode === "signed-simulator"
   const unit = feedback.qr
     ? Math.max(1, Math.floor(scale(390) / (feedback.qr.modules + 8)))
     : 1
@@ -44,14 +52,24 @@ export function FeedbackQrOverlay({
       </Pressable>
       <View style={styles.body}>
         <View style={styles.copy}>
-          <Text style={styles.kicker}>WATCH TV · BETA</Text>
+          <Text style={styles.kicker}>
+            {simulator ? "WATCH TV · SIMULATOR TEST" : "WATCH TV · BETA"}
+          </Text>
           <Text style={styles.title}>The beta testing</Text>
           <Text style={styles.description}>
             {feedback.error
-              ? "Verified feedback is unavailable. Please try again."
+              ? simulator
+                ? hosted
+                  ? "Simulator feedback is unavailable. Check the signed link."
+                  : "Local feedback is unavailable. Check the simulator configuration."
+                : "Verified feedback is unavailable. Please try again."
               : feedback.loading || !feedback.qr
                 ? "Verifying this TV…"
-                : "Scan with your phone to report an issue or share an idea."}
+                : simulator
+                  ? hosted
+                    ? HOSTED_SIMULATOR_FEEDBACK_DESCRIPTION
+                    : SIMULATOR_FEEDBACK_DESCRIPTION
+                  : "Scan with your phone to report an issue or share an idea."}
           </Text>
           {feedback.error ? (
             <Pressable
@@ -87,7 +105,11 @@ export function FeedbackQrOverlay({
               ))}
             </View>
             <Text style={styles.reference}>
-              Reference {feedback.verified?.referenceCode}
+              {simulator
+                ? hosted
+                  ? HOSTED_SIMULATOR_FEEDBACK_REFERENCE
+                  : SIMULATOR_FEEDBACK_REFERENCE
+                : `Reference ${feedback.verified?.referenceCode ?? ""}`}
             </Text>
           </View>
         ) : null}

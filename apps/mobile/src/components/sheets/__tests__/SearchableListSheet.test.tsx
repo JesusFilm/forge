@@ -71,6 +71,7 @@ import { StyleSheet } from "react-native"
 
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../../lib/color"
 import {
+  hasText,
   TestRenderer,
   unmount,
   type NodePath,
@@ -316,15 +317,22 @@ describe("SearchableListSheet row order", () => {
 })
 
 describe("SearchableListSheet detail line", () => {
-  it("shows a detail line under a row, on up to two lines", async () => {
+  it("shows the detail line on the Current row, on up to two lines", async () => {
     const renderer = await render({
-      activeId: null,
-      getDetailLabel: (row) => row.note ?? null,
+      activeId: "a",
+      getActiveDetailLabel: (row) => row.note ?? null,
     })
     const detail = textNode(renderer, "Copyright line A")
     expect(detail.props.numberOfLines).toBe(2)
     expect(styleOf(detail).color).toBe(TEXT_SECONDARY)
-    // A screen reader hears the name and the status, not the credit.
+  })
+
+  it("shows no detail line on a list row", async () => {
+    const renderer = await render({
+      activeId: null,
+      getActiveDetailLabel: (row) => row.note ?? null,
+    })
+    expect(hasText(renderer, "Copyright line A")).toBe(false)
     expect(primaryLabels(renderer)).toContain("Alpha")
   })
 })

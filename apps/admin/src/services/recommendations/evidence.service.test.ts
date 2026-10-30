@@ -396,14 +396,9 @@ describe("RecommendationEvidenceService", () => {
         attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z"),
       },
     })
-    expect(dispatchProfileFeedback).toHaveBeenCalledWith({
-      sessionDigest: "a".repeat(64),
-      profileId: "profile-1",
-      privacyGeneration: 3,
-      evidenceWatermark: new Date("2026-04-20T03:00:00.000Z"),
-    })
+    expect(dispatchProfileFeedback).not.toHaveBeenCalled()
     expect(classifySelection).toHaveBeenCalledWith("selection-1")
-    expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
+    expect(classifySelection).toHaveBeenCalledOnce()
   })
 
   it.each([
@@ -449,12 +444,8 @@ describe("RecommendationEvidenceService", () => {
           attributionEligibleAt: new Date(eligibleAt),
         },
       })
-      expect(dispatchProfileFeedback).toHaveBeenCalledOnce()
-      expect(dispatchProfileFeedback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          evidenceWatermark: new Date(eligibleAt),
-        }),
-      )
+      expect(dispatchProfileFeedback).not.toHaveBeenCalled()
+      expect(dispatchProfileFeedback).not.toHaveBeenCalled()
     },
   )
 

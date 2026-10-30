@@ -12,6 +12,7 @@ import { requireConfig } from "./config"
 import {
   activeGrantForSession,
   claimGrant,
+  createSignedSimulatorGrant,
   type Grant,
   grantForSecret,
   sessionForId,
@@ -19,6 +20,10 @@ import {
 } from "./feedbackState"
 import { key, rateLimit, redis } from "./redis"
 import { grantMode } from "./tvGrant"
+import {
+  signedSimulatorSessionAllowed,
+  type SimulatorClaims,
+} from "./signedSimulator"
 
 const COOKIE = "watch_tv_feedback"
 const RETENTION_SECONDS = 7 * 24 * 60 * 60
@@ -126,12 +131,35 @@ export async function currentSession(): Promise<string | null> {
   if (!id || !token || !/^[0-9a-f-]{36}$/.test(id) || token.length > 100)
     return null
   const session = await sessionForId(id)
-  if (!session || session.expiresAt <= Date.now()) return null
+  if (
+    !session ||
+    session.expiresAt <= Date.now() ||
+    !signedSimulatorSessionAllowed(session)
+  )
+    return null
   const actual = Buffer.from(digest(token), "hex")
   const expected = Buffer.from(session.secretHash, "hex")
   return expected.length === actual.length && timingSafeEqual(expected, actual)
     ? id
     : null
+}
+
+export async function createSignedSimulatorSession(
+  claims: SimulatorClaims,
+  signingKeyId: string,
+) {
+  const { session, token } = newSession(randomUUID())
+  session.expiresAt = Math.min(session.expiresAt, claims.exp * 1000)
+  const grant = await createSignedSimulatorGrant(session, {
+    tokenId: claims.jti,
+    expiresAt: claims.exp * 1000,
+    signingKeyId,
+  })
+  await setSessionCookie(session.id, token, session.expiresAt)
+  return {
+    referenceCode: grant.reference,
+    expiresAt: new Date(session.expiresAt).toISOString(),
+  }
 }
 
 export async function sessionGrant(id: string): Promise<Grant | null> {

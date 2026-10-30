@@ -17,6 +17,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
 import * as Linking from "expo-linking"
+import { Image } from "expo-image"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
@@ -420,22 +421,18 @@ export default function WatchVideoScreen() {
   )
 
   const hasVideo = video != null
-  const detailsDataState =
-    Platform.OS === "android"
-      ? deriveDetailsDataState({
-          loading: loading || !preferencesReady,
-          error: error != null || (!loading && normalized == null),
-          currentVideoReady: video?.slug === decodedSlug,
-        })
-      : undefined
+  const detailsDataState = deriveDetailsDataState({
+    loading: loading || !preferencesReady,
+    error: error != null || (!loading && normalized == null),
+    currentVideoReady: video?.slug === decodedSlug,
+  })
   const retryDetails = () => {
     void refetch().catch(() => {})
   }
 
-  // Error state: only when the query errored AND there's nothing usable to keep
-  // showing — no normalized/cached video and no seed to paint a skeleton from.
-  const showErrorState =
-    detailsDataState === "error" || (error != null && !hasVideo && seed == null)
+  // A seed can paint the title/poster, but cannot satisfy metadata or playback.
+  // Terminal failures must expose Retry even when that seed is available.
+  const showErrorState = detailsDataState === "error"
   const leaveLoading = () => {
     if (router.canGoBack()) router.back()
     else router.replace("/")
@@ -483,7 +480,11 @@ export default function WatchVideoScreen() {
     return <View style={styles.screen} />
   }
 
-  if (detailsDataState === "loading" && !playerState.isVisible) {
+  if (
+    detailsDataState === "loading" &&
+    !playerState.isVisible &&
+    (Platform.OS === "android" || seed == null)
+  ) {
     return (
       <View style={styles.screen}>
         {Platform.OS === "android" ? (
@@ -525,12 +526,20 @@ export default function WatchVideoScreen() {
   if (showErrorState) {
     return (
       <View style={styles.screen}>
+        {Platform.OS === "ios" && displayPoster != null ? (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Image
+              source={{ uri: displayPoster }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+            <View style={styles.errorScrim} />
+          </View>
+        ) : null}
         <ScreenStateView
           kind="error"
           message="This video is temporarily unavailable."
-          onRetry={() => {
-            void refetch()
-          }}
+          onRetry={retryDetails}
           retryHint="Reloads this video"
         />
       </View>
@@ -559,6 +568,7 @@ export default function WatchVideoScreen() {
             // one thing that unmounts it if the showcase ever runs above it.
             overlayVisible={playerState.isVisible || decoderClaimed}
             bottomFadeColor={WATCH_THEME.below}
+            scrimVariant="detail"
           />
 
           <View style={styles.heroContent}>
@@ -591,9 +601,7 @@ export default function WatchVideoScreen() {
 
             <DetailsActionRow
               title={displayTitle}
-              metadataReady={
-                detailsDataState == null || detailsDataState === "ready"
-              }
+              metadataReady={detailsDataState === "ready"}
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
               onOpenFeedback={() =>
@@ -671,6 +679,10 @@ export default function WatchVideoScreen() {
 }
 
 const styles = StyleSheet.create({
+  errorScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
   screen: {
     flex: 1,
     backgroundColor: WATCH_THEME.below,

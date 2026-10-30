@@ -3,7 +3,7 @@ id: "feat-573"
 title: "Sustain live co-watch with bounded graph refresh"
 owner: "nisal"
 priority: "P1"
-status: "complete"
+status: "cancelled"
 start_date: "2026-10-01"
 duration: 3
 depends_on:
@@ -12,7 +12,17 @@ blocks: []
 tags: [admin, recommendations, cowatch, retention]
 ---
 
-## Problem
+## Owner scope change — October 29, 2026
+
+Cancelled by the owner’s decision to remove co-watch and behavioral learners.
+`feat-902` retires the runtime before deleting its historical rows. Historical
+refresh failures and incomplete acceptance below remain evidence; this
+cancellation does not turn them into a successful release.
+The earlier "What To Build", "Verification", "in progress" and next-attempt
+language below is a cancelled historical specification and dated evidence, not
+an instruction to implement, verify or operate refresh after this decision.
+
+## Historical Problem
 
 The owner-approved direct release in feat-565 uses a current immutable graph with
 at most 24-hour publication freshness and earlier dependency expiry. Its initial
@@ -36,7 +46,7 @@ enabled pointer must not be reported as continuously executing co-watch.
 
 `owner-approved-no-study-v1|current-source-owner-live-v1|ownerInfluenceFloorGeneration|COWATCH_PUBLICATION_LOCK_ID|rawPopulationExpiresAt`
 
-## What To Build
+## Historical What To Build — cancelled specification
 
 - Define the fixed finite source-window/cutoff policy and refresh trigger before
   execution; preserve 50,000 raw sources, 256 sources/session, 250,000 attempted
@@ -53,14 +63,14 @@ enabled pointer must not be reported as continuously executing co-watch.
 - Show last successful refresh, current graph deadline, refusal/fallback and
   stop state in the existing Admin operator. Keep rollback independent of refresh.
 
-## Constraints
+## Historical Constraints — cancelled specification
 
 This is operational continuity, not a restored trial or causal-evidence gate.
 Do not claim measured usefulness, broaden the supported cohort, raise bounds,
 extend raw retention or create a second serving authority. No scheduler or
 production refresh is created merely by filing this ticket.
 
-## Verification
+## Historical Verification — cancelled acceptance criteria
 
 - Real bounded publication and atomic replacement at the admitted population.
 - Retry/unknown acknowledgement, expiry, overlap, source/privacy invalidation,
@@ -70,7 +80,8 @@ production refresh is created merely by filing this ticket.
 - Deployed refresh and actual served provenance across a graph replacement,
   with truthful incumbent fallback during a natural refresh failure or expiry.
 
-Complete only when refresh sustains the approved live policy within its bounds.
+The former completion criterion was sustained refresh within the approved live
+policy. It was not met and was cancelled by the October 29 owner decision.
 
 ## Implementation and release tracking
 
@@ -140,3 +151,20 @@ support the current envelope; future attempts still apply admission and may
 refuse. Ordinary recommendation delivery falls back when graph authority is
 unavailable. The next natural attempt and actual co-watch contribution remain
 subjects for the existing scheduled follow-up, not claims of this closeout.
+
+## October 27 preflight follow-up
+
+The earlier lifecycle acceptance remains historical. A fresh read-only production
+audit found the G9 graph/release invalidated on October 7 by an eligibility
+decision change, followed by repeated refused automatic replacements. During
+October 19–26 UTC, 13 attempts recorded `refresh_preflight_unavailable` and one
+recorded `refresh_source_overflow`; none published a release. The unavailable
+attempts ended near the preflight's five-second statement limit, but their
+generic reason does not retain the underlying exception. This fresh operational
+evidence reopens the bounded refresh task. This follow-up removes the
+five-second graph statement limit to test whether it is responsible. Both
+preflight and publication repeat the source read, so the change covers both
+while preserving the separate transaction, lock, source-size and admission
+bounds.
+
+Plan: `docs/plans/2026-10-27-001-cowatch-preflight-timeout-plan.md`.

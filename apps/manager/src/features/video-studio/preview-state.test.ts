@@ -19,7 +19,6 @@ const requested: StudioDocument = {
   durationInFrames: 120,
   tracks: [{ id: "main", kind: "visual" }],
   components: [],
-  packRevisionIds: [],
   items: [
     {
       id: "clip",
@@ -115,4 +114,26 @@ it("restages active custom versions after deletion, undo or historical restorati
   const item = edited.items.find((i) => i.kind === "component")!
   if (item.kind === "component") item.properties = { title: "New title" }
   expect(previewSignature(edited)).toBe(previewSignature(installed))
+})
+
+it("keeps prepared media stable while preserving later audio envelope edits", () => {
+  const current = structuredClone(requested)
+  const item = current.items[0]!
+  if (item.kind !== "video")
+    throw new StudioPreviewFixtureError("Video fixture required")
+  item.volume = 10 ** 1.5
+  item.audioFade = {
+    fadeInFrames: 15,
+    fadeOutFrames: 20,
+    fadeInCurve: 0.5,
+    fadeOutCurve: -0.5,
+  }
+  expect(previewSignature(current)).toBe(previewSignature(requested))
+  expect(
+    attachPreparedSources(current, requested, prepared).items[0],
+  ).toMatchObject({
+    volume: 10 ** 1.5,
+    audioFade: item.audioFade,
+    source: { preview: asset("verified-low"), export: asset("verified-high") },
+  })
 })
