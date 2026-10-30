@@ -1,5 +1,5 @@
 ---
-id: "feat-411"
+id: "feat-912"
 title: "Forge Compound Engineering routing"
 owner: "tataihono"
 priority: "P1"
@@ -28,7 +28,7 @@ not its checkout path, the routing rule.
 ## Grep These
 
 - `## Compound Engineering`
-- `ce:plan`
+- `ce-plan`
 - `compound-engineering:lfg`
 - `/home/lado/Projects`
 
@@ -39,14 +39,25 @@ not its checkout path, the routing rule.
 2. Keep `AGENTS.md` and `CLAUDE.md` aligned on repository-identity routing.
 3. Reserve the full `compound-engineering:lfg` shipping pipeline for an explicit
    user request while selecting the smallest fitting CE workflow otherwise.
+4. Use the current `ce-plan`, `ce-work`, `ce-code-review`, and `ce-compound`
+   skill names in both root guides.
 
 ## Constraints
 
 - Do not change product code, runtime behavior, or deployment configuration.
 - Do not weaken the existing requirement to plan, work, review, and compound.
 - Do not make `lfg` implicit for ordinary Forge tasks.
+- Workflow selection must respect the user's limits on delegation and publication
+  and the repository production deployment boundary.
+- Preserve unrelated current-main guidance and preexisting roadmap tickets when
+  reconciling an older instruction change.
 
 ## Verification
 
 - Confirm both root guidance files contain the same routing and `lfg` policy.
-- Run changed-file formatting and `git diff --check`.
+- Confirm the ticket filename and frontmatter use the same globally unique ID.
+  Allocate against current main, fully paginated all-author open PR heads, and
+  protected local refs, worktrees, indexes, and reservations.
+- Verify introduced-ID collisions with the current-main
+  `scripts/check-new-roadmap-ids.mjs` checks; preserve inherited collisions.
+- Run changed-file Prettier and `git diff --check`.

@@ -25,8 +25,8 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 ## Compound Engineering
 
 - Always use the available Compound Engineering skills for Forge software-engineering work, including Forge checkouts and Codex worktrees outside `/home/lado/Projects`. Repository identity, not filesystem path, controls this rule.
-- Use the smallest Compound Engineering workflow that fits the request. Invoke `compound-engineering:lfg` only when the user explicitly requests LFG or hands-off shipping through commit, push, PR creation, and CI babysitting.
-- Follow the Compound Engineering loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
+- Use the smallest Compound Engineering workflow that fits the request. Invoke `compound-engineering:lfg` only when the user explicitly requests LFG or hands-off shipping. Preserve the user's limits on delegation and publication and the repository production deployment boundary.
+- Follow the Compound Engineering loop: `ce-plan` -> `ce-work` -> `ce-code-review` -> `ce-compound`.
 - Start with explicit scope in `docs/plans/` or `docs/<scope>/plans/` when planning is needed.
 - Use Compound Engineering to brainstorm against the roadmap ticket before implementation when that workflow is available in your environment.
 - After completion, compound durable learnings back into docs or rules.
@@ -36,9 +36,12 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Keep roadmap files in `docs/roadmap/` with YAML frontmatter.
 - Keep dependencies bidirectional: if a feature `depends_on` another feature, add the reverse entry to `blocks`.
 - Keep feature bodies agent-optimized: exact file paths, grep patterns, types, constraints, and verification.
+- For recommendation scope, read `docs/reports/2026-10-02-recommendation-roadmap-closeout.md` before reviving historical requirements. `cancelled` retires scope with a reason; it does not establish implementation or authorize removing working behavior.
 
 ## Boundaries
 
+- Recommendations and product analytics require no consent prerequisite. Preserve the configured Watch GA and Datadog integrations; follow `docs/analytics-and-recommendation-policy.md` when planning or changing either area.
+- For recommendation health, empty/partial rows or sparse co-watch coverage, apply the October 2 owner decision in `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`: coverage limitations are accepted outcomes and do not block proceeding; classify server failures separately.
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
@@ -57,4 +60,7 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `apps/tv/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
 - `apps/chat/AGENTS.md` + `apps/chat/CLAUDE.md`
+- `apps/rag/AGENTS.md` (canonical) + `apps/rag/CLAUDE.md` (provider redirect)
+- `packages/rag-contracts/AGENTS.md` (canonical) + `packages/rag-contracts/CLAUDE.md` (provider redirect)
+- `docs/roadmap/rag/CLAUDE.md`
 - `packages/admin-graphql/CLAUDE.md`
