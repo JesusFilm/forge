@@ -46,6 +46,8 @@ import {
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_CONTAINER_CLASS,
+  FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS,
   FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
@@ -1041,7 +1043,7 @@ export function FloatingSearchProvider({
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-              : `${FLOATING_HEADER_LAYOUT_CLASS} max-[360px]:gap-2`
+              : `${FLOATING_HEADER_LAYOUT_CLASS} ${FLOATING_HEADER_CONTAINER_CLASS} max-[360px]:gap-2`
           } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
         >
           <Link
@@ -1078,7 +1080,7 @@ export function FloatingSearchProvider({
                 ? // The language control is hidden while search is open, so
                   // the phone field row takes its column too.
                   `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`
-                : ""
+                : FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS
             }`}
           >
             <FloatingSearchBar

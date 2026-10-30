@@ -23,6 +23,14 @@ export const WATCH_PAGE_RIGHT_EDGE_CLASSES =
 export const FLOATING_HEADER_LAYOUT_CLASS =
   "grid h-[52px] grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)] items-center gap-3 md:gap-5"
 export const FLOATING_HEADER_FIELD_WIDTH_CLASS = "min-w-0 w-full max-w-[800px]"
+/**
+ * Keep the header on one 52px row when enlarged text leaves less than 17rem.
+ * The named container activates compact icon controls in globals.css. A second
+ * row would extend beyond the fixed backdrop, hover band and page offset.
+ */
+export const FLOATING_HEADER_CONTAINER_CLASS = "@container/header"
+export const FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS =
+  "@max-[17rem]/header:min-w-[44px]"
 export const FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS =
   "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]"
 export const FLOATING_HEADER_TOP_CLASS =
