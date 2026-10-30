@@ -522,10 +522,11 @@ export function WhatsNewFeatureVote({
               >
                 <div
                   data-testid="whats-new-vote-target"
+                  // Retain focus after placement without an idle tab stop.
+                  tabIndex={held ? 0 : -1}
                   {...(held
                     ? {
                         role: "button",
-                        tabIndex: 0,
                         "aria-label": `${WHATS_NEW_VOTES.placeLabel} ${held.label} ${WHATS_NEW_VOTES.onLabel} ${feature.title}`,
                         onClick: (event: React.MouseEvent<HTMLDivElement>) =>
                           stick(

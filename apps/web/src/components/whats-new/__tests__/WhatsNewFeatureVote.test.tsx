@@ -515,8 +515,25 @@ describe("WhatsNewFeatureVote", () => {
       expect(q("whats-new-vote-remaining")?.textContent).toContain("2")
       expect(document.activeElement).toBe(target)
       expect(target.isConnected).toBe(true)
+      // Chromium drops focus if tabindex disappears. JSDOM retains it, so
+      // require explicit idle focusability as well as the focus contract.
+      expect(target.getAttribute("tabindex")).toBe("-1")
+      target.blur()
+      target.focus()
+      expect(document.activeElement).toBe(target)
+      expect(target.tabIndex).toBe(-1)
     },
   )
+
+  it("keeps idle placement targets out of sequential keyboard navigation", () => {
+    render()
+    for (const target of container.querySelectorAll<HTMLElement>(
+      '[data-testid="whats-new-vote-target"]',
+    )) {
+      expect(target.tabIndex).toBe(-1)
+      expect(target.getAttribute("role")).toBeNull()
+    }
+  })
 
   it("preserves list-item roles and card coordinates through drag/drop", async () => {
     render()
