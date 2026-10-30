@@ -2,7 +2,7 @@
 id: "feat-763"
 title: "Small Watch accessibility fixes from the round-03 audit"
 owner: "vlad"
-priority: "P3"
+priority: "P2"
 status: "in-progress"
 start_date: "2026-10-20"
 duration: 2
