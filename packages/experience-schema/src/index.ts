@@ -12,3 +12,5 @@
 export * from "./experience-ai.schemas"
 export * from "./extract-json-object"
 export * from "./coerce-draft"
+
+export * from "./watch-audience"

@@ -2,6 +2,7 @@ export type RecommendationRuntimeErrorCode =
   | "delivery_unavailable"
   | "evidence_unavailable"
   | "evidence_request_invalid"
+  | "exposure_request_invalid"
   | "selection_unavailable"
   | "episode_unavailable"
   | "playback_unavailable"
@@ -18,6 +19,7 @@ const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
   delivery_unavailable: "Semantic recommendation delivery unavailable",
   evidence_request_invalid:
     "Semantic recommendation evidence request is invalid",
+  exposure_request_invalid: "Watch surface exposure request is invalid",
   evidence_unavailable: "Semantic recommendation evidence unavailable",
   selection_unavailable: "Semantic recommendation selection unavailable",
   episode_unavailable: "Semantic recommendation episode unavailable",
@@ -35,7 +37,10 @@ const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
 }
 
 export class RecommendationRuntimeError extends Error {
-  constructor(readonly code: RecommendationRuntimeErrorCode) {
+  constructor(
+    readonly code: RecommendationRuntimeErrorCode,
+    readonly status?: number,
+  ) {
     super(MESSAGE_BY_CODE[code])
     this.name = "RecommendationRuntimeError"
   }

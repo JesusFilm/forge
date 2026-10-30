@@ -20,7 +20,6 @@ it("prepares canonical sources before byte assembly without writing the admitted
     tracks: [],
     components: [],
     items: [],
-    packRevisionIds: [],
   })
   vi.mocked(prepareStudioRenderSources).mockResolvedValue({ document })
   const call = vi.fn(async () => []),

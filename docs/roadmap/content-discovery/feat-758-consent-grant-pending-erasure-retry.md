@@ -3,7 +3,7 @@ id: "feat-758"
 title: "Stop repeating the consent auto-grant while an erasure is pending"
 owner: "unassigned"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-10-20"
 duration: 2
 depends_on: []
@@ -13,6 +13,14 @@ tags:
   - "recommendations"
   - "performance"
 ---
+
+## Retirement (October 29, 2026)
+
+The owner retired viewer profiles and behavioral learning; main removed
+`RecommendationConsentShell` in PR #2957. Its auto-grant retry loop no longer
+exists. The policy in `docs/analytics-and-recommendation-policy.md` and
+feat-902 supersedes the historical implementation instructions below. Do not
+restore the shell to implement this ticket.
 
 ## Problem
 

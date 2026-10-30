@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { WATCH_SURFACE_EXPOSURE_RETENTION_MS } from "../watch-surface-exposure-retention"
 import { resolveRecommendationOpsWindow } from "./shared"
 
 type ExposureRow = {
@@ -165,7 +166,18 @@ export async function loadAnonymousWatchExposureBreakdown(
   rawWindow?: string | string[],
   filter?: WatchExposureRegistryFilter,
 ): Promise<AnonymousWatchExposureBreakdown> {
-  const window = resolveRecommendationOpsWindow(rawWindow)
+  const requestedWindow = resolveRecommendationOpsWindow(rawWindow)
+  // Anonymous raw facts retain a fortnight; signed recommendation evidence
+  // keeps its own selected window and must not inherit this shorter horizon.
+  const window = {
+    ...requestedWindow,
+    start: new Date(
+      Math.max(
+        requestedWindow.start.getTime(),
+        requestedWindow.end.getTime() - WATCH_SURFACE_EXPOSURE_RETENTION_MS,
+      ),
+    ),
+  }
   const cohortScope = filter
     ? Prisma.sql`
     AND surface = ${filter.surface} AND block = ${filter.block}

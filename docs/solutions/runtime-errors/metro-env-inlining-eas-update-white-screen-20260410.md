@@ -1,6 +1,7 @@
 ---
 title: "EAS Update white screen: Metro env var inlining fails inside nested function args"
 date: 2026-04-10
+last_updated: 2026-10-19
 category: runtime-errors
 module: apps/mobile
 problem_type: runtime_error
@@ -47,7 +48,7 @@ The mobile-v2 Expo app showed a white screen when stakeholders scanned the EAS U
 1. **Suspected `expo-glass-effect` incompatibility with Expo Go** — Wrong. It's included in Expo Go for SDK 54 and confirmed working.
 2. **Suspected EAS Update requires a development build** — Wrong. Expo Go can preview EAS Updates directly via QR code.
 3. **Fixed channel-to-branch mapping** (`eas channel:edit preview --branch preview`) — The channel already existed and was correctly linked. White screen persisted.
-4. **Sourced `.env.production` into the shell** (`set -a && . ./.env.production && set +a && eas update`) — Metro ignores shell env vars. It reads from `.env` files via its own `@expo/env` loader, not from `process.env`.
+4. **Sourced `.env.production` into the shell** (`set -a && . ./.env.production && set +a && eas update`) — Metro ignores shell env vars. It reads from `.env` files via its own `@expo/env` loader, not from `process.env`. _(Corrected 2026-10-19: this explanation is wrong. In a production bundle, `babel-preset-expo` inlines `process.env[key]`, and `@expo/env` does not overwrite a shell key, so a sourced shell value is the value that gets inlined. This attempt did not fail because Metro ignored the shell; its real cause was not re-tested. See [the dev-bundle precedence learning](../developer-experience/expo-dev-bundle-env-file-beats-shell-override.md).)_
 5. **Cleared Metro cache directories** (`rm -rf /tmp/metro-* node_modules/.cache`) — Didn't reliably fix the issue because Metro's cache is keyed by source file mtime, not by env file content.
 
 ## Solution

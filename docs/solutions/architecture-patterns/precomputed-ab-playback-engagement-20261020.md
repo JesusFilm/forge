@@ -64,6 +64,11 @@ clock beyond the original end and late cutoff. Use real schema constraints for
 standalone episodes: a request-linked episode is canonically recommendation
 origin even if a fixture tries to label it direct.
 
+Render comparisons inside their real parent layout during visual verification.
+The cohort table uses intrinsic minimum width; long unwrapped disclosure text
+can expand the result column and push values off-screen. Bound the disclosure
+width and allow wrapping so both variants remain visible together.
+
 ## Related
 
 - [CTR and engagement runbook](../../operations/precomputed-ctr-report.md)

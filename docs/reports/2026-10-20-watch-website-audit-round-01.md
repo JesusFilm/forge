@@ -12,6 +12,15 @@ later assigned `feat-755` to a TV ticket, so this ticket is now `feat-779`.
 The root marketing site (`https://www.jesusfilm.org/` outside `/watch`) is not
 built from this repository and was not audited.
 
+## October 29, 2026 update
+
+This is a dated audit, not current production or merge qualification. Main
+retired the client recommendation controls in PR #2957, removing the original
+feat-779 import edge and feat-758 retry loop. PR #2821 now retains only the
+crypto regression guard and these historical records; it does not restore
+those controls. feat-758 is cancelled under the owner's retirement decision.
+The 404 repair is being qualified separately in PR #2848 / feat-790.
+
 ## Template inventory
 
 Every route below returned HTTP 200 on 2026-10-20 and was captured at

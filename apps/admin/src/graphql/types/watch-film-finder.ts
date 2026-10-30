@@ -6,6 +6,7 @@
 import { GraphQLError } from "graphql"
 
 import { builder } from "@/graphql/builder"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import {
   WATCH_FILM_FINDER_CARD_LIMIT,
   WatchFilmFinderInputError,
@@ -145,6 +146,13 @@ builder.queryFields((t) => ({
       input: t.arg({ type: WatchFilmFinderInputRef, required: true }),
     },
     resolve: async (_root, args, ctx) => {
+      // Release gate first: no input validation or catalog SQL while the
+      // `forge.watch.audience` flag is off or unreadable.
+      if (!(await isWatchAudienceEnabled())) {
+        throw new GraphQLError("Watch film finder is not available", {
+          extensions: { code: "FORBIDDEN", reason: "watch_audience_disabled" },
+        })
+      }
       try {
         return await new WatchFilmFinderService(ctx.prisma).find(args.input)
       } catch (error) {

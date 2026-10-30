@@ -14,6 +14,24 @@ tags:
   - "performance"
 ---
 
+## Current scope (October 29, 2026)
+
+Main retired the three client controls that caused the original crypto import
+in PR #2957. Preserve those deletions. This PR now adds a source-graph
+regression guard only; it makes no runtime or asset changes relative to main.
+The October 20 performance measurements below describe the original repair,
+not an additional saving from merging this version.
+
+- `apps/web/src/__tests__/no-node-crypto-in-client-graph.test.ts` walks local
+  static imports, re-exports and literal dynamic imports from client roots.
+- Server Action boundaries are excluded because clients receive references.
+- A synthetic client import of the real server consent module proves the
+  guard detects the historical leak without restoring retired UI.
+- Verify with `pnpm --filter @forge/web exec vitest run src/__tests__/no-node-crypto-in-client-graph.test.ts --maxWorkers=2`,
+  scoped ESLint, Prettier and `git diff --check`.
+
+## Historical implementation requirement
+
 ## Problem
 
 Every Watch route (home, video, series, inventory, languages, history,

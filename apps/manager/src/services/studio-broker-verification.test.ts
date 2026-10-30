@@ -113,7 +113,6 @@ function fixture(
     durationInFrames: 17 * 180,
     tracks: [{ id: "video", kind: "visual" }],
     components: [],
-    packRevisionIds: [],
     items: Array.from({ length: 17 }, (_, i) => ({
       id: `clip-${i}`,
       kind: "video",

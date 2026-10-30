@@ -5,14 +5,12 @@ export const RECOMMENDATION_CONSENT_CONTRACT =
   "recommendation-consent-v1" as const
 export const RECOMMENDATION_CONSENT_COOKIE =
   "forge_recommendation_consent" as const
-// Client code must import these from `recommendation-consent-events.ts`;
-// importing this module from a client component ships the Node crypto
-// polyfill to the browser (feat-779).
-export {
-  RECOMMENDATION_CONSENT_CHANGED_EVENT,
-  RECOMMENDATION_CONSENT_CHANNEL,
-  RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT,
-} from "./recommendation-consent-events"
+export const RECOMMENDATION_CONSENT_CHANGED_EVENT =
+  "forge:recommendation-consent-changed" as const
+export const RECOMMENDATION_CONSENT_CHANNEL =
+  "forge-recommendation-consent-v1" as const
+export const RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT =
+  "forge:recommendation-cookie-settings-open" as const
 
 const RECEIPT_MAX_AGE_SECONDS = 180 * 24 * 60 * 60
 const RECEIPT_VALUE_PATTERN = /^[A-Za-z0-9_-]{43}$/

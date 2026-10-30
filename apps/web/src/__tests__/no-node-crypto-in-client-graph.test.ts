@@ -12,7 +12,7 @@
  * (`@/` and relative specifiers; `import type` is erased and skipped) and
  * fails if any reached module imports `crypto` or `node:crypto`. Fix a
  * failure by moving the browser-safe export into a dependency-free module,
- * as `lib/recommendation-consent-events.ts` does — not by allowlisting.
+ * rather than allowlisting the dependency.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
@@ -74,9 +74,10 @@ function resolveLocal(from: string, specifier: string): string | null {
   return null
 }
 
-function findCryptoPaths(): string[] {
-  const files = sourceFiles(SRC)
-  const read = new Map(files.map((file) => [file, readFileSync(file, "utf8")]))
+function findCryptoPaths(sources?: Map<string, string>): string[] {
+  const read =
+    sources ??
+    new Map(sourceFiles(SRC).map((file) => [file, readFileSync(file, "utf8")]))
   const findings: string[] = []
   const visited = new Set<string>()
 
@@ -108,24 +109,21 @@ describe("client module graph", () => {
     expect(findCryptoPaths()).toEqual([])
   })
 
-  it("would see the original feat-779 leak", () => {
-    // Anti-vacuous companion: the server consent module the leak came through
-    // still imports node:crypto, and the walker recognises that import.
-    const consent = readFileSync(
-      join(SRC, "lib/recommendation-consent.ts"),
-      "utf8",
-    )
-    expect(specifiers(consent)).toContain("node:crypto")
+  it("detects a client importing the server consent helpers", () => {
+    // The original client controls were retired on main. Inject their import
+    // edge without restoring them, and walk the real server module it reaches.
+    const client = join(SRC, "components/crypto-regression-fixture.tsx")
     expect(
-      isClientModule(
-        readFileSync(
-          join(
-            SRC,
-            "components/recommendations/RecommendationConsentShell.tsx",
-          ),
-          "utf8",
-        ),
+      findCryptoPaths(
+        new Map([
+          [
+            client,
+            '"use client";\nimport { parseRecommendationConsentCookie } from "@/lib/recommendation-consent"',
+          ],
+        ]),
       ),
-    ).toBe(true)
+    ).toEqual([
+      "components/crypto-regression-fixture.tsx -> lib/recommendation-consent.ts",
+    ])
   })
 })
