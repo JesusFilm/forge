@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { initialWatchRouteSurface } from "./layout"
+import { initialWatchRouteSurface } from "./initial-watch-route-surface"
 
 describe("initialWatchRouteSurface", () => {
   it("uses the admitted internal shape to seed ambiguous one-segment routes", () => {

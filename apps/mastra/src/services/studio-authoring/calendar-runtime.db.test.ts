@@ -168,14 +168,7 @@ test.skipIf(!url)(
             {
               date: "2026-09-22",
               version: 0,
-              packRevisionIds: ["pack"],
               weeklyTheme: "",
-            },
-          ],
-          packs: [
-            {
-              revisionId: "pack",
-              document: { title: "Hope", guidance: "Hope titles", sources: [] },
             },
           ],
         },

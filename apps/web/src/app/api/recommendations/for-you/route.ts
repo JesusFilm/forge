@@ -22,11 +22,8 @@ import {
 } from "@/lib/recommendation-route-response"
 import {
   ensureRecommendationSession,
-  readRecommendationProfileCookie,
   attachRecommendationSession,
 } from "@/lib/recommendation-session"
-import { readRecommendationConsentCookie } from "@/lib/recommendation-consent"
-import { requestHasRecommendationWithdrawalPending } from "@/lib/recommendation-withdrawal-pending"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -50,23 +47,13 @@ export async function POST(request: Request) {
     if (!(await homepageRecommendationsEnabled(request)))
       throw new RecommendationRouteError(403, "feature_disabled")
     await assertRecommendationMutationAdmission(request.headers, "delivery")
-    const session = excluded ? null : ensureRecommendationSession(request),
-      profile = excluded ? null : readRecommendationProfileCookie(request),
-      consent = excluded ? null : readRecommendationConsentCookie(request)
-    const consentReceiptDigest =
-      !requestHasRecommendationWithdrawalPending(request) &&
-      consent?.kind === "valid"
-        ? consent.digest
-        : null
+    const session = excluded ? null : ensureRecommendationSession(request)
     const upstreamDelivery = await getUserRecommendations({
       trafficCategory,
       ...parsed.data,
       sessionDigest: session?.digest ?? "0".repeat(64),
-      consentReceiptDigest,
-      profileTokenDigest:
-        consentReceiptDigest && profile?.kind === "valid"
-          ? profile.digest
-          : null,
+      consentReceiptDigest: null,
+      profileTokenDigest: null,
     })
     const delivery = excluded
       ? {

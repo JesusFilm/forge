@@ -1,0 +1,129 @@
+# Scrub to a verse, select it, and cancel the share sheet (a share sends the
+# verse out; not-tested.json). The scrubber is hidden from the screen reader,
+# so the drag starts at the counter: in Psalm 117 the thumb sits under it.
+appId: org.jesusfilm.forgewatch
+name: bible-verse-select
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://reader?book=PSA&chapter=117&verse=2
+    label: Open Psalm 117:2 in the pushed reader
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-reader
+    timeout: 20000
+    label: The pushed reader shows
+# The first open plays a swipe demonstration over the verse. A tap that skips
+# it can land as the demonstration ends and select the verse, so this journey
+# waits for the end. The other Bible journeys check the skip tap.
+- extendedWaitUntil:
+    visible:
+      id: bible-swipe-demo
+    timeout: 15000
+    label: The swipe demonstration shows
+- extendedWaitUntil:
+    notVisible:
+      id: bible-swipe-demo
+    timeout: 20000
+    label: The swipe demonstration ends
+- assertVisible:
+    text: Verse 2 of 2
+    label: The counter shows the last verse
+- swipe:
+    from:
+      text: Verse 2 of 2
+    direction: LEFT
+    label: Drag the scrubber to the first verse
+- extendedWaitUntil:
+    visible:
+      text: Verse 1 of 2
+    timeout: 10000
+    label: The counter shows the first verse
+- assertVisible:
+    text: "Psalms 117:1. Choose a passage"
+    label: The reader shows Psalm 117:1
+- tapOn:
+    id: bible-verse
+    label: Select the verse
+- extendedWaitUntil:
+    visible:
+      id: bible-selection-bar
+    timeout: 10000
+    label: The selection bar shows
+- assertVisible:
+    text: "Selected: Psalms 117:1"
+    label: The selection bar names the verse
+- tapOn:
+    text: "Share Psalms 117:1"
+    label: Open the share sheet
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ActivityListView
+          timeout: 10000
+          label: The iOS share sheet shows
+      # A tap outside the sheet also reaches the reader under it. At 20% of
+      # the height it lands on empty verse area, which ignores a tap. An iPad
+      # shows the sheet as a popover, which a swipe does not close.
+      - tapOn:
+          point: 50%,20%
+          label: Tap outside the share sheet
+      - extendedWaitUntil:
+          notVisible:
+            id: ActivityListView
+          timeout: 10000
+          label: The iOS share sheet closes
+    label: Cancel the iOS share sheet
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: Sharing text
+          timeout: 10000
+          label: The Android share sheet shows
+      - pressKey:
+          key: back
+          label: Press the Android back button
+      - extendedWaitUntil:
+          notVisible:
+            text: Sharing text
+          timeout: 10000
+          label: The Android share sheet closes
+    label: Cancel the Android share sheet
+- assertVisible:
+    id: bible-selection-bar
+    label: The selection stays after the share sheet
+- tapOn:
+    text: Clear the selection
+    label: Clear the selection
+- extendedWaitUntil:
+    notVisible:
+      id: bible-selection-bar
+    timeout: 10000
+    label: The selection bar closes
+- assertVisible:
+    text: Verse 1 of 2
+    label: The footer shows again

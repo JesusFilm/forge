@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video-ть лангс ваштомс",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Перейти к основному содержанию"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project прявт лопа",
     "navigation": "Алоцёконь навигация",

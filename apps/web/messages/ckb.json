@@ -530,6 +530,9 @@
     "scrollToVideo": "بڕۆ بۆ ویدۆی {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "بازدان بۆ ناوەڕۆکی سەرەکی"
+  },
   "WatchFooter": {
     "home": "سەرەکیی Jesus Film Project",
     "navigation": "ڕێبەری پێبەندەکان",

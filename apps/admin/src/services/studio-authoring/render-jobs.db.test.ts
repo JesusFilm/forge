@@ -55,7 +55,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const attempt = await commands.request(human, {
@@ -235,7 +234,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -301,7 +299,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -381,7 +378,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -427,7 +423,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -509,7 +504,6 @@ class RenderFixtureError extends Error {}
           tracks: [],
           components: [],
           items: [],
-          packRevisionIds: [],
         },
       })
       const requested = await commands.request(human, {
@@ -627,7 +621,6 @@ class RenderFixtureError extends Error {}
           tracks: [],
           components: [],
           items: [],
-          packRevisionIds: [],
         },
       })
       const requested = await commands.request(human, {
@@ -762,7 +755,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {

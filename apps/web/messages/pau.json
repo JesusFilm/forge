@@ -530,6 +530,9 @@
     "scrollToVideo": "Meredel er a video er a {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Blil a Jesus Film Project",
     "navigation": "Navigation er a footer",

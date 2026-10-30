@@ -24,6 +24,9 @@ const schema = z.object({
   FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
   FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),
   FEEDBACK_LINEAR_LABEL_ID: z.string().min(1).optional(),
+  FEEDBACK_SIMULATOR_SIGNED_ENABLED: z.enum(["true", "false"]).optional(),
+  FEEDBACK_SIMULATOR_PUBLIC_KEY: z.string().optional(),
+  FEEDBACK_SIMULATOR_AUDIENCE: z.string().optional(),
 })
 
 export type Config = z.infer<typeof schema>

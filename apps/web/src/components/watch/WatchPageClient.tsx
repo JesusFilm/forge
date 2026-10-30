@@ -173,6 +173,7 @@ function isPendingChapterStillRoutable(
 }
 
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 type WatchPageClientProps = {
   surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
@@ -196,6 +197,7 @@ type WatchPageClientProps = {
    */
   locale?: string
   audienceEnabled?: boolean
+  audience?: WatchAudienceResolution
   hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
@@ -280,6 +282,7 @@ export function WatchPageClient({
   collectionSlug = null,
   locale,
   audienceEnabled = false,
+  audience,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -880,7 +883,28 @@ export function WatchPageClient({
       ) : null}
       <WatchSectionRenderer
         audienceEnabled={audienceEnabled}
+        audience={audience}
         blocks={mergedBlocks}
+        shareFilm={
+          audienceEnabled
+            ? {
+                slug: videoSlug,
+                title: video.title ?? videoSlug,
+                languageSlug: currentLanguageSlug,
+                languageName: variant.language?.name ?? null,
+                runtimeMinutes: variant.duration
+                  ? Math.round(variant.duration / 60)
+                  : null,
+                studyQuestions: (video.studyQuestions ?? []).flatMap(
+                  (question) =>
+                    question.value?.trim() ? [question.value.trim()] : [],
+                ),
+                languageVariants: languageOptionsState.variants,
+                languageOptionsStatus: languageOptionsState.status,
+              }
+            : undefined
+        }
+        onRequestShareLanguages={loadLanguageOptions}
         surfaceManifests={surfaceManifests}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}

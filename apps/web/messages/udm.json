@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеоез шоры скроллить",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Валтӥсь пуштроске ортчыны"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project шӧр",
     "navigation": "Подвал навигация",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеом къыщыбжьэ",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Шъхьаӏэ къэбарым кӏон"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ипэ бзылъфыгъэ",
     "navigation": "Футерым и навигацие",

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import { WatchForYouRecommendations } from "@/components/recommendations/WatchForYouRecommendations"
 import { RecommendationPlaybackRecorder } from "@/components/recommendations/RecommendationPlaybackRecorder"
@@ -45,7 +44,6 @@ export function RecommendationTrafficFixture({
           </button>
         </>
       )}
-      <RecommendationConsentShell />
       {surface === "seeded" ? (
         <WatchSemanticRecommendations
           seedMediaId={seedMediaId}

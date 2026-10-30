@@ -530,6 +530,9 @@
     "scrollToVideo": "Slinkite iki {title} vaizdo įrašo",
     "forYou": "Jums"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Pereiti prie pagrindinio turinio"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project pradžia",
     "navigation": "Poraštės navigacija",

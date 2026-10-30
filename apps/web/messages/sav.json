@@ -530,6 +530,9 @@
     "scrollToVideo": "Dëgmal ba ci vidéo bi {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tëb ba ci li gën a am solo"
+  },
   "WatchFooter": {
     "home": "Xët wu njëkk bu Jesus Film Project",
     "navigation": "Navigasyon bu footer",

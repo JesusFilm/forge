@@ -16,6 +16,7 @@ import { READER_TOUCH_TARGET } from "../../../lib/bible/reader/chrome"
 import { chapterLabel } from "../../../lib/bible/reader/labels"
 import {
   chapterNumbers,
+  initialTestament,
   numberingFor,
   passageBooks,
   pickedBsbRef,
@@ -26,11 +27,15 @@ import {
 import { readerSheetControlColors } from "../../../lib/bible/sheets/theme"
 import { bookNameIn } from "../../../lib/bible/reader/useBookNames"
 import type { BookNames } from "../../../lib/bible/repository/bookNames"
-import type { BibleBook } from "../../../lib/bible/text/books"
+import type { BibleBook, Testament } from "../../../lib/bible/text/books"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
 import { acceptSheetTap } from "../../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../../styles/shared"
+import SegmentedControl from "@react-native-segmented-control/segmented-control"
+
+import { canUseNativeSegmentedControl } from "../../../lib/nativeSegmentedControl"
+import { ReaderGlassSurface } from "../ReaderGlassButton"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
 
 type PassageT = UiT<"BiblePassagePicker">
@@ -75,13 +80,25 @@ export function PassagePicker({
   const { height: windowHeight } = useWindowDimensions()
   const height = useSheetListHeight(windowHeight)
   const [step, setStep] = useState<Step>({ kind: "book" })
+  const books = passageBooks(translation)
+  // Kept across the chapter and verse steps, so "Books" returns to it.
+  const [testament, setTestament] = useState<Testament>(() =>
+    initialTestament(books, current?.book ?? null),
+  )
   // A fast double tap must not pick twice and pop the reader under the sheet.
   const lastPickRef = useRef(0)
 
-  // The chapter title is a reference, as in the reader's footer.
+  // The title names the choice; the subtitle is the reference so far, as in
+  // the reader's footer.
   const title =
     step.kind === "book"
       ? t("chooseBook")
+      : step.kind === "chapter"
+        ? t("chooseChapter")
+        : t("chooseVerse")
+  const subtitle =
+    step.kind === "book"
+      ? undefined
       : step.kind === "chapter"
         ? bookNameIn(bookNames, step.book.usfm)
         : chapterLabel(bookNameIn(bookNames, step.book.usfm), step.chapter)
@@ -109,7 +126,7 @@ export function PassagePicker({
       <BookList
         t={t}
         tokens={tokens}
-        books={passageBooks(translation)}
+        books={books.filter((entry) => entry.book.testament === testament)}
         currentBook={current?.book ?? null}
         shortName={translation?.shortName ?? null}
         bookNames={bookNames}
@@ -149,7 +166,7 @@ export function PassagePicker({
 
   const stepKey =
     step.kind === "book"
-      ? "book"
+      ? `book-${testament}`
       : step.kind === "chapter"
         ? `chapter-${step.book.usfm}`
         : `verse-${step.book.usfm}-${step.chapter}`
@@ -163,9 +180,19 @@ export function PassagePicker({
         <ReaderSheetHeader
           tokens={tokens}
           title={title}
+          subtitle={subtitle}
           back={back}
+          centerTitle
           onClose={onClose}
         />
+        {step.kind === "book" && (
+          <TestamentControl
+            t={t}
+            tokens={tokens}
+            value={testament}
+            onChange={setTestament}
+          />
+        )}
       </View>
       {/* The key resets the scroll to the top at each step. */}
       <ScrollView
@@ -201,80 +228,137 @@ function BookList({
   bookNames,
   onPress,
 }: BookListProps) {
-  const sections = [
-    {
-      key: "old",
-      title: t("oldTestament"),
-      books: books.filter((entry) => entry.book.testament === "old"),
-    },
-    {
-      key: "new",
-      title: t("newTestament"),
-      books: books.filter((entry) => entry.book.testament === "new"),
-    },
-  ]
   return (
-    <>
-      {sections.map((section) => (
-        <View key={section.key} style={styles.section}>
-          <Text
-            accessibilityRole="header"
-            style={[styles.sectionTitle, { color: tokens.secondaryText }]}
+    <View style={styles.section}>
+      {books.map(({ book, inTranslation }) => {
+        const name = bookNameIn(bookNames, book.usfm)
+        const selected = book.usfm === currentBook
+        const note =
+          !inTranslation && shortName
+            ? t("notInTranslation", { shortName })
+            : null
+        return (
+          <Pressable
+            key={book.usfm}
+            onPress={() => onPress(book)}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={
+              note ? t("bookWithNoteAriaLabel", { name, note }) : name
+            }
+            {...{ "dd-action-name": "bible-passage-book" }}
+            style={({ pressed }) => [
+              styles.bookRow,
+              selected && { backgroundColor: tokens.buttonSurface },
+              pressed && feedback.pressed,
+            ]}
           >
-            {section.title}
-          </Text>
-          {section.books.map(({ book, inTranslation }) => {
-            const name = bookNameIn(bookNames, book.usfm)
-            const selected = book.usfm === currentBook
-            const note =
-              !inTranslation && shortName
-                ? t("notInTranslation", { shortName })
-                : null
-            return (
-              <Pressable
-                key={book.usfm}
-                onPress={() => onPress(book)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={
-                  note ? t("bookWithNoteAriaLabel", { name, note }) : name
-                }
-                {...{ "dd-action-name": "bible-passage-book" }}
-                style={({ pressed }) => [
-                  styles.bookRow,
-                  selected && { backgroundColor: tokens.buttonSurface },
-                  pressed && feedback.pressed,
+            <View style={styles.bookText}>
+              <Text
+                style={[
+                  styles.bookName,
+                  { color: tokens.text },
+                  selected && styles.bookNameSelected,
                 ]}
+                numberOfLines={1}
               >
-                <View style={styles.bookText}>
-                  <Text
-                    style={[
-                      styles.bookName,
-                      { color: tokens.text },
-                      selected && styles.bookNameSelected,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {name}
-                  </Text>
-                  {note && (
-                    <Text
-                      style={[styles.bookNote, { color: tokens.secondaryText }]}
-                      numberOfLines={1}
-                    >
-                      {note}
-                    </Text>
-                  )}
-                </View>
-                {selected && (
-                  <Ionicons name="checkmark" size={18} color={tokens.icon} />
-                )}
-              </Pressable>
-            )
-          })}
-        </View>
-      ))}
-    </>
+                {name}
+              </Text>
+              {note && (
+                <Text
+                  style={[styles.bookNote, { color: tokens.secondaryText }]}
+                  numberOfLines={1}
+                >
+                  {note}
+                </Text>
+              )}
+            </View>
+            {selected && (
+              <Ionicons name="checkmark" size={18} color={tokens.icon} />
+            )}
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+type TestamentControlProps = {
+  t: PassageT
+  tokens: ReaderTokens
+  value: Testament
+  onChange: (testament: Testament) => void
+}
+
+// The book list shows one testament, so a New Testament book is one tap away.
+function TestamentControl({
+  t,
+  tokens,
+  value,
+  onChange,
+}: TestamentControlProps) {
+  const controls = readerSheetControlColors(tokens)
+  const options = [
+    { value: "old", label: t("oldTestament") },
+    { value: "new", label: t("newTestament") },
+  ] as const
+  // iOS draws its own control, so it gets Liquid Glass and its touch response.
+  // Only `appearance` is set: a tint or a fill replaces the system look.
+  if (canUseNativeSegmentedControl()) {
+    return (
+      <SegmentedControl
+        testID="bible-passage-testament"
+        values={options.map((option) => option.label)}
+        selectedIndex={value === "old" ? 0 : 1}
+        onChange={(event) =>
+          onChange(options[event.nativeEvent.selectedSegmentIndex].value)
+        }
+        appearance={tokens.scheme}
+        fontStyle={NATIVE_SEGMENT_FONT}
+        activeFontStyle={NATIVE_SEGMENT_FONT}
+        style={styles.nativeSegments}
+      />
+    )
+  }
+  return (
+    // Elsewhere the track is glass; the selected segment is a solid pill on it, as in
+    // the iOS 26 segmented control.
+    <ReaderGlassSurface tokens={tokens} style={styles.segments}>
+      <View accessibilityRole="radiogroup" style={styles.segmentRow}>
+        {options.map((option) => {
+          const selected = option.value === value
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => {
+                if (!selected) onChange(option.value)
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={option.label}
+              {...{
+                "dd-action-name": `bible-passage-testament-${option.value}`,
+              }}
+              style={({ pressed }) => [
+                styles.segment,
+                selected && { backgroundColor: controls.selectedFill },
+                pressed && feedback.pressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  { color: selected ? controls.selectedText : controls.text },
+                ]}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </ReaderGlassSurface>
   )
 }
 
@@ -334,6 +418,10 @@ function NumberGrid({
   )
 }
 
+// UISegmentedControl's 13 pt default read small in the sheet. A size with no
+// color changes only the text: the label color and the glass stay the system's.
+const NATIVE_SEGMENT_FONT = { fontSize: 15 }
+
 const CELL_WIDTH = 56
 
 const styles = StyleSheet.create({
@@ -351,10 +439,32 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+  nativeSegments: {
+    marginTop: 12,
+    // The library's 32 pt default is sized for 13 pt text.
+    height: 36,
+  },
+  segments: {
+    marginTop: 12,
+    padding: 3,
+    borderRadius: 22,
+    overflow: "hidden",
+  },
+  segmentRow: {
+    flexDirection: "row",
+  },
+  segment: {
+    flex: 1,
+    // With the track's padding, the whole control is a 44 pt touch target.
+    minHeight: 38,
+    paddingHorizontal: 6,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentText: {
+    fontSize: 15,
+    fontWeight: "500",
   },
   bookRow: {
     flexDirection: "row",

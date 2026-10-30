@@ -25,9 +25,12 @@ import {
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 type WatchHomeExperiencePageProps = {
   audienceEnabled?: boolean
+  /** Published audience configuration; absent keeps the code definitions. */
+  audience?: WatchAudienceResolution
   heroModel: WatchHomeModel
   blocks: readonly Section[]
   locale?: string
@@ -149,6 +152,7 @@ function isDynamicMediaCollectionBlock(block: Section) {
 
 export function WatchHomeExperiencePage({
   audienceEnabled = false,
+  audience,
   heroModel,
   blocks,
   locale = "en",
@@ -249,6 +253,11 @@ export function WatchHomeExperiencePage({
     )
     const typename = (block as { readonly __typename?: string | null })
       .__typename
+    // The audience frame is the one shared band above, fed by the published
+    // configuration. The authored block only carries that data: it keeps its
+    // place (and every other block's key and placement index) but mounts
+    // nothing, so the questionnaire never appears twice.
+    if (typename === "WatchAudienceBlock") return <Fragment key={blockKey} />
     const instrumentedBlock =
       typename === "LanguageGlobeBlock" ? (
         <Fragment key={blockKey}>{renderedBlock}</Fragment>
@@ -295,101 +304,106 @@ export function WatchHomeExperiencePage({
   }
 
   return (
-    <main
-      // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
-      // axis to `auto`, which makes this element the scroll container and
-      // silently stops the hero below from sticking. Clip does not establish a
-      // scroll container, so the pin survives.
-      className="min-h-screen overflow-x-clip bg-black text-white"
-    >
-      <div
-        className="relative font-sans text-white"
-        style={{ minHeight: "100svh" }}
+    <>
+      <main
+        // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
+        // axis to `auto`, which makes this element the scroll container and
+        // silently stops the hero below from sticking. Clip does not establish a
+        // scroll container, so the pin survives.
+        className="min-h-screen overflow-x-clip bg-black text-white"
       >
-        <div className="sticky top-0 z-[1] mx-auto h-screen max-w-[1920px] overflow-hidden bg-black/10">
-          {backdrop ? (
-            <Image
-              src={backdrop.url}
-              alt={backdrop.alt}
-              fill
-              priority
-              sizes="100vw"
-              className="scale-110 object-cover opacity-45 blur-sm"
-            />
-          ) : (
+        <div
+          className="relative font-sans text-white"
+          style={{ minHeight: "100svh" }}
+        >
+          <div className="sticky top-0 z-[1] mx-auto h-screen max-w-[1920px] overflow-hidden bg-black/10">
+            {backdrop ? (
+              <Image
+                src={backdrop.url}
+                alt={backdrop.alt}
+                fill
+                priority
+                sizes="100vw"
+                className="scale-110 object-cover opacity-45 blur-sm"
+              />
+            ) : (
+              <div
+                aria-hidden
+                className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_50%,#14332c)]"
+              />
+            )}
             <div
               aria-hidden
-              className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_50%,#14332c)]"
+              className="absolute inset-0 bg-black/10"
+              style={{ backdropFilter: "brightness(.6) blur(40px)" }}
             />
-          )}
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-black/10"
-            style={{ backdropFilter: "brightness(.6) blur(40px)" }}
-          />
-          <div aria-hidden className="absolute inset-0 bg-black/35" />
-        </div>
+            <div aria-hidden className="absolute inset-0 bg-black/35" />
+          </div>
 
-        {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
+          {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
             rail to the viewport edges. `html`/`body` already clip the page,
             so nothing gains a horizontal scrollbar. */}
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
-          {normalized.hasAuthoredPageHeading ? null : (
-            <h1 className="sr-only">{t("pageTitle")}</h1>
-          )}
-          {heroAboveBodyZone ? (
-            <Suspense
-              fallback={
-                <div
-                  role="status"
-                  aria-busy="true"
-                  aria-label={tLoading("loadingContent")}
-                  className="relative h-[66svh] w-full animate-pulse bg-stone-900 md:h-[min(100svh,56.25vw)]"
-                >
-                  <div className="absolute bottom-8 left-6 right-6 flex flex-col gap-3 md:left-12 md:right-12">
-                    <div className="h-10 w-2/3 rounded bg-stone-800 md:h-14" />
-                    <div className="h-4 w-1/3 rounded bg-stone-800" />
-                  </div>
-                </div>
-              }
-            >
-              <WatchHomeTvCarousel
-                heroManifestCatalog={
-                  signWatchHomeHeroManifestCatalog(
-                    watchHomeHeroSource(heroModel),
-                  ) ?? undefined
-                }
-                slides={heroModel.heroSlides}
-                sequence={heroModel.carousel}
-              />
-            </Suspense>
-          ) : null}
-          <WatchHomeBodyZone>
+          <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
+            {normalized.hasAuthoredPageHeading ? null : (
+              <h1 className="sr-only">{t("pageTitle")}</h1>
+            )}
             {heroAboveBodyZone ? (
-              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+              <Suspense
+                fallback={
+                  <div
+                    role="status"
+                    aria-busy="true"
+                    aria-label={tLoading("loadingContent")}
+                    className="relative h-[66svh] w-full animate-pulse bg-stone-900 md:h-[min(100svh,56.25vw)]"
+                  >
+                    <div className="absolute bottom-8 left-6 right-6 flex flex-col gap-3 md:left-12 md:right-12">
+                      <div className="h-10 w-2/3 rounded bg-stone-800 md:h-14" />
+                      <div className="h-4 w-1/3 rounded bg-stone-800" />
+                    </div>
+                  </div>
+                }
+              >
+                <WatchHomeTvCarousel
+                  heroManifestCatalog={
+                    signWatchHomeHeroManifestCatalog(
+                      watchHomeHeroSource(heroModel),
+                    ) ?? undefined
+                  }
+                  slides={heroModel.heroSlides}
+                  sequence={heroModel.carousel}
+                />
+              </Suspense>
             ) : null}
-            {audienceEnabled ? (
-              <WatchHomeRoleBand languageSlug={languageSlug} locale={locale} />
-            ) : null}
-            {bodyZoneBlocks.map((block, index) => {
-              // Keep the original index so a block without a `sectionKey`
-              // keeps the key it had before the hero was hoisted out.
-              const renderIndex = leadsWithHeroBlock ? index + 1 : index
-              return (
-                <Suspense
-                  key={watchHomeBlockKey(block, renderIndex)}
-                  fallback={null}
-                >
-                  {renderBlock(block, renderIndex)}
-                </Suspense>
-              )
-            })}
-            <Suspense fallback={null}>
-              <WatchHomeFooter />
-            </Suspense>
-          </WatchHomeBodyZone>
+            <WatchHomeBodyZone>
+              {audienceEnabled ? (
+                <WatchHomeRoleBand
+                  audience={audience}
+                  languageSlug={languageSlug}
+                />
+              ) : null}
+              {heroAboveBodyZone ? (
+                <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+              ) : null}
+              {bodyZoneBlocks.map((block, index) => {
+                // Keep the original index so a block without a `sectionKey`
+                // keeps the key it had before the hero was hoisted out.
+                const renderIndex = leadsWithHeroBlock ? index + 1 : index
+                return (
+                  <Suspense
+                    key={watchHomeBlockKey(block, renderIndex)}
+                    fallback={null}
+                  >
+                    {renderBlock(block, renderIndex)}
+                  </Suspense>
+                )
+              })}
+            </WatchHomeBodyZone>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+      <Suspense fallback={null}>
+        <WatchHomeFooter />
+      </Suspense>
+    </>
   )
 }

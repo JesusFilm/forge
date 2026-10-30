@@ -32,6 +32,10 @@ jest.mock("../../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
 const mockGetLocales = jest.fn()
+const mockNativeSegments = { on: false }
+jest.mock("../../../../lib/nativeSegmentedControl", () => ({
+  canUseNativeSegmentedControl: () => mockNativeSegments.on,
+}))
 jest.mock("expo-localization", () => ({
   getLocales: () => mockGetLocales(),
 }))
@@ -100,6 +104,8 @@ const COPY = {
   notInTranslation: (shortName: string) =>
     passageT("notInTranslation", { shortName }),
   chapterTitle: (bookName: string, chapter: number) => `${bookName} ${chapter}`,
+  oldTestament: passageT("oldTestament"),
+  newTestament: passageT("newTestament"),
 }
 const TOKENS = readerTokens("light")
 const ALL: ReadonlySet<UsfmBookId> = new Set(BIBLE_BOOKS.map((b) => b.usfm))
@@ -205,6 +211,7 @@ describe("PassagePicker", () => {
 
   it("picks once on a fast double tap", async () => {
     const { renderer, onPick } = await render({ translation: null })
+    await press(renderer, COPY.newTestament)
     await press(renderer, "John")
     await press(renderer, COPY.chapter(3))
     await press(renderer, COPY.verse(16))
@@ -215,6 +222,7 @@ describe("PassagePicker", () => {
 
   it("goes back a step at a time", async () => {
     const { renderer } = await render()
+    await press(renderer, COPY.newTestament)
     await press(renderer, "John")
     await press(renderer, COPY.chapter(3))
     expect(labelsWithPrefix(renderer, "Verse ")).toHaveLength(36)
@@ -222,8 +230,98 @@ describe("PassagePicker", () => {
     await press(renderer, COPY.goBackTo(COPY.backToChapters))
     expect(labelsWithPrefix(renderer, "Chapter ")).toHaveLength(21)
     await press(renderer, COPY.goBackTo(COPY.backToBooks))
-    expect(pressables(renderer, "Genesis")).toHaveLength(1)
+    // The book list keeps the testament it had.
+    expect(pressables(renderer, "John")).toHaveLength(1)
+    expect(pressables(renderer, "Genesis")).toHaveLength(0)
     expect(labelsWithPrefix(renderer, "Chapter ")).toHaveLength(0)
+  })
+
+  it("shows one testament at a time, and switches with the control", async () => {
+    const { renderer } = await render()
+    expect(isSelected(renderer, COPY.oldTestament)).toBe(true)
+    expect(pressables(renderer, "Genesis")).toHaveLength(1)
+    expect(pressables(renderer, "Matthew")).toHaveLength(0)
+
+    await press(renderer, COPY.newTestament)
+    expect(isSelected(renderer, COPY.newTestament)).toBe(true)
+    expect(pressables(renderer, "Matthew")).toHaveLength(1)
+    expect(pressables(renderer, "Genesis")).toHaveLength(0)
+  })
+
+  it("opens on the current book's testament", async () => {
+    const { renderer } = await render({
+      current: { book: "HEB", chapter: 12, verse: 2 },
+    })
+    expect(isSelected(renderer, COPY.newTestament)).toBe(true)
+    expect(isSelected(renderer, "Hebrews")).toBe(true)
+  })
+
+  it("names each step's choice in the title, with the reference under it", async () => {
+    const { renderer } = await render({ translation: null })
+    const header = () =>
+      renderer.root
+        .findAll(
+          (node) =>
+            node.type === "Text" && node.props.accessibilityRole === "header",
+        )
+        .map((node) => node.props.children)
+    const has = (text: string) =>
+      renderer.root.findAll(
+        (node) => node.type === "Text" && node.props.children === text,
+      ).length > 0
+    expect(header()).toEqual([passageT("chooseBook")])
+
+    await press(renderer, "Genesis")
+    expect(header()).toEqual([passageT("chooseChapter")])
+    expect(has("Genesis")).toBe(true)
+
+    await press(renderer, COPY.chapter(1))
+    expect(header()).toEqual([passageT("chooseVerse")])
+    expect(has(COPY.chapterTitle("Genesis", 1))).toBe(true)
+  })
+
+  it("uses iOS's own segmented control where the binary has it", async () => {
+    mockNativeSegments.on = true
+    try {
+      const { renderer } = await render({
+        current: { book: "HEB", chapter: 12, verse: 2 },
+      })
+      const [native] = renderer.root.findAll(
+        (node) =>
+          typeof node.type !== "string" &&
+          node.props.testID === "bible-passage-testament" &&
+          Array.isArray(node.props.values),
+      )
+      expect(native.props.values).toEqual([
+        COPY.oldTestament,
+        COPY.newTestament,
+      ])
+      expect(native.props.selectedIndex).toBe(1)
+      // No tint or fill: those replace the system's Liquid Glass look.
+      expect(native.props.tintColor).toBeUndefined()
+      expect(native.props.backgroundColor).toBeUndefined()
+      expect(native.props.appearance).toBe(TOKENS.scheme)
+      // A font size alone keeps the system's label colors.
+      expect(native.props.fontStyle).toEqual({ fontSize: 15 })
+      expect(native.props.activeFontStyle).toEqual({ fontSize: 15 })
+      expect(pressables(renderer, COPY.oldTestament)).toHaveLength(0)
+
+      await act(async () => {
+        ;(native.props.onChange as (event: unknown) => void)({
+          nativeEvent: { selectedSegmentIndex: 0, value: COPY.oldTestament },
+        })
+      })
+      expect(pressables(renderer, "Genesis")).toHaveLength(1)
+      expect(pressables(renderer, "Hebrews")).toHaveLength(0)
+    } finally {
+      mockNativeSegments.on = false
+    }
+  })
+
+  it("hides the control after a book is picked", async () => {
+    const { renderer } = await render()
+    await press(renderer, "Psalms")
+    expect(pressables(renderer, COPY.newTestament)).toHaveLength(0)
   })
 
   it("marks the current book, chapter, and verse", async () => {
@@ -244,8 +342,10 @@ describe("PassagePicker", () => {
       translation: { id: "xyz_nt", shortName: "XYZ", books: NEW_TESTAMENT },
     })
     const label = `Genesis, ${COPY.notInTranslation("XYZ")}`
-    expect(pressables(renderer, label)).toHaveLength(1)
+    // A New Testament opens on its own books.
     expect(pressables(renderer, "Matthew")).toHaveLength(1)
+    await press(renderer, COPY.oldTestament)
+    expect(pressables(renderer, label)).toHaveLength(1)
     await press(renderer, label)
     expect(labelsWithPrefix(renderer, "Chapter ")).toHaveLength(50)
     await press(renderer, COPY.chapter(1))
@@ -287,8 +387,9 @@ describe("PassagePicker", () => {
         bookNames: new Map([["MAT", "마태복음"]]),
       })
       const label = `Genesis, ${COPY.notInTranslation("XYZ")}`
-      expect(pressables(renderer, label)).toHaveLength(1)
       expect(pressables(renderer, "마태복음")).toHaveLength(1)
+      await press(renderer, COPY.oldTestament)
+      expect(pressables(renderer, label)).toHaveLength(1)
     })
   })
 

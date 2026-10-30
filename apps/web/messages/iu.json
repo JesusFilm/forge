@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video-mut ingerlaaruk",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Pigiarvigijumut nuuguk"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",
     "navigation": "Quppernerit ingerlaarfii",

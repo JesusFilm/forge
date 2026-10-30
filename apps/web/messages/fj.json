@@ -530,6 +530,9 @@
     "scrollToVideo": "Lako ki na vidio {title}",
     "forYou": "Me baleti iko"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lako vakadodonu ki na ka bibi"
+  },
   "WatchFooter": {
     "home": "Tabana levu ni Jesus Film Project",
     "navigation": "Navigation ni footer",

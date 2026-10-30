@@ -17,6 +17,12 @@ export type WebOAuthConfig = {
   issuerUrl: string
   clientId: string
   webBaseUrl: string
+  /**
+   * Admin's OAuth resource (RFC 8707). Sent on both the authorize request
+   * and the code exchange so the access token's audience names Admin; the
+   * public PKCE client and every scope stay unchanged.
+   */
+  adminResource?: string
 }
 
 export type WebTokenResponse = {
@@ -54,6 +60,9 @@ export function getWebOAuthConfig(options?: {
     issuerUrl,
     clientId,
     webBaseUrl,
+    ...(env.WEB_AUTH_ADMIN_RESOURCE
+      ? { adminResource: env.WEB_AUTH_ADMIN_RESOURCE }
+      : {}),
   }
 }
 
@@ -80,6 +89,9 @@ export function buildWebAuthorizeUrl({
   url.searchParams.set("state", state)
   url.searchParams.set("code_challenge", codeChallenge)
   url.searchParams.set("code_challenge_method", "S256")
+  if (config.adminResource) {
+    url.searchParams.set("resource", config.adminResource)
+  }
   if (prompt) {
     url.searchParams.set("prompt", prompt)
   }
@@ -103,6 +115,7 @@ export async function exchangeWebAuthorizationCode({
     client_id: config.clientId,
     code_verifier: codeVerifier,
   })
+  if (config.adminResource) body.set("resource", config.adminResource)
 
   const response = await fetch(
     new URL("/api/auth/oauth2/token", config.issuerUrl),

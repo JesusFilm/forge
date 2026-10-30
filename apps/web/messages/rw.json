@@ -530,6 +530,9 @@
     "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Simbukira ku bikubiyemo by'ingenzi"
+  },
   "WatchFooter": {
     "home": "Urupapuro rwa mbere rwa Jesus Film Project",
     "navigation": "Igenzura ryo hasi",

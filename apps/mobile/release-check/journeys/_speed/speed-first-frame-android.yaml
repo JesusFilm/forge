@@ -1,0 +1,11 @@
+# The Android speed pass first video frame (KTD19, R21). Maestro's openLink
+# waits for the screen to settle, and a playing video never settles, so the
+# runner sends the link itself while this step waits. Keep the label.
+appId: org.jesusfilm.forgewatch
+name: speed-first-frame-android
+---
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 90000
+    label: The first video frame shows

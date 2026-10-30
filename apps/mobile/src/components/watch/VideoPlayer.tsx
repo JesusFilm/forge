@@ -85,6 +85,8 @@ type VideoPlayerProps = {
   recoverSourceUrl?: string | null
   /** Last position seen while healthy, from the adapter's 1s poll. */
   getHealthyPosition?: () => number
+  /** The adapter's monitor facade for an error reload (KTD16). */
+  onSourceReload?: (url: string) => () => void
   posterUrl: string | null
   subtitleVttSrc?: string | null
   onPlayingChange?: (isPlaying: boolean) => void
@@ -144,6 +146,7 @@ export function VideoPlayer({
   streamingUrl,
   recoverSourceUrl = null,
   getHealthyPosition,
+  onSourceReload,
   posterUrl,
   subtitleVttSrc = null,
   onPlayingChange,
@@ -215,6 +218,7 @@ export function VideoPlayer({
     recoverSourceUrl ?? streamingUrl,
     castRemoteActive,
     getHealthyPosition,
+    onSourceReload,
   )
 
   // Releases the pre-autostart suppression below for a load that neither starts
@@ -771,6 +775,14 @@ export function VideoPlayer({
             accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         </Animated.View>
+      )}
+
+      {hasStarted && (
+        <View
+          testID="player-first-frame"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
       )}
 
       {awaitingAutostart && <PlayerLoadingVeil />}

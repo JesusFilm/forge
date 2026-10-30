@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} wideosyna geçiň",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Esasy mazmuna geç"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project baş sahypasy",
     "navigation": "Aşaky navigasiýa",

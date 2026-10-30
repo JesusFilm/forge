@@ -14,7 +14,7 @@ import {
 import { PanelLoading } from "./PanelLoading"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
-import { AndroidDetailsTrackPanel } from "./AndroidDetailsTrackPanel"
+import { NativeDetailsTrackPanel } from "./NativeDetailsTrackPanel"
 
 type Props = {
   visible: boolean
@@ -24,9 +24,9 @@ type Props = {
 }
 
 export function SubtitlePanel(props: Props) {
-  if (Platform.OS === "android")
+  if (Platform.OS === "android" || Platform.OS === "ios")
     return props.visible ? (
-      <AndroidDetailsTrackPanel kind="subtitles" {...props} />
+      <NativeDetailsTrackPanel kind="subtitles" {...props} />
     ) : null
   return <ReactSubtitlePanel {...props} />
 }

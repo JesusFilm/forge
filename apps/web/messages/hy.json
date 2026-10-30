@@ -530,6 +530,9 @@
     "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
     "forYou": "Ձեզ համար"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Անցնել հիմնական բովանդակությանը"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project գլխավոր էջ",
     "navigation": "Ներքևի նավիգացիա",

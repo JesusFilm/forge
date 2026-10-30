@@ -530,6 +530,9 @@
     "scrollToVideo": "Sklai sha ka video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Leit sha ka jingthoh kongsan"
+  },
   "WatchFooter": {
     "home": "Ka home jong Jesus Film Project",
     "navigation": "Ka jingpynïaid ha trai sla",

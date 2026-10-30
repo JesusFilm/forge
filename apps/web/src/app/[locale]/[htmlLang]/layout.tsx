@@ -1,10 +1,11 @@
 import type { ReactNode } from "react"
 import type { Metadata, Viewport } from "next"
 import { NextIntlClientProvider } from "next-intl"
-import { setRequestLocale } from "next-intl/server"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import "../../globals.css"
 import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
+import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 import {
   DEFAULT_LOCALE,
   resolveWatchHtmlLangIdentity,
@@ -15,7 +16,6 @@ import { montserrat } from "@/lib/watch-font"
 import { WATCH_APP_METADATA } from "@/lib/watch-app-metadata"
 import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
-import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
@@ -56,6 +56,10 @@ export default async function RootLayout({
     locale,
     GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   )
+  const accessibilityT = await getTranslations({
+    locale,
+    namespace: "WatchAccessibility",
+  })
   return (
     <html
       lang={htmlLang}
@@ -72,10 +76,16 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
+        <a
+          href={`#${WATCH_MAIN_CONTENT_ID}`}
+          data-testid="watch-skip-to-main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:block focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-black focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-black"
+        >
+          {accessibilityT("skipToMainContent")}
+        </a>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <GoogleAnalytics />
-          <RecommendationConsentShell />
           <WatchModalActivityProvider>{children}</WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>

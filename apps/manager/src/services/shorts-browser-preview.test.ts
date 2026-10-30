@@ -1,3 +1,4 @@
+import { z } from "zod"
 import { afterEach, expect, it, vi } from "vitest"
 import { studioDocumentSchema } from "@forge/studio-contracts"
 import { studioSourceSnapshotSchema } from "@forge/studio-contracts/sources"
@@ -59,7 +60,6 @@ const document = studioDocumentSchema.parse({
     },
   ],
   components: [],
-  packRevisionIds: [],
 })
 afterEach(() => vi.unstubAllGlobals())
 it("previews descriptors with no service/key/codec, download, registration or document mutation", async () => {
@@ -101,4 +101,40 @@ it("refuses a noncanonical source host", async () => {
       document,
     ),
   ).rejects.toThrow("Unapproved canonical media host")
+})
+
+it("loads media after audio edits against a source validator with legacy audio fields", async () => {
+  const edited = studioDocumentSchema.parse({
+    ...document,
+    items: document.items.map((item) => ({
+      ...item,
+      volume: 10 ** 1.5,
+      audioFade: {
+        fadeInFrames: 10,
+        fadeOutFrames: 10,
+        fadeInCurve: 0.5,
+        fadeOutCurve: -0.5,
+        fadeInCurvePosition: 0.75,
+        fadeOutCurvePosition: 0.25,
+      },
+    })),
+  })
+  const before = structuredClone(edited)
+  const call = vi.fn(async (_action: string, input: unknown) => {
+    const submitted = z
+      .object({ document: studioDocumentSchema })
+      .parse(input).document
+    const clip = submitted.items[0]!
+    expect(clip).not.toHaveProperty("audioFade")
+    if (clip.kind !== "video") throw Error("Video fixture required")
+    expect(clip.volume).toBeLessThanOrEqual(2)
+    expect(clip.source).toEqual(snapshot.source)
+    expect(clip.startFrame).toBe(edited.items[0]!.startFrame)
+    expect(clip.durationInFrames).toBe(edited.items[0]!.durationInFrames)
+    return [{ itemId: "clip", snapshot: snapshot }]
+  })
+  const value = await prepareBrowserPreview(call, "project", edited)
+  expect(value.input.document).toEqual(edited)
+  expect(value.input.media.clip).toBeDefined()
+  expect(edited).toEqual(before)
 })

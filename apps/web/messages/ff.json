@@ -530,6 +530,9 @@
     "scrollToVideo": "Jaltu e video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Yah to loowdi mawndi"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project keɓe",
     "navigation": "Fayde footer",
