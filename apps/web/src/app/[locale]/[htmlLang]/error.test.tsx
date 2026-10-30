@@ -32,7 +32,7 @@ describe.each([
   ["watch locale", WatchLocaleError],
   ["watch page", WatchPageError],
 ])("%s route error boundary", (_name, Boundary) => {
-  function renderBoundary(reset = vi.fn()) {
+  function renderBoundary(reset: () => void = vi.fn()) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale="en" messages={enMessages}>

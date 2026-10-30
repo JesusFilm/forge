@@ -39,7 +39,7 @@ Report: `docs/reports/2026-10-20-watch-overnight-audit.md`.
 1. `apps/web/src/components/ExperienceError.tsx`: the shared error view,
    its centered `40vh` box and the inline copy.
 2. `apps/web/src/app/[locale]/[htmlLang]/error.tsx` and
-   `apps/web/src/app/[locale]/[htmlLang]/[...rest]/error.tsx`: the route
+   `apps/web/src/app/[locale]/[htmlLang]/(content)/[...rest]/error.tsx`: the route
    boundaries that call `reset()`.
 3. PR #2637: the `#watch-main-content` skip target
    (`watchMainContentTargetProps`). It is the natural focus target after a
