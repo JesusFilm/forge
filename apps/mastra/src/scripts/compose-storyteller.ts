@@ -294,6 +294,23 @@ const STORIES: Record<
     ],
     out: "Transfiguration",
   },
+  "lumo-luke-9-boy": {
+    // No setting: "the next day, when they came down from the mountain"
+    // points back to the Transfiguration, which the card does not show; the
+    // previous episode covered it, so the opening links back instead.
+    terms: [
+      "Lunatic",
+      "Lunatics",
+      "Demon",
+      "Demoniacs",
+      "Possession",
+      "Exorcist",
+      "Faith",
+      "Unbelief",
+      "ON THE MORROW OF THE TRANSFIGURATION",
+    ],
+    out: "Boy with a Spirit",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the
@@ -507,15 +524,21 @@ async function main() {
   const [v1, v2] = [Number(pm[3]), Number(pm[4])]
   const passageText = range(chapterKey, v1, v2)
   const settingText = story.setting ? range(...story.setting.osis) : undefined
-  const entries = loadReflectionCorpora().ryleLuke.filter((e) => {
+  const sections = loadReflectionCorpora().ryleLuke.flatMap((e) => {
     const m = e.osisRef?.match(/^Luke\.(\d+)\.(\d+)-Luke\.(\d+)\.(\d+)$/)
-    return (
-      !!m &&
-      `Luke.${m[1]}` === chapterKey &&
-      Number(m[2]) >= v1 &&
-      Number(m[4]) <= v2
-    )
+    return m && `Luke.${m[1]}` === chapterKey
+      ? [{ e, from: Number(m[2]), to: Number(m[4]) }]
+      : []
   })
+  const inside = sections.filter((s) => s.from >= v1 && s.to <= v2)
+  // Ryle's section can run past the scene (Boy with a Spirit: his 9:37-45
+  // also covers 9:43b-45, which the card leaves out); take the section that
+  // starts inside the passage when none fits entirely.
+  const entries = (
+    inside.length
+      ? inside
+      : sections.filter((s) => s.from >= v1 && s.from <= v2)
+  ).map((s) => s.e)
   if (!entries.length)
     throw new Error(`no Ryle section inside ${src.passage.reference}`)
 

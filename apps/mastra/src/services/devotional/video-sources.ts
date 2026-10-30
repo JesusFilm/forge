@@ -430,6 +430,34 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-9-transfiguration.ru.vtt" },
     },
   },
+  {
+    // The boy with a spirit follows the Transfiguration in segment 2610. EN
+    // «The next day» starts at 220.5 («what they had seen» ends at 218.2);
+    // «greatness of God» (9:43a) ends at 296.0, crowd sound follows and 9:43b
+    // «While everyone was marveling» starts at 316.2. Between 263.4 and 277.3
+    // the film plays the healing without words (music), so the card holds a
+    // long silent stretch on purpose.
+    key: "lumo-luke-9-boy",
+    index: 1014,
+    mediaComponentId: "6_GOLuke2610",
+    title: "The Boy with a Spirit",
+    film: "lumo",
+    passage: { reference: "Luke 9:37-43", osisRef: "Luke.9.37-Luke.9.43" },
+    window: { startSec: 220.3, lengthSec: 76.7 },
+    // RU «На следующий день» starts at 220.9; «величием Бога» ends at 295.2.
+    windowByLang: { ru: { startSec: 220.7, lengthSec: 76.3 } },
+    // ~77s ×1.05 → ~73s on screen, plus a breath.
+    maxVideoCardSec: 75,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-9-boy.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-9-boy.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
