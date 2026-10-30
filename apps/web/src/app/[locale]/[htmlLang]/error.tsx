@@ -25,21 +25,23 @@ export default function WatchLocaleError({
   }, [error])
 
   return (
-    <main
-      // Renders outside WatchChromeShell, so it owns the skip-link target.
-      {...watchMainContentTargetProps}
-      className="min-h-screen bg-stone-900 text-stone-100"
-    >
-      <ExperienceError message="Something went wrong loading this page." />
-      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-8">
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-full border border-amber-400 px-4 py-2 text-base sm:text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-        >
-          {t("tryAgain")}
-        </button>
-      </div>
-    </main>
+    <div className="min-h-screen bg-stone-900 text-stone-100">
+      <ExperienceError
+        message="Something went wrong loading this page."
+        // Renders outside WatchChromeShell, so its one <main> owns the
+        // skip-link target.
+        mainProps={watchMainContentTargetProps}
+      >
+        <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-8">
+          <button
+            type="button"
+            onClick={reset}
+            className="min-h-11 rounded-full border border-amber-400 px-4 py-2 text-base sm:text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {t("tryAgain")}
+          </button>
+        </div>
+      </ExperienceError>
+    </div>
   )
 }
