@@ -43,7 +43,7 @@ const breakingPoint = {
   updatedAt: "2026-09-14T00:00:00.000Z",
 }
 
-function fakeCore() {
+function fakeCore(count = 1) {
   const requests: FakeCoreRequest[] = []
   const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
     const body = JSON.parse(String(init.body)) as FakeCoreRequest
@@ -80,8 +80,11 @@ function fakeCore() {
         data: {
           videos:
             offset === 0
-              ? [{ ...breakingPoint, ...authorizedGatedValues }]
+              ? body.query.includes("WatchVideoIds")
+                ? [{ id: breakingPoint.id }]
+                : [{ ...breakingPoint, ...authorizedGatedValues }]
               : [],
+          videosCount: count,
         },
       }),
     }
@@ -104,6 +107,7 @@ function fakePrisma() {
     videoRelation: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }
   const prisma = {
+    video: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     language: { findMany: vi.fn().mockResolvedValue([]) },
     videoOrigin: { findMany: vi.fn().mockResolvedValue([]) },
     keyword: { findMany: vi.fn().mockResolvedValue([]) },
@@ -147,5 +151,40 @@ describe("syncVideos against Core field authorization", () => {
         expect(selectsField(request.query, field)).toBe(false)
       }
     }
+  })
+
+  it("does not remove local CORE videos after a truncated eligibility scan", async () => {
+    const { fetchMock } = fakeCore(2)
+    vi.stubGlobal("fetch", fetchMock)
+    const { prisma } = fakePrisma()
+    const stats = await syncVideos({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+      since: "2026-08-03T11:02:48.000Z",
+    })
+    expect(stats.errors).toBe(1)
+    expect(prisma.video.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("soft-deletes disappeared CORE videos after a complete public ID scan", async () => {
+    const { fetchMock } = fakeCore()
+    vi.stubGlobal("fetch", fetchMock)
+    const { prisma } = fakePrisma()
+    prisma.video.updateMany.mockResolvedValue({ count: 1 })
+    const stats = await syncVideos({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+      since: "2026-08-03T11:02:48.000Z",
+    })
+    expect(stats.errors).toBe(0)
+    expect(stats.softDeleted).toBe(1)
+    expect(prisma.video.updateMany).toHaveBeenCalledWith({
+      where: {
+        source: "CORE",
+        coreId: { notIn: ["7_KnowGodBP"] },
+        deletedAt: null,
+      },
+      data: { deletedAt: expect.any(Date) },
+    })
   })
 })

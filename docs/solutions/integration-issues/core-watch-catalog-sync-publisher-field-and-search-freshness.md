@@ -120,6 +120,10 @@ restores the intended access contract without adding publisher credentials or
 overriding editorial visibility. Parent watermark caps prevent future child
 phases from permanently skipping data during a parent outage.
 
+**2026-09-30 incremental publication follow-up:** the full-snapshot mechanism
+below records the original recovery. Routine content publication is superseded by
+[the per-video live catalog and durable intent ledger](../architecture-patterns/incremental-watch-catalog-durable-intent-ledger.md).
+
 Admin data freshness and search freshness are separate. Before this repair,
 successful sync refreshed manifests but never the serving catalog. The new
 content publisher builds immutable catalog/lexical/availability snapshots against

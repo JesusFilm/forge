@@ -118,6 +118,43 @@ describe("automatic catalog resolution", () => {
       deps.generations.resolveGeneration.mock.calls[0][0],
     ).not.toHaveProperty("requireQualified")
   })
+  it("serves a separately owned live catalog without resolving it as a qualified generation", async () => {
+    const deps = dependencies({
+      generationId: null,
+      liveCollectionId: "core-live-example",
+      liveLexicalFields: [{ name: "title_fr", type: "string[]" }],
+    })
+    const profile = await resolvePublishedWatchCatalog(deps)
+    expect(profile.binding.catalog).toBe(
+      "watch_search_candidate_core-live-example_catalog",
+    )
+    expect(profile.fieldManifests?.lexical).toEqual([
+      { name: "title_fr", type: "string[]" },
+    ])
+    expect(deps.generations.resolveGeneration).not.toHaveBeenCalled()
+  })
+  it("changes the live probe identity after a dirty-only publication", async () => {
+    const deps = dependencies({
+      generationId: null,
+      liveCollectionId: "core-live-example",
+      liveLexicalFields: [{ name: "title_fr", type: "string[]" }],
+      lastPublishedAt: new Date("2026-09-30T01:00:00.000Z"),
+    })
+    const first = await resolvePublishedWatchCatalog(deps)
+    vi.mocked(deps.prisma.watchCatalogPublication.findUnique).mockResolvedValue(
+      {
+        generationId: null,
+        liveCollectionId: "core-live-example",
+        liveLexicalFields: [{ name: "title_fr", type: "string[]" }],
+        baseGenerationId: "base",
+        rankingRevision: "ranking-v3",
+        searchVersion: 3,
+        lastPublishedAt: new Date("2026-09-30T01:01:00.000Z"),
+      } as never,
+    )
+    const second = await resolvePublishedWatchCatalog(deps)
+    expect(second.qrelsRevision).not.toBe(first.qrelsRevision)
+  })
   it.each([
     { baseGenerationId: "another-base" },
     { rankingRevision: "other-ranking" },
