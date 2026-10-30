@@ -8,6 +8,19 @@ Date: 2026-10-20 (UTC 03:01–03:35). Read-only audit of production
 This is not a WCAG conformance claim. Findings cite measured values. The
 criteria named were checked against the W3C WCAG 2.2 Recommendation text.
 
+## October 29 merge-preparation note
+
+This report describes the October 20 audit window. Code fixes are prepared in
+#2637, #2669, #2740, #2826, #2829, #2837 and #2839, with current-main updates
+where required. Search focus containment in #2663 and the corrected single-row
+large-text header in #2835 remain subject to their combined production check.
+The reports' old PR states are not current merge approval.
+
+feat-763 stays in progress for its remaining content-title follow-up; its
+renderer, list semantics, contrast and redundant-alt changes are implemented
+in #2839. Missing/slug-like authored titles remain distinct from a renderer
+failure. No content-owner message is sent by this preparation task.
+
 ## Method
 
 - **Automated (supporting evidence):** axe-core 4.11.1 (already a repo

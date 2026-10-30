@@ -92,3 +92,12 @@ issues. Open PRs do not cover them:
   a slug from a real title. Not checked against real Admin data. Still
   open: report the empty and slug titles on
   `/watch/spanish-latin-american.html` to the content owners.
+
+## October 29 disposition
+
+Keep this ticket in progress. PR #2839 implements the renderer/list/contrast/alt
+changes described above, but that prepared PR is unmerged and the authored-title
+follow-up remains open. Do not rewrite slug-like titles heuristically or treat
+the historical data sample as a fresh production measurement. The remaining
+content observation is recorded here for the content owner; it is not an
+instruction for an agent to contact people without user authorization.
