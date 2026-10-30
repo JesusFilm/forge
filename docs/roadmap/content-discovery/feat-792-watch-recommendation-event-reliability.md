@@ -92,3 +92,35 @@ card surfaces use this rule; focused tests cover late acknowledgement and
 single navigation. The separate intermittent Redis admission and SQL stalls
 remain under investigation and must be measured during rollout before closing
 this ticket.
+
+## 30 Oct bounded post-schema observations
+
+The [physical-cleanup report](../../reports/2026-10-30-retired-behavioral-schema-removal.md)
+records actual Admin U2 source `161fd1e36d64453ac549bccc69b362a68cecf304`
+and unchanged Web `c2f0a0e52a58b62a848617fd773ba7d228bdcde6`. In the
+00:17:14–00:19:44 UTC interval, an uncapped Admin error-filtered read contained
+six retryable `facts`/`transaction_busy` attempt logs, at retry attempts one
+and two. These are attempt-level observations before the bounded retry
+continues, not final failed-persistence receipts. One matching event also
+appeared before U2. No terminal exhaustion was observed, but the available
+logs do not correlate every attempt to its final commit.
+
+The Web recommendation-event query reached its 100-frame cap and contained
+at least five playback `forbidden` HTTP 403 responses for
+`crawler=not_recognized`, seven delivery `invalid_fetch_metadata` HTTP 403
+responses for `ordinary_browser`, and one recognized-crawler playback
+rejection. Preserve these as unresolved signals until request, capability,
+origin/fetch-metadata and eventual receipt context establish whether each
+refusal was correct and what the viewer experienced. Do not infer a playback
+failure or a schema-removal cause from these logs alone. The narrower Web
+`outcome=failed` query and the Admin/Web HTTP 5xx queries returned zero;
+neither excludes these 403s or proves complete delivery reliability.
+
+Original private observations are in
+`/home/nisal/.codex/research/recommendation-schema-removal-905/logs-20261030T0020Z/`,
+`log-event-comparison-20261030T0022Z/` and
+`log-event-targeted-20261030T0023Z/`. Retain their caps, timestamps and original
+streams. The separate unlocalized React rendering error is feat-907. The
+existing [admission diagnostics PR #2953](https://github.com/JesusFilm/forge/pull/2953)
+addresses Redis admission observability; it is not evidence that these 403s,
+fact retries or rendering errors are repaired. This ticket remains in progress.

@@ -1,5 +1,33 @@
 # Recommendation roadmap closeout
 
+## October 30 physical profile/co-watch cleanup
+
+[Feat-905](../roadmap/content-discovery/feat-905-retired-behavioral-schema-removal.md)
+is complete after reviewed green runtime [#2963](https://github.com/JesusFilm/forge/pull/2963)
+and guarded schema [#2965](https://github.com/JesusFilm/forge/pull/2965)
+releases. Actual Admin HTTP and worker run
+`161fd1e36d64453ac549bccc69b362a68cecf304`. All 19 retired tables and their
+indexes are gone; retained scalar references, guards, current A/B and the
+31,080 cleanup receipt rows remain. Database allocation changed from 41.312 GB
+to 39.188 GB, while PGDATA free space rose from 7,205,188 to 9,280,128 KiB
+and usage fell from 85% to 81%. The [physical-cleanup report](2026-10-30-retired-behavioral-schema-removal.md)
+records separate measurements, actual release/checksum and independent bounded
+acceptance.
+
+The daily observer remains active with 21 retained health families and two
+extra inventories. At 00:19 UTC there were 254,617 newly expired rows, none
+more than 24 hours overdue; next ordinary wake is October 30 10:30 UTC.
+This release earns no new daily-cycle credit and does not fix the eight
+October 29 failures. Feat-554/756/609 remain open. The original 40 paths still
+read **11 complete, 26 cancelled and three in progress**; feat-902/905 are
+separate completed work.
+
+Physical cleanup is not global delivery clearance. The bounded serving check
+retained genuine fact retry and HTTP 403 signals under existing feat-792 and
+unlocalized Web React ref errors under new feat-907. Their cause/user impact
+remain unresolved; successful requests and zero sampled 5xx do not erase them.
+These follow-ups are outside the original 40-path inventory.
+
 ## October 29 scope change: retire behavioral recommendations
 
 The owner has retired viewer profiles, co-watch and behavioral background learners
@@ -32,7 +60,7 @@ complete, 26 cancelled and three in progress**: feat-609, feat-554 and feat-756.
 Feat-573 is cancelled by the October 29 owner decision; its prior refresh work
 and failures remain historical. New feat-902 is complete and
 [feat-905](../roadmap/content-discovery/feat-905-retired-behavioral-schema-removal.md)
-is a separate not-started physical-removal follow-up. Neither changes the
+is now separately complete under the October 30 physical-removal receipt above. Neither changes the
 original 40-path count. The October 23 and 27 ordinary loaded failure-free
 cycles still meet feat-554's cycle-count gate, while its operational margin and
 feat-756's larger Watch wave remain open. October 28 had six failed attempts

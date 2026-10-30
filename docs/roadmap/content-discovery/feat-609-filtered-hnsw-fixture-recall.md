@@ -115,6 +115,23 @@ that index, rebuild only that index against unchanged rows, and compare the
 same statement, plan and exact eligible count. A changed result would
 implicate graph construction rather than the observed runner image label.
 
+October 29 recurrence during the behavioral-runtime removal PR #2963:
+[run 40974368637, job 123799001151](https://github.com/JesusFilm/forge/actions/runs/40974368637/job/123799001151)
+on reviewed head `eb27a45a02b136ee43e8c69c6fc827c918ff4280` failed the
+unchanged HNSW six-card assertion. ANN returned zero; exact diagnostics found
+96 chunks and 12 eligible videos. The diagnostic scan returned zero over eight
+loops with 159 filter removals per loop, 6,543 shared hits, no shared reads and
+10.396 ms execution. It recorded pgvector 0.8.7, `force_custom_plan`,
+`strict_order`, 20,000 scan tuples, `ef_search=40`, scan-memory multiplier 1
+and `work_mem=4MB`; the separate 2x-memory comparison still returned zero.
+The assertion/fixture tail and production retrieval files were unchanged.
+One supported failed-job retry on the same reviewed head passed in attempt 2;
+all required checks were green before normal merge. This passing retry does
+not fix this ticket or establish a production retrieval defect. The separate
+schema-removal PR #2965 adapted retired profile fixture setup while preserving
+the HNSW geometry, index/query, six-card assertion and 1.5-second bound; its
+required checks passed without a retry. Keep this ticket in progress.
+
 ## Entry Points — Read These First
 
 1. `apps/admin/src/services/recommendations/delivery-retriever.db.test.ts` — `fills a six-card slate through HNSW despite nearer incompatible vectors`, `installIndexedContractSkew`, and its failure diagnostic.
