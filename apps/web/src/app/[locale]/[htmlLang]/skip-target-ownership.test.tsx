@@ -43,7 +43,7 @@ import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 
 import WatchLocaleError from "./error"
 import NotFound from "./not-found"
-import WatchPageError from "./[...rest]/error"
+import WatchPageError from "./(content)/[...rest]/error"
 
 const targetSelector = `#${WATCH_MAIN_CONTENT_ID}`
 

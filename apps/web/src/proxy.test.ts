@@ -56,6 +56,9 @@ const TEST_MANIFEST: WatchRouteManifest = {
       "wedding-in-cana": [2],
     },
   },
+  // Admin always emits this index (empty when nothing nests). Without it the
+  // proxy treats the manifest as older-shaped and its misses as unverified.
+  nestedContainerAudioLanguageIndexesByParent: {},
 }
 
 let resetManifestSource: (() => void) | null = null
@@ -109,9 +112,17 @@ function rewritePath(response: Response): string | null {
 function expectNotFoundRewrite(
   response: Response,
   expectedInternalPathname = "/en/en/404",
+  // 404 when the miss is verified. 200 only when the route manifest was
+  // unavailable, because Admin being unreachable does not prove the URL is
+  // gone (feat-757).
+  expectedStatus: 200 | 404 = 404,
 ): void {
-  expect(response.status).toBe(200)
-  expect(rewritePath(response)).toBe(expectedInternalPathname)
+  expect(response.status).toBe(expectedStatus)
+  expect(rewritePath(response)).toBe(
+    expectedStatus === 404
+      ? expectedInternalPathname
+      : expectedInternalPathname.replace(/\/404$/, "/recover"),
+  )
   // CSP is deliberately NOT set here — next.config.mjs `headers()` owns it for
   // every route. Middleware headers overwrite config ones, so a static value
   // written here would clobber the promoted policy after WATCH_CSP_ENFORCE.
@@ -119,7 +130,7 @@ function expectNotFoundRewrite(
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
-  ).toBe("/404")
+  ).toBe(expectedStatus === 404 ? "/404" : "/recover")
 }
 
 function expectUnavailableLanguageRewrite(
@@ -127,7 +138,7 @@ function expectUnavailableLanguageRewrite(
   expectedPublicPathname: string,
   expectedInternalPathname: string,
 ): void {
-  expect(response.status).toBe(200)
+  expect(response.status).toBe(404)
   expect(rewritePath(response)).toBe(expectedInternalPathname)
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
@@ -590,7 +601,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }))
 
     const response = await proxy(makeRequest("/jesus.html"))
-    expect(rewritePath(response)).toBe("/en/en/jesus.html")
+    expect(rewritePath(response)).toBe("/en/en/unconfirmed/jesus.html")
   })
 
   it("routes a known language-less English gap to the recovery sentinel", async () => {
@@ -651,7 +662,9 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/good-friday-live.html/chinese-simplified.html"),
     )
 
-    expectNotFoundRewrite(inconclusive, "/zh-Hans/zh-Hans/404")
+    // An older manifest cannot prove the miss, so it stays the unverified 200
+    // (feat-757).
+    expectNotFoundRewrite(inconclusive, "/zh-Hans/zh-Hans/404", 200)
   })
 
   it("admits canonical and explicit English parent routes through an English nested collection", async () => {
@@ -736,7 +749,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
 
     const response = await proxy(makeRequest("/jesus.html"))
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("rewrites one-segment public language homes with locale/htmlLang matching the slug", async () => {
@@ -1267,12 +1280,12 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(internationalResponse.status).toBe(200)
     expect(internationalResponse.headers.get("location")).toBeNull()
     expect(rewritePath(internationalResponse)).toBe(
-      "/es/es-419/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
+      "/es/es-419/unconfirmed/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
     )
     expect(englishCompatibilityResponse.status).toBe(200)
     expect(englishCompatibilityResponse.headers.get("location")).toBeNull()
     expect(rewritePath(englishCompatibilityResponse)).toBe(
-      "/en/en/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
+      "/en/en/unconfirmed/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
     )
   })
 
@@ -1284,7 +1297,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
     )
 
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("fails closed when an older manifest cannot prove exact episode English", async () => {
@@ -1298,7 +1311,33 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
     )
 
-    expectNotFoundRewrite(response)
+    // Still not rendered, but this valid implicit-English episode must not be
+    // reported as gone: the older manifest proves nothing about it (feat-757).
+    expectNotFoundRewrite(response, "/en/en/404", 200)
+  })
+
+  it("answers 404 only when a complete manifest proves the episode miss", async () => {
+    // Every index is present and this child is not a Lumo episode, so the
+    // manifest proves the miss.
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/not-a-lumo-episode.html"),
+    )
+
+    expectNotFoundRewrite(response, "/en/en/404", 404)
+  })
+
+  it("keeps a miss unverified when the manifest predates the nested-collection index", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      nestedContainerAudioLanguageIndexesByParent: undefined,
+    }))
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/not-a-lumo-episode.html"),
+    )
+
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("fails closed when the exact episode lacks English", async () => {
@@ -1463,6 +1502,37 @@ describe("proxy — visible internal-prefix policy", () => {
     )
     expectNotFoundRewrite(nonCanonicalPath)
   })
+
+  it.each([
+    ["/unknown-video.html/english.html", "/en/en/recover"],
+    [
+      "/good-friday-live.html/chinese-simplified.html",
+      "/zh-Hans/zh-Hans/unavailable/recover",
+    ],
+  ])(
+    "keeps inconclusive recovery bounded for %s",
+    async (publicPath, target) => {
+      resetManifestSource?.()
+      resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+        ...TEST_MANIFEST,
+        nestedContainerAudioLanguageIndexesByParent: undefined,
+      }))
+      const first = await proxy(makeRequest(publicPath))
+      expect(first.status).toBe(200)
+      expect(rewritePath(first)).toBe(target)
+      const admitted = await proxy(
+        makeRequest(target, { headers: rewrittenRequestHeaders(first) }),
+      )
+      expect(rewritePath(admitted)).toBeNull()
+      // A claim for the soft sentinel cannot admit the hard sentinel.
+      const forged = await proxy(
+        makeRequest(target.replace(/\/recover$/, "/404"), {
+          headers: rewrittenRequestHeaders(first),
+        }),
+      )
+      expectNotFoundRewrite(forged)
+    },
+  )
 
   it("allows only a re-proven unavailable sentinel rewrite to re-enter", async () => {
     const publicPath = "/good-friday-live.html/chinese-simplified.html"
@@ -1858,7 +1928,7 @@ describe("two-segment language disambiguation consults the live route manifest (
       makeRequest(`/jesus.html/${NEW_LANGUAGE}.html`),
     )
 
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
     expect(
       warn.mock.calls.some(([line]) =>
         String(line).includes(

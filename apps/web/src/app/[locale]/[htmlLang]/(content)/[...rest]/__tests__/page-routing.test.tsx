@@ -164,7 +164,7 @@ vi.mock("@/lib/watch-route-manifest", async () => {
 
 import SlugRestPage, {
   generateMetadata,
-} from "@/app/[locale]/[htmlLang]/[...rest]/page"
+} from "@/app/[locale]/[htmlLang]/(content)/[...rest]/page"
 import type { WatchVideoRecord } from "@/lib/content"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { asLocaleSlug, watchSubtitleIntentSegment } from "@/lib/routes"

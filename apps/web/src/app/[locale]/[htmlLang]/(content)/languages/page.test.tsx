@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import LanguagesPage, {
   generateMetadata,
-} from "@/app/[locale]/[htmlLang]/languages/page"
+} from "@/app/[locale]/[htmlLang]/(content)/languages/page"
 
 vi.mock("@/lib/language-index", () => ({
   getWatchLanguageIndex: vi.fn(async () => ({

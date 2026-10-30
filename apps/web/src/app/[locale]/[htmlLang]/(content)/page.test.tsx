@@ -63,7 +63,9 @@ vi.mock("@/components/WatchChromeShell", () => ({
   WatchChromeShell: watchChromeShellMock,
 }))
 
-import HomePage, { generateMetadata } from "@/app/[locale]/[htmlLang]/page"
+import HomePage, {
+  generateMetadata,
+} from "@/app/[locale]/[htmlLang]/(content)/page"
 import { WATCH_HOME_CLIENT_MESSAGE_NAMESPACES } from "@/i18n/client-messages"
 
 const heroModel = {

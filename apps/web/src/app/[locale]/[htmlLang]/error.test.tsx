@@ -7,7 +7,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import enMessages from "../../../../messages/en.json"
-import WatchPageError from "./[...rest]/error"
+import WatchPageError from "./(content)/[...rest]/error"
 import WatchLocaleError from "./error"
 
 vi.mock("@/components/DatadogRum", () => ({

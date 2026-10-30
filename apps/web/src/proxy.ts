@@ -36,6 +36,7 @@ import {
 } from "@/lib/url-shape"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
+  canWatchRouteManifestProveMiss,
   getWatchRouteManifest,
   isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
@@ -71,6 +72,7 @@ const DEMO_PREFIXES = new Set([
 ])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
+const WATCH_UNAVAILABLE_RECOVERY_PATH = "/unavailable/recover"
 /**
  * The error sentinels render copy from the `locale` message catalog, so their
  * document language must be the CHROME language — not the requested content
@@ -87,9 +89,12 @@ function chromeDocumentLang(locale: string, htmlLang: string): string {
 // does not match what buildNotFound emits would make every ordinary 404 fail
 // the admitted-internal-rewrite check.
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
-  [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
+  [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].flatMap((languageSlug) => {
     const { locale, htmlLang } = resolveWatchLocaleIdentity(languageSlug)
-    return `/${locale}/${chromeDocumentLang(locale, htmlLang)}/404`
+    return ["404", "recover"].map(
+      (sentinel) =>
+        `/${locale}/${chromeDocumentLang(locale, htmlLang)}/${sentinel}`,
+    )
   }),
 )
 
@@ -105,6 +110,7 @@ type RewriteDecision =
       htmlLang: string
       pathname: string
       internalPathname?: string
+      uncachedContent?: boolean
       languageHomeSlug?: string
       manifestRoute?: WatchRouteManifestRoute
       requiresExactEpisodeAdmission?: boolean
@@ -494,6 +500,7 @@ function rewriteToInternal(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
   manifest: WatchRouteManifest | null = null,
+  status?: 404,
 ): NextResponse {
   const url = request.nextUrl.clone()
   // HTTPS reverse proxies (including Tailscale Serve) can leave Next's dev
@@ -526,6 +533,7 @@ function rewriteToInternal(
   return applyWatchSecurityHeaders(
     NextResponse.rewrite(url, {
       request: { headers: requestHeaders },
+      ...(status ? { status } : {}),
     }),
   )
 }
@@ -539,11 +547,28 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const rendererPrefix = decision.uncachedContent ? "/unconfirmed" : ""
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${rendererPrefix}${suffix}${subtitleSuffix}`
   // Keep one URL encoding across direct rewrites and re-entry admission. Some
   // routes use a decoded manifest slug for their internal target while the
   // public path arrived percent-encoded.
   return encodeURI(decodeURI(internalPathname))
+}
+
+function admittedContentRewrite(
+  rewrite: Extract<RewriteDecision, { kind: "rewrite" }>,
+  admission: Extract<ManifestAdmissionDecision, { kind: "admit" }>,
+  manifest: WatchRouteManifest | null,
+): Extract<RewriteDecision, { kind: "rewrite" }> {
+  return {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+    // A proxy no-store header alone is overwritten by the force-static page.
+    // Keep fallback/last-good admission, but use an uncached renderer until
+    // authority recovers. The ordinary root and fresh positives stay static.
+    uncachedContent:
+      !!rewrite.manifestRoute && !canWatchRouteManifestProveMiss(manifest),
+  }
 }
 
 function subtitleIntentForRewrite(
@@ -596,37 +621,69 @@ function logImplicitEnglishEpisodeRejected(
   })
 }
 
+/**
+ * Hard sentinels must render outside the content loading boundary: Next does
+ * not carry a rewrite status into the App Router, and a streamed shell commits
+ * 200 before notFound(). Inconclusive misses render the same recovery UI through
+ * a fixed soft sentinel that does not throw.
+ */
 function buildNotFound(
   request: ProxyRequest,
   identity?: Pick<
     Extract<RewriteDecision, { kind: "rewrite" }>,
     "locale" | "htmlLang"
   >,
+  { verified = true }: { verified?: boolean } = {},
 ): NextResponse {
   const locale = identity?.locale ?? DEFAULT_LOCALE
-  return rewriteToInternal(request, {
-    kind: "rewrite",
-    locale,
-    // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
-    // so its document is in the CHROME language. Carrying the raw content tag
-    // would declare English recovery copy as Aari — the FGE-170
-    // mis-declaration pointed the other way.
-    htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
-    pathname: "/404",
-  })
+  return applyNotFoundRecoveryHeaders(
+    rewriteToInternal(
+      request,
+      {
+        kind: "rewrite",
+        locale,
+        // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
+        // so its document is in the CHROME language. Carrying the raw content tag
+        // would declare English recovery copy as Aari — the FGE-170
+        // mis-declaration pointed the other way.
+        htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
+        pathname: verified ? "/404" : "/recover",
+      },
+      null,
+      verified ? 404 : undefined,
+    ),
+  )
+}
+
+function applyNotFoundRecoveryHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  response.headers.set("X-Robots-Tag", "noindex, nofollow")
+  return response
 }
 
 function buildUnavailableLanguageNotFound(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): NextResponse {
-  return rewriteToInternal(request, {
-    ...decision,
-    // Same reason as buildNotFound: the unavailable-language sentinel renders
-    // chrome-language copy, so it must not declare the content language.
-    htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
-    internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
-  })
+  const verified = canWatchRouteManifestProveMiss(manifest)
+  return applyNotFoundRecoveryHeaders(
+    rewriteToInternal(
+      request,
+      {
+        ...decision,
+        // Same reason as buildNotFound: the unavailable-language sentinel renders
+        // chrome-language copy, so it must not declare the content language.
+        htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
+        internalPathname: verified
+          ? WATCH_UNAVAILABLE_SENTINEL_PATH
+          : WATCH_UNAVAILABLE_RECOVERY_PATH,
+      },
+      null,
+      // A stale or incomplete snapshot cannot prove a current language gap.
+      verified ? 404 : undefined,
+    ),
+  )
 }
 
 async function classifyManifestAdmission(
@@ -785,8 +842,14 @@ async function isAdmittedInternalRewrite(
   pathname: string,
   claimedPublicPathname: string,
 ): Promise<boolean> {
-  if (claimedPublicPathname === "/404") {
-    return WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS.has(pathname)
+  if (
+    claimedPublicPathname === "/404" ||
+    claimedPublicPathname === "/recover"
+  ) {
+    return (
+      WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS.has(pathname) &&
+      pathname.endsWith(claimedPublicPathname)
+    )
   }
   if (
     !claimedPublicPathname.startsWith("/") ||
@@ -811,7 +874,9 @@ async function isAdmittedInternalRewrite(
     }
     const unavailableRewrite = {
       ...rewrite,
-      internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+      internalPathname: canWatchRouteManifestProveMiss(manifest)
+        ? WATCH_UNAVAILABLE_SENTINEL_PATH
+        : WATCH_UNAVAILABLE_RECOVERY_PATH,
     }
     if (
       subtitleIntentForRewrite(request, unavailableRewrite, manifest) != null
@@ -822,10 +887,7 @@ async function isAdmittedInternalRewrite(
   }
   if (admission.kind !== "admit") return false
 
-  const admittedRewrite = {
-    ...rewrite,
-    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-  }
+  const admittedRewrite = admittedContentRewrite(rewrite, admission, manifest)
   const subtitleLanguageSlug = subtitleIntentForRewrite(
     request,
     admittedRewrite,
@@ -904,27 +966,36 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const manifest = await getWatchRouteManifest()
   const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
-  if (rewrite.kind === "not-found") return buildNotFound(request)
+  if (rewrite.kind === "not-found") {
+    return buildNotFound(request, undefined, {
+      verified: canWatchRouteManifestProveMiss(manifest),
+    })
+  }
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
-    return buildNotFound(request, rewrite)
+    return buildNotFound(request, rewrite, {
+      verified: canWatchRouteManifestProveMiss(manifest),
+    })
   }
   if (admission.kind === "known-content-language-gap") {
-    return buildUnavailableLanguageNotFound(request, rewrite)
+    return buildUnavailableLanguageNotFound(request, rewrite, manifest)
   }
   if (admission.kind === "redirect") {
     const url = request.nextUrl.clone()
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(
+  const response = rewriteToInternal(
     request,
-    {
-      ...rewrite,
-      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-    },
+    admittedContentRewrite(rewrite, admission, manifest),
     manifest,
   )
+  if (rewrite.manifestRoute && !canWatchRouteManifestProveMiss(manifest)) {
+    // Preserve existing fallback/positive admission, without caching a render
+    // whose route authority is unavailable, incomplete or beyond its TTL.
+    response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  }
+  return response
 }
 
 export const config = {
