@@ -123,3 +123,8 @@ or off-screen controls; backdrop and hover band cover the row. At 320/200%,
 keyboard opening focuses a visible search input. The separate return-focus
 repair is in #2663. Final combined hero and page-load checks remain release
 gates before this draft is marked ready. No new requests or client effects.
+
+The header PR is stacked on #2663 so the modal field's full-width layout and
+return-focus contract are retained. Closed-header compact rules stay inactive
+while that dialog owns the header. Preserve #2637's skip target in the final
+release tree. The hero portion still belongs to #2829.
