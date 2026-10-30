@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { EngagementComparison } from "../engagement-comparison"
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { PrecomputedCtrRead } from "@/services/recommendations/precomputed/ctr-report"
 import {
@@ -129,6 +130,7 @@ export function PrivateCtrReportView({
               .
             </p>
           )}
+          {report ? <EngagementComparison report={report} /> : null}
           {revisions.length ? (
             <div
               className="flex flex-wrap gap-3"

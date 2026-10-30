@@ -28,9 +28,9 @@ export type ClipDescriptionProps = {
   description: string | null
   /** The language of `description` (KTD13); null when it is not known. */
   descriptionLang?: string | null
-  /** "more" was tapped. The clip keeps playing; the overlay holds the video. */
+  /** "more", or the cut text, was tapped. The clip keeps playing; the overlay holds the video. */
   onExpand: () => void
-  /** "less" was tapped. */
+  /** "less", or the open text, was tapped. */
   onCollapse: () => void
 }
 
@@ -47,11 +47,20 @@ const EXPANDED_MAX_SCREEN_SHARE = 0.4
 /** 12 above and below a 20 pt line gives the 44 pt touch floor. */
 const TOGGLE_HIT_SLOP = { top: 12, bottom: 12, left: 8, right: 8 }
 
+/**
+ * The text tap is a touch shortcut only. Screen readers keep "more" and "less"
+ * as the controls, and read the text inside as plain text.
+ */
+const TEXT_TAP_A11Y = { accessible: false, focusable: false } as const
+
 function overflowsOneLine(e: TextLayoutEvent): boolean {
   return e.nativeEvent.lines.length > COLLAPSED_LINES
 }
 
-/** The clip's description: one line, with "more" at its end when it overflows (R15). */
+/**
+ * The clip's description: one line, with "more" at its end when it overflows (R15).
+ * A tap on the text works as "more" or "less" (owner, 2026-10-15).
+ */
 export function ClipDescription({
   description,
   descriptionLang,
@@ -106,13 +115,23 @@ export function ClipDescription({
         />
       ) : (
         <View style={styles.row}>
-          <Text
-            style={[bodyStyle, styles.line]}
-            numberOfLines={COLLAPSED_LINES}
-            accessibilityLanguage={bodyDirection.accessibilityLanguage}
+          <Pressable
+            testID="clip-description-text"
+            style={styles.line}
+            onPress={handleExpand}
+            // Text that fits has nothing to open, so its tap stays inert.
+            disabled={overflows !== true}
+            {...TEXT_TAP_A11Y}
+            {...{ "dd-action-name": "explore-description-text-more" }}
           >
-            {description}
-          </Text>
+            <Text
+              style={bodyStyle}
+              numberOfLines={COLLAPSED_LINES}
+              accessibilityLanguage={bodyDirection.accessibilityLanguage}
+            >
+              {description}
+            </Text>
+          </Pressable>
           {overflows === true && (
             <Pressable
               onPress={handleExpand}
@@ -234,9 +253,17 @@ function OpenDescription({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={releasePager}
     >
-      <Text style={bodyStyle} accessibilityLanguage={bodyLanguage}>
-        {description}
-      </Text>
+      {/* A drag that scrolls the text cancels this tap. */}
+      <Pressable
+        testID="clip-description-open-text"
+        onPress={onCollapse}
+        {...TEXT_TAP_A11Y}
+        {...{ "dd-action-name": "explore-description-text-less" }}
+      >
+        <Text style={bodyStyle} accessibilityLanguage={bodyLanguage}>
+          {description}
+        </Text>
+      </Pressable>
       <Pressable
         onPress={onCollapse}
         hitSlop={TOGGLE_HIT_SLOP}
@@ -261,11 +288,9 @@ const styles = StyleSheet.create({
   },
   body: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   toggleText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   more: {

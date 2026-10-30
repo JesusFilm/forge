@@ -18,6 +18,7 @@ import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
+import { ANIMATION_SETTINGS_ENABLED } from "../../lib/logoAnimations"
 import { useShowcasePrefs } from "../../lib/showcaseMode/useShowcasePrefs"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
@@ -111,6 +112,19 @@ export function SettingsScreen() {
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
 
+      {Platform.OS === "android" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Google TV Home</Text>
+          <SettingsRow
+            testID="settings-google-tv-home-row"
+            icon="tv-outline"
+            label="Content on Google TV Home"
+            onPress={() => router.push("/google-tv-home")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
+
       <SettingsRow
         testID="settings-back-home"
         icon="chevron-back"
@@ -118,16 +132,18 @@ export function SettingsScreen() {
         onPress={leaveSettings}
         onFocusNode={captureFocusedNode}
       />
-      <View style={styles.section}>
-        <Text style={styles.sectionHeading}>Watch animations</Text>
-        <SettingsRow
-          testID="settings-animations"
-          icon="sparkles-outline"
-          label="Animations"
-          onPress={() => router.push("/settings/animations")}
-          onFocusNode={captureFocusedNode}
-        />
-      </View>
+      {ANIMATION_SETTINGS_ENABLED && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Watch animations</Text>
+          <SettingsRow
+            testID="settings-animations"
+            icon="sparkles-outline"
+            label="Animations"
+            onPress={() => router.push("/settings/animations")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
 
       {topShelfPreviewEnabled(
         process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED,
@@ -267,8 +283,20 @@ export function SettingsScreen() {
 }
 
 function BetaTopShelfPreviewSync() {
-  const { model } = useWatchHome()
+  const { topShelfPreviewRevision, setTopShelfPreviewMessage } =
+    useWatchPreferences()
+  const { model, refreshing, error } = useWatchHome({
+    refreshOnForeground: true,
+    refreshKey: topShelfPreviewRevision,
+  })
   const [entries, setEntries] = useState<ContinueWatchingEntry[]>([])
+  useEffect(() => {
+    if (refreshing) setTopShelfPreviewMessage("Preparing Top Shelf content…")
+    else if (error)
+      setTopShelfPreviewMessage(
+        "Could not update Top Shelf (home content). Try again.",
+      )
+  }, [refreshing, error, setTopShelfPreviewMessage])
   useEffect(() => {
     let cancelled = false
     void loadContinueWatching().then((value) => {
@@ -278,7 +306,7 @@ function BetaTopShelfPreviewSync() {
       cancelled = true
     }
   }, [])
-  useTopShelfSync(model, entries, true, true)
+  useTopShelfSync(model, entries, !refreshing && !error, true)
   return null
 }
 

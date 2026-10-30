@@ -269,6 +269,7 @@ export function SubtitleOverlay({
         // A new key per cue remounts the text, so its first layout always
         // fires, even when the new cue's box is the same size as the last.
         key={fitKey ?? "caption"}
+        testID="player-subtitle-text"
         onLayout={fitKey == null ? undefined : handleTextLayout}
         style={[
           styles.text,
@@ -304,7 +305,6 @@ const styles = StyleSheet.create({
   text: {
     color: TEXT_ON_OVERLAY,
     fontSize: 16,
-    fontFamily: "System",
     textAlign: "center",
     backgroundColor: hexToRgba(BLACK, 0.7),
     paddingHorizontal: 10,

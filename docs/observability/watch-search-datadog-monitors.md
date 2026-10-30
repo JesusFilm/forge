@@ -7,7 +7,7 @@ need to build the monitor is here; you do not need the originating chat.
 - **Owner:** Urim · **Feature:** feat-335 (mobile search observability parity), unit U10
 - **Source of the signal:** `apps/mobile/src/lib/watchSearchLog.ts` (attribute
   builder + error-code classifier), emitted from
-  `apps/mobile/app/(tabs)/watch.tsx` through the Datadog RN SDK
+  `apps/mobile/app/(tabs)/watch/index.tsx` through the Datadog RN SDK
 - **Related runbooks:** `docs/operations/watch-search-analytics-datadog.md`
   (canonical query + full attribute contract),
   `docs/observability/fleet-ceiling-datadog-monitors.md` (the monitor-spec

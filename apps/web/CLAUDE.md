@@ -111,7 +111,19 @@ before a PR.
 
 ## i18n
 
-Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. Explicit public URLs carry locale and never follow cookies or browser-language headers. Only the bare entry routes (`/watch`, `/languages`, `/history`, `/whats-new`) resolve a saved Watch language before `Accept-Language`, then default English. Preference redirects use private caching; the destination renderer stays statically cached. There is no visible `/[locale]` URL prefix.
+Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier: Watch routing does not read language cookies or browser-language headers, and there is no visible `/[locale]` URL prefix.
+
+This URL-only rule is an explicit product decision, not an implementation
+accident. PR #1057 removed cookie routing after a stale `forge_watch_lang`
+cookie changed an explicit shared English URL into Bangla. PR #2658 later
+revived cookie and `Accept-Language` negotiation for bare entry routes from
+FGE-176 without reconciling that decision; feat-708 reverted it on 2026-10-15.
+Do not revive request-state Watch routing from the old audit, historical plans,
+the vestigial cookie helpers, or the existence of `parseAcceptLanguage`.
+Language changes must navigate to a URL that names the selected public audio
+language. See
+`docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`
+for the evidence and decision history.
 
 Public watch links must always pass the raw audio language slug, never the message-catalog key, into the route builders in `src/lib/routes.ts`. The canonical builder emits `/watch/{slug}.html` for eligible English and `/watch/{slug}.html/{language}.html` for non-English. Explicit English remains a direct compatibility URL and the internal renderer shape; a content slug colliding with a public language home also remains explicit-English. `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
@@ -227,6 +239,33 @@ back to `FORGE_*_DEFAULT` env vars and then to the existing local defaults.
 Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
+
+`forge.watch.audience` (default `false`, fallback env
+`FORGE_WATCH_AUDIENCE_DEFAULT`) gates every Watch audience surface: the home
+band, the watch-page questionnaire and its Explore/Share/Partner/Grow panels,
+`/watch/api/film-finder`, `/watch/api/learning-progress` GET/POST (its DELETE
+reset stays available, with its origin/subject/payload/revision checks), the
+Partner
+collection Server Action, and the audience frame in capability previews. Every
+read fails closed (an unreadable flag is off). Admin evaluates the same key
+for `Query.watchFilmFinder`, `WatchSetting.watchAudience`, own learning
+read/save, the editor's Watch Audience controls, and service writes that
+create, change, duplicate or publish a `watchAudience` block (see
+`apps/admin/.env.example`);
+serve Web and Admin the same value, and remember an LD flip reaches Admin only
+when Admin has `LAUNCHDARKLY_SDK_KEY`. Erasure, reset and account deletion are
+never gated.
+
+Rollout and rollback timing: home and catch-all Watch pages are `force-static`
+with `revalidate = 3600`, so the flag is read at render time, not per request.
+After a flip, cached pages keep the old state for up to about an hour plus CDN
+time. Do not add client polling to shorten that. For an instant change,
+revalidate the Watch cache tags (`watch:home`, `watch:settings`,
+`watch:experience`, `watch:video`, `watch:series`) through `/api/revalidate`,
+then purge the Cloudflare cache for Watch paths. During a rollback window,
+stale pages that still show the band get 404s from the finder and from
+progress reads/saves and show their unavailable states; resetting saved
+progress still works.
 
 One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 

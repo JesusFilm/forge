@@ -32,7 +32,6 @@ const document = studioDocumentSchema.parse({
     { id: "voice", kind: "audio" },
   ],
   components: [],
-  packRevisionIds: [],
   items: [
     {
       id: "first",

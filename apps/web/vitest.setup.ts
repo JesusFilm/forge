@@ -1,7 +1,10 @@
 import { vi } from "vitest"
 import arMessages from "./messages/ar.json"
 import enMessages from "./messages/en.json"
+import esMessages from "./messages/es.json"
+import hiMessages from "./messages/hi.json"
 import ruMessages from "./messages/ru.json"
+import urMessages from "./messages/ur.json"
 import zhHansMessages from "./messages/zh-Hans.json"
 
 const { createTranslator } =
@@ -19,7 +22,10 @@ process.env.WEB_ADMIN_API_KEYS ??= "test-admin-bearer-key"
 const catalogs: Record<string, Record<string, Record<string, string>>> = {
   ar: arMessages,
   en: enMessages,
+  es: esMessages,
+  hi: hiMessages,
   ru: ruMessages,
+  ur: urMessages,
   "zh-Hans": zhHansMessages,
 }
 let activeLocale = "en"

@@ -158,12 +158,10 @@ const styles = StyleSheet.create({
   },
   ghostText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   dangerText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
 })

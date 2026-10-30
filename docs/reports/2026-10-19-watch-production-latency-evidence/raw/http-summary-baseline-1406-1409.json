@@ -1,0 +1,148 @@
+{
+  "completion_window_utc": [
+    "2026-10-19T14:06:44.311470Z",
+    "2026-10-19T14:09:59.983758Z"
+  ],
+  "requests": 5000,
+  "instances": [
+    "00000000-0000-0000-0000-000000000000",
+    "5140c371-3531-4191-80c7-d87b18eda11e"
+  ],
+  "status_by_class": {
+    "static": {
+      "200": 644,
+      "499": 3,
+      "304": 10
+    },
+    "watch_page": {
+      "200": 2018,
+      "304": 138,
+      "301": 3,
+      "307": 83,
+      "499": 14
+    },
+    "watch_api": {
+      "200": 1083,
+      "302": 280,
+      "403": 593,
+      "499": 22,
+      "400": 3,
+      "429": 33
+    },
+    "watch_root": {
+      "200": 67,
+      "308": 5,
+      "400": 1
+    }
+  },
+  "client_closed_499": 39,
+  "duration_ms_by_class": {
+    "static": {
+      "n": 657,
+      "p50": 127,
+      "p90": 475,
+      "p95": 667,
+      "max": 1189,
+      "over_10s": 0,
+      "over_20s": 0
+    },
+    "watch_api": {
+      "n": 2014,
+      "p50": 69,
+      "p90": 254,
+      "p95": 391,
+      "max": 1115,
+      "over_10s": 0,
+      "over_20s": 0
+    },
+    "watch_page": {
+      "n": 2256,
+      "p50": 377,
+      "p90": 1330,
+      "p95": 2112,
+      "max": 7091,
+      "over_10s": 0,
+      "over_20s": 0
+    },
+    "watch_root": {
+      "n": 73,
+      "p50": 103,
+      "p90": 633,
+      "p95": 1079,
+      "max": 1466,
+      "over_10s": 0,
+      "over_20s": 0
+    }
+  },
+  "per_minute": {
+    "14:06": {
+      "completed": 399,
+      "arrived": 395
+    },
+    "14:07": {
+      "completed": 1529,
+      "arrived": 1532
+    },
+    "14:08": {
+      "completed": 1818,
+      "arrived": 1817
+    },
+    "14:09": {
+      "completed": 1254,
+      "arrived": 1251
+    }
+  },
+  "in_flight_samples_every_10s": [
+    {
+      "t": "14:07:44",
+      "all": 27,
+      "html": 24
+    },
+    {
+      "t": "14:07:54",
+      "all": 29,
+      "html": 11
+    },
+    {
+      "t": "14:08:04",
+      "all": 12,
+      "html": 9
+    },
+    {
+      "t": "14:08:14",
+      "all": 18,
+      "html": 9
+    },
+    {
+      "t": "14:08:24",
+      "all": 29,
+      "html": 27
+    },
+    {
+      "t": "14:08:34",
+      "all": 1,
+      "html": 1
+    },
+    {
+      "t": "14:08:44",
+      "all": 5,
+      "html": 3
+    },
+    {
+      "t": "14:08:54",
+      "all": 1,
+      "html": 1
+    },
+    {
+      "t": "14:09:04",
+      "all": 0,
+      "html": 0
+    },
+    {
+      "t": "14:09:14",
+      "all": 2,
+      "html": 1
+    }
+  ],
+  "note": "Completion-window bias: requests still in flight at the window end are absent, so late in-flight samples undercount; samples exclude the last 45 s."
+}

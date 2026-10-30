@@ -123,3 +123,21 @@ export function formatResumeLabel(resumeAtSeconds: number): string {
       : `${minutes}:${String(seconds).padStart(2, "0")}`
   return `Resume from ${clock}`
 }
+
+/** A storage result belongs only to the video whose resume point was read. */
+export type SavedResumePosition = {
+  videoId: string
+  positionSeconds: number | null
+}
+
+/** Hide the previous video's result immediately while the next read is pending. */
+export function getSavedResumePosition(
+  videoId: string | null | undefined,
+  saved: SavedResumePosition | null,
+): number | null {
+  return videoId &&
+    saved?.videoId === videoId &&
+    shouldOfferResumeChoice(saved.positionSeconds)
+    ? saved.positionSeconds
+    : null
+}

@@ -1,6 +1,6 @@
 import type { PoolConfig } from "pg"
 
-export type PrismaPoolProfile = "main" | "sync"
+export type PrismaPoolProfile = "main" | "sync" | "studio-render"
 
 type PrismaPgAdapterConfig = {
   poolConfig: PoolConfig
@@ -18,6 +18,11 @@ const POOL_PROFILES = {
   sync: {
     max: 5,
     connectionTimeoutMillis: 60_000,
+    idleTimeoutMillis: 300_000,
+  },
+  "studio-render": {
+    max: 2,
+    connectionTimeoutMillis: 5_000,
     idleTimeoutMillis: 300_000,
   },
 } as const satisfies Record<PrismaPoolProfile, PoolConfig>

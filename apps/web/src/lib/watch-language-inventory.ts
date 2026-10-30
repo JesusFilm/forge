@@ -14,7 +14,10 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
-import { selectOwnLanguageName } from "@/lib/language-native-name"
+import {
+  nativeNameMatchesLanguageScript,
+  selectOwnLanguageName,
+} from "@/lib/language-native-name"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import {
   getWatchRouteManifest,
@@ -413,7 +416,8 @@ function nativeLanguageNameFromJson(
     if (
       typeof value === "string" &&
       value.trim() &&
-      value.trim().toLowerCase() !== englishName.toLowerCase()
+      value.trim().toLowerCase() !== englishName.toLowerCase() &&
+      nativeNameMatchesLanguageScript(value.trim(), bcp47)
     ) {
       return value.trim()
     }

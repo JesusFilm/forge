@@ -362,12 +362,16 @@ export class TypesenseClient {
     searches: readonly TypesenseSearchRequest[],
     options: { timeoutMs?: number } = {},
   ): Promise<TypesenseSearchResult<T>[]> {
+    const searchesWithoutImplicitHighlights = searches.map((search) => ({
+      highlight_fields: "none",
+      ...search,
+    }))
     const response = await this.request<TypesenseMultiSearchResponse<T>>(
       "/multi_search",
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ searches }),
+        body: JSON.stringify({ searches: searchesWithoutImplicitHighlights }),
       },
       { timeoutMs: options.timeoutMs },
     )

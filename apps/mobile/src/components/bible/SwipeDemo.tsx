@@ -208,13 +208,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   skip: {
     marginTop: 16,
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: "System",
   },
 })

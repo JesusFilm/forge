@@ -44,6 +44,13 @@ data class PlaybackPositionEvent(
 ) : Record
 
 data class NativeSelectionEvent(@Field val id: String?) : Record
+data class PlaybackStateEvent(
+  @Field val sourceGeneration: Int,
+  @Field val state: String,
+  @Field val positionSeconds: Double,
+  @Field val durationSeconds: Double?,
+  @Field val seeking: Boolean
+) : Record
 data class NativeMenuEvent(@Field val section: String?) : Record
 data class NativeErrorEvent(@Field val message: String) : Record
 data class NativePlayNextEvent(@Field val slug: String) : Record
@@ -58,6 +65,8 @@ class NativeAndroidPlayerView(
   internal val onEnded by EventDispatcher<Unit>()
   internal val onPlayNext by EventDispatcher<NativePlayNextEvent>()
   internal val onPlaybackPosition by EventDispatcher<PlaybackPositionEvent>()
+  internal val onPlaybackState by EventDispatcher<PlaybackStateEvent>()
+  var sourceGeneration = 0
   internal val onError by EventDispatcher<NativeErrorEvent>()
   internal val onAudioChange by EventDispatcher<NativeSelectionEvent>()
   internal val onSubtitleChange by EventDispatcher<NativeSelectionEvent>()
@@ -93,6 +102,8 @@ class NativeAndroidPlayerView(
   var feedbackVisible = false
   var feedbackRows: List<String> = emptyList()
   var feedbackReference: String? = null
+  var feedbackSimulator = false
+  var feedbackHostedSimulator = false
   var feedbackLoading = false
   var feedbackError = false
 
@@ -125,6 +136,7 @@ class NativeAndroidPlayerView(
   private val previewPanel = LinearLayout(context)
   private val previewImage = ImageView(context)
   private val previewTime = TextView(context)
+  private val focusedAudioLabel = TextView(context)
   private val startOverButton = NativeMenuButton(context, NativeMenuIcon.START_OVER, "Start Over")
   private val exploreButton = NativeMenuButton(context, NativeMenuIcon.EXPLORE, "Explore")
   private val audioButton = NativeMenuButton(context, NativeMenuIcon.LANGUAGE, "Language")
@@ -160,6 +172,7 @@ class NativeAndroidPlayerView(
     override fun run() {
       if (released) return
       updateCaption()
+      emitPlaybackState()
       handler.postDelayed(this, if (foreground && player.isPlaying) 100 else 500)
     }
   }
@@ -439,6 +452,38 @@ class NativeAndroidPlayerView(
     previewPanel.addView(previewTime, LinearLayout.LayoutParams(-1, dp(20)))
     controllerOverlay.addView(previewPanel, FrameLayout.LayoutParams(dp(160), dp(110)))
 
+    // Keep the transport row stable while exposing the complete selected language.
+    // This is a non-focusable caption, not another remote destination or dialog.
+    focusedAudioLabel.setTextColor(Color.WHITE)
+    focusedAudioLabel.nativeTextSize(12f)
+    focusedAudioLabel.background = roundedDrawable(NATIVE_PLAYER_INK, dp(7).toFloat())
+    focusedAudioLabel.setPadding(dp(12), dp(8), dp(12), dp(8))
+    focusedAudioLabel.maxWidth = dp(420)
+    focusedAudioLabel.isFocusable = false
+    focusedAudioLabel.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    focusedAudioLabel.visibility = View.GONE
+    controllerOverlay.addView(
+      focusedAudioLabel,
+      FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.WRAP_CONTENT,
+        FrameLayout.LayoutParams.WRAP_CONTENT
+      ).apply {
+        gravity = Gravity.BOTTOM or Gravity.END
+        marginEnd = dp(40)
+      }
+    )
+    bottomPanel.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+      val params = focusedAudioLabel.layoutParams as FrameLayout.LayoutParams
+      val margin = bottomPanel.height + dp(33)
+      if (params.bottomMargin != margin) {
+        params.bottomMargin = margin
+        focusedAudioLabel.layoutParams = params
+      }
+    }
+    focusedAudioLabel.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+      if (top != oldTop || bottom != oldBottom) positionCaption()
+    }
+
     backButton.setOnClickListener { cancelPreview(); onDismiss(Unit) }
     startOverButton.setOnClickListener { cancelPreview(); seekTo(0); player.play(); showControls(startOverButton) }
     exploreButton.setOnClickListener { showExploreDialog() }
@@ -499,9 +544,15 @@ class NativeAndroidPlayerView(
     super.onDetachedFromWindow()
   }
 
+  override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+    super.onWindowFocusChanged(hasWindowFocus)
+    updateFocusedAudioLabel()
+  }
+
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
     super.onSizeChanged(w, h, oldw, oldh)
     captionView.maxWidth = maxOf(0, w - dp(80))
+    focusedAudioLabel.maxWidth = minOf(dp(420), maxOf(0, w - dp(80)))
     post { positionPreview(); positionCaption() }
   }
 
@@ -556,7 +607,10 @@ class NativeAndroidPlayerView(
         val previewTop = (previewPanel.layoutParams as FrameLayout.LayoutParams).topMargin
         (height - previewTop - dp(32) + dp(8)).toFloat()
       }
-      bottomPanel.top > 0 -> (height - bottomPanel.top - dp(32) + dp(8)).toFloat()
+      bottomPanel.top > 0 -> {
+        val languageLift = if (focusedAudioLabel.visibility == View.VISIBLE) focusedAudioLabel.height + dp(10) else 0
+        (height - bottomPanel.top - dp(32) + dp(8) + languageLift).toFloat()
+      }
       else -> dp(104).toFloat()
     }
     captionView.animate().translationY(-lift).setDuration(if (reduceMotion) 0 else 200).start()
@@ -635,8 +689,7 @@ class NativeAndroidPlayerView(
         KeyEvent.KEYCODE_DPAD_LEFT,
         KeyEvent.KEYCODE_DPAD_RIGHT,
         KeyEvent.KEYCODE_DPAD_UP,
-        KeyEvent.KEYCODE_DPAD_DOWN,
-        KeyEvent.KEYCODE_BACK -> {
+        KeyEvent.KEYCODE_DPAD_DOWN -> {
           if (event.action == KeyEvent.ACTION_DOWN) {
             revealKeyCode = event.keyCode
             val revealedBy = event.keyCode
@@ -672,8 +725,9 @@ class NativeAndroidPlayerView(
       }
       return true
     }
-    if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-      onDismiss(Unit)
+    if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+      // Back exits even when chrome is hidden; own both halves of the key press.
+      if (event.action == KeyEvent.ACTION_UP) onDismiss(Unit)
       return true
     }
 
@@ -700,6 +754,7 @@ class NativeAndroidPlayerView(
     audioButton.setSubLabel(
       audioOptions.firstOrNull { it.id == selectedAudioId }?.label ?: "—"
     )
+    updateFocusedAudioLabel()
     subtitleButton.setSubLabel(
       subtitleOptions.firstOrNull { it.id == selectedSubtitleId }?.label ?: "Off"
     )
@@ -764,7 +819,7 @@ class NativeAndroidPlayerView(
       return
     }
     if (existing != null) {
-      existing.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
+      existing.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError, feedbackSimulator, feedbackHostedSimulator)
       return
     }
     if (currentDialog != null || released) return
@@ -782,10 +837,11 @@ class NativeAndroidPlayerView(
     )
     currentDialog = dialog
     dialog.show()
-    dialog.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
+    dialog.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError, feedbackSimulator, feedbackHostedSimulator)
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {
+    emitPlaybackState()
     if (playbackState == Player.STATE_READY) {
       sourceStartPositionMs?.let { target ->
         sourceStartPositionMs = null
@@ -821,6 +877,7 @@ class NativeAndroidPlayerView(
   }
 
   override fun onEvents(player: Player, events: Player.Events) {
+    emitPlaybackState()
     if (
       events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) ||
       events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) ||
@@ -861,8 +918,24 @@ class NativeAndroidPlayerView(
     player.release()
   }
 
+  private fun emitPlaybackState() {
+    if (released || sourceUrl != loadedSourceUrl) return
+    val state = when {
+      hasPlaybackError -> "error"
+      player.playbackState == Player.STATE_ENDED -> "ended"
+      seeking || player.playbackState == Player.STATE_BUFFERING -> "buffering"
+      foreground && player.isPlaying -> "playing"
+      else -> "paused"
+    }
+    onPlaybackState(PlaybackStateEvent(sourceGeneration, state,
+      player.currentPosition.coerceAtLeast(0L) / 1000.0,
+      player.duration.takeIf { it > 0L }?.div(1000.0), seeking))
+  }
+
   private fun showAudioDialog() {
     if (currentDialog != null) return
+    val expectedAudioId = selectedAudioId
+    val expectedSource = loadedSourceUrl
     val options = audioOptions.sortedWith(
       compareBy<NativePlayerOption> { it.label.lowercase() }
         .thenBy { it.detail.lowercase() }
@@ -871,9 +944,16 @@ class NativeAndroidPlayerView(
     handler.removeCallbacks(hideControllerWork)
     menuSection = "language"
     val dialog = NativeSearchDialog(context, "Audio Language",
-      onChoice = { id -> onAudioChange(NativeSelectionEvent(id)) }, onClosed = { closeMenu() })
+      onChoice = { id ->
+        if (!released && selectedAudioId == expectedAudioId && loadedSourceUrl == expectedSource) {
+          onAudioChange(NativeSelectionEvent(id))
+        }
+      }, onClosed = { closeMenu() })
     currentDialog = dialog
-    dialog.update(options.map { NativeChoiceRow(it.id, it.label, it.detail, it.disabled, searchText = it.searchText) },
+    dialog.update(options.map {
+      NativeChoiceRow(it.id, it.label, it.detail, it.disabled,
+        searchText = it.searchText, confirmationMessage = it.confirmationMessage)
+    },
       selectedAudioId, if (options.isEmpty()) "No audio languages available" else null)
     dialog.show()
     onMenuChange(NativeMenuEvent("language"))
@@ -1039,7 +1119,20 @@ class NativeAndroidPlayerView(
         lastFocusedControl = target
         showControls()
       }
+      updateFocusedAudioLabel()
       target.invalidate()
+    }
+  }
+
+  private fun updateFocusedAudioLabel() {
+    val label = audioOptions.firstOrNull { it.id == selectedAudioId }?.label
+    val visible = controllerVisible && !hasPlaybackError && currentDialog == null &&
+      hasWindowFocus() && audioButton.isFocused && audioButton.visibility == View.VISIBLE && !label.isNullOrBlank()
+    if (focusedAudioLabel.text.toString() != label.orEmpty()) focusedAudioLabel.text = label.orEmpty()
+    val nextVisibility = if (visible) View.VISIBLE else View.GONE
+    if (focusedAudioLabel.visibility != nextVisibility) {
+      focusedAudioLabel.visibility = nextVisibility
+      positionCaption()
     }
   }
 
@@ -1205,6 +1298,8 @@ class NativeAndroidPlayerView(
     )
     scheduleHideControls()
 
+    updateFocusedAudioLabel()
+
     if (wasHidden || preferredFocus != null) {
       val target = if (hasPlaybackError) backButton else preferredFocus ?: progressBar
       post {
@@ -1215,15 +1310,17 @@ class NativeAndroidPlayerView(
 
   private fun scheduleHideControls() {
     handler.removeCallbacks(hideControllerWork)
-    if (foreground && player.isPlaying && currentDialog == null && scrub.candidateMs == null && !screenReaderEnabled && !hasPlaybackError) {
+    // Keep the exit action stable while the viewer is choosing it.
+    if (foreground && player.isPlaying && currentDialog == null && scrub.candidateMs == null && !screenReaderEnabled && !hasPlaybackError && !backButton.isFocused) {
       handler.postDelayed(hideControllerWork, 3_500)
     }
   }
 
   private fun hideControls() {
-    if (!controllerVisible || !player.isPlaying || currentDialog != null || scrub.candidateMs != null || screenReaderEnabled) return
+    if (!controllerVisible || !player.isPlaying || currentDialog != null || scrub.candidateMs != null || screenReaderEnabled || backButton.isFocused) return
     lastFocusedControl = findFocus()?.takeIf { it !== playerView && it !== this }
     controllerVisible = false
+    focusedAudioLabel.visibility = View.GONE
     descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
     captionView.animate().translationY(0f).setDuration(if (reduceMotion) 0 else 200).start()
     controllerOverlay.animate()

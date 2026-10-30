@@ -237,13 +237,32 @@ export async function executeDailySupportResearch(
     ),
   }
   const fallbackCursor = new Date(now.getTime() - 24 * 60 * 60_000)
+  const runKey = input.dryRun
+    ? `support-research:dry-run:${input.idempotencyKey ?? runId}`
+    : `support-research:${input.idempotencyKey ?? dateKey(now)}`
+  const readiness = getSupportResearchReadiness(config, input.dryRun)
+  if (!parsedInput.success || !config.enabled) {
+    return buildSupportRunReport({
+      runKey,
+      status: "disabled",
+      dryRun: input.dryRun,
+      cutoff: now.toISOString(),
+      cursorStart: fallbackCursor.toISOString(),
+      cursorEnd: fallbackCursor.toISOString(),
+      counters: emptySupportRunCounters(),
+      observations: [],
+      actionUrls: [],
+      errors: parsedInput.success
+        ? readiness.ready
+          ? []
+          : readiness.reasons
+        : ["invalid_input"],
+    })
+  }
   const cursorStart = await dependencies.repository.getCursor(
     "help_scout",
     fallbackCursor,
   )
-  const runKey = input.dryRun
-    ? `support-research:dry-run:${input.idempotencyKey ?? runId}`
-    : `support-research:${input.idempotencyKey ?? dateKey(now)}`
   const leaseToken = dependencies.randomId?.() ?? randomUUID()
   const claim = await dependencies.repository.claimRun({
     runKey,
@@ -280,7 +299,6 @@ export async function executeDailySupportResearch(
   let consecutiveAnalysisFailures = 0
 
   try {
-    const readiness = getSupportResearchReadiness(config, input.dryRun)
     if (!parsedInput.success || !readiness.ready) {
       const readinessErrors = parsedInput.success
         ? readiness.ready

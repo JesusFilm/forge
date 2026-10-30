@@ -20,13 +20,6 @@ type RecommendationRecoveryState = {
   attempt: number
 }
 
-type ProfileReconciliationRecoveryState = {
-  checking: boolean
-  retryTimer?: ReturnType<typeof setTimeout>
-}
-
-const PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS = 5 * 60_000
-
 const TRANSIENT_WORKFLOW_STARTUP_PATTERNS = [
   /too many clients already/i,
   /remaining connection slots are reserved/i,
@@ -38,24 +31,7 @@ function workflowStartupGlobal() {
     __forgeAdminWorkflowStartup?: WorkflowStartupState
     __forgeAdminWatchSearchPrewarm?: WatchSearchPrewarmState
     __forgeAdminRecommendationRecovery?: RecommendationRecoveryState
-    __forgeAdminProfileReconciliationRecovery?: ProfileReconciliationRecoveryState
-    __forgeAdminCowatchRefreshRecovery?: ProfileReconciliationRecoveryState
   }
-}
-
-function profileReconciliationRecoveryState(
-  kind: "profile" | "cowatch" = "profile",
-) {
-  const global = workflowStartupGlobal()
-  const key =
-    kind === "profile"
-      ? "__forgeAdminProfileReconciliationRecovery"
-      : "__forgeAdminCowatchRefreshRecovery"
-  const current = global[key]
-  if (current) return current
-  const state: ProfileReconciliationRecoveryState = { checking: false }
-  global[key] = state
-  return state
 }
 
 function recommendationRecoveryState() {
@@ -244,10 +220,6 @@ async function startWorkflowWorld(): Promise<void> {
     await import("@/services/recommendations/control-readiness/job")
   const { ensurePlaybackObservationSnapshotBootstrapStarted } =
     await import("@/services/recommendations/playback-observation-snapshot.job")
-  const { ensureRecommendationProfileReconciliationSchedulerStarted } =
-    await import("@/services/recommendations/profiles/reconciliation.job")
-  const { ensureRecommendationCowatchRefreshSchedulerStarted } =
-    await import("@/services/recommendations/cowatch/refresh.job")
   const { ensureRecommendationEpisodeFinalizationRecovery } =
     await import("@/services/recommendations/finalization/job")
   const {
@@ -282,15 +254,6 @@ async function startWorkflowWorld(): Promise<void> {
       error: error instanceof Error ? error.name : "unknown",
     })
   }
-  await ensureRecommendationProfileReconciliationSchedulerStarted()
-  await ensureRecommendationCowatchRefreshSchedulerStarted()
-  scheduleProfileReconciliationRecovery(
-    ensureRecommendationCowatchRefreshSchedulerStarted,
-    "cowatch",
-  )
-  scheduleProfileReconciliationRecovery(
-    ensureRecommendationProfileReconciliationSchedulerStarted,
-  )
   await ensureWatchSearchTranscriptPublicationWorkerStarted(prisma)
   void ensureRecommendationRecovery(
     ensureRecommendationEpisodeFinalizationRecovery,
@@ -298,38 +261,6 @@ async function startWorkflowWorld(): Promise<void> {
   // KTD2 — a campaign whose run the runtime no longer holds leaves its pending
   // zones missed. It never throws into boot and never blocks the other workers.
   void ensurePushCampaignRecovery()
-}
-
-function scheduleProfileReconciliationRecovery(
-  ensure: () => Promise<unknown> | unknown,
-  kind: "profile" | "cowatch" = "profile",
-): void {
-  const state = profileReconciliationRecoveryState(kind)
-  if (state.retryTimer || state.checking) return
-  state.retryTimer = setTimeout(() => {
-    state.retryTimer = undefined
-    void runProfileReconciliationRecovery(ensure, kind)
-  }, PROFILE_RECONCILIATION_RECOVERY_INTERVAL_MS)
-  state.retryTimer.unref?.()
-}
-
-async function runProfileReconciliationRecovery(
-  ensure: () => Promise<unknown> | unknown,
-  kind: "profile" | "cowatch" = "profile",
-): Promise<void> {
-  const state = profileReconciliationRecoveryState(kind)
-  if (state.checking) return
-  state.checking = true
-  try {
-    await ensure()
-  } catch (error) {
-    console.warn(
-      `[recommendation-${kind === "profile" ? "profile-reconciliation" : "cowatch-refresh"}] event=scheduler_recovery_failure error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}`,
-    )
-  } finally {
-    state.checking = false
-    scheduleProfileReconciliationRecovery(ensure, kind)
-  }
 }
 
 async function ensureRecommendationRecovery(

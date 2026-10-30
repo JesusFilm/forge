@@ -28,6 +28,7 @@ vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {
     ...actual,
+    useLocale: () => "en",
     useTranslations: (namespace: string) =>
       actual.createTranslator({
         locale: "en",

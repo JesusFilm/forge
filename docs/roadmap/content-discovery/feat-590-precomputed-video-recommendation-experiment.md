@@ -18,6 +18,12 @@ tags:
 
 ## Problem
 
+October 15: the owner authorized using all remaining included subscription
+allowance. Add an explicit zero-reserve local option while preserving the 25%
+default, exhaustion checks and unchanged generation inputs. Resume from the
+5,533 saved comparisons after normal review and release. See
+`docs/plans/2026-10-15-008-feat-explicit-subscription-reserve-plan.md`.
+
 A known-usage rejected edge response stopped the run at 4,927 comparisons and
 89 finalized sources. Add a single durably bounded retry after fresh receipt
 verification, preserving all completed pages and original usage records.

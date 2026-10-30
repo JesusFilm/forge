@@ -6,6 +6,8 @@ import {
 } from "@/services/recommendations/precomputed/contract"
 import { submitDurablePrecomputedRecommendation } from "@/services/recommendations/precomputed/durable-build"
 
+import { submitSharedReadingImport } from "@/services/recommendations/precomputed/shared-reading-import"
+
 const MAX_BODY_BYTES = 2 * 1024 * 1024
 
 function error(message: string, status: number): Response {
@@ -91,17 +93,25 @@ export async function POST(request: Request): Promise<Response> {
         payload.action.startsWith("ga_import_")) ||
       typeof payload?.generationInputDigest === "string"
     return Response.json({
-      result: isDurable
-        ? await submitDurablePrecomputedRecommendation(
-            prisma,
-            body,
-            request.headers.get("authorization"),
-          )
-        : await submitPrecomputedRecommendation(
-            prisma,
-            body,
-            request.headers.get("authorization"),
-          ),
+      result:
+        typeof payload?.action === "string" &&
+        payload.action.startsWith("shared_reading_")
+          ? await submitSharedReadingImport(
+              prisma,
+              body,
+              request.headers.get("authorization"),
+            )
+          : isDurable
+            ? await submitDurablePrecomputedRecommendation(
+                prisma,
+                body,
+                request.headers.get("authorization"),
+              )
+            : await submitPrecomputedRecommendation(
+                prisma,
+                body,
+                request.headers.get("authorization"),
+              ),
     })
   } catch (cause) {
     if (cause instanceof PrecomputedRecommendationError) {

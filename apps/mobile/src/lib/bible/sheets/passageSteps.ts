@@ -3,7 +3,12 @@
 // BSB numbering, because the saved position uses it (R38).
 import type { BookNames } from "../repository/bookNames"
 import { toBsbRef, toTranslationRef } from "../repository/resolveChapter"
-import { BIBLE_BOOKS, type BibleBook, type UsfmBookId } from "../text/books"
+import {
+  BIBLE_BOOKS,
+  type BibleBook,
+  type Testament,
+  type UsfmBookId,
+} from "../text/books"
 import { BSB_TRANSLATION_ID } from "../versification/classify"
 import { mappedLastVerse, type VerseRef } from "../versification/convert"
 import { translationBookSystem } from "../versification/translationSystems.generated"
@@ -29,6 +34,20 @@ export function passageBooks(
     book,
     inTranslation: translation ? translation.books.has(book.usfm) : true,
   }))
+}
+
+// The book list opens on the current book's testament. With no current book,
+// a translation with no Old Testament book opens on the New Testament.
+export function initialTestament(
+  books: readonly PassageBook[],
+  currentBook: string | null,
+): Testament {
+  const current = books.find((entry) => entry.book.usfm === currentBook)
+  if (current) return current.book.testament
+  const hasOld = books.some(
+    (entry) => entry.book.testament === "old" && entry.inTranslation,
+  )
+  return hasOld ? "old" : "new"
 }
 
 /** The translation whose numbers and names the picker shows for one book. */

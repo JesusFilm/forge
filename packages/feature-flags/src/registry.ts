@@ -1,4 +1,10 @@
 export const featureFlags = {
+  watchAudience: {
+    key: "forge.watch.audience",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_AUDIENCE_DEFAULT",
+    description: "Release gate for Watch audience tabs and next steps.",
+  },
   watchHomepageRecommendations: {
     key: "forge.watch.homepageRecommendations",
     defaultValue: false,

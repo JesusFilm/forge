@@ -60,7 +60,7 @@ export async function recommendationFetchWithRetry(
       )
       if (!response.ok) {
         definitive = isDefinitiveRecommendationStatus(response.status)
-        throw new RecommendationRuntimeError("request_failed")
+        throw new RecommendationRuntimeError("request_failed", response.status)
       }
       return response
     } catch (error) {

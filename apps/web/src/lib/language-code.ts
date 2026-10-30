@@ -1,4 +1,8 @@
-import { slugToBcp47Primary, slugToBcp47Tag } from "@/lib/locale"
+import {
+  correctedBcp47,
+  slugToBcp47Primary,
+  slugToBcp47Tag,
+} from "@/lib/locale"
 import { LANGUAGE_BCP47_MAP } from "@/lib/language-bcp47-map"
 
 /**
@@ -115,8 +119,8 @@ function getBadgeCodeMaps(): BadgeCodeMaps {
   if (badgeCodeMaps) return badgeCodeMaps
 
   const slugsByBadgeCode = new Map<string, string[]>()
-  for (const [slug, tag] of Object.entries(LANGUAGE_BCP47_MAP)) {
-    const code = badgeCodeFromTag(tag)
+  for (const [slug, rawTag] of Object.entries(LANGUAGE_BCP47_MAP)) {
+    const code = badgeCodeFromTag(correctedBcp47(slug, rawTag) ?? rawTag)
     if (code) {
       slugsByBadgeCode.set(code, [...(slugsByBadgeCode.get(code) ?? []), slug])
     }
@@ -124,8 +128,8 @@ function getBadgeCodeMaps(): BadgeCodeMaps {
 
   const candidateBadgeCodesBySlug = new Map<string, string>()
   const slugsByCandidateBadgeCode = new Map<string, string[]>()
-  for (const [slug, tag] of Object.entries(LANGUAGE_BCP47_MAP)) {
-    const code = badgeCodeFromTag(tag)
+  for (const [slug, rawTag] of Object.entries(LANGUAGE_BCP47_MAP)) {
+    const code = badgeCodeFromTag(correctedBcp47(slug, rawTag) ?? rawTag)
     if (!code) continue
     const collidingSlugs = slugsByBadgeCode.get(code)
     const candidateCode =
@@ -147,7 +151,7 @@ function getBadgeCodeMaps(): BadgeCodeMaps {
       continue
     }
 
-    const tag = LANGUAGE_BCP47_MAP[slug]
+    const tag = correctedBcp47(slug, LANGUAGE_BCP47_MAP[slug]) ?? ""
     const primary = primaryLanguageCode(tag) ?? candidateCode.split("-")[0]
     badges.set(slug, `${primary}-${uniqueSlugSuffix(slug, collidingSlugs)}`)
   }
@@ -166,7 +170,7 @@ export function languageCodeFor({
   iso3,
   slug,
 }: LanguageCodeSource): string | null {
-  const bcp47Code = primaryLanguageCode(bcp47)
+  const bcp47Code = primaryLanguageCode(correctedBcp47(slug, bcp47))
   if (bcp47Code) return bcp47Code
 
   const slugCode = slug ? primaryLanguageCode(slugToBcp47Primary(slug)) : null
@@ -199,7 +203,7 @@ export function languageBadgeCodeFor({
     slug && Object.hasOwn(LANGUAGE_BCP47_MAP, slug)
       ? slugToBcp47Tag(slug)
       : null
-  const tag = mappedSlugTag ?? bcp47?.trim() ?? null
+  const tag = mappedSlugTag ?? correctedBcp47(slug, bcp47)?.trim() ?? null
   const code = tag
     ? badgeCodeFromTag(tag)
     : languageCodeFor({ bcp47, iso3, slug })

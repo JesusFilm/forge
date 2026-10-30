@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { Platform, View, type StyleProp, type ViewStyle } from "react-native"
 import { BlurView } from "expo-blur"
 
-type PlatformBlurProps = {
+export type PlatformBlurProps = {
   style?: StyleProp<ViewStyle>
   /** iOS blur strength. Ignored on Android, which takes the flat dim instead. */
   intensity?: number
@@ -13,10 +13,9 @@ type PlatformBlurProps = {
 }
 
 /**
- * Translucent backdrop that blurs on iOS and dims flat on Android — expo-blur is
- * unreliable there, so every surface in this app makes the same split. Note that
- * expo-glass-effect's GlassView is NOT a drop-in here: it renders nothing inside
- * a fading (animated-opacity) layer, and it ignores the opacity prop on iOS.
+ * A blur on iOS and a flat dim on Android, where expo-blur is unreliable.
+ * GlassView draws nothing reliably inside a fading layer, so `GlassSurface`
+ * keeps glass out of the fade, dissolves it with the 'none' style, or uses this.
  */
 export function PlatformBlur({
   style,

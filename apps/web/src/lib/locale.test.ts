@@ -15,6 +15,7 @@ import {
   publicWatchHomeLanguageSlugForLocale,
   resolveUiLocale,
   resolveUiLocaleForCatalog,
+  resolveWatchHtmlLangIdentity,
   resolveWatchLocaleIdentity,
   slugToBcp47Tag,
   slugToBcp47Primary,
@@ -302,6 +303,22 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
     expect(resolveUiLocale("french-african")).toBe("fr")
   })
 
+  it("corrects invalid admin tags for kurmanji-standard and french-african", () => {
+    // Admin data: kurmanji-standard -> `ko-kmr` (invalid), french-african -> `fra`.
+    expect(LANGUAGE_BCP47_MAP["kurmanji-standard"]).toBe("ko-kmr")
+    expect(slugToBcp47Tag("kurmanji-standard")).toBe("kmr")
+    expect(slugToBcp47Primary("kurmanji-standard")).toBe("kmr")
+    expect(resolveUiLocale("kurmanji-standard")).not.toBe("ko")
+    expect(resolveWatchLocaleIdentity("kurmanji-standard")?.htmlLang).toBe(
+      "kmr",
+    )
+    expect(slugToBcp47Tag("french-african")).toBe("fr")
+    expect(resolveWatchLocaleIdentity("french-african")).toEqual({
+      locale: "fr",
+      htmlLang: "fr",
+    })
+  })
+
   it("resolves german-* slugs to the UI locale 'de'", () => {
     expect(resolveUiLocale("german-standard")).toBe("de")
     expect(resolveUiLocale("german")).toBeNull()
@@ -340,6 +357,51 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
 })
 
 describe("resolveWatchLocaleIdentity", () => {
+  it("resolves internal BCP-47 tags without reinterpreting public slug collisions", () => {
+    expect(resolveWatchLocaleIdentity("awa")).toEqual({
+      locale: "en",
+      htmlLang: "vwa",
+    })
+    expect(resolveWatchHtmlLangIdentity("awa")).toEqual({
+      locale: "en",
+      htmlLang: "awa",
+    })
+    expect(resolveWatchLocaleIdentity("awadhi")).toEqual({
+      locale: "en",
+      htmlLang: "awa",
+    })
+    expect(resolveWatchHtmlLangIdentity("ble-x-Naga")).toEqual({
+      locale: "en",
+      htmlLang: "ble-x-naga",
+    })
+    expect(resolveWatchHtmlLangIdentity("es-419")).toEqual({
+      locale: "es",
+      htmlLang: "es-419",
+    })
+    expect(resolveWatchHtmlLangIdentity("prs")).toEqual({
+      locale: "en",
+      htmlLang: "prs",
+    })
+    expect(resolveWatchHtmlLangIdentity("mey-Latn")).toEqual({
+      locale: "mey-Latn",
+      htmlLang: "mey-Latn",
+    })
+  })
+
+  it("rejects known Admin values that are not valid BCP-47 tags", () => {
+    const identity = resolveWatchHtmlLangIdentity("nan-CN-46")
+
+    expect(isDeclarableHtmlLangTag("nan-CN-46")).toBe(false)
+    expect(identity.htmlLang).not.toBe("nan-CN-46")
+    expect(identity.htmlLang).toBe(identity.locale)
+    expect(() => new Intl.Locale(identity.htmlLang)).not.toThrow()
+
+    expect(resolveWatchHtmlLangIdentity("en-u-ca-gregory")).toEqual({
+      locale: "en",
+      htmlLang: "en",
+    })
+  })
+
   it("splits raw audio slug, message catalog key, and static html lang", () => {
     expect(resolveWatchLocaleIdentity("spanish-latin-american")).toEqual({
       locale: "es",

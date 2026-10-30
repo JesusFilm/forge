@@ -15,7 +15,7 @@ import {
   type View as ViewType,
 } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
@@ -133,6 +133,7 @@ type HomeRailProps = {
    *  screen's row-anchored scrolling and deep/browse chrome state. */
   onRowFocus?: (rowIndex: number) => void
   onCardPress: (card: WatchHomeCard) => void
+  onCardNode?: (card: WatchHomeCard, node: ViewType | null) => void
   /** Long-press per card (hold Select) — threaded to HomeCard; the Continue
    *  Watching shelf wires "remove" here. */
   onCardLongPress?: (card: WatchHomeCard) => void
@@ -167,6 +168,7 @@ export const HomeRail = memo(function HomeRail({
   onCardFocus,
   onRowFocus,
   onCardPress,
+  onCardNode,
   onCardLongPress,
   upFocusTarget,
   restoreLastFocus,
@@ -176,6 +178,16 @@ export const HomeRail = memo(function HomeRail({
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
   const [lastCardNode, setLastCardNode] = useState<ViewType | null>(null)
+  const nodeRefs = useMemo(
+    () =>
+      onCardNode
+        ? cards.map((card, index) => (node: ViewType | null) => {
+            if (index === cards.length - 1) setLastCardNode(node)
+            onCardNode?.(card, node)
+          })
+        : [],
+    [cards, onCardNode],
+  )
 
   const handleCardFocus = useCallback(
     (card: WatchHomeCard, node: ViewType | null) => {
@@ -216,7 +228,13 @@ export const HomeRail = memo(function HomeRail({
             // captured yet) should fall back to geometry, not wire to nothing.
             nextFocusUp={upFocusTarget ?? undefined}
             // Capture the last REAL card — the pads' bounce target.
-            nodeRef={index === cards.length - 1 ? setLastCardNode : undefined}
+            nodeRef={
+              onCardNode
+                ? nodeRefs[index]
+                : index === cards.length - 1
+                  ? setLastCardNode
+                  : undefined
+            }
             // Off-window rails mount their cards (so focus always has a target)
             // but skip the image decode — that's the image-window perf win.
             loadImage={active}
@@ -230,6 +248,8 @@ export const HomeRail = memo(function HomeRail({
       items.length,
       handleCardFocus,
       onCardPress,
+      onCardNode,
+      nodeRefs,
       onCardLongPress,
       upFocusTarget,
       lastCardNode,
@@ -287,7 +307,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: "System",
-    fontSize: Math.round(scale(17)),
+    fontSize: readableFontSize(17),
     fontWeight: "700",
     // .16em of the 17px eyebrow.
     letterSpacing: scale(2.7),

@@ -20,7 +20,6 @@ const project: Short = {
     durationInFrames: 300,
     tracks: [{ id: "audio", kind: "audio" }],
     components: [],
-    packRevisionIds: [],
     items: [
       {
         id: "ending",

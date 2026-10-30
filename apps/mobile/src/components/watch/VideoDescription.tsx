@@ -104,7 +104,6 @@ const styles = StyleSheet.create({
   },
   body: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   // Zero height + clipped: the Text still lays out at full width, so its line
   // count is real, but it takes up no space and paints nothing.

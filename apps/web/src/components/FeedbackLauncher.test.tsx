@@ -345,6 +345,173 @@ afterEach(() => {
 })
 
 describe("FeedbackLauncher", () => {
+  describe("Spanish feedback", () => {
+    beforeEach(() => {
+      setRequestLocale("es")
+      document.documentElement.lang = "es-419"
+      window.history.replaceState({}, "", "/watch/spanish-latin-american.html")
+      act(() => root.render(<FeedbackLauncher />))
+    })
+
+    it("uses the real Spanish catalog through all five steps and validation without sending", async () => {
+      interaction.loadGlobalWatchLanguageOptions.mockRejectedValueOnce(
+        new Error("languages unavailable"),
+      )
+      watchSearch.fetchWatchSearchSuggestions.mockRejectedValueOnce(
+        new Error("search unavailable"),
+      )
+      await openFeedback()
+      expect(document.body.textContent).toContain("Compartir comentarios")
+      expect(document.body.textContent).toContain("Elige el tipo de comentario")
+      expect(document.body.textContent).toContain("Algo no está claro")
+      expect(document.body.textContent).toContain("Felicitación")
+      expect(document.body.textContent).not.toContain("Share feedback")
+      expect(
+        document.querySelector('[aria-label="Paso 1 de 5"]'),
+      ).not.toBeNull()
+      submitCurrentStep()
+      expect(document.body.textContent).toContain(
+        "Elige un tipo de comentario para continuar.",
+      )
+      selectFeedbackCategory("problem")
+      submitCurrentStep()
+      expect(document.body.textContent).toContain("¿Qué salió mal?")
+      expect(document.body.textContent).toContain("Incluir detalles técnicos")
+      expect(document.body.textContent).toContain(
+        "Nunca se incluyen contraseñas ni el contenido de los formularios.",
+      )
+      submitCurrentStep()
+      expect(document.body.textContent).toContain(
+        "Escribe al menos 10 caracteres.",
+      )
+      setValue(
+        document.querySelector("textarea") as HTMLTextAreaElement,
+        "El video no se reproduce al pulsar el botón.",
+      )
+      submitCurrentStep()
+      expect(document.body.textContent).toContain("Añade contexto útil")
+      expect(document.body.textContent).toContain(
+        "¿Está relacionado con el idioma?",
+      )
+      selectThemed("feedback-language-area", "audio")
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(document.body.textContent).toContain(
+        "La lista de idiomas no está disponible. Se enviará el idioma que escribas.",
+      )
+      setValue(
+        document.querySelector(
+          'input[aria-label="Idioma afectado"]',
+        ) as HTMLInputElement,
+        "Español",
+      )
+      selectThemed("feedback-content-scope", "other")
+      expect(document.body.textContent).toContain("Otro video o recurso")
+      setValue(
+        document.querySelector("#feedback-content-title") as HTMLInputElement,
+        "Una película",
+      )
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 300))
+      })
+      expect(document.body.textContent).toContain(
+        "No se pudieron buscar títulos. Puedes continuar con lo que escribiste.",
+      )
+      submitCurrentStep()
+      expect(document.body.textContent).toContain("Señala un elemento")
+      expect(document.body.textContent).toContain("Marcar algo en la página")
+      expect(document.body.textContent).toContain("Omitir por ahora")
+      submitCurrentStep()
+      expect(document.body.textContent).toContain("Sobre ti")
+      expect(document.body.textContent).toContain("Nombre")
+      expect(document.body.textContent).toContain("Correo electrónico")
+      expect(document.body.textContent).toContain("Enviar comentarios")
+      setValue(
+        document.querySelector(
+          'input[autocomplete="email"]',
+        ) as HTMLInputElement,
+        "correo-inválido",
+      )
+      submitCurrentStep()
+      expect(document.body.textContent).toContain(
+        "Introduce una dirección de correo electrónico válida.",
+      )
+      expect(feedbackAction.submit).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ["problem", "¿Qué salió mal?"],
+      ["confusing", "¿Qué fue difícil de entender?"],
+      ["idea", "¿Qué mejoraría Watch?"],
+      ["praise", "¿Qué funcionó bien?"],
+    ] as const)(
+      "localizes the %s description prompt",
+      async (category, prompt) => {
+        await openFeedback()
+        selectFeedbackCategory(category)
+        submitCurrentStep()
+        expect(document.body.textContent).toContain(prompt)
+        expect(document.querySelector("textarea")?.placeholder).toBe(
+          "Escribe los detalles aquí…",
+        )
+        expect(feedbackAction.submit).not.toHaveBeenCalled()
+      },
+    )
+
+    it("localizes mocked delivery errors, support fallback, receipt and follow-up", async () => {
+      feedbackAction.submit
+        .mockResolvedValueOnce({ ok: false, reason: "rate_limited" })
+        .mockResolvedValueOnce({ ok: false, reason: "delivery_failed" })
+        .mockResolvedValueOnce({ ok: true, receipt: "test-receipt" })
+      await fillMinimalFeedback()
+      await sendFeedback()
+      expect(document.body.textContent).toContain(
+        "Has enviado demasiados comentarios. Inténtalo de nuevo más tarde.",
+      )
+      await sendFeedback()
+      expect(document.body.textContent).toContain(
+        "No pudimos enviar tus comentarios. Inténtalo de nuevo.",
+      )
+      const supportLink = document.querySelector(
+        '[data-testid="feedback-support-form-link"]',
+      ) as HTMLAnchorElement
+      expect(supportLink.textContent).toBe("Abrir formulario de ayuda")
+      expect(supportLink.href).toBe("https://www.jesusfilm.org/contact/")
+      await sendFeedback()
+      expect(document.body.textContent).toContain("Gracias")
+      expect(document.body.textContent).toContain(
+        "¿Quieres saber cuándo se resolverá? Añade tu correo y te avisaremos.",
+      )
+      const form = document.querySelector(
+        '[data-testid="feedback-follow-up-email-form"]',
+      ) as HTMLFormElement
+      setValue(form.querySelector("input") as HTMLInputElement, "sin-correo")
+      act(() => form.requestSubmit())
+      expect(document.body.textContent).toContain(
+        "Introduce una dirección de correo electrónico válida.",
+      )
+      expect(feedbackAction.addEmail).not.toHaveBeenCalled()
+      setValue(
+        form.querySelector("input") as HTMLInputElement,
+        "ana@example.com",
+      )
+      await act(async () => {
+        form.requestSubmit()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(document.body.textContent).toContain(
+        "Te enviaremos un correo cuando se resuelva el problema.",
+      )
+      expect(feedbackAction.addEmail).toHaveBeenCalledWith({
+        email: "ana@example.com",
+        receipt: "test-receipt",
+      })
+    })
+  })
+
   it("keeps the lazy 44px headset launcher and removes every Google form resource", async () => {
     const button = launcher()
     expect(button?.querySelector(".lucide-headset")).not.toBeNull()

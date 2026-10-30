@@ -2048,6 +2048,51 @@ describe("manual subscription catalog preflight", () => {
     ).toHaveLength(historyCount)
   })
 
+  it.each([25, 1, 0])(
+    "applies explicit zero-reserve catalog admission at %s percent",
+    async (remaining) => {
+      const fixture = await pilotFixture()
+      const current = fixture.ports.readAttestation
+      fixture.ports.readAttestation = async () => {
+        const attestation = await current()
+        return {
+          ...attestation,
+          allowance: {
+            ...attestation.allowance,
+            weeklyRemainingPercent: remaining,
+          },
+        }
+      }
+      const run = runManualSubscriptionCatalog(fixture.input, fixture.ports, {
+        minimumRemainingPercent: 0,
+      })
+      if (remaining === 0) {
+        await expect(run).rejects.toMatchObject({ code: "admission_refused" })
+        expect(fixture.actions).not.toContain("start")
+        expect(fixture.actions).not.toContain("model_admission")
+      } else {
+        await expect(run).resolves.toMatchObject({ reason: "pilot_boundary" })
+        expect(fixture.actions).toContain("model_dispatch")
+      }
+    },
+  )
+
+  it("keeps the default catalog reserve at 25 percent", async () => {
+    const fixture = await pilotFixture()
+    const current = fixture.ports.readAttestation
+    fixture.ports.readAttestation = async () => {
+      const attestation = await current()
+      return {
+        ...attestation,
+        allowance: { ...attestation.allowance, weeklyRemainingPercent: 25 },
+      }
+    }
+    await expect(
+      runManualSubscriptionCatalog(fixture.input, fixture.ports),
+    ).rejects.toMatchObject({ code: "admission_refused" })
+    expect(fixture.actions).not.toContain("start")
+  })
+
   it("rejects a stale local account attestation before destination mutation", async () => {
     const fixture = await pilotFixture()
     const current = fixture.ports.readAttestation

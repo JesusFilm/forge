@@ -90,6 +90,11 @@ WORKDIR /input
 ENTRYPOINT ["/runtime/guard"]
 
 FROM job-base AS render-job
+COPY --from=build /app/apps/studio-render/dist/parallel-init /runtime/init
+COPY --from=build /app/apps/studio-render/dist/parallel-child.mjs /runtime/parallel-child.mjs
+COPY --from=build /app/apps/studio-render/dist/parallel-render.mjs /runtime/parallel-render.mjs
+COPY --from=build /app/apps/studio-render/dist/frame-worker.mjs /runtime/frame-worker.mjs
+COPY --from=build /app/apps/studio-render/dist/frame-pool.mjs /runtime/frame-pool.mjs
 COPY --from=build /app/apps/studio-render/dist/chrome-launcher /runtime/chrome-launcher
 COPY --from=build /app/apps/studio-render/dist/child.mjs /runtime/child.mjs
 COPY --from=build /app/apps/studio-render/dist/bundle /bundle

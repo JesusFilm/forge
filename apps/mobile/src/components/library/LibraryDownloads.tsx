@@ -16,6 +16,7 @@ import { DownloadsSummary } from "./DownloadsSummary"
 import { LibraryEmptyState } from "./LibraryEmptyState"
 import { SelectionActionBar } from "./SelectionActionBar"
 import { SeriesGroupCard } from "./SeriesGroupCard"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import { ScreenTopBar } from "../ui/ScreenTopBar"
 import { Snackbar } from "../ui/Snackbar"
 import { useDownloads } from "../../contexts/DownloadsProvider"
@@ -29,11 +30,13 @@ import {
   TEXT_SECONDARY,
 } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
+import { createDeleteActionSheet } from "../../lib/library/deleteActionSheet"
 import { bulkDelete, retryFailedSelected } from "../../lib/libraryBulkActions"
 import {
   buildLibraryViewModel,
   formatLibraryBytes,
 } from "../../lib/libraryDownloads"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { useMiniPlayerBottomClearance } from "../../hooks/useMiniPlayerBottomClearance"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import {
@@ -57,6 +60,7 @@ const LIST_END_GAP = 24
 export type LibraryDownloadsProps = {
   /** A series slug to open and scroll to once, from `/downloads?series=`. */
   focusSeriesSlug?: string
+  testID?: string
 }
 
 /** Kept as data, so the toast takes the UI language at render. */
@@ -75,7 +79,10 @@ type FocusLayout = {
 
 /** The full downloads list, with its top bar, selection mode and deletion.
  *  Its one host is the root `app/downloads.tsx` route. */
-export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
+export function LibraryDownloads({
+  focusSeriesSlug,
+  testID,
+}: LibraryDownloadsProps) {
   const typography = useTypography()
   const t = useT("Library")
   const router = useRouter()
@@ -103,6 +110,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const bottomPad = useMiniPlayerBottomClearance() + LIST_END_GAP
   const [hintVisible, setHintVisible] = useState(false)
   const [confirmVisible, setConfirmVisible] = useState(false)
+  const [deleteSheet] = useState(createDeleteActionSheet)
   const [deleteResult, setDeleteResult] = useState<DeleteResult | null>(null)
 
   // Gated on prefsReady because longPressHintSeen reads false before the
@@ -161,6 +169,13 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   useEffect(() => {
     if (!selecting) setConfirmVisible(false)
   }, [selecting])
+
+  // The native sheet closes the same way. A blur ends selection, and the
+  // cleanup also runs when the screen unmounts with the sheet open.
+  useEffect(() => {
+    if (!selecting) return
+    return () => deleteSheet.dismiss()
+  }, [selecting, deleteSheet])
 
   useNonRouteSheetSuppression(confirmVisible, "libraryDeleteConfirm")
 
@@ -238,16 +253,16 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   // Home. With no (tabs) below, dismissTo replaces this screen with one.
   const handleBrowse = () => router.dismissTo("/(tabs)")
 
-  const handleDeletePress = () => setConfirmVisible(true)
-  const handleCancelDelete = () => setConfirmVisible(false)
+  // The native sheet answers after later renders, so a delete reads the live
+  // records, as bulkDelete requires, and not the records from the press.
+  const deleteInputsRef = useRef({ offlineRecords, deleteDownload })
+  deleteInputsRef.current = { offlineRecords, deleteDownload }
 
-  const handleConfirmDelete = useCallback(async () => {
-    const slugs = Array.from(selected)
-    setConfirmVisible(false)
+  const deleteSlugs = useCallback(async (slugs: readonly string[]) => {
     const result = await bulkDelete({
       slugs,
-      records: offlineRecords,
-      deleteDownload,
+      records: deleteInputsRef.current.offlineRecords,
+      deleteDownload: deleteInputsRef.current.deleteDownload,
     })
     datadogLog.info("library.bulk_delete", {
       count: result.deletedCount,
@@ -260,7 +275,25 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
       freedBytes: result.freedBytes,
       failedCount: result.failedCount,
     })
-  }, [selected, offlineRecords, deleteDownload])
+  }, [])
+
+  // R17, R19: iOS 26 asks in the native action sheet; elsewhere, the card.
+  const handleDeletePress = () => {
+    if (!canUseLiquidGlass()) {
+      setConfirmVisible(true)
+      return
+    }
+    deleteSheet.present(
+      { slugs: selected, combinedBytes: selection.combinedBytes },
+      deleteSlugs,
+    )
+  }
+  const handleCancelDelete = () => setConfirmVisible(false)
+
+  const handleConfirmDelete = useCallback(() => {
+    setConfirmVisible(false)
+    return deleteSlugs(Array.from(selected))
+  }, [selected, deleteSlugs])
 
   const toastMessage =
     deleteResult == null
@@ -365,7 +398,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const hasRecords = isReady && offlineRecords.length > 0
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID={testID} style={layout.screenContainer}>
       {/* Inside this root so the delete sheet's scrim dims it too. */}
       <ScreenTopBar title={t("downloadsTitle")} showBack />
       <ScrollView
@@ -382,56 +415,48 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
             <View style={styles.headRow}>
               {selecting ? (
                 <>
-                  <Pressable
-                    onPress={handleToggleSelectAll}
-                    style={({ pressed }) => [
-                      styles.textPill,
-                      pressed && feedback.pressed,
-                    ]}
-                    accessibilityRole="button"
+                  <SelectionPill
+                    label={allSelected ? t("deselectAll") : t("selectAll")}
                     accessibilityLabel={
                       allSelected
                         ? t("deselectAllAriaLabel")
                         : t("selectAllAriaLabel")
                     }
-                    {...{ "dd-action-name": "library-select-all" }}
-                  >
-                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      {allSelected ? t("deselectAll") : t("selectAll")}
-                    </Text>
-                  </Pressable>
+                    actionName="library-select-all"
+                    onPress={handleToggleSelectAll}
+                  />
                   <Text style={[styles.selectionCount, typography.body]}>
                     {t("selectedCount", { count: selection.count })}
                   </Text>
-                  <Pressable
-                    onPress={() => setSelectionState(exitSelection())}
-                    style={({ pressed }) => [
-                      styles.textPill,
-                      pressed && feedback.pressed,
-                    ]}
-                    accessibilityRole="button"
+                  <SelectionPill
+                    label={t("cancel")}
                     accessibilityLabel={t("cancelSelectionAriaLabel")}
-                    {...{ "dd-action-name": "library-cancel-selection" }}
-                  >
-                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      {t("cancel")}
-                    </Text>
-                  </Pressable>
+                    actionName="library-cancel-selection"
+                    onPress={() => setSelectionState(exitSelection())}
+                  />
                 </>
               ) : (
                 <Pressable
                   onPress={handleSelectPress}
-                  style={({ pressed }) => [
-                    styles.selectPill,
-                    pressed && feedback.pressed,
-                  ]}
+                  style={styles.selectPillTarget}
                   accessibilityRole="button"
                   accessibilityLabel={t("selectDownloadsAriaLabel")}
                   {...{ "dd-action-name": "library-select" }}
                 >
-                  <Text style={[styles.selectPillText, typography.bodySmall]}>
-                    {t("select")}
-                  </Text>
+                  {({ pressed }) => (
+                    <GlassSurface
+                      style={styles.selectPill}
+                      fallback={SELECT_PILL_FALLBACK}
+                      interactive
+                      pressed={pressed}
+                    >
+                      <Text
+                        style={[styles.selectPillText, typography.bodySmall]}
+                      >
+                        {t("select")}
+                      </Text>
+                    </GlassSurface>
+                  )}
                 </Pressable>
               )}
             </View>
@@ -518,13 +543,15 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
         />
       )}
 
-      <DeleteConfirmSheet
-        visible={confirmVisible}
-        count={selection.count}
-        combinedBytes={selection.combinedBytes}
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
+      {!canUseLiquidGlass() && (
+        <DeleteConfirmSheet
+          visible={confirmVisible}
+          count={selection.count}
+          combinedBytes={selection.combinedBytes}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+        />
+      )}
 
       <Snackbar
         message={toastMessage ?? ""}
@@ -538,6 +565,53 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
 // ── Styles ───────────────────────────────────────────────────────────────
 
 const PILL_BG = "rgba(255, 255, 255, 0.09)"
+
+// The Select pill's look where Liquid Glass is unavailable.
+const SELECT_PILL_FALLBACK: GlassFallback = {
+  kind: "fill",
+  style: { backgroundColor: PILL_BG },
+}
+
+// Select All and Cancel stay bare text where Liquid Glass is unavailable.
+const BARE_TEXT: GlassFallback = { kind: "fill", style: null }
+
+/** Select All or Cancel: a glass pill like Select on iOS 26. */
+function SelectionPill({
+  label,
+  accessibilityLabel,
+  actionName,
+  onPress,
+}: {
+  label: string
+  accessibilityLabel: string
+  actionName: string
+  onPress: () => void
+}) {
+  const typography = useTypography()
+  const glass = canUseLiquidGlass()
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.textPill,
+        pressed && !glass && feedback.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      {...{ "dd-action-name": actionName }}
+    >
+      <GlassSurface
+        style={glass ? styles.selectPill : null}
+        fallback={BARE_TEXT}
+        interactive
+      >
+        <Text style={[styles.textPillLabel, typography.bodySmall]}>
+          {label}
+        </Text>
+      </GlassSurface>
+    </Pressable>
+  )
+}
 
 const styles = StyleSheet.create({
   head: {
@@ -555,22 +629,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
+  // Alone in a space-between row, so push it to the trailing edge.
+  selectPillTarget: {
+    marginLeft: "auto",
+  },
   // The pills set a minimum height, not a height, so a large text size
   // grows them instead of clipping the label.
   selectPill: {
-    // Alone in a space-between row, so push it to the trailing edge.
-    marginLeft: "auto",
     minHeight: 34,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: PILL_BG,
     alignItems: "center",
     justifyContent: "center",
   },
   selectPillText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   textPill: {
@@ -579,19 +653,16 @@ const styles = StyleSheet.create({
   },
   textPillLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   selectionCount: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   hint: {
     marginTop: 10,
     alignSelf: "center",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     backgroundColor: SURFACE_COLOR,
     paddingHorizontal: 13,
     paddingVertical: 6,

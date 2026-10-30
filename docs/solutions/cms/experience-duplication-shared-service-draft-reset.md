@@ -28,6 +28,38 @@ tags:
 
 # Duplicate Experiences through one service and reset lifecycle state
 
+> **Updated 2026-10-15 (feat-711).** Three statements below are superseded:
+>
+> 1. Duplicate now **stages one active `ContentRevision` DRAFT per copied
+>    locale** (fresh preview token, the caller's attribution) inside the same
+>    transaction as the copy, exactly as `create` and `createLocale` do. The
+>    copy previews immediately and uses the normal `expectedDraftRevision`,
+>    publish, and discard contracts. Canonical rows still hold the copied
+>    content, so discarding the copy's draft returns to the as-duplicated page.
+>    "No revision is created" is no longer the contract; "no source revision
+>    history is cloned" still is.
+> 2. **Homepages can be duplicated.** `isHomepage` is the live homepage
+>    assignment only. The homepage rendering context is
+>    `isHomepage || homepageLayout` (`ExperienceLocale.homepageLayout`, migration
+>    `0154`). A copy always gets `isHomepage: false` and keeps the context in
+>    `homepageLayout`, so the category rail and the dynamic collection stay
+>    valid on draft saves and render with the Watch home layout in preview.
+>    Publish rejects every unassigned homepage-layout draft, even after all
+>    homepage-only blocks are removed. Draft updates may round-trip the current
+>    layout value but cannot change it, so GraphQL, MCP, or rollback payloads
+>    cannot clear the flag to bypass publication safety. The context stays with
+>    the copy after later homepage assignment or unassignment; it can publish
+>    only while it is the assigned homepage.
+> 3. **The source version is explicit.** `sourceVersion: EFFECTIVE` (default:
+>    active saved draft, else canonical) or `CANONICAL` (stored canonical row
+>    only). Each result locale reports `copiedFrom` and the opaque
+>    `sourceDraftRevision` it read. The source is read in one `REPEATABLE READ`
+>    transaction with the writes.
+>
+> See `docs/plans/2026-10-15-009-feat-independent-page-duplication-plan.md` and
+> `apps/admin/src/services/experience-duplication.db.test.ts` (real-PostgreSQL
+> round trip, opt-in via `EXPERIENCE_DUPLICATION_DB_TEST=1`).
+
 ## Context
 
 Experience duplication is a cross-surface operation: the Admin editor,

@@ -97,6 +97,7 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
             selected ? undefined : t("featuredSelectorCardAriaHint")
           }
           {...{ "dd-action-name": "hero-selector-card" }}
+          testID="home-hero-selector-card"
         >
           <View
             style={[styles.thumbFrame, selected && styles.thumbFrameActive]}
@@ -203,7 +204,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 2,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "500",
   },
   titleActive: {

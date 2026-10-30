@@ -190,6 +190,13 @@ export const HomeCard = memo(function HomeCard({
             : t("opensVideoAriaHint")
           : undefined
       }
+      testID={
+        interactive
+          ? isSeries
+            ? "home-card-series"
+            : "home-card-video"
+          : undefined
+      }
     >
       {imageUrl != null && (
         <Image
@@ -244,7 +251,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
 })

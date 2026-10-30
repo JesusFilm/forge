@@ -7,6 +7,8 @@ import { useRouter } from "expo-router"
 import { directionalIcon, type DirectionalIconName } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { ACCENT, SURFACE_COLOR, hexToRgba } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
+import { FLOATING_BACK_SIZE } from "../../lib/playerLayout"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 type FloatingBackButtonProps = {
@@ -22,8 +24,6 @@ type FloatingBackButtonProps = {
 }
 
 // Back button floating over full-bleed content; mirrors HomeHeader's glass button.
-// `isInteractive` intentionally NOT set — inside a Pressable it flashes white on
-// remount. See docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md.
 export function FloatingBackButton({
   topOffset = 4,
   sideOffset = HORIZONTAL_PADDING,
@@ -32,6 +32,7 @@ export function FloatingBackButton({
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const t = useT("Common")
+  const glass = canUseLiquidGlass()
 
   const handleBack = () => {
     // A cold deep link / cold launch lands here with an empty history stack,
@@ -54,13 +55,15 @@ export function FloatingBackButton({
         accessibilityRole="button"
         accessibilityLabel={t("goBackAriaLabel")}
         {...{ "dd-action-name": "floating-back" }}
-        hitSlop={12}
-        style={({ pressed }) => pressed && styles.pressed}
+        hitSlop={6}
+        // On glass, Apple's own press response replaces the scale.
+        style={({ pressed }) => pressed && !glass && styles.pressed}
       >
         <GlassView
           style={styles.button}
           glassEffectStyle="regular"
           colorScheme="dark"
+          isInteractive={glass}
         >
           <Ionicons name={icon} size={24} color={ACCENT} />
         </GlassView>
@@ -78,9 +81,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.92 }],
   },
   button: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: FLOATING_BACK_SIZE,
+    height: FLOATING_BACK_SIZE,
+    borderRadius: FLOATING_BACK_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
