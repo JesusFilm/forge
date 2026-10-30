@@ -38,6 +38,9 @@ The result gives `/_blob/<id>`; that string is the row's `thumb`.
 Thumbnails are vertical for everything except YouTube long forms (Shorts and all
 Facebook / Instagram posts: 270x480 frame); long forms use the 16:9 cover.
 A Meta reel cut from the same file as a YouTube Short reuses the Short's thumb.
+Posts (`kind: "post"`: Community polls, verses, facts, carousels) are square tiles. Their thumb
+is the first card, 240 px wide (`<story>/community/<lang>_1.jpg`); a poll or a post without an
+image yet shows an icon for its type (poll, verse, fact, carousel), read from `cut`/id/title.
 Layout (Figma "A3", 2026-10-12): each week is three lanes, YouTube EN, YouTube RU and
 Facebook + Instagram. A long form shows its thumbnail and working name (from `story`, plus
 "LUMO" when the id has "lumo"). Below a divider come the Shorts/reels, labelled only by type

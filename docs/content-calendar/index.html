@@ -339,6 +339,21 @@
     color: var(--muted);
     white-space: nowrap;
   }
+  /* Posts (Community, carousels) are square, like the post image; with no image yet they show
+     what kind of post it is: poll, verse, fact. */
+  .short.post .pic {
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    background: #2f2420;
+  }
+  .short.post .pi {
+    position: relative;
+    z-index: 1;
+    width: 22px;
+    height: 22px;
+    color: var(--soft);
+  }
   /* States */
   .tile.scheduled .pic img {
     opacity: 0.6;
@@ -1356,6 +1371,7 @@
   // Short label under a vertical tile: intro / verse / insight / refl. / teaser.
   function cutLabel(p) {
     const c = String(p.cut || parseId(p).cut).toLowerCase()
+    if (p.kind === "post") return postType(p)
     if (/refl/.test(c)) return "refl."
     if (/conclu/.test(c)) return "concl."
     if (/insight|history|language|vox|word/.test(c)) return "insight"
@@ -1369,6 +1385,32 @@
     if (/long/.test(c)) return "full"
     return c.split("-")[0].slice(0, 8)
   }
+  // Community and Meta posts: what kind of post it is, for the label and the icon.
+  function postType(p) {
+    const s =
+      String(p.cut || "") +
+      " " +
+      String(p.id || "") +
+      " " +
+      String(p.title || "")
+    if (/poll/i.test(s)) return "poll"
+    if (/verse/i.test(s)) return "verse"
+    if (/fact/i.test(s)) return "fact"
+    if (/carousel/i.test(s)) return "carousel"
+    return "post"
+  }
+  const POST_ICON = {
+    poll: '<path d="M5 18V11M10 18V6M15 18v-9M20 18v-4"/>',
+    verse: '<path d="M7 7h4v4c0 3-1.5 5-4 6M14 7h4v4c0 3-1.5 5-4 6"/>',
+    fact: '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8v.01"/>',
+    carousel:
+      '<rect x="4" y="6" width="12" height="12" rx="2"/><path d="M19 8v9a2 2 0 0 1-2 2H8"/>',
+    post: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/>',
+  }
+  const postIcon = (t) =>
+    '<svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    (POST_ICON[t] || POST_ICON.post) +
+    "</svg>"
   // Working name of a long form: the story, plus LUMO for the LUMO cut.
   function workName(p) {
     const s = p.story || parseId(p).story
@@ -1472,6 +1514,7 @@
     const cls = [
       "tile",
       it.long ? "long" : "short",
+      it.kind === "post" ? "post" : "",
       it.scheduled ? "scheduled" : "",
       it.planned ? "planned" : "",
       it.paid ? "paid" : "",
@@ -1480,7 +1523,9 @@
       '<span class="pic">' +
       (it.thumb
         ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">'
-        : "") +
+        : it.kind === "post"
+          ? postIcon(it.label)
+          : "") +
       "</span>"
     return (
       '<button type="button" class="' +
