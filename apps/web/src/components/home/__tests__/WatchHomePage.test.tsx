@@ -99,14 +99,18 @@ vi.mock("next/image", () => ({
 // `_hlsConfig` is an object and has to come out of the spread the way
 // `disableTracking` already does, or React would stringify it onto the
 // element as an unknown attribute.
-const { muxVideoHlsConfigs, muxVideoRenders } = vi.hoisted(() => ({
-  muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
-  // One entry per render of the carousel subtree, recording the src it
-  // mounted. Kept separate from the config recorder so a change to how
-  // `_hlsConfig` is captured cannot silently invalidate a render-count
-  // assertion that has nothing to do with it.
-  muxVideoRenders: [] as Array<string | undefined>,
-}))
+const { muxVideoHlsConfigs, muxVideoRenders, deferredMuxRef } = vi.hoisted(
+  () => ({
+    muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
+    // One entry per render of the carousel subtree, recording the src it
+    // mounted. Kept separate from the config recorder so a change to how
+    // `_hlsConfig` is captured cannot silently invalidate a render-count
+    // assertion that has nothing to do with it.
+    muxVideoRenders: [] as Array<string | undefined>,
+    // Separates DOM mounting from the media wrapper publishing its actual ref.
+    deferredMuxRef: { hold: false, publish: null as (() => void) | null },
+  }),
+)
 
 function lastMuxVideoHlsConfig(): Record<string, unknown> | undefined {
   return muxVideoHlsConfigs[muxVideoHlsConfigs.length - 1]
@@ -125,11 +129,31 @@ vi.mock("@forge/video-player/mux-video", async () => {
       { disableTracking: _disableTracking, _hlsConfig, ...props },
       ref,
     ) {
+      const holdRef = React.useCallback(
+        (element: HTMLVideoElement | null) => {
+          const publish = () => {
+            if (typeof ref === "function") ref(element)
+            else if (ref) ref.current = element
+          }
+          if (element) deferredMuxRef.publish = publish
+          else {
+            deferredMuxRef.publish = null
+            publish()
+          }
+        },
+        [ref],
+      )
       muxVideoHlsConfigs.push(_hlsConfig)
       muxVideoRenders.push(
         typeof props.src === "string" ? props.src : undefined,
       )
-      return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
+      return (
+        <video
+          ref={deferredMuxRef.hold ? holdRef : ref}
+          data-testid="watch-home-tv-video"
+          {...props}
+        />
+      )
     }),
   }
 })
@@ -366,6 +390,8 @@ beforeEach(() => {
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
   muxVideoRenders.length = 0
+  deferredMuxRef.hold = false
+  deferredMuxRef.publish = null
   // jsdom does not implement media playback. The intro requests playback on a
   // timer, so an element a test never stubs would otherwise log "Not
   // implemented" on every turn that outlives the poster hold.
@@ -528,6 +554,120 @@ describe("WatchHomePage", () => {
       ).toBe("https://cdn.example/jesus.vtt")
     } finally {
       readyState.mockRestore()
+    }
+  })
+
+  it("keeps unseen slides while load is held and starts the late player before canplay", async () => {
+    vi.useFakeTimers()
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )!
+      const openingTitle = carousel.getAttribute("aria-label")
+      const playedBeforeLoad = readWatchHomeTvPlayedIds()
+
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+      expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeLoad)
+
+      readyState.mockReturnValue("complete")
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+      const video = container.querySelector<HTMLVideoElement>(
+        '[data-testid="watch-home-tv-video"]',
+      )!
+      expect(video).not.toBeNull()
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play
+
+      // Native HLS may need play() before canplay. Its poster hold starts
+      // when the late player attaches, not during the earlier load hold.
+      await act(async () => {
+        vi.advanceTimersByTime(1_499)
+      })
+      expect(play).not.toHaveBeenCalled()
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(play).toHaveBeenCalledTimes(1)
+
+      // Once a real player is allowed and attached, a genuinely dead stream
+      // still loses its turn after the normal 12-second buffering ceiling.
+      await act(async () => {
+        vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS - 1_501)
+      })
+      expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+      await act(async () => {
+        vi.advanceTimersByTime(2)
+      })
+      expect(carousel.getAttribute("aria-label")).not.toBe(openingTitle)
+    } finally {
+      readyState.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it("waits for the actual player ref after page load permits mounting", async () => {
+    vi.useFakeTimers()
+    deferredMuxRef.hold = true
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("complete")
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      const video = container.querySelector<HTMLVideoElement>(
+        '[data-testid="watch-home-tv-video"]',
+      )!
+      expect(video).not.toBeNull()
+      expect(deferredMuxRef.publish).not.toBeNull()
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )!
+      const openingTitle = carousel.getAttribute("aria-label")
+      const playedBeforeAttach = readWatchHomeTvPlayedIds()
+
+      for (let interval = 0; interval < 3; interval++) {
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
+        })
+        expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+        expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeAttach)
+        expect(play).not.toHaveBeenCalled()
+      }
+
+      await act(async () => {
+        deferredMuxRef.publish!()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(1_499)
+      })
+      expect(play).not.toHaveBeenCalled()
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(play).toHaveBeenCalledTimes(1)
+    } finally {
+      readyState.mockRestore()
+      vi.useRealTimers()
     }
   })
 
@@ -1086,6 +1226,50 @@ describe("WatchHomePage", () => {
           await renderUnderWatchModal(false)
           expect(play).toHaveBeenCalledTimes(1)
         } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("keeps a late player's turn while a modal holds its first play", async () => {
+        vi.useFakeTimers()
+        const readyState = vi
+          .spyOn(document, "readyState", "get")
+          .mockReturnValue("loading")
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(true)
+          const openingTitle = carouselLabel()
+          const playedBeforeLoad = readWatchHomeTvPlayedIds()
+          await act(async () => {
+            vi.advanceTimersByTime(40_000)
+          })
+          expect(currentVideo()).toBeNull()
+
+          readyState.mockReturnValue("complete")
+          await act(async () => {
+            window.dispatchEvent(new Event("load"))
+          })
+          const video = currentVideo()
+          expect(video).not.toBeNull()
+          const play = stubPlay(video)
+
+          // This fresh element is already paused, so the modal causes no
+          // pause event. Settle each watchdog interval independently.
+          expect(video.paused).toBe(true)
+          for (let interval = 0; interval < 3; interval++) {
+            await act(async () => {
+              vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
+            })
+            expect(carouselLabel()).toBe(openingTitle)
+            expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeLoad)
+            expect(play).not.toHaveBeenCalled()
+          }
+
+          await renderUnderWatchModal(false)
+          expect(currentVideo()).toBe(video)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          readyState.mockRestore()
           vi.useRealTimers()
         }
       })

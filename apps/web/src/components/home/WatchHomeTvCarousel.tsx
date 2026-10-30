@@ -308,6 +308,7 @@ function WatchHomeTvMedia({
   activeSlide,
   isMuted,
   leavingSlide,
+  mediaAllowed,
   mediaReady,
   onCanPlay,
   onEnded,
@@ -320,12 +321,12 @@ function WatchHomeTvMedia({
   onTimeUpdate,
   onWaiting,
   videoRef,
-  viewerRequestedMedia,
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
+  mediaAllowed: boolean
   mediaReady: boolean
   onCanPlay: () => void
   onEnded?: () => void
@@ -338,8 +339,6 @@ function WatchHomeTvMedia({
   onTimeUpdate: () => void
   onWaiting: () => void
   videoRef: MutableRefObject<HTMLVideoElement | null>
-  /** Play or unmute pressed before `load`: mount without waiting for it. */
-  viewerRequestedMedia: boolean
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
   const subtitleVttSrc = isMuted ? (activeSlide.subtitleVttSrc ?? null) : null
@@ -348,8 +347,6 @@ function WatchHomeTvMedia({
     : null
   const animateEnteringMedia = useHasLeftInitialSlide(activeSlide.id)
 
-  const pageLoaded = useWindowLoaded()
-  const mediaAllowed = pageLoaded || viewerRequestedMedia
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
     mediaMounted: mediaAllowed && Boolean(activeSlide.src),
@@ -1239,6 +1236,12 @@ export function WatchHomeTvCarousel({
     [slides],
   )
   const watchModalActive = useIsWatchModalActive()
+  const pageLoaded = useWindowLoaded()
+  // Explicit Play/unmute bypasses the passive load hold. Share the permission
+  // with the hook so its media clocks cannot spend an unmounted video's turn.
+  const [viewerRequestedMedia, setViewerRequestedMedia] = useState(false)
+  const mediaAllowed = pageLoaded || viewerRequestedMedia
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const {
     activeIndex,
     activeSlide,
@@ -1265,6 +1268,8 @@ export function WatchHomeTvCarousel({
     toggleUserPaused,
     videoRef,
   } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    mediaAllowed,
+    mediaAttached: player != null,
     playbackHeld: watchModalActive,
   })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
@@ -1273,7 +1278,6 @@ export function WatchHomeTvCarousel({
   // below the frame while muted. Coverage must be measured against the frame
   // the viewer actually sees.
   const heroFrameRef = useRef<HTMLDivElement | null>(null)
-  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   usePauseForWatchModal(player, activeSlide?.id ?? null)
   const fittedHeroHeight = useWatchHomeHeroFittedHeight(pinned && isMuted)
   useWatchHomeHeroScrollPause({
@@ -1285,7 +1289,6 @@ export function WatchHomeTvCarousel({
   })
   // Latched by an explicit Play or unmute, so the player mounts before `load`
   // for a viewer who asked for it (see `useWindowLoaded`).
-  const [viewerRequestedMedia, setViewerRequestedMedia] = useState(false)
   const handleToggleUserPaused = useCallback(() => {
     if (isUserPaused) setViewerRequestedMedia(true)
     toggleUserPaused()
@@ -1372,6 +1375,7 @@ export function WatchHomeTvCarousel({
           activeSlide={activeSlide}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
+          mediaAllowed={mediaAllowed}
           mediaReady={mediaReady}
           onCanPlay={handleCanPlay}
           onEnded={handleEnded}
@@ -1384,7 +1388,6 @@ export function WatchHomeTvCarousel({
           onTimeUpdate={handleTimeUpdate}
           onWaiting={handleWaiting}
           videoRef={videoRef}
-          viewerRequestedMedia={viewerRequestedMedia}
           wrapperRef={wrapperRef}
         />
         <WatchHomeTvOverlay

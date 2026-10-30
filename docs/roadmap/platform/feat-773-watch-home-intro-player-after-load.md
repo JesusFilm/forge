@@ -3,7 +3,7 @@ id: "feat-773"
 title: "Start the Watch home intro player after page load"
 owner: "vlad"
 priority: "P2"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-20"
 duration: 1
 depends_on: []
@@ -97,9 +97,27 @@ these runs. Stalls were 0 in every cold run.
 - Known limit: a slow resource that delays `load` also delays the passive
   intro. This is the same trade-off `HeroPlayer` already makes. It must not
   delay an explicit Play or unmute; those mount the player at once.
+- Keep the media watchdog and initial-play timer parked while mounting is
+  intentionally withheld. Re-arm them when the permitted player's ref attaches;
+  a page-load hold is not a dead stream. Once attached, preserve the existing
+  1.5-second poster hold and 12-second stalled-stream recovery.
+- A Watch modal must also park that watchdog before first play, even when an
+  already-paused element emits no pause event. Closing the modal releases one
+  deferred playback request for the same turn.
 
 ## Verification
 
+- Hold document load for 40 seconds with multiple video slides: no player
+  mounts, the selected slide and played-ID history stay unchanged. After
+  load/attachment, request playback after 1.5 seconds without requiring
+  `canplay`; a truly stalled attached player still advances after 12 seconds.
+- Independently withhold the player wrapper's ref after load permits mounting
+  for three settled watchdog intervals, then publish it: preserve selection and
+  played history, and begin the 1.5-second hold at attachment. The test must fail
+  if only the actual-attachment predicate is removed.
+- Open a modal before releasing load. With the fresh element initially paused
+  and no media events, hold three settled watchdog intervals without spending
+  the slide; close the modal and request playback exactly once for that turn.
 - `pnpm --filter @forge/web exec vitest run src/components/home`
 - The new test fails if the gate is removed and if `mediaMounted` is
   dropped from the subtitle effect's dependencies.

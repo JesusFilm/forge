@@ -249,10 +249,16 @@ export function useWatchHomeTvCarousel(
     // pauses media that starts under it and only resumes media that was
     // already playing when it opened.
     playbackHeld?: boolean
+    /** An intentionally absent player is not a stalled stream. */
+    mediaAllowed?: boolean
+    /** Re-arm startup when the permitted player's ref actually attaches. */
+    mediaAttached?: boolean
     randomSource?: () => number
     suppressLeavingSlide?: boolean
   } = {},
 ) {
+  const mediaMayStart =
+    options.mediaAllowed !== false && options.mediaAttached !== false
   const hasHydrated = useSyncExternalStore(
     subscribeToHydrationStore,
     getClientHydrationSnapshot,
@@ -839,13 +845,13 @@ export function useWatchHomeTvCarousel(
 
   // Every video turn -- the opening slide and the per-visit draw included,
   // which never pass through `selectIndex` -- gets its poster hold, after
-  // which playback is requested whether or not `canplay` has arrived. Keyed
-  // on the slide id, so a same-slide replay (which plays by hand in
-  // `selectIndex`) arms nothing.
+  // which playback is requested whether or not `canplay` has arrived. Start
+  // the hold only after mounting is allowed and the player actually attaches.
+  // A same-slide replay (which plays by hand in `selectIndex`) arms nothing.
   useEffect(() => {
     posterHoldServedRef.current = false
     turnSlideIdRef.current = activeSlide?.id ?? null
-    if (!activeSlide?.id || !activeSlide.src) return undefined
+    if (!activeSlide?.id || !activeSlide.src || !mediaMayStart) return undefined
 
     const armedForTurn = turnTokenRef.current
     turnStartPlayTimeoutRef.current = window.setTimeout(() => {
@@ -865,7 +871,13 @@ export function useWatchHomeTvCarousel(
     return () => {
       clearTurnStartPlay()
     }
-  }, [activeSlide?.id, activeSlide?.src, clearTurnStartPlay, requestPlayback])
+  }, [
+    activeSlide?.id,
+    activeSlide?.src,
+    clearTurnStartPlay,
+    mediaMayStart,
+    requestPlayback,
+  ])
 
   const handlePause = useCallback(() => {
     // Browsers fire `pause` immediately before `ended` at natural end of
@@ -1076,8 +1088,16 @@ export function useWatchHomeTvCarousel(
     // Buffering and paused are not exclusive: a viewer who scrolls away
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
-    // behaviour the pause gate exists to stop.
-    if (!isBuffering || isMediaHeld || isUserPaused || autoAdvancePaused) {
+    // behaviour the pause gate exists to stop. A modal can also hold a fresh,
+    // already-paused element before its first play, with no pause event.
+    if (
+      !mediaMayStart ||
+      !isBuffering ||
+      isMediaHeld ||
+      options.playbackHeld === true ||
+      isUserPaused ||
+      autoAdvancePaused
+    ) {
       return undefined
     }
 
@@ -1100,6 +1120,8 @@ export function useWatchHomeTvCarousel(
     isBuffering,
     isMediaHeld,
     isUserPaused,
+    mediaMayStart,
+    options.playbackHeld,
   ])
 
   useEffect(() => {
