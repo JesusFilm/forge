@@ -1,0 +1,31 @@
+name: Infrastructure CA images
+on:
+  pull_request:
+    paths:
+      ["infra/security-ca/**", ".github/workflows/infrastructure-ca-images.yml"]
+  push:
+    branches: [main]
+    paths:
+      ["infra/security-ca/**", ".github/workflows/infrastructure-ca-images.yml"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [
+            "postgres-0a458a815f2d12e6",
+            "postgres-34c3e49e7ed2aaef",
+            "postgres-87184beace8ec657",
+            "postgres-8dbbfcb7fafacc22",
+            "postgres-8dcde23134ad2ca3",
+            "postgres-fcc6686a3f4f1962",
+            "typesense",
+          ]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Build and verify the CA-only image
+        run: python3 infra/security-ca/verify-image.py "${{ matrix.image }}"

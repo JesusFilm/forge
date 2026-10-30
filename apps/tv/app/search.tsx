@@ -25,6 +25,11 @@ import { searchResultPath } from "../src/components/search/searchResultPath"
 import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
 import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
+import {
+  nativeSearchSuggestions,
+  nativeSearchActions,
+  findNativeSearchAction,
+} from "../src/components/search/nativeSearchSuggestions"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { navigateBackFromSearch } from "../src/components/search/searchBack"
@@ -64,7 +69,6 @@ export default function SearchScreen() {
     searchRequestId,
     submit,
     runQuery,
-    retry,
   } = useSemanticSearch(query)
   const { recents, addRecent, clearAll } = useSearchHistory()
 
@@ -216,7 +220,7 @@ export default function SearchScreen() {
     onRunQuery: runQueryImmediate,
     onClearHistory: clearAll,
     recents,
-    onRetry: retry,
+    onRetry: submit,
     onKeyFocus: handleEntryRegionFocus,
     onCardFocus: handleCardFocus,
     micOwnsInitialFocus: voice.available,
@@ -236,6 +240,10 @@ export default function SearchScreen() {
         <SearchBodyNativeTvos
           state={state}
           results={results}
+          query={query}
+          recents={recents}
+          onRunQuery={runQueryImmediate}
+          onSubmit={submit}
           onChangeQuery={setSanitizedQuery}
         />
       </View>
@@ -281,18 +289,51 @@ export default function SearchScreen() {
 function SearchBodyNativeTvos({
   state,
   results,
+  query,
+  recents,
+  onRunQuery,
+  onSubmit,
   onChangeQuery,
 }: {
   state: SearchState
   results: SearchResult[]
+  query: string
+  recents: string[]
+  onRunQuery: (query: string) => void
+  onSubmit: () => void
   onChangeQuery: (next: string | ((current: string) => string)) => void
 }) {
   const router = useRouter()
 
-  const nativeResults = useMemo(() => toNativeSearchResults(results), [results])
+  const showSuggestions = !meetsMinQueryLength(query)
+  // Scope opaque recent IDs to the displayed snapshot: a delayed native event
+  // must never resolve to a different query after history reorders.
+  const suggestionGeneration = useRef(0)
+  const suggestions = useMemo(
+    () => nativeSearchSuggestions(recents, ++suggestionGeneration.current),
+    [recents],
+  )
+  const nativeActions = useMemo(
+    () => nativeSearchActions(state, showSuggestions, suggestions),
+    [state, showSuggestions, suggestions],
+  )
+  const showActionCards = nativeActions.length > 0
+  const nativeResults = useMemo(
+    () =>
+      showActionCards
+        ? nativeActions.map(({ card }) => card)
+        : toNativeSearchResults(results),
+    [showActionCards, nativeActions, results],
+  )
+  // Only external actions write this prop. Echoing sanitized onSearch text back
+  // to the native field can disrupt typing/dictation and cause callback loops.
+  const [nativeQueryOverride, setNativeQueryOverride] = useState<
+    string | undefined
+  >()
 
   const handleSearch = useCallback(
     (event: SearchEvent) => {
+      setNativeQueryOverride(undefined)
       onChangeQuery(event.nativeEvent.query)
     },
     [onChangeQuery],
@@ -300,13 +341,28 @@ function SearchBodyNativeTvos({
 
   const handleSelectItem = useCallback(
     (event: SelectItemEvent) => {
+      if (showActionCards) {
+        const action = findNativeSearchAction(
+          nativeActions,
+          event.nativeEvent.id,
+        )
+        if (action?.kind === "retry") {
+          // Input can change while an error card is still visible during debounce.
+          // Submit the live field and cancel its pending debounce timer.
+          onSubmit()
+        } else if (action?.kind === "search") {
+          setNativeQueryOverride(action.query)
+          onRunQuery(action.query)
+        }
+        return
+      }
       const match = findResultById(results, event.nativeEvent.id)
       if (match != null) {
         rememberPlaybackEntry(match.slug, { source: "search" })
         router.push(searchResultPath(match))
       }
     },
-    [results, router],
+    [showActionCards, nativeActions, onSubmit, onRunQuery, results, router],
   )
 
   const reclaimMenuKeyAfterNativeFocus = useCallback(() => {
@@ -322,6 +378,9 @@ function SearchBodyNativeTvos({
       <TvosSearchView
         style={styles.nativeSearch}
         results={nativeResults}
+        searchText={nativeQueryOverride}
+        {...{ "dd-action-name": "search" }}
+        cardHeight={showActionCards ? 110 : 420}
         onSearch={handleSearch}
         onSelectItem={handleSelectItem}
         onSearchFieldFocused={reclaimMenuKeyAfterNativeFocus}
@@ -329,7 +388,17 @@ function SearchBodyNativeTvos({
         placeholder="Search"
         colorScheme="dark"
         accentColor={WATCH_THEME.accent}
-        showTitle
+        showTitle={!showActionCards}
+        showTitleOverlay={showActionCards}
+        // Cover the native artwork placeholder with an intentional action tile.
+        // These overlay styles are dormant on ordinary content-result cards.
+        overlayHeight={110}
+        overlayBackgroundColor={WATCH_THEME.focusInk}
+        overlayBackgroundColorFocused={WATCH_THEME.focusFill}
+        overlayTextColor={WATCH_THEME.text}
+        overlayTextColorFocused={WATCH_THEME.focusInk}
+        overlayTitleSize={24}
+        showSubtitle
         emptyStateText="Search films, series, and topics"
         searchingText="Searching…"
         noResultsText="No results found"

@@ -29,7 +29,6 @@ const document = {
   tracks: [],
   items: [],
   components: [],
-  packRevisionIds: [],
 }
 suite("Project deletion against disposable Postgres", () => {
   let db: PrismaClient

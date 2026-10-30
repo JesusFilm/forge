@@ -144,7 +144,7 @@ export default function AccountScreen() {
   const bottomPad = useMiniPlayerBottomClearance() + WINDOW_EDGE_MARGIN
 
   return (
-    <View style={styles.screen}>
+    <View testID="screen-account" style={styles.screen}>
       <ScreenTopBar title={t("accountTitle")} showBack />
       {snapshot.status === "signedIn" ? (
         <ScrollView

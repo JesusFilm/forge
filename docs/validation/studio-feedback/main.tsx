@@ -1,5 +1,6 @@
 import React, {
   useState,
+  useRef,
   useSyncExternalStore,
   useEffect,
   useCallback,
@@ -29,7 +30,6 @@ const document: Record<string, unknown> & { items: unknown[] } = {
   durationInFrames: 390,
   tracks: [{ id: "video", kind: "visual" }],
   components: [],
-  packRevisionIds: [],
   items: [0, 1, 2, 3].map((i) => ({
     id: "v" + i,
     kind: "video",
@@ -118,7 +118,12 @@ window.addEventListener("error", (e) => {
 function App() {
   const [session, setSession] = useState(createSession)
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot)
-  const [playing, setPlaying] = useState(false)
+  const playbackRef = useRef<import("@qa/preview").PreviewPlaybackHandle>(null)
+  const [playing, updatePlaying] = useState(false)
+  const setPlaying = useCallback((value: boolean) => {
+    if (!value) playbackRef.current?.pause()
+    updatePlaying(value)
+  }, [])
   const [result, setResult] = useState("Not run")
   const onPlaying = useCallback(
     (v: boolean) => {
@@ -229,10 +234,69 @@ function App() {
       >
         Run cut playback
       </button>
+      <button
+        onClick={async () => {
+          const samples = []
+          for (let run = 0; run < 3; run++) {
+            setPlaying(false)
+            session.seek(15)
+            await new Promise((resolve) => setTimeout(resolve, 600))
+            setPlaying(true)
+            const reached = await new Promise<boolean>((resolve) => {
+              let unsubscribe = () => {}
+              const finish = (success: boolean) => {
+                clearTimeout(timer)
+                unsubscribe()
+                resolve(success)
+              }
+              const timer = setTimeout(() => finish(false), 8000)
+              unsubscribe = session.subscribe(() => {
+                if (session.getSnapshot().playhead >= 50) finish(true)
+              })
+            })
+            if (!reached) {
+              setPlaying(false)
+              window.document.getElementById("pause-probe")!.textContent =
+                JSON.stringify({
+                  pass: false,
+                  error: "Playback did not reach the pause sample",
+                  samples,
+                })
+              return
+            }
+            const video = window.document.querySelector("video")!
+            const before = video.currentTime
+            const frameBefore = session.getSnapshot().playhead
+            let seeks = 0
+            const seeking = () => seeks++
+            video.addEventListener("seeking", seeking)
+            setPlaying(false)
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            video.removeEventListener("seeking", seeking)
+            samples.push({
+              before,
+              after: video.currentTime,
+              deltaFrames: (video.currentTime - before) * 30,
+              frameBefore,
+              frameAfter: session.getSnapshot().playhead,
+              seeks,
+            })
+          }
+          window.document.getElementById("pause-probe")!.textContent =
+            JSON.stringify({
+              pass: samples.every((s) => Math.abs(s.deltaFrames) < 1),
+              samples,
+            })
+        }}
+      >
+        Run pause probe
+      </button>
+      <pre id="pause-probe" />
       <button onClick={() => setPlaying(false)}>Pause</button>
       <button onClick={() => session.seek(90)}>Seek first cut</button>
       <div style={{ width: 640, height: 360, position: "relative" }}>
         <Preview
+          playbackRef={playbackRef}
           session={session}
           state={state}
           projectId="fixture"

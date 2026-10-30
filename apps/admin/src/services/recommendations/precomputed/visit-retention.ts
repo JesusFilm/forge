@@ -9,6 +9,7 @@ export async function purgeExpiredPrecomputedVisitRoots(
   now: Date,
   batchSize: number,
   requestIds: readonly string[] = [],
+  finalizeOnlyStoredExpired = false,
 ) {
   // Freeze compact baseline totals before any 29-day raw evidence is removed.
   // A seven-day collection window plus one-day click cutoff leaves ample
@@ -20,6 +21,16 @@ export async function purgeExpiredPrecomputedVisitRoots(
         { endsAt: { lte: new Date(now.getTime() - 86_700_000) } },
         { stoppedAt: { lte: new Date(now.getTime() - 86_700_000) } },
       ],
+      ...(finalizeOnlyStoredExpired
+        ? {
+            AND: {
+              OR: [
+                { expiresAt: { lte: now } },
+                { visits: { some: { expiresAt: { lte: now } } } },
+              ],
+            },
+          }
+        : {}),
     },
     orderBy: [{ endsAt: "asc" }, { id: "asc" }],
     take: Math.min(batchSize, 10),

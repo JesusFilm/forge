@@ -73,26 +73,36 @@ async function mount(
   player: Player,
   streamingUrl: string | null,
   position: { current: number } = { current: 0 },
+  onReload?: (url: string) => () => void,
 ) {
   const box: { recover: () => void } = { recover: () => {} }
-  function Probe({ url }: { url: string | null }) {
+  function Probe({
+    url,
+    reload,
+  }: {
+    url: string | null
+    reload?: (url: string) => () => void
+  }) {
     box.recover = useErrorRecovery(
       player as never,
       url,
       false,
       () => position.current,
+      reload,
     )
     return null
   }
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(<Probe url={streamingUrl} />)
+    renderer = TestRenderer.create(
+      <Probe url={streamingUrl} reload={onReload} />,
+    )
   })
   return {
     box,
     rerender: async (url: string | null) => {
       await act(async () => {
-        renderer.update(<Probe url={url} />)
+        renderer.update(<Probe url={url} reload={onReload} />)
       })
     },
     unmount: async () => {
@@ -247,6 +257,44 @@ describe("useErrorRecovery", () => {
     })
 
     expect(player.replaceAsync).not.toHaveBeenCalled()
+    await h.unmount()
+  })
+  // KTD16: the monitor facade reaches the reload as an injected callback, and
+  // the reload reports the URL it loads, on both load paths.
+  it("reports the reloaded URL to the observer, then settles it", async () => {
+    const player = makeFakePlayer()
+    player.status = "error"
+    const events: string[] = []
+    const onReload = jest.fn((url: string) => {
+      events.push(`begin:${url}`)
+      return () => events.push(`settle:${url}`)
+    })
+    const h = await mount(player, URL_A, { current: 0 }, onReload)
+
+    await act(async () => {
+      h.box.recover()
+      player.__settleReplace()
+    })
+
+    expect(events).toEqual([`begin:${URL_A}`, `settle:${URL_A}`])
+    await h.unmount()
+  })
+
+  it("settles the observer on the synchronous fallback too", async () => {
+    const player = makeFakePlayer()
+    player.status = "error"
+    const settle = jest.fn()
+    const onReload = jest.fn(() => settle)
+    const h = await mount(player, URL_A, { current: 0 }, onReload)
+
+    await act(async () => {
+      h.box.recover()
+      player.__settleReplace(new Error("network down"))
+    })
+
+    expect(player.replace).toHaveBeenCalledWith(URL_A, true)
+    expect(onReload).toHaveBeenCalledWith(URL_A)
+    expect(settle).toHaveBeenCalledTimes(1)
     await h.unmount()
   })
 })

@@ -108,6 +108,10 @@
       "visibility": "assistive technology only",
       "composition": "{name} is a book name and {note} is a short note about it. Keep only the separator that the language uses between two phrases."
     },
+    "BibleTranslationPicker.downloaded": {
+      "role": "status label",
+      "composition": "Says that the Bible translation is saved on the phone and reads with no connection. It shows in bold after the book coverage, for example English • Complete Bible • Downloaded."
+    },
     "BibleTranslationPicker.twoNames": {
       "role": "list of two names",
       "composition": "Joins two Bible book names, for example Ruth and Luke."

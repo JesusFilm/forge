@@ -21,6 +21,12 @@ vi.mock("graphql", async () => {
   return createRequire(import.meta.url)("graphql") as typeof import("graphql")
 })
 
+// This suite proves the released contract; the release gate's off branch is
+// pinned by the resolver unit suite.
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: async () => true,
+}))
+
 import { execute, parse } from "graphql"
 
 import { prisma } from "@/db/client"

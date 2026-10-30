@@ -1,4 +1,5 @@
 import { adminGraphql } from "../admin"
+import { adminWatchAudienceFragment } from "./blocks/watch-audience"
 import { adminAdventCountdownFragment } from "./blocks/advent-countdown"
 import { adminBibleQuotesCarouselFragment } from "./blocks/bible-quotes-carousel"
 import { adminCardFragment } from "./blocks/card"
@@ -62,6 +63,7 @@ export const adminWatchExperienceFragment = adminGraphql(
         ... on InfoBlocksBlock {
           ...AdminInfoBlocks
         }
+        ... on WatchAudienceBlock { ...AdminWatchAudience }
         ... on LanguageGlobeBlock {
           ...AdminLanguageGlobe
         }
@@ -115,6 +117,7 @@ export const adminWatchExperienceFragment = adminGraphql(
     adminCtaFragment,
     adminEasterDatesFragment,
     adminInfoBlocksFragment,
+    adminWatchAudienceFragment,
     adminLanguageGlobeFragment,
     adminMediaCollectionFragment,
     adminNavigationCarouselFragment,

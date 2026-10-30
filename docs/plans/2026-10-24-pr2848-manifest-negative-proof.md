@@ -6,7 +6,7 @@ execution: code
 
 ## Scope and decisions
 
-Implement only the stale-manifest correctness repair in Web, under feat-790.
+Implement only the stale-manifest correctness repair in Web, under feat-908.
 The original feat-757 number in PR #2848 has no ticket file in this checkout.
 The user supplied the accepted problem, constraints, and verification contract;
 this is a bounded implementation plan, with local execution and caller-owned
@@ -63,7 +63,7 @@ Colocated real-proxy regressions cover different/same/absent replacement ETags,
 both miss branches at B ages 59,999 / 60,000 / 60,001 ms, successful current 304,
 delayed errors and 200 bodies, publication recovery, and pending replacement
 single-flight state. Preserve round-1 evidence and obtain a new independent
-review of the final candidate. feat-790 stays in progress pending acceptance.
+review of the final candidate. feat-908 stays in progress pending acceptance.
 
 ## Round 3: actual Next document status
 
@@ -83,7 +83,7 @@ Verify discriminating before/after actual production documents, real browser
 RSC/DOM commits, real-TTL outage/publication recovery, and matched local document
 loading measurements. Add a supported Playwright HTTP regression plus retain
 fixture/config commands outside source. Parent assigns independent review; keep
-feat-790 in progress and leave the correction committed locally only.
+feat-908 in progress and leave the correction committed locally only.
 
 Soft recovery pages live in the URL-transparent `(recovery)` group with their
 own loading boundary, preserving a streamed shell while optional recovery
@@ -110,4 +110,4 @@ publication, client RSC continuity and delayed metadata streaming controls. Matc
 warm positive browser loading measurements against the verified round-3 source.
 Correct the homepage diagnostic's sourceRoute to the build's `(content)/page`
 owner and verify installed Next's actual route-cache key without Redis access.
-Keep feat-790 in progress; parent assigns independent review, CI and publication.
+Keep feat-908 in progress; parent assigns independent review, CI and publication.

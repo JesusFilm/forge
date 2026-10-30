@@ -113,8 +113,8 @@ and language-gap 404 documents, private/no-store/noindex soft recovery after
 503 and expiry, retained last-good positives, publication recovery after the
 normal retry interval, and fresh 404s after replacement retrieval. It attaches
 status/header/byte evidence. The default dev-server suite skips this opt-in
-test. Stop the owned fixture and Next processes afterward. Apply the environment's
-foreground I/O guard separately to build and test commands when required.
+test. Stop the owned fixture and Next processes afterward. Run commands directly
+with an initial worker pool of two.
 
 This synthetic curated-Experience fixture does not qualify video playback,
 authenticated live manifest, current-main integration, or production loading

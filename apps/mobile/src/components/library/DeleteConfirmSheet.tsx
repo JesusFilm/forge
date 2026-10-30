@@ -108,6 +108,7 @@ export function DeleteConfirmSheet({
         />
       </Animated.View>
       <Animated.View
+        testID="screen-library-delete-confirm"
         pointerEvents={visible ? "auto" : "none"}
         style={[
           styles.card,
