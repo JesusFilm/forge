@@ -33,6 +33,7 @@ export default function FeedbackSheetRoute() {
 
   return (
     <FeedbackSheetContent
+      testID="screen-feedback"
       onClose={handleClose}
       onDismissLockedChange={setDismissLocked}
     />

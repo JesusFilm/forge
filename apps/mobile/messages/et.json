@@ -138,6 +138,7 @@
     "versesAriaValue": "Salmid {first} kuni {last} {total}-st, {chapter}",
     "demoVerse": "Järgmise salmi nägemiseks pühi üles",
     "demoChapter": "Järgmise peatüki nägemiseks pühi vasakule",
+    "demoChapterRtl": "Järgmise peatüki nägemiseks pühi paremale",
     "demoSkip": "Toksa, et vahele jätta",
     "demoSkipAriaLabel": "Jäta pühkimise näidis vahele",
     "selectVerseAriaHint": "Selle salmi valimiseks toksa kaks korda",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Vali raamat",
+    "chooseChapter": "Vali peatükk",
+    "chooseVerse": "Vali salm",
     "oldTestament": "Vana Testament",
     "newTestament": "Uus Testament",
     "books": "Raamatud",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# raamatust {count}} other {# raamatust {count}}}",
     "twoNames": "{first} ja {second}",
     "threeNames": "{first}, {second} ja {third}",
-    "onDevice": "Selles seadmes",
+    "downloaded": "Alla laaditud",
     "downloading": "Allalaadimine {percent}%",
     "downloadStopped": "Allalaadimine peatus",
     "updateAvailable": "Uuendus saadaval",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Sarja plakat",
     "videosHeading": "Videod",
     "detailsLoadError": "Kõiki üksikasju ei õnnestunud laadida.",
+    "languagesTitle": "Video keel",
     "searchLanguagesPlaceholder": "Otsi keeli…",
     "searchLanguagesAriaLabel": "Otsi keeli",
     "noLanguagesFound": "Keeli ei leitud",
@@ -502,6 +506,7 @@
     "resumeAt": "Jätka kohast {time}",
     "unknownLanguage": "Tundmatu",
     "downloadedStatus": "Alla laaditud",
+    "languagesTitle": "Video keel",
     "searchLanguagesPlaceholder": "Otsi keeli…",
     "searchLanguagesAriaLabel": "Otsi keeli",
     "noLanguagesFound": "Keeli ei leitud",
@@ -773,5 +778,8 @@
     "send": "Saada",
     "sending": "Saatmine…",
     "sendAriaLabel": "Saada tagasiside"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Rakendus kasutab sinu kohtvõrku ülekandeseadmete leidmiseks, et saaksid videoid oma teleris esitada."
   }
 }

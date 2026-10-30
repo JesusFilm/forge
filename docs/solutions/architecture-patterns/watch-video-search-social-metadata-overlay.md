@@ -52,6 +52,8 @@ Preserve the real MIME type end to end. Admin includes `mimeType`, Web trims and
 
 Treat blank overrides as absent. Resolve the page title from `searchTitle` or the localized title plus the normal suffix, and resolve the description from `searchDescription`, localized description, or snippet (`apps/web/src/lib/experience-metadata.ts:208`). Reuse those resolved values for HTML, Open Graph, and Twitter metadata so channels do not drift (`apps/web/src/lib/experience-metadata.ts:281`). An override is the complete final title; do not append the brand suffix twice.
 
+Update 2026-10-14 (QA N40, PR #2734): the resolved meta, Open Graph, and Twitter description is capped at 160 characters by `truncateMetaDescription` in `apps/web/src/lib/experience-metadata.ts`, whatever its source — authored `searchDescription`, localized description, snippet, or Experience `metaDescription`/`ogDescription`. Authored copy under the cap passes through unchanged. JSON-LD keeps the full canonical description.
+
 Choose a managed social image first, then preserve the Mux, poster, and site-default fallback chain (`apps/web/src/lib/experience-metadata.ts:225`, `apps/web/src/lib/experience-metadata.ts:237`).
 
 Do not feed promotional overrides into visible headings, canonical URLs, or `VideoObject`. Structured data takes its name and description from canonical localized video copy, and its thumbnail stays on the Mux/poster media-identity path (`apps/web/src/lib/experience-metadata.ts:209`, `apps/web/src/lib/experience-metadata.ts:217`, `apps/web/src/lib/experience-metadata.ts:258`). The JSON-LD serializer consumes those dedicated structured-data fields (`apps/web/src/lib/watch-structured-data.ts:268`).

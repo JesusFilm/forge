@@ -40,7 +40,7 @@ export default function ExperienceScreen() {
 
   let content: ReactNode
   if (hasThisExperience) {
-    content = <CuratedHomeLayout hideHeader />
+    content = <CuratedHomeLayout testID="screen-experience" hideHeader />
   } else if (currentSlug === decodedSlug && error != null) {
     content = (
       <View style={layout.centered}>

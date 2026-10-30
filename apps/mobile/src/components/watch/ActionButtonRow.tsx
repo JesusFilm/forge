@@ -318,7 +318,6 @@ const styles = StyleSheet.create({
     // Shrink + ellipsize only when the pill hits its max width.
     flexShrink: 1,
     minWidth: 0,
-    fontFamily: "System",
   },
   divider: {
     width: DIVIDER_WIDTH,

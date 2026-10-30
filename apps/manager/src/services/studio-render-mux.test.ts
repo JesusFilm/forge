@@ -5,8 +5,17 @@ const create = vi.hoisted(() =>
     status: "waiting",
   })),
 )
-vi.mock("./mux", () => ({ getMux: () => ({ video: { uploads: { create } } }) }))
-import { createStudioMuxUpload, studioMuxReadyProof } from "./studio-render-mux"
+const retrieve = vi.hoisted(() => vi.fn())
+vi.mock("./mux", () => ({
+  getMux: () => ({
+    video: { uploads: { create }, assets: { retrieve } },
+  }),
+}))
+import {
+  createStudioMuxUpload,
+  observeStudioMuxAsset,
+  studioMuxReadyProof,
+} from "./studio-render-mux"
 it("creates only signed playback with no automatic provider retries", async () => {
   await createStudioMuxUpload("render-intent-1", new AbortController().signal)
   expect(create.mock.calls[0]?.[0]).not.toHaveProperty("input")
@@ -62,3 +71,17 @@ it("requires exact signed-only readiness and matching intent", () => {
     studioMuxReadyProof({ ...asset, status: "preparing" }, "render-intent-1"),
   ).toThrow()
 })
+
+it.each(["preparing", "errored"] as const)(
+  "preserves the Mux %s asset state without ready-proof parsing",
+  async (status) => {
+    retrieve.mockResolvedValueOnce({ id: "mux-asset", status })
+    await expect(
+      observeStudioMuxAsset(
+        "mux-asset",
+        "render-intent-1",
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ status })
+  },
+)

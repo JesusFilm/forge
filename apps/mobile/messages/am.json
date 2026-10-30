@@ -138,6 +138,7 @@
     "versesAriaValue": "ቁጥር {first} እስከ {last} ከ{total}፣ {chapter}",
     "demoVerse": "ለሚቀጥለው ቁጥር ወደ ላይ ያንሸራትቱ",
     "demoChapter": "ለሚቀጥለው ምዕራፍ ወደ ግራ ያንሸራትቱ",
+    "demoChapterRtl": "ለሚቀጥለው ምዕራፍ ወደ ቀኝ ያንሸራትቱ",
     "demoSkip": "ለመዝለል ይንኩ",
     "demoSkipAriaLabel": "የማንሸራተቻ ማሳያውን ዝለል",
     "selectVerseAriaHint": "ይህን ቁጥር ለመምረጥ ሁለቴ መታ ያድርጉ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "መጽሐፍ ይምረጡ",
+    "chooseChapter": "ምዕራፍ ይምረጡ",
+    "chooseVerse": "ቁጥር ይምረጡ",
     "oldTestament": "ብሉይ ኪዳን",
     "newTestament": "አዲስ ኪዳን",
     "books": "መጻሕፍት",
@@ -193,7 +196,7 @@
     "someBooks": "{count} ከ{total, plural, one {# መጽሐፍ} other {# መጻሕፍት}}",
     "twoNames": "{first} እና {second}",
     "threeNames": "{first}፣ {second} እና {third}",
-    "onDevice": "በዚህ መሣሪያ ላይ",
+    "downloaded": "ወርዷል",
     "downloading": "በማውረድ ላይ {percent}%",
     "downloadStopped": "ማውረዱ ቆሟል",
     "updateAvailable": "ዝማኔ አለ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "የተከታታዩ ፖስተር",
     "videosHeading": "ቪዲዮዎች",
     "detailsLoadError": "ሙሉ ዝርዝሮችን መጫን አልተቻለም።",
+    "languagesTitle": "የቪዲዮው ቋንቋ",
     "searchLanguagesPlaceholder": "ቋንቋዎችን ፈልግ…",
     "searchLanguagesAriaLabel": "ቋንቋዎችን ፈልግ",
     "noLanguagesFound": "ምንም ቋንቋ አልተገኘም",
@@ -502,6 +506,7 @@
     "resumeAt": "ከ{time} ቀጥል",
     "unknownLanguage": "ያልታወቀ ቋንቋ",
     "downloadedStatus": "ወርዷል",
+    "languagesTitle": "የቪዲዮው ቋንቋ",
     "searchLanguagesPlaceholder": "ቋንቋዎችን ፈልግ…",
     "searchLanguagesAriaLabel": "ቋንቋዎችን ፈልግ",
     "noLanguagesFound": "ምንም ቋንቋ አልተገኘም",
@@ -773,5 +778,8 @@
     "send": "ላክ",
     "sending": "በመላክ ላይ…",
     "sendAriaLabel": "አስተያየት ላክ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "መተግበሪያው የማስተላለፊያ መሣሪያዎችን ለማግኘት የአካባቢ ኔትወርክዎን ይጠቀማል፤ በዚህም ቪዲዮዎችን በቲቪዎ ላይ ማጫወት ይችላሉ።"
   }
 }

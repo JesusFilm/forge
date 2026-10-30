@@ -138,6 +138,7 @@
     "versesAriaValue": "Veesi {first} ki he {last} ʻo e {total}, {chapter}",
     "demoVerse": "Tekeʻi ki ʻolunga ki he veesi hoko",
     "demoChapter": "Tekeʻi ki he toʻohema ki he vahe hoko",
+    "demoChapterRtl": "Tekeʻi ki he toʻomataʻu ki he vahe hoko",
     "demoSkip": "Tāʻi ke laka atu",
     "demoSkipAriaLabel": "Laka atu ʻi he fakahinohino ʻo e tekeʻi",
     "selectVerseAriaHint": "Tāʻi tuʻo ua ke fili ʻa e veesi ni",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Fili ha tohi",
+    "chooseChapter": "Fili ha vahe",
+    "chooseVerse": "Fili ha veesi",
     "oldTestament": "Fuakava Motuʻa",
     "newTestament": "Fuakava Foʻou",
     "books": "Ngaahi Tohi",
@@ -193,7 +196,7 @@
     "someBooks": "Tohi ʻe {count} mei he {total, plural, other {#}}",
     "twoNames": "{first} mo {second}",
     "threeNames": "{first}, {second} mo {third}",
-    "onDevice": "ʻI he meʻangāue ni",
+    "downloaded": "Kuo hiki mai",
     "downloading": "Lolotonga hiki mai {percent}%",
     "downloadStopped": "Naʻe tuʻu ʻa e hiki mai",
     "updateAvailable": "ʻOku maʻu ha fakafoʻou",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Pōsita ʻo e silisi",
     "videosHeading": "Ngaahi Vitio",
     "detailsLoadError": "Naʻe ʻikai lava ʻo ʻomi ʻa e fakaikiiki kakato.",
+    "languagesTitle": "Lea ʻo e vitio",
     "searchLanguagesPlaceholder": "Fekumi ki he ngaahi lea...",
     "searchLanguagesAriaLabel": "Fekumi ki he ngaahi lea",
     "noLanguagesFound": "ʻIkai maʻu ha lea",
@@ -502,6 +506,7 @@
     "resumeAt": "Hoko atu mei he {time}",
     "unknownLanguage": "ʻIkai ʻiloʻi",
     "downloadedStatus": "Kuo hiki mai",
+    "languagesTitle": "Lea ʻo e vitio",
     "searchLanguagesPlaceholder": "Fekumi ki he ngaahi lea...",
     "searchLanguagesAriaLabel": "Fekumi ki he ngaahi lea",
     "noLanguagesFound": "ʻIkai maʻu ha lea",
@@ -773,5 +778,8 @@
     "send": "Fekau",
     "sending": "Lolotonga fekau…",
     "sendAriaLabel": "Fekau ʻa e fakakaukau"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ʻOku ngāueʻaki ʻe he polokalama hoʻo netiueki fakalotofale ke kumi ʻa e ngaahi meʻangāue fakaʻaliʻali ki he TV, koeʻuhí ke ke lava ʻo tā ʻa e ngaahi vitio ʻi hoʻo TV."
   }
 }

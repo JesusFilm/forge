@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Lietotne izmanto jūsu lokālo tīklu apraides ierīču atrašanai, lai jūs varētu atskaņot video savā televizorā."
+  }
+}

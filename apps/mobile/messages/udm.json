@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-тӥ стихысен {last}-тӥ стихозь, ваньмыз {total}, {chapter}",
     "demoVerse": "Вуоно стих понна выллань нюртэ",
     "demoChapter": "Вуоно глава понна паллян пала нюртэ",
+    "demoChapterRtl": "Вуоно глава понна бур пала нюртэ",
     "demoSkip": "Ортчытон понна ӟыгыртэ",
     "demoSkipAriaLabel": "Нюртон возьматонэз ортчытыны",
     "selectVerseAriaHint": "Та стихез быръян понна кык пол ӟыгыртэ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Книгаез быръе",
+    "chooseChapter": "Главаез быръе",
+    "chooseVerse": "Стихез быръе",
     "oldTestament": "Вуж Кенеш",
     "newTestament": "Выль Кенеш",
     "books": "Книгаос",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# книгаысь} other {# книгаысь}} {count}",
     "twoNames": "{first} но {second}",
     "threeNames": "{first}, {second} но {third}",
-    "onDevice": "Та устройствоын",
+    "downloaded": "Ӝутэмын",
     "downloading": "Ӝутӥське: {percent}%",
     "downloadStopped": "Ӝутон дугдиз",
     "updateAvailable": "Выльдон вань",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериаллэн постерез",
     "videosHeading": "Видеоос",
     "detailsLoadError": "Тырмыт иворез усьтыны ӧз луы.",
+    "languagesTitle": "Видеолэн кылыз",
     "searchLanguagesPlaceholder": "Кылъёсты утчаны…",
     "searchLanguagesAriaLabel": "Кылъёсты утчаны",
     "noLanguagesFound": "Кылъёс шедьтымтэ",
@@ -502,6 +506,7 @@
     "resumeAt": "Азьланьтыны: {time}",
     "unknownLanguage": "Тодмотэм кыл",
     "downloadedStatus": "Ӝутэмын",
+    "languagesTitle": "Видеолэн кылыз",
     "searchLanguagesPlaceholder": "Кылъёсты утчаны…",
     "searchLanguagesAriaLabel": "Кылъёсты утчаны",
     "noLanguagesFound": "Кылъёс шедьтымтэ",
@@ -773,5 +778,8 @@
     "send": "Ыстыны",
     "sending": "Ыстӥське…",
     "sendAriaLabel": "Малпанэз ыстыны"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложение телевизоре ыстон устройствоосты шедьтон понна тӥляд локальной вотэсты уже кутэ, соин тӥ видеоосты телевизорады возьматыны быгатоды."
   }
 }

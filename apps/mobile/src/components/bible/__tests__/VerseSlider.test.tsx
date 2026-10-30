@@ -146,6 +146,12 @@ async function settle(height = 100) {
 }
 
 describe("VerseSlider across a chapter load", () => {
+  // A slide runs until a test moves the clock. On real timers a busy CI runner
+  // ended the 300 ms slide before a check, and its copy was gone (2026-10-15).
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
   it("keeps the old verse in place while the chapter loads, then slides it out", async () => {
     await render(props({ live: live("JHN.3:35", LAST) }))
     await settle()
@@ -487,6 +493,11 @@ describe("VerseSlider after a long verse scrolls", () => {
   const LONG = verse(9, "Then were the king's scribes called at that time.")
   const NEXT = verse(10, "And he wrote in the name of king Ahasuerus.")
   const FORWARD_MOVE: VerseSlide = { id: 1, direction: "forward" }
+
+  // As across a chapter load: each check reads a copy that a slide still holds.
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
 
   afterEach(() => {
     jest.restoreAllMocks()

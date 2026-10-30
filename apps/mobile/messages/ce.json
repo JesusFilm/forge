@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихаш {first} — {last}, массо а {total}, {chapter}",
     "demoVerse": "РогӀерачу стихана хьала хьакха",
     "demoChapter": "РогӀерачу кортана аьрру агӀор хьакха",
+    "demoChapterRtl": "РогӀерачу кортана аьтту агӀор хьакха",
     "demoSkip": "Юкъахдита тӀетаӀа",
     "demoSkipAriaLabel": "Хьакхаран гайтам юкъахдита",
     "selectVerseAriaHint": "ХӀара стих харжа шозза тӀетаӀа",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Жайна харжа",
+    "chooseChapter": "Корта харжа",
+    "chooseVerse": "Стих харжа",
     "oldTestament": "Шира ЧӀагӀам",
     "newTestament": "Керла ЧӀагӀам",
     "books": "Жайнаш",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# жайнех {count}} other {# жайнех {count}}}",
     "twoNames": "{first} а, {second} а",
     "threeNames": "{first} а, {second} а, {third} а",
-    "onDevice": "ХӀокху гӀирсехь",
+    "downloaded": "Схьаэцна",
     "downloading": "Схьаоьцуш: {percent}%",
     "downloadStopped": "Схьаэцар сецна",
     "updateAvailable": "Карладаккхар ду",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалан постер",
     "videosHeading": "Видеош",
     "detailsLoadError": "Дуьззина хаамаш чу ца делира.",
+    "languagesTitle": "Видеон мотт",
     "searchLanguagesPlaceholder": "Меттанаш лаха…",
     "searchLanguagesAriaLabel": "Меттанаш лаха",
     "noLanguagesFound": "Меттанаш ца карийна",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} тӀера дӀахьа",
     "unknownLanguage": "Девзаш доцу мотт",
     "downloadedStatus": "Схьаэцна",
+    "languagesTitle": "Видеон мотт",
     "searchLanguagesPlaceholder": "Меттанаш лаха…",
     "searchLanguagesAriaLabel": "Меттанаш лаха",
     "noLanguagesFound": "Меттанаш ца карийна",
@@ -773,5 +778,8 @@
     "send": "ДӀадахьийта",
     "sending": "ДӀадохьуьйтуш…",
     "sendAriaLabel": "Хетарг дӀадахьийта"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Программо шун локальни сеть лелайо телевизоре дӀахьажо гӀирсаш лахархьама, шуна видеош шайн телевизорехь лато йиш хилийта."
   }
 }

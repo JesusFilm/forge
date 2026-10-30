@@ -138,6 +138,7 @@
     "versesAriaValue": "{chapter}，第{first}至{last}节，共{total}节",
     "demoVerse": "上滑查看下一节",
     "demoChapter": "左滑查看下一章",
+    "demoChapterRtl": "右滑查看下一章",
     "demoSkip": "轻点跳过",
     "demoSkipAriaLabel": "跳过滑动演示",
     "selectVerseAriaHint": "轻点两下选择此节",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "选择书卷",
+    "chooseChapter": "选择章",
+    "chooseVerse": "选择节",
     "oldTestament": "旧约",
     "newTestament": "新约",
     "books": "书卷",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, other {{count}/#卷}}",
     "twoNames": "{first}和{second}",
     "threeNames": "{first}、{second}和{third}",
-    "onDevice": "已在此设备上",
+    "downloaded": "已下载",
     "downloading": "正在下载{percent}%",
     "downloadStopped": "下载已停止",
     "updateAvailable": "有可用更新",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "系列海报",
     "videosHeading": "视频",
     "detailsLoadError": "无法加载完整详情。",
+    "languagesTitle": "视频语言",
     "searchLanguagesPlaceholder": "搜索语言…",
     "searchLanguagesAriaLabel": "搜索语言",
     "noLanguagesFound": "未找到语言",
@@ -502,6 +506,7 @@
     "resumeAt": "从{time}继续",
     "unknownLanguage": "未知",
     "downloadedStatus": "已下载",
+    "languagesTitle": "视频语言",
     "searchLanguagesPlaceholder": "搜索语言…",
     "searchLanguagesAriaLabel": "搜索语言",
     "noLanguagesFound": "未找到语言",
@@ -773,5 +778,8 @@
     "send": "发送",
     "sending": "正在发送…",
     "sendAriaLabel": "发送反馈"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "应用会使用你的本地网络查找投屏设备，以便你在电视上播放视频。"
   }
 }

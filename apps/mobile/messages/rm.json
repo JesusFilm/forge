@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} fin {last} da {total}, {chapter}",
     "demoVerse": "Spustai il det ensi per il proxim vers",
     "demoChapter": "Spustai il det a sanestra per il proxim chapitel",
+    "demoChapterRtl": "Spustai il det a dretga per il proxim chapitel",
     "demoSkip": "Tutgai per sursiglir",
     "demoSkipAriaLabel": "Sursiglir la demonstraziun",
     "selectVerseAriaHint": "Tutgai duas giadas per selecziunar quest vers",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Tscherner in cudesch",
+    "chooseChapter": "Tscherner in chapitel",
+    "chooseVerse": "Tscherner in vers",
     "oldTestament": "Vegl Testament",
     "newTestament": "Nov Testament",
     "books": "Cudeschs",
@@ -193,7 +196,7 @@
     "someBooks": "{count} da {total, plural, one {# cudesch} other {# cudeschs}}",
     "twoNames": "{first} e {second}",
     "threeNames": "{first}, {second} e {third}",
-    "onDevice": "Sin quest apparat",
+    "downloaded": "Telechargià",
     "downloading": "Vegn telechargiada ({percent}%)",
     "downloadStopped": "Telechargiada interrutta",
     "updateAvailable": "Actualisaziun disponibla",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Placat da la seria",
     "videosHeading": "Videos da la seria",
     "detailsLoadError": "Betg pussaivel da chargiar tut ils detagls.",
+    "languagesTitle": "Lingua dal video",
     "searchLanguagesPlaceholder": "Tschertgar linguas…",
     "searchLanguagesAriaLabel": "Tschertgar linguas",
     "noLanguagesFound": "Naginas linguas chattadas",
@@ -502,6 +506,7 @@
     "resumeAt": "Cuntinuar tar {time}",
     "unknownLanguage": "Lingua nunenconuschenta",
     "downloadedStatus": "Telechargià",
+    "languagesTitle": "Lingua dal video",
     "searchLanguagesPlaceholder": "Tschertgar linguas…",
     "searchLanguagesAriaLabel": "Tschertgar linguas",
     "noLanguagesFound": "Naginas linguas chattadas",
@@ -773,5 +778,8 @@
     "send": "Trametter",
     "sending": "Vegn tramess…",
     "sendAriaLabel": "Trametter il resun"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’app utilisescha Vossa rait locala per chattar apparats da transmissiun, uschia che Vus pudais reproducir videos sin Vossa televisiun."
   }
 }

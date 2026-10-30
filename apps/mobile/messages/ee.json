@@ -138,6 +138,7 @@
     "versesAriaValue": "Kpukpui {first} va se ɖe {last} le {total} me, {chapter}",
     "demoVerse": "Ʋã asi ɖe dzi nàkpɔ kpukpui si kplɔe ɖo",
     "demoChapter": "Ʋã asi ɖe miame nàkpɔ ta si kplɔe ɖo",
+    "demoChapterRtl": "Ʋã asi ɖe ɖusime nàkpɔ ta si kplɔe ɖo",
     "demoSkip": "Ka asi nàtso eŋu",
     "demoSkipAriaLabel": "Tso asiʋãʋã ƒe fiafia la ŋu",
     "selectVerseAriaHint": "Ka asi eŋu zi eve nàtia kpukpui sia",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Tia agbalẽ aɖe",
+    "chooseChapter": "Tia ta aɖe",
+    "chooseVerse": "Tia kpukpui aɖe",
     "oldTestament": "Nubabla Xoxoa",
     "newTestament": "Nubabla Yeyea",
     "books": "Agbalẽwo",
@@ -193,7 +196,7 @@
     "someBooks": "{count} le {total, plural, one {agbalẽ # me} other {agbalẽ # me}}",
     "twoNames": "{first} kple {second}",
     "threeNames": "{first}, {second} kple {third}",
-    "onDevice": "Le dɔwɔnu sia dzi",
+    "downloaded": "Woɖee vɔ",
     "downloading": "Ele ɖeɖem {percent}%",
     "downloadStopped": "Nuɖeɖe tɔ te",
     "updateAvailable": "Nɔnɔme yeye li",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Video akpawo ƒe nɔnɔmetata",
     "videosHeading": "Videowo",
     "detailsLoadError": "Nyatakaka blibowo mete ŋu va o.",
+    "languagesTitle": "Video la ƒe gbe",
     "searchLanguagesPlaceholder": "Di gbewo...",
     "searchLanguagesAriaLabel": "Di gbewo",
     "noLanguagesFound": "Womekpɔ gbe aɖeke o",
@@ -502,6 +506,7 @@
     "resumeAt": "Yi edzi tso {time}",
     "unknownLanguage": "Womenyae o",
     "downloadedStatus": "Woɖee vɔ",
+    "languagesTitle": "Video la ƒe gbe",
     "searchLanguagesPlaceholder": "Di gbewo...",
     "searchLanguagesAriaLabel": "Di gbewo",
     "noLanguagesFound": "Womekpɔ gbe aɖeke o",
@@ -773,5 +778,8 @@
     "send": "Ɖoe ɖa",
     "sending": "Ele ɖoɖom ɖa…",
     "sendAriaLabel": "Ɖo wò susuwo ɖe mí"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App la zãa network si le gbɔwò be wòadi dɔwɔnu siwo nàte ŋu aɖo videowo ɖe wo dzi, ale be nàte ŋu aʋu videowo le wò TV dzi."
   }
 }

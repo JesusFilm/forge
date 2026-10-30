@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.precomputed-integration.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@prisma/client": ["./node_modules/@prisma/client"],
+      "pg": ["./node_modules/@types/pg"],
+      "vitest": ["./node_modules/vitest"],
+      "zod": ["./node_modules/zod"],
+      "@mastra/pg": ["../mastra/node_modules/@mastra/pg"]
+    }
+  },
+  "include": ["../../tests/integration/precomputed-*.db.test.ts"]
+}

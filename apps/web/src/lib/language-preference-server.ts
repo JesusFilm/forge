@@ -1,8 +1,5 @@
-// IMPORTANT — current wiring: the production language-preference redirect
-// runs in apps/web/src/proxy.ts (middleware), NOT through these helpers.
-// They were the original implementation but moved to middleware to keep
-// the page route eligible for ISR caching — calling cookies() in a Server
-// Component silently opts the route out of ISR.
+// IMPORTANT: Watch public routing is URL-only. Production routes do not call
+// these helpers and apps/web/src/proxy.ts must not read this cookie.
 //
 // This file is retained because:
 //   - `shouldRedirectForPreference` is the variant-aware version of the

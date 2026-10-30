@@ -40,6 +40,8 @@ const mockRefetchText = jest.fn()
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams.current,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  // The watch screen re-reads its quote cards on each return (KTD11).
+  useIsFocused: () => true,
 }))
 jest.mock("expo-status-bar", () => ({ StatusBar: () => null }))
 jest.mock("@expo/vector-icons/Ionicons", () => () => null)

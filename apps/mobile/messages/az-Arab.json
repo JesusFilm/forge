@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} آیه‌دن {first} نۆمره‌دن {last} نۆمره‌یه قدر آیه‌لر، {chapter}",
     "demoVerse": "سونراکی آیه اۆچۆن یوخاری سۆرۆشدۆرۆن",
     "demoChapter": "سونراکی فصل اۆچۆن سولا سۆرۆشدۆرۆن",
+    "demoChapterRtl": "سونراکی فصل اۆچۆن ساغا سۆرۆشدۆرۆن",
     "demoSkip": "کئچمک اۆچۆن توخونون",
     "demoSkipAriaLabel": "سۆرۆشدۆرمه گؤستریشینی کئچ",
     "selectVerseAriaHint": "بو آیه‌نی سئچمک اۆچۆن ایکی دفعه توخونون",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "کیتاب سئچین",
+    "chooseChapter": "فصل سئچین",
+    "chooseVerse": "آیه سئچین",
     "oldTestament": "عهد عتیق",
     "newTestament": "عهد جدید",
     "books": "کیتابلار",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# کیتابدان {count} کیتاب} other {# کیتابدان {count} کیتاب}}",
     "twoNames": "{first} و {second}",
     "threeNames": "{first}، {second} و {third}",
-    "onDevice": "بو جیهازدا",
+    "downloaded": "ائندیریلیب",
     "downloading": "ائندیریلیر {percent}%",
     "downloadStopped": "ائندیرمه دایاندی",
     "updateAvailable": "یئنیله‌مه وار",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "سریال پوستری",
     "videosHeading": "ویدئولار",
     "detailsLoadError": "تام معلومات یۆکله‌نه بیلمه‌دی.",
+    "languagesTitle": "ویدئونون دیلی",
     "searchLanguagesPlaceholder": "دیل آختارین…",
     "searchLanguagesAriaLabel": "دیللری آختار",
     "noLanguagesFound": "دیل تاپیلمادی",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} آنیندان داوام ائت",
     "unknownLanguage": "بللی اولمایان دیل",
     "downloadedStatus": "ائندیریلیب",
+    "languagesTitle": "ویدئونون دیلی",
     "searchLanguagesPlaceholder": "دیل آختارین…",
     "searchLanguagesAriaLabel": "دیللری آختار",
     "noLanguagesFound": "دیل تاپیلمادی",
@@ -773,5 +778,8 @@
     "send": "گؤندر",
     "sending": "گؤندریلیر…",
     "sendAriaLabel": "فیکیر گؤندر"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اپلیکیشن یاییم جیهازلارینی تاپماق اۆچۆن یئرلی شبکه‌نیزدن استفاده ائدیر کی، ویدئولاری تلویزیونونوزدا اوینادا بیله‌سینیز."
   }
 }

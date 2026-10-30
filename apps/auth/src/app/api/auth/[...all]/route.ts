@@ -23,6 +23,7 @@ import {
   createOAuthResourceCatalog,
   getPublicDcrAllowedScopes,
   getPublicDcrResources,
+  isWatchUserDataAuthorization,
   resolveOAuthResource,
 } from "@/domain/oauth-resources"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
@@ -733,6 +734,17 @@ async function classifyAuthorizeRequest(
     )
       return "provider"
     if (target?.resourceClass === "changelog-mcp") return "changelog"
+    if (
+      target &&
+      isWatchUserDataAuthorization(
+        target,
+        params.get("client_id"),
+        params.has("scope")
+          ? (params.get("scope") ?? "").split(/\s+/).filter(Boolean)
+          : null,
+      )
+    )
+      return "provider"
     return "invalid-target"
   }
 

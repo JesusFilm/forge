@@ -223,4 +223,31 @@ describe("buildWatchLanguageIndex", () => {
       }),
     )
   })
+
+  it("does not show a native label written in a different script than the language (N23)", () => {
+    const index = buildWatchLanguageIndex({
+      languages: [
+        {
+          id: "lang-tg",
+          coreId: "1",
+          name: { en: "Tajik", tg: "تاجيكي" },
+          bcp47: "tg",
+          slug: "tajik",
+        },
+        {
+          id: "lang-fr",
+          coreId: "496",
+          name: { en: "French", fr: "Français" },
+          bcp47: "fr",
+          slug: "french",
+        },
+      ],
+      countries: [],
+    })
+    const bySlug = new Map(
+      index.languages.map((language) => [language.publicSlug, language]),
+    )
+    expect(bySlug.get("tajik")?.nativeLabel).toBe("Tajik")
+    expect(bySlug.get("french")?.nativeLabel).toBe("Français")
+  })
 })

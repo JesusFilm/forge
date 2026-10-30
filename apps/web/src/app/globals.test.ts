@@ -1032,3 +1032,70 @@ describe("the audiences stage", () => {
     expect(svh(100 - quiz[1])).toBeGreaterThanOrEqual(40)
   })
 })
+
+describe("Watch Home progress ring motion", () => {
+  const first = blockBody(css, "@keyframes watch-home-progress-ring-first")
+  const second = blockBody(css, "@keyframes watch-home-progress-ring-second")
+  const ring = blockBody(css, ".watch-home-progress-ring {")
+  const ringSecond = blockBody(css, ".watch-home-progress-ring-second {")
+  const reset = blockBody(css, "@keyframes watch-home-progress-ring-reset")
+  const reduced = blockBody(css, "@media (prefers-reduced-motion: reduce)")
+
+  /** Every CSS property declared inside a keyframes body. */
+  const properties = (frames: string) =>
+    new Set(
+      [...frames.matchAll(/([a-z-]+)\s*:/g)].map((match) => match[1] ?? ""),
+    )
+
+  const degrees = (frames: string, step: "from" | "to") =>
+    Number(
+      new RegExp(`${step}\\s*\\{[^}]*rotate\\((-?[\\d.]+)deg\\)`).exec(
+        frames,
+      )?.[1],
+    )
+
+  it("animates only compositor properties", () => {
+    // `stroke-dashoffset` is what Chrome reports as non-composited, and is the
+    // property the whole change exists to remove. Pin the keyframes, not just
+    // their absence in one file, so re-introducing it fails here.
+    expect(first).not.toBe("")
+    expect(second).not.toBe("")
+    expect(properties(first)).toEqual(new Set(["transform"]))
+    expect(properties(second)).toEqual(new Set(["transform"]))
+    expect(properties(reset)).toEqual(new Set(["opacity"]))
+    expect(css).not.toMatch(
+      /@keyframes watch-home-progress-ring[^{]*\{[^@]*stroke-dashoffset/,
+    )
+  })
+
+  it("keeps the fill a true progress meter: two half turns tile one full turn", () => {
+    // Each half sweeps exactly 180deg, ending where the other begins to count,
+    // so the lit arc is elapsed/duration of the ring — not a constant-length
+    // arc that merely circles.
+    expect(degrees(first, "to") - degrees(first, "from")).toBe(180)
+    expect(degrees(second, "to") - degrees(second, "from")).toBe(180)
+    // Parked fully outside their clips at rest and when reduced motion
+    // strips the animation: the empty ring the old dash geometry gave.
+    expect(ring).toContain("transform: rotate(-180deg)")
+    expect(ringSecond).toContain("transform: rotate(0deg)")
+    expect(degrees(first, "from")).toBe(-180)
+    expect(degrees(second, "from")).toBe(0)
+  })
+
+  it("runs the halves back to back for the slide's own duration", () => {
+    const half = "calc(var(--watch-home-progress-duration, 10s) / 2)"
+    expect(ring).toContain(half)
+    expect(ring).toContain("linear")
+    expect(ringSecond).toContain(`animation-delay: ${half}`)
+    // The wait must hold the parked pose: without `backwards` the second arc
+    // would sit at its base transform, which is also its parked pose today —
+    // `both` keeps that true if the base ever changes.
+    expect(ringSecond).toContain("animation-fill-mode: both")
+  })
+
+  it("shows an empty ring, not a stuck arc, for reduced motion", () => {
+    expect(reduced).toMatch(
+      /\.watch-home-progress-ring\s*\{\s*animation:\s*none/,
+    )
+  })
+})

@@ -27,6 +27,7 @@ import {
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
 import { rawModeLabel } from "../../lib/rawModeLabel"
@@ -34,6 +35,7 @@ import {
   TERMS_OF_USE_LANGUAGE,
   TERMS_OF_USE_PARAGRAPHS,
 } from "../../lib/terms-of-use"
+import { GlassSurface } from "../ui/GlassSurface"
 
 type SheetT = UiT<"DownloadSheet">
 
@@ -66,8 +68,13 @@ export function TermsModal({
       onRequestClose={onCancel}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
-        <View
+      <View
+        style={[
+          styles.modalOverlay,
+          !canUseLiquidGlass() && styles.overlayFill,
+        ]}
+      >
+        <GlassSurface
           style={[
             styles.termsContainer,
             {
@@ -76,6 +83,7 @@ export function TermsModal({
               paddingBottom: insets.bottom + 16,
             },
           ]}
+          fallback={{ kind: "fill", style: styles.termsFill }}
         >
           <Text style={[styles.termsTitle, typography.titleLarge]}>
             {t("termsTitle")}
@@ -127,7 +135,7 @@ export function TermsModal({
               </Text>
             </Pressable>
           </View>
-        </View>
+        </GlassSurface>
       </View>
     </Modal>
   )
@@ -601,6 +609,7 @@ export type DownloadSheetProps = {
     mode: DownloadMode,
     subtitleSlug: string | null,
   ) => void
+  testID?: string
 }
 
 export function DownloadSheetContent({
@@ -614,6 +623,7 @@ export function DownloadSheetContent({
   offlineCopySubtitleSlug = undefined,
   initialMode = "offline",
   onStartDownload,
+  testID,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
@@ -734,7 +744,7 @@ export function DownloadSheetContent({
 
   if (downloads.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="cloud-download-outline"
           size={48}
@@ -750,6 +760,7 @@ export function DownloadSheetContent({
   return (
     <>
       <ScrollView
+        testID={testID}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 24 },
@@ -902,7 +913,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
   header: {
@@ -911,7 +921,6 @@ const styles = StyleSheet.create({
   videoTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 8,
   },
   metaRow: {
@@ -934,7 +943,6 @@ const styles = StyleSheet.create({
   },
   metaPillText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   dropdownSection: {
     marginBottom: 24,
@@ -973,19 +981,16 @@ const styles = StyleSheet.create({
   },
   modeLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   modeLabelSelected: {
     fontWeight: "600",
   },
   sheetNote: {
     color: TEXT_BODY,
-    fontFamily: "System",
     marginBottom: 16,
   },
   dropdownSectionLabel: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginBottom: 12,
   },
   dropdownPanelScroll: {
@@ -1008,7 +1013,6 @@ const styles = StyleSheet.create({
   dropdownValue: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -1019,7 +1023,6 @@ const styles = StyleSheet.create({
   },
   dropdownTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownPanel: {
     backgroundColor: "rgba(255, 255, 255, 0.04)",
@@ -1042,7 +1045,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -1052,7 +1054,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownOptionLabelDisabled: {
     color: TEXT_SECONDARY,
@@ -1061,7 +1062,6 @@ const styles = StyleSheet.create({
   dropdownOptionNote: {
     color: TEXT_SECONDARY,
     opacity: 0.75,
-    fontFamily: "System",
     fontStyle: "italic",
   },
   touRow: {
@@ -1085,12 +1085,10 @@ const styles = StyleSheet.create({
   },
   touText: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   touLink: {
     color: ACCENT,
     fontWeight: "600",
-    fontFamily: "System",
     textDecorationLine: "underline",
   },
   downloadButton: {
@@ -1110,21 +1108,23 @@ const styles = StyleSheet.create({
   downloadButtonText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
   modalOverlay: {
     flex: 1,
+  },
+  overlayFill: {
     backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   termsContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.95)",
     paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  termsFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
   },
   termsTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 16,
   },
   termsScroll: {
@@ -1133,7 +1133,6 @@ const styles = StyleSheet.create({
   termsText: {
     writingDirection: "ltr",
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   termsParagraphGap: {
     marginTop: 16,
@@ -1156,7 +1155,6 @@ const styles = StyleSheet.create({
   termsCancelText: {
     color: TEXT_SECONDARY,
     fontWeight: "600",
-    fontFamily: "System",
   },
   termsAcceptButton: {
     backgroundColor: ACCENT,
@@ -1169,6 +1167,5 @@ const styles = StyleSheet.create({
   termsAcceptText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

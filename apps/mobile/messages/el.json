@@ -138,6 +138,7 @@
     "versesAriaValue": "Εδάφια {first} έως {last} από {total}, {chapter}",
     "demoVerse": "Σύρετε προς τα πάνω για το επόμενο εδάφιο",
     "demoChapter": "Σύρετε αριστερά για το επόμενο κεφάλαιο",
+    "demoChapterRtl": "Σύρετε δεξιά για το επόμενο κεφάλαιο",
     "demoSkip": "Πατήστε για παράλειψη",
     "demoSkipAriaLabel": "Παράλειψη της επίδειξης κινήσεων σάρωσης",
     "selectVerseAriaHint": "Πατήστε δύο φορές για να επιλέξετε αυτό το εδάφιο",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Επιλέξτε βιβλίο",
+    "chooseChapter": "Επιλέξτε κεφάλαιο",
+    "chooseVerse": "Επιλέξτε εδάφιο",
     "oldTestament": "Παλαιά Διαθήκη",
     "newTestament": "Καινή Διαθήκη",
     "books": "Βιβλία",
@@ -193,7 +196,7 @@
     "someBooks": "{count} από {total, plural, one {# βιβλίο} other {# βιβλία}}",
     "twoNames": "{first} και {second}",
     "threeNames": "{first}, {second} και {third}",
-    "onDevice": "Σε αυτή τη συσκευή",
+    "downloaded": "Έγινε λήψη",
     "downloading": "Λήψη {percent}%",
     "downloadStopped": "Η λήψη διακόπηκε",
     "updateAvailable": "Υπάρχει ενημέρωση",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Αφίσα σειράς",
     "videosHeading": "Βίντεο",
     "detailsLoadError": "Δεν ήταν δυνατή η φόρτωση όλων των λεπτομερειών.",
+    "languagesTitle": "Γλώσσα βίντεο",
     "searchLanguagesPlaceholder": "Αναζήτηση γλωσσών…",
     "searchLanguagesAriaLabel": "Αναζήτηση γλωσσών",
     "noLanguagesFound": "Δεν βρέθηκαν γλώσσες",
@@ -502,6 +506,7 @@
     "resumeAt": "Συνέχιση από {time}",
     "unknownLanguage": "Άγνωστη",
     "downloadedStatus": "Έγινε λήψη",
+    "languagesTitle": "Γλώσσα βίντεο",
     "searchLanguagesPlaceholder": "Αναζήτηση γλωσσών…",
     "searchLanguagesAriaLabel": "Αναζήτηση γλωσσών",
     "noLanguagesFound": "Δεν βρέθηκαν γλώσσες",
@@ -773,5 +778,8 @@
     "send": "Αποστολή",
     "sending": "Αποστολή…",
     "sendAriaLabel": "Αποστολή σχολίων"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Η εφαρμογή χρησιμοποιεί το τοπικό σας δίκτυο για να βρίσκει συσκευές μετάδοσης, ώστε να μπορείτε να αναπαράγετε βίντεο στην τηλεόρασή σας."
   }
 }

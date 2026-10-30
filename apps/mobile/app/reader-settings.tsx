@@ -1,3 +1,4 @@
+import { View } from "react-native"
 import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 
 import { ReaderSettingsSheet } from "../src/components/bible/sheets/ReaderSettingsSheet"
@@ -16,7 +17,9 @@ export default function ReaderSettingsRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { settings, tokens } = useReaderSheetTheme(services.settingsStore)
+  const { settings, tokens, background } = useReaderSheetTheme(
+    services.settingsStore,
+  )
   const { state } = useSheetCatalog(services.loadCatalog)
   const layout = useIsTabletLayout() ? "tablet" : "phone"
 
@@ -33,18 +36,21 @@ export default function ReaderSettingsRoute() {
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: tokens.background } }}
+        options={{ contentStyle: { backgroundColor: background } }}
       />
-      <ReaderSettingsSheet
-        tokens={tokens}
-        settings={settings}
-        layout={layout}
-        currentCredit={currentCredit}
-        onChange={(patch) => {
-          services.settingsStore.update(patch)
-        }}
-        onClose={() => router.back()}
-      />
+      <View testID="screen-reader-settings">
+        <ReaderSettingsSheet
+          tokens={tokens}
+          background={background}
+          settings={settings}
+          layout={layout}
+          currentCredit={currentCredit}
+          onChange={(patch) => {
+            services.settingsStore.update(patch)
+          }}
+          onClose={() => router.back()}
+        />
+      </View>
     </>
   )
 }

@@ -1,0 +1,8 @@
+ACTIVITY MANAGER PROCESS EXIT INFO (dumpsys activity exit-info)
+Last Timestamp of Persistence Into Persistent Storage: 2026-10-22 02:58:18.730
+  package: org.jesusfilm.forgewatch
+    Historical Process Exit for uid=10207
+        ApplicationExitInfo #0:
+          timestamp=2026-10-22 02:58:40.944 pid=3402 realUid=10207 packageUid=10207 definingUid=10207 user=0
+          process=org.jesusfilm.forgewatch reason=4 (APP CRASH(EXCEPTION)) subreason=0 (UNKNOWN) status=0
+          importance=100 pss=0.00 rss=0.00 description=crash state=empty trace=null

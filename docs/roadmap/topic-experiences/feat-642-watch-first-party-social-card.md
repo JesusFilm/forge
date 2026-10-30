@@ -3,7 +3,7 @@ id: "feat-642"
 title: "Use a first-party Watch social card"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
@@ -32,3 +32,17 @@ Keep authored and content-specific social images unchanged. Keep the Unsplash im
 ## Verification
 
 Test root and error-fallback metadata image URLs, dimensions, and alt text. Confirm the image is served from the public Watch path and search for remaining Unsplash usage before changing image host configuration.
+
+## Integration acceptance remaining (2026-10-30)
+
+The uncommitted integration retains main's newer metadata behavior and the
+original JPEG. Keep this ticket in progress until independent candidate review,
+current integrated CI and normal publication hooks pass, and production-mode
+asset serving plus representative visual/target-environment acceptance are
+verified. Local metadata tests and fixture SSR are not production acceptance.
+See `docs/plans/2026-10-30-watch-first-party-social-card-integration.md`.
+
+Independent review R1 found a false image description on authored Experience art.
+The repair separates the neutral content-image fallback from the default JPEG
+description. Tests must cover both sharing channels and the other content-image
+consumers. Keep explicit authored descriptions and the default JPEG description.

@@ -2,7 +2,7 @@
 
 This host supervisor is trusted and holds Docker authority plus one scoped worker key. Renderer and verifier containers receive neither. The selected model is outbound HTTPS polling from the dedicated VM; no public/LAN listener, Docker TCP socket, host proc bind or nested proc mount is required.
 
-Render jobs have a 1 GiB temporary filesystem for local source copies and Chrome's frame buffers; verification retains 256 MiB. These tmpfs pages count against the existing 2 GiB aggregate RAM limit, with no swap. The output file limit remains 128 MiB.
+Profile v4 render jobs use a bounded sixteen-worker frame pool, one continuous CPU encoder and a 24 GiB temporary filesystem. The job aggregate is 24 CPUs, 32 GiB RAM and 4096 tasks, with no swap; tmpfs pages count against that RAM limit. Verification remains a separate 2 CPU / 2 GiB / 128-task container with 256 MiB scratch. The output file limit remains 128 MiB. Historical profiles keep their original bounds.
 
 ## Release inputs
 
@@ -14,7 +14,11 @@ Build the host bundle with `package-supervisor.py --node <reviewed-linux-node> -
 
 ## Install without dispatch
 
-Install Docker from its verified official Ubuntu repository on the dedicated VM. Keep its Unix socket root-only, no TCP listener, and use bounded logs. Preserve pinned SSH access. The VM requires unified cgroup v2 with writable trusted host control, systemd, no swap, and sufficient space for bounded job files and two approved image releases. Jobs remain 2 CPU, 2 GiB memory, zero swap, 128 aggregate tasks and 96 untrusted child tasks.
+Install Docker from its verified official Ubuntu repository on the dedicated VM. Keep its Unix socket root-only, no TCP listener, and use bounded logs. Preserve pinned SSH access. The VM requires unified cgroup v2 with writable trusted host control, systemd, no swap, and sufficient space for bounded job files and two approved image releases. The selected v4 render profile requires 24 CPUs, 32 GiB job RAM and 4096 tasks, with additional guest memory for the trusted host supervisor and Docker. The always-on production guest is `forge-render-ai01` on `jfpai01`, with
+24 pinned vCPUs, 40GiB RAM and 60GiB disk (superseding owner decision 2026-10-19,
+feat-732). VM autostart and supervisor boot startup are enabled. The Proxmox
+worker is drained and persistently disabled. The demand monitor remains removed.
+V4 job limits stay 24CPU/32GiB; keep all previous release records and journals.
 
 Preload only approved image digests as an explicit release step, then verify their local identities. Execution uses `--pull=never`; missing images refuse admission. Do not perform registry acquisition during a claim.
 
@@ -26,15 +30,15 @@ Manager requires `STUDIO_RENDER_POOL_ID`, `STUDIO_RENDER_WORKER_ID`, a dedicated
 
 ## Drain, update and rollback
 
-`sudo python3 switch-supervisor.py <installed-approved-sha>` verifies installed bytes and locally available images, durably requests drain, waits for the old daemon, validates all assignment journals are complete, then switches the current symlink and service unit. It leaves the service inactive and drained. The drain wait is bounded1200s; unconfirmed work refuses switching. Adding `--activate` is an explicit configured-worker activation, not permission to connect production.
+`sudo python3 switch-supervisor.py <installed-approved-sha>` verifies installed bytes and locally available images, durably requests drain, waits for the old daemon, validates all assignment journals are complete, then switches the current symlink and service unit. It leaves the service inactive and drained. The drain wait is bounded3900s; unconfirmed work refuses switching. Adding `--activate` is an explicit configured-worker activation, not permission to connect production.
 
-Rollback uses the same command with the prior approved installed SHA. Keep old releases and exact image digests available until all issued work and rollback requirements are satisfied. A running assignment retains its original digest, boot identity, lease and absolute deadline. Updating must not reset its900s allowance. Successful switching alone does not authorize enabling boot startup or production controls.
+Rollback uses the same command with the prior approved installed SHA. Keep old releases and exact image digests available until all issued work and rollback requirements are satisfied. A running assignment retains its original digest, boot identity, lease and absolute deadline. Updating must not reset its retained allowance. Successful switching alone does not authorize enabling boot startup or production controls.
 
 The daemon owns an exclusive flock. Before configuration/API access on restart it reconciles exact labeled container identities, physically retires work and preserves uncertain operations. A native systemd-owned watchdog survives daemon death. Its precreated pinned cgroup cannot be recreated after readiness; expired restarts remain frozen until trusted retirement. VM reboot quarantines old monotonic deadlines. Never delete malformed/torn journals to regain capacity.
 
 ## Settlement and operational limits
 
-Render and separate verifier share the original900s cumulative execution deadline. Input preparation is bounded90s; upload10s; post-execution retention45s and terminal recording15s share one persisted60s window inside the1200s lease. The verifier receives only the admitted bounded MP4 and immutable expected metadata. Native cleanup1s and host retirement2s are explicit bounds, not new execution time.
+Render and separate verifier share the original3600s cumulative execution deadline under profiles v3/v4. Input preparation is bounded180s; upload10s; post-execution retention45s and terminal recording15s share one persisted60s window inside the3900s lease. The verifier receives only the admitted bounded MP4 and immutable expected metadata. Native cleanup1s and host retirement2s are explicit bounds, not new execution time.
 
 Canonical cancellation or reassignment prevents output admission. Known partial/late assets remain attached to their exact issued lease. A signed terminal record is persisted before finish; lost responses recover through exact receipt reads without re-rendering or re-registering. `execute:true` on claim replay means eligibility to resume the same assignment, never permission for another container start. Unconfirmed settlement preserves journals and closes admission. Key rotation must retain terminal-signature verification compatibility; ordinary code rollout must not invalidate historical receipts.
 

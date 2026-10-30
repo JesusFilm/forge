@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs"
 import { beforeEach, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 import { StudioGenerationService } from "./generation"
-import { studioApplySchema, studioProjectSchema } from "@forge/studio-contracts"
+import {
+  studioApplySchema,
+  studioProjectSchema,
+  studioDocumentSchema,
+} from "@forge/studio-contracts"
 import { studioGenerationOutputSchema } from "@forge/studio-contracts/generation"
 import { studioHash } from "./state"
 import { byteDigest } from "./assets"
@@ -84,6 +88,7 @@ function fixture(commands = [command]) {
   }
   // Only storage/read methods exist: unexpected persistence fails this boundary fixture.
   const db = {
+    short: { findFirst: vi.fn(async () => ({ id: command.projectId })) },
     shortAttempt: { findUniqueOrThrow: vi.fn(async () => attempt) },
     shortRevision: { findUnique: vi.fn(async () => row) },
     shortAssetVersion: {
@@ -119,7 +124,9 @@ it("preserves the original SSE command digest and whitespace while returning the
     bytesBefore = Buffer.from(storage.bytes),
     rowBefore = structuredClone(f.row)
   const result = await f.read()
-  expect(result.previews[0].document).toEqual(saved.document)
+  expect(result.previews[0].document).toEqual(
+    studioDocumentSchema.parse(saved.document),
+  )
   expect(result.previews[0].proposal.command).toEqual(command)
   expect(studioHash(result.previews[0].proposal.command.operations)).toBe(
     "351ad0cd6eea7b22f0423cc2cda48cd6436daefefd14e2dc1b961f4c4d6fcd7f",

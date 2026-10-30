@@ -25,6 +25,8 @@ tags:
 
 # Keep runtime feature flags out of static Watch route rendering
 
+2026-10-08: feat-667 removed the beta provider, endpoint, and flag after the program ended. The examples below are historical; the static-route caching guidance still applies to active runtime flags. Do not restore beta signup from this example.
+
 ## Problem
 
 Watch needed a runtime LaunchDarkly switch for the global beta-tester CTA. A

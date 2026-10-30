@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихове от {first} до {last} от общо {total}, {chapter}",
     "demoVerse": "Плъзнете нагоре за следващия стих",
     "demoChapter": "Плъзнете наляво за следващата глава",
+    "demoChapterRtl": "Плъзнете надясно за следващата глава",
     "demoSkip": "Докоснете, за да пропуснете",
     "demoSkipAriaLabel": "Пропусни демонстрацията на плъзгането",
     "selectVerseAriaHint": "Докоснете два пъти, за да изберете този стих",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Изберете книга",
+    "chooseChapter": "Изберете глава",
+    "chooseVerse": "Изберете стих",
     "oldTestament": "Стар завет",
     "newTestament": "Нов завет",
     "books": "Книги",
@@ -193,7 +196,7 @@
     "someBooks": "{count} от {total, plural, one {# книга} other {# книги}}",
     "twoNames": "{first} и {second}",
     "threeNames": "{first}, {second} и {third}",
-    "onDevice": "На това устройство",
+    "downloaded": "Изтеглено",
     "downloading": "Изтегляне {percent}%",
     "downloadStopped": "Изтеглянето спря",
     "updateAvailable": "Има актуализация",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Плакат на сериала",
     "videosHeading": "Видеа",
     "detailsLoadError": "Не успяхме да заредим всички подробности.",
+    "languagesTitle": "Език на видеото",
     "searchLanguagesPlaceholder": "Търсене на езици…",
     "searchLanguagesAriaLabel": "Търсене на езици",
     "noLanguagesFound": "Няма намерени езици",
@@ -502,6 +506,7 @@
     "resumeAt": "Продължи от {time}",
     "unknownLanguage": "Неизвестен",
     "downloadedStatus": "Изтеглено",
+    "languagesTitle": "Език на видеото",
     "searchLanguagesPlaceholder": "Търсене на езици…",
     "searchLanguagesAriaLabel": "Търсене на езици",
     "noLanguagesFound": "Няма намерени езици",
@@ -773,5 +778,8 @@
     "send": "Изпрати",
     "sending": "Изпращане…",
     "sendAriaLabel": "Изпрати обратна връзка"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложението използва локалната ви мрежа, за да намира устройства за предаване, така че да можете да пускате видеа на телевизора си."
   }
 }

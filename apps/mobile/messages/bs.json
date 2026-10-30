@@ -138,6 +138,7 @@
     "versesAriaValue": "Stihovi {first} do {last} od {total}, {chapter}",
     "demoVerse": "Prevucite gore za sljedeći stih",
     "demoChapter": "Prevucite lijevo za sljedeće poglavlje",
+    "demoChapterRtl": "Prevucite desno za sljedeće poglavlje",
     "demoSkip": "Dodirnite da preskočite",
     "demoSkipAriaLabel": "Preskoči demonstraciju prevlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite da odaberete ovaj stih",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Odaberite knjigu",
+    "chooseChapter": "Odaberite poglavlje",
+    "chooseVerse": "Odaberite stih",
     "oldTestament": "Stari zavjet",
     "newTestament": "Novi zavjet",
     "books": "Knjige",
@@ -193,7 +196,7 @@
     "someBooks": "{count} od {total, plural, one {# knjige} few {# knjige} other {# knjiga}}",
     "twoNames": "{first} i {second}",
     "threeNames": "{first}, {second} i {third}",
-    "onDevice": "Na ovom uređaju",
+    "downloaded": "Preuzeto",
     "downloading": "Preuzimanje: {percent}%",
     "downloadStopped": "Preuzimanje zaustavljeno",
     "updateAvailable": "Dostupno ažuriranje",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster serije",
     "videosHeading": "Videozapisi",
     "detailsLoadError": "Nije moguće učitati sve detalje.",
+    "languagesTitle": "Jezik videozapisa",
     "searchLanguagesPlaceholder": "Pretraži jezike...",
     "searchLanguagesAriaLabel": "Pretraži jezike",
     "noLanguagesFound": "Nije pronađen nijedan jezik",
@@ -502,6 +506,7 @@
     "resumeAt": "Nastavi od {time}",
     "unknownLanguage": "Nepoznat jezik",
     "downloadedStatus": "Preuzeto",
+    "languagesTitle": "Jezik videozapisa",
     "searchLanguagesPlaceholder": "Pretraži jezike...",
     "searchLanguagesAriaLabel": "Pretraži jezike",
     "noLanguagesFound": "Nije pronađen nijedan jezik",
@@ -773,5 +778,8 @@
     "send": "Pošalji",
     "sending": "Slanje…",
     "sendAriaLabel": "Pošalji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija koristi vašu lokalnu mrežu da pronađe uređaje za emitiranje kako biste mogli puštati videozapise na svom televizoru."
   }
 }

@@ -138,6 +138,7 @@
     "versesAriaValue": "Litemana tsa {first} ho isa ho {last} ho tse {total}, {chapter}",
     "demoVerse": "Hula holimo bakeng sa temana e latelang",
     "demoChapter": "Hula ho ea leqeleng bakeng sa khaolo e latelang",
+    "demoChapterRtl": "Hula ho ea ka ho le letona bakeng sa khaolo e latelang",
     "demoSkip": "Tlanya ho tlola",
     "demoSkipAriaLabel": "Tlola pontšo ea ho hula",
     "selectVerseAriaHint": "Tlanya habeli ho khetha temana ena",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Khetha buka",
+    "chooseChapter": "Khetha khaolo",
+    "chooseVerse": "Khetha temana",
     "oldTestament": "Testamente ea Khale",
     "newTestament": "Testamente e Ncha",
     "books": "Libuka",
@@ -193,7 +196,7 @@
     "someBooks": "{count} ho {total, plural, one {buka e #} other {libuka tse #}}",
     "twoNames": "{first} le {second}",
     "threeNames": "{first}, {second} le {third}",
-    "onDevice": "E teng sesebelisoeng sena",
+    "downloaded": "E jarollotsoe",
     "downloading": "Ho jarolla {percent}%",
     "downloadStopped": "Ho jarolla ho emile",
     "updateAvailable": "Ntlafatso e teng",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Phousetara ea letoto",
     "videosHeading": "Livideo",
     "detailsLoadError": "Lintlha tse felletseng ha lia ka tsa kenngoa.",
+    "languagesTitle": "Puo ya video",
     "searchLanguagesPlaceholder": "Batla lipuo...",
     "searchLanguagesAriaLabel": "Batla lipuo",
     "noLanguagesFound": "Ha ho lipuo tse fumanoeng",
@@ -502,6 +506,7 @@
     "resumeAt": "Tsoela pele ho {time}",
     "unknownLanguage": "Ha e tsejoe",
     "downloadedStatus": "E jarollotsoe",
+    "languagesTitle": "Puo ya video",
     "searchLanguagesPlaceholder": "Batla lipuo...",
     "searchLanguagesAriaLabel": "Batla lipuo",
     "noLanguagesFound": "Ha ho lipuo tse fumanoeng",
@@ -773,5 +778,8 @@
     "send": "Romela",
     "sending": "Ho romela…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e sebelisa marang-rang a hao a haufi ho batla lisebelisoa tseo u ka romelang livideo ho tsona, e le hore u khone ho bapala livideo ho TV ea hao."
   }
 }

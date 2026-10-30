@@ -138,6 +138,7 @@
     "versesAriaValue": "পদ {first}ৰ পৰা {last}লৈ, মুঠ {total}, {chapter}",
     "demoVerse": "পৰৱৰ্তী পদৰ বাবে ওপৰলৈ ছোৱাইপ কৰক",
     "demoChapter": "পৰৱৰ্তী অধ্যায়ৰ বাবে বাওঁফালে ছোৱাইপ কৰক",
+    "demoChapterRtl": "পৰৱৰ্তী অধ্যায়ৰ বাবে সোঁফালে ছোৱাইপ কৰক",
     "demoSkip": "এৰি যাবলৈ টিপক",
     "demoSkipAriaLabel": "ছোৱাইপৰ প্ৰদৰ্শন এৰি যাওক",
     "selectVerseAriaHint": "এই পদটো বাছনি কৰিবলৈ দুবাৰ টিপক",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "পুস্তক বাছনি কৰক",
+    "chooseChapter": "অধ্যায় বাছনি কৰক",
+    "chooseVerse": "পদ বাছনি কৰক",
     "oldTestament": "পুৰণি নিয়ম",
     "newTestament": "নতুন নিয়ম",
     "books": "পুস্তকসমূহ",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# খন পুস্তকৰ ভিতৰত {count} খন} other {# খন পুস্তকৰ ভিতৰত {count} খন}}",
     "twoNames": "{first} আৰু {second}",
     "threeNames": "{first}, {second} আৰু {third}",
-    "onDevice": "এই ডিভাইচত",
+    "downloaded": "ডাউনল’ড কৰা হ’ল",
     "downloading": "ডাউনল’ড হৈ আছে {percent}%",
     "downloadStopped": "ডাউনল’ড ৰৈ গ’ল",
     "updateAvailable": "আপডেট উপলব্ধ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ধাৰাবাহিকৰ প’ষ্টাৰ",
     "videosHeading": "ভিডিঅ’সমূহ",
     "detailsLoadError": "সম্পূৰ্ণ বিৱৰণ লোড কৰিব পৰা নগ’ল।",
+    "languagesTitle": "ভিডিঅ’ৰ ভাষা",
     "searchLanguagesPlaceholder": "ভাষা সন্ধান কৰক…",
     "searchLanguagesAriaLabel": "ভাষা সন্ধান কৰক",
     "noLanguagesFound": "কোনো ভাষা পোৱা নগ’ল",
@@ -502,6 +506,7 @@
     "resumeAt": "{time}ৰ পৰা পুনৰ আৰম্ভ কৰক",
     "unknownLanguage": "অজ্ঞাত",
     "downloadedStatus": "ডাউনল’ড কৰা হ’ল",
+    "languagesTitle": "ভিডিঅ’ৰ ভাষা",
     "searchLanguagesPlaceholder": "ভাষা সন্ধান কৰক…",
     "searchLanguagesAriaLabel": "ভাষা সন্ধান কৰক",
     "noLanguagesFound": "কোনো ভাষা পোৱা নগ’ল",
@@ -773,5 +778,8 @@
     "send": "পঠিয়াওক",
     "sending": "পঠিয়াই থকা হৈছে…",
     "sendAriaLabel": "মতামত পঠিয়াওক"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "এপটোৱে কাষ্ট ডিভাইচ বিচাৰিবলৈ আপোনাৰ স্থানীয় নেটৱৰ্ক ব্যৱহাৰ কৰে, যাতে আপুনি আপোনাৰ টিভিত ভিডিঅ’ চলাব পাৰে।"
   }
 }

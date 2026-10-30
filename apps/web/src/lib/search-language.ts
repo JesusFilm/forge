@@ -6,6 +6,10 @@ import {
   resolveWatchLocaleIdentity,
   type UiLocale,
 } from "./locale"
+import {
+  nativeNameMatchesLanguageScript,
+  selectOwnLanguageName,
+} from "./language-native-name"
 
 export type SearchLanguageResolutionSource =
   | "explicit-selection"
@@ -17,6 +21,11 @@ export type SearchLanguageOption = {
   coreId?: string | null
   englishName: string
   nativeName: string | null
+  /**
+   * Verified declarable tag of `nativeName` (own-language entry selected by the
+   * language's own tag). Present only when proven; absent means untagged.
+   */
+  nativeNameLang?: string
   bcp47: string | null
   publicSlug: string | null
   aliasOwnerSlug?: string | null
@@ -419,7 +428,7 @@ function languageOptionFromMetadata({
   return {
     coreId: language.coreId ?? null,
     englishName: facet?.label ?? englishName,
-    nativeName: nativeName(language.name, language.bcp47),
+    ...projectNativeName(language.name, language.bcp47),
     bcp47: language.bcp47 ?? null,
     publicSlug,
     aliasOwnerSlug,
@@ -550,6 +559,10 @@ function uniqueSearchLanguageOptions(
       ...existing,
       coreId: existing.coreId ?? option.coreId,
       nativeName: existing.nativeName ?? option.nativeName,
+      // The verified tag belongs to whichever `nativeName` wins the merge.
+      ...(!existing.nativeName && option.nativeNameLang
+        ? { nativeNameLang: option.nativeNameLang }
+        : {}),
       bcp47: existing.bcp47 ?? option.bcp47,
       publicSlug: existing.publicSlug ?? option.publicSlug,
       aliasOwnerSlug: existing.aliasOwnerSlug ?? option.aliasOwnerSlug,
@@ -600,11 +613,31 @@ function nativeName(
 
   for (const candidate of candidates) {
     const value = names[candidate]
-    if (typeof value === "string" && value.trim().length > 0) {
+    if (
+      typeof value === "string" &&
+      value.trim().length > 0 &&
+      nativeNameMatchesLanguageScript(value.trim(), bcp47)
+    ) {
       return value.trim()
     }
   }
   return null
+}
+
+// The label text keeps its existing candidate order, but `nativeNameLang` is
+// declared only when that exact text is the language's OWN-language entry
+// (`selectOwnLanguageName`: own tag, or primary tag with matching script, and a
+// declarable tag). A `native`/`local`/script-mismatched fallback label stays
+// untagged rather than guessed.
+function projectNativeName(
+  name: unknown,
+  bcp47: string | null | undefined,
+): { nativeName: string | null; nativeNameLang?: string } {
+  const text = nativeName(name, bcp47)
+  const own = text ? selectOwnLanguageName(name, bcp47) : null
+  return own?.lang && own.text === text
+    ? { nativeName: text, nativeNameLang: own.lang }
+    : { nativeName: text }
 }
 
 function localizedName(value: unknown): string | null {

@@ -138,6 +138,7 @@
     "versesAriaValue": "Аятла {first}–{last}, барысы {total}, {chapter}",
     "demoVerse": "Ызындагъы аят ючюн ёрге тартыгъыз",
     "demoChapter": "Ызындагъы бёлюм ючюн солгъа тартыгъыз",
+    "demoChapterRtl": "Ызындагъы бёлюм ючюн онгнга тартыгъыз",
     "demoSkip": "Ётер ючюн басыгъыз",
     "demoSkipAriaLabel": "Тартыу юлгюсюнден ёт",
     "selectVerseAriaHint": "Бу аятны сайлар ючюн эки кере басыгъыз",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китаб сайла",
+    "chooseChapter": "Бёлюм сайла",
+    "chooseVerse": "Аят сайла",
     "oldTestament": "Эски Осуят",
     "newTestament": "Джангы Осуят",
     "books": "Китабла",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# китабдан {count} китаб} other {# китабдан {count} китаб}}",
     "twoNames": "{first} эм {second}",
     "threeNames": "{first}, {second} эм {third}",
-    "onDevice": "Бу телефондады",
+    "downloaded": "Джюкленди",
     "downloading": "Джюкленеди: {percent}%",
     "downloadStopped": "Джюклеу тохтады",
     "updateAvailable": "Джангыртыу бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалны постери",
     "videosHeading": "Видеола",
     "detailsLoadError": "Толу билги ачылмады.",
+    "languagesTitle": "Видеону тили",
     "searchLanguagesPlaceholder": "Тиллени изле…",
     "searchLanguagesAriaLabel": "Тиллени изле",
     "noLanguagesFound": "Тил табылмады",
@@ -502,6 +506,7 @@
     "resumeAt": "Бардыр: {time}",
     "unknownLanguage": "Белгисиз",
     "downloadedStatus": "Джюкленди",
+    "languagesTitle": "Видеону тили",
     "searchLanguagesPlaceholder": "Тиллени изле…",
     "searchLanguagesAriaLabel": "Тиллени изле",
     "noLanguagesFound": "Тил табылмады",
@@ -773,5 +778,8 @@
     "send": "Джибер",
     "sending": "Джибериледи…",
     "sendAriaLabel": "Оюм джибер"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложение телевизоргъа чыгъарыучу аппаратланы табаргъа локал сетигизден хайырланады, аны ючюн видеоланы телевизоругъузда ойнатыргъа боллукъсуз."
   }
 }

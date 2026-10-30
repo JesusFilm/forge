@@ -43,6 +43,39 @@ describe("POST /api/revalidate", () => {
     vi.resetModules()
   })
 
+  it("expires every tag the published audience configuration is cached on when the default template publishes", async () => {
+    // Pinned to `WATCH_AUDIENCE_CACHE_TAGS` in watch-audience-content.test.ts.
+    const audienceTags = ["watch:settings", "watch:experience"]
+    const { POST } = await import("./route")
+
+    const response = await POST(
+      new Request("http://example.test/api/revalidate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: "Bearer test-revalidation-secret",
+        },
+        body: JSON.stringify({
+          model: "watch-setting",
+          entry: { locale: "en" },
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    for (const tag of audienceTags) {
+      expect(body.tags).toContain(tag)
+      expect(revalidateTagMock).toHaveBeenCalledWith(tag, { expire: 0 })
+    }
+    // Home and every video route re-render from the one refreshed definition.
+    expect(revalidatePathMock).toHaveBeenCalledWith("/en/en")
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/[locale]/[htmlLang]",
+      "layout",
+    )
+  })
+
   it("revalidates the full watch app when watch settings change (Bearer)", async () => {
     const { POST } = await import("./route")
 

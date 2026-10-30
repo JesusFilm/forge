@@ -32,7 +32,7 @@ import { consumeDeliveryCapabilitySubmissions } from "./submission-budget"
 import type { DeliveryCapabilityBinding } from "./token.service"
 import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
-import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
+import { lockPrivatePrecomputedRequestEvidence } from "./precomputed/visit-selection"
 
 const Event = z
   .object({
@@ -166,15 +166,16 @@ export class RecommendationEvidenceService {
             sessionDigest: true,
             surfaceVersion: true,
             manifestId: true,
+            privatePrecomputedVisitId: true,
             experimentAssignment: {
-              include: { experiment: true, profile: true },
+              include: { experiment: true },
             },
             promotionSlateFence: true,
           },
         },
       },
     })
-    const now = this.deps.now?.() ?? new Date()
+    let now = this.deps.now?.() ?? new Date()
     if (
       !item ||
       item.requestId !== input.requestId ||
@@ -279,6 +280,21 @@ export class RecommendationEvidenceService {
         throw new RecommendationBindingError(
           "Recommendation evidence binding is invalid",
         )
+      }
+      if (item.request.privatePrecomputedVisitId) {
+        const privateReceiptAt = await lockPrivatePrecomputedRequestEvidence(
+          tx,
+          {
+            requestId: item.requestId,
+            expectedVisitId: item.request.privatePrecomputedVisitId,
+            clock: this.deps.now ?? (() => new Date()),
+          },
+        )
+        if (!privateReceiptAt)
+          throw new RecommendationBindingError(
+            "Recommendation private evidence binding is invalid",
+          )
+        now = privateReceiptAt
       }
       const directInfluenceAllowed = await ownerReleaseInfluenceAllowed(
         tx,
@@ -447,7 +463,7 @@ export class RecommendationEvidenceService {
       return { receipts, reconciledSelection, evidenceWatermark }
     })
     if (result.reconciledSelection) {
-      void this.classifyAndDispatchSelectionFeedback({
+      void this.classifySelectionEvidence({
         itemId: item.id,
         sessionDigest: item.request.sessionDigest,
         evidenceWatermark: result.evidenceWatermark,
@@ -456,7 +472,7 @@ export class RecommendationEvidenceService {
     return result.receipts
   }
 
-  private async classifyAndDispatchSelectionFeedback(input: {
+  private async classifySelectionEvidence(input: {
     itemId: string
     sessionDigest: string
     evidenceWatermark: Date
@@ -471,20 +487,8 @@ export class RecommendationEvidenceService {
         if (!selection) return
         await this.deps.classifySelection(selection.id)
       }
-      const activeProfile = await resolveActiveRecommendationProfileLink(
-        this.deps.prisma,
-        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
-      )
-      if (!activeProfile) return
-      await this.deps.dispatchProfileFeedback?.({
-        sessionDigest: input.sessionDigest,
-        profileId: activeProfile.profileId,
-        privacyGeneration: activeProfile.privacyGeneration,
-        evidenceWatermark: input.evidenceWatermark,
-      })
     } catch {
-      // Evidence acknowledgement remains fail-open. Durable reconciliation
-      // will retry classification and replacement projection.
+      // Evidence acknowledgement remains fail-open. Classification failures do not dispatch background learning.
     }
   }
 
@@ -512,11 +516,6 @@ export function createRecommendationEvidenceService(
   return new RecommendationEvidenceService({
     prisma,
     tokenService,
-    dispatchProfileFeedback: async (input) => {
-      const { dispatchRecommendationProfileFeedback } =
-        await import("./profiles/job")
-      return dispatchRecommendationProfileFeedback(input)
-    },
     classifySelection: async (selectionId) => {
       const { createRecommendationIntegrityService } =
         await import("./integrity.service")

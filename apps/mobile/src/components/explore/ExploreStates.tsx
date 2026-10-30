@@ -15,6 +15,7 @@ import type { FeedPhase } from "../../lib/explore/feedState"
 import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
+import { GlassSurface } from "../ui/GlassSurface"
 
 export type ExploreStatesProps = {
   /** The two phases that replace the whole feed. */
@@ -93,12 +94,17 @@ export function ClipFailed() {
   const t = useT("Explore")
   return (
     <View testID="clip-failed" style={styles.failedLayer} pointerEvents="none">
-      <Text
-        style={[styles.failedText, typography.bodySmall]}
-        accessibilityLiveRegion="polite"
+      <GlassSurface
+        style={styles.failedPill}
+        fallback={{ kind: "fill", style: styles.failedFill }}
       >
-        {t("clipFailed")}
-      </Text>
+        <Text
+          style={[styles.failedText, typography.bodySmall]}
+          accessibilityLiveRegion="polite"
+        >
+          {t("clipFailed")}
+        </Text>
+      </GlassSurface>
     </View>
   )
 }
@@ -114,13 +120,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },
   body: {
     color: TEXT_BODY,
-    fontFamily: "System",
     textAlign: "center",
   },
   retry: {
@@ -135,7 +139,6 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   failedLayer: {
@@ -144,15 +147,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 32,
   },
-  // Its own dark backing, so it reads over any still.
-  failedText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    textAlign: "center",
+  failedPill: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    overflow: "hidden",
+  },
+  // Its own dark backing, so it reads over any still.
+  failedFill: {
     backgroundColor: hexToRgba(BLACK, 0.7),
+  },
+  failedText: {
+    color: TEXT_ON_OVERLAY,
+    textAlign: "center",
   },
 })

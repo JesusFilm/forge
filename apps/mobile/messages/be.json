@@ -138,6 +138,7 @@
     "versesAriaValue": "Вершы з {first} па {last}, усяго {total}, {chapter}",
     "demoVerse": "Правядзіце ўверх, каб перайсці да наступнага верша",
     "demoChapter": "Правядзіце ўлева, каб перайсці да наступнага раздзела",
+    "demoChapterRtl": "Правядзіце ўправа, каб перайсці да наступнага раздзела",
     "demoSkip": "Націсніце, каб прапусціць",
     "demoSkipAriaLabel": "Прапусціць дэманстрацыю жэстаў",
     "selectVerseAriaHint": "Двойчы націсніце, каб вылучыць гэты верш",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Выберыце кнігу",
+    "chooseChapter": "Выберыце раздзел",
+    "chooseVerse": "Выберыце верш",
     "oldTestament": "Стары Запавет",
     "newTestament": "Новы Запавет",
     "books": "Кнігі",
@@ -193,7 +196,7 @@
     "someBooks": "{count} з {total, plural, one {# кнігі} few {# кніг} many {# кніг} other {# кнігі}}",
     "twoNames": "{first} і {second}",
     "threeNames": "{first}, {second} і {third}",
-    "onDevice": "На гэтай прыладзе",
+    "downloaded": "Спампавана",
     "downloading": "Спампоўка {percent}%",
     "downloadStopped": "Спампоўка спынена",
     "updateAvailable": "Ёсць абнаўленне",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Постар серыі",
     "videosHeading": "Відэа",
     "detailsLoadError": "Не ўдалося загрузіць усе звесткі.",
+    "languagesTitle": "Мова відэа",
     "searchLanguagesPlaceholder": "Пошук моў…",
     "searchLanguagesAriaLabel": "Пошук моў",
     "noLanguagesFound": "Моў не знойдзена",
@@ -502,6 +506,7 @@
     "resumeAt": "Працягнуць з {time}",
     "unknownLanguage": "Невядомая",
     "downloadedStatus": "Спампавана",
+    "languagesTitle": "Мова відэа",
     "searchLanguagesPlaceholder": "Пошук моў…",
     "searchLanguagesAriaLabel": "Пошук моў",
     "noLanguagesFound": "Моў не знойдзена",
@@ -773,5 +778,8 @@
     "send": "Адправіць",
     "sending": "Адпраўка…",
     "sendAriaLabel": "Адправіць водгук"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Праграма выкарыстоўвае вашу лакальную сетку для пошуку прылад трансляцыі, каб вы маглі прайграваць відэа на тэлевізары."
   }
 }
