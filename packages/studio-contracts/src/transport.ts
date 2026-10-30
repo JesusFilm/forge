@@ -40,8 +40,6 @@ export const studioRpcSchema = z
       "unpublish",
       "assets",
       "asset",
-      "packs",
-      "pack",
       "capture",
       "source",
       "source-preview",

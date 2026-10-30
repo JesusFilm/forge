@@ -116,12 +116,18 @@ export function issueContent(report: ReportForLinear): {
   return { title, description }
 }
 
-export async function createIssue(report: ReportForLinear): Promise<string> {
+export async function createIssue(
+  report: ReportForLinear,
+  options?: { title: string },
+): Promise<string> {
   const config = requireConfig("FEEDBACK_LINEAR_TEAM_ID")
   const payload = issueContent(report)
   const input = {
     teamId: config.FEEDBACK_LINEAR_TEAM_ID,
     ...payload,
+    ...(options
+      ? { title: options.title.replace(/\s+/g, " ").slice(0, 120) }
+      : {}),
     ...(config.FEEDBACK_LINEAR_PROJECT_ID
       ? { projectId: config.FEEDBACK_LINEAR_PROJECT_ID }
       : {}),
@@ -138,6 +144,25 @@ export async function createIssue(report: ReportForLinear): Promise<string> {
   if (!data.issueCreate.success || !data.issueCreate.issue?.id)
     throw new Error("linear_issue_rejected")
   return data.issueCreate.issue.id
+}
+
+/** Confirm the real destination for an explicitly forwarded local report. */
+export async function issueDetails(issueId: string): Promise<{
+  issueUrl: string
+  issueIdentifier: string
+}> {
+  const data = await request<{
+    issue: { id: string; identifier: string; url: string } | null
+  }>(
+    "query TvFeedbackIssue($id: String!) { issue(id: $id) { id identifier url } }",
+    { id: issueId },
+  )
+  const issue = data.issue
+  if (!issue || issue.id !== issueId) throw new Error("linear_issue_missing")
+  const url = new URL(issue.url)
+  if (url.protocol !== "https:" || url.hostname !== "linear.app")
+    throw new Error("linear_issue_url_invalid")
+  return { issueUrl: url.toString(), issueIdentifier: issue.identifier }
 }
 
 export async function findIssueByReference(

@@ -6,7 +6,16 @@ tags: [studio, assets, content-packs, retention, source-identity]
 
 # Immutable Studio assets and canonical source resolution
 
-Admin owns shared assets and Content Packs. `StudioAssetService` wraps the existing
+Content Packs were retired by owner decision on 2026-10-28 (feat-816).
+The pack contracts and operations described below are historical. Current projects
+use selected media directly; calendar planning uses weekly themes and instructions.
+Migration `0163_retire_studio_content_packs` drops the pack tables and assignment
+columns, and replaces `short_retain_document` to retain only ordinary asset and
+component references. Historical project/release JSON is left in place; document
+parsing discards unknown top-level properties. Production/publication eligibility
+continues to resolve each project's selected source snapshots.
+
+Admin owns shared assets. `StudioAssetService` wraps the existing
 MediaAsset registry and LOCAL/S3 byte adapters. Each registration writes and reads
 back original bytes, validates SHA-256, then creates one immutable version pointing
 to one private READY MediaAsset. Replacement preserves the family `assetId` but

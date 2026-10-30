@@ -7,8 +7,6 @@ import {
   formatRecommendationPercent as formatPercent,
   recommendationNumberFrom as numberFrom,
 } from "./recommendation-display"
-import { PromotionControls } from "./PromotionControls"
-import { StudyControls } from "./StudyControls"
 
 export function ProfileEligibilityReconciliation({
   overview,
@@ -280,7 +278,6 @@ export function ProfileShadowEvaluation({
 
 export function PromotionDecision({
   overview,
-  canOperate,
 }: {
   overview: RecommendationOverviewData
   canOperate: boolean
@@ -394,36 +391,11 @@ export function PromotionDecision({
         </dl>
       </div>
       <div className="border-t border-[var(--color-hairline)] p-4">
-        {canOperate ? (
-          <>
-            <PromotionControls
-              generation={promotion.generation}
-              stage={promotion.stage}
-              targetManifestId={promotion.targetManifestId}
-              lastKnownGoodManifestId={promotion.lastKnownGoodManifestId}
-              approvalId={promotion.approval?.id ?? null}
-              evaluationId={promotion.evaluationId}
-              exposureCeilingBps={promotion.exposureCeilingBps}
-              proposedExposureCeilingBps={promotion.proposedExposureCeilingBps}
-              killSwitchEnabled={promotion.killSwitchEnabled}
-              ready={promotion.readiness.ready}
-              ownerRelease={
-                promotion.ownerRelease
-                  ? {
-                      ...promotion.ownerRelease,
-                      validUntil:
-                        promotion.ownerRelease.validUntil.toISOString(),
-                    }
-                  : null
-              }
-            />
-            <StudyControls />
-          </>
-        ) : (
-          <p className="text-[12px] text-[var(--color-text-muted)]">
-            Read-only evidence. Promotion controls require Admin authority.
-          </p>
-        )}
+        <p className="text-[12px] text-[var(--color-text-muted)]">
+          Historical evidence only. Viewer profiles, co-watch and behavioral
+          learning have been retired. Semantic and metadata recommendations
+          remain active.
+        </p>
       </div>
       <div className="border-t border-[var(--color-hairline)]">
         <div className="px-4 pt-4 label-text">Recent immutable audit</div>

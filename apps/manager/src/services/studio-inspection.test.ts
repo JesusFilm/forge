@@ -41,7 +41,6 @@ const context = studioInspectionContextSchema.parse({
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   },
   evidence: null,
 })

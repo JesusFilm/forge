@@ -41,7 +41,6 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
-import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
 import { checkPrecomputedBaselineClickBrowser } from "./precomputed/incumbent-baseline"
 import type {
@@ -215,7 +214,7 @@ export class RecommendationEpisodeService {
             manifestId: true,
             privatePrecomputedVisitId: true,
             experimentAssignment: {
-              include: { experiment: true, profile: true },
+              include: { experiment: true },
             },
           },
         },
@@ -479,7 +478,7 @@ export class RecommendationEpisodeService {
       (result.status === "accepted" && result.attributionEligible) ||
       result.attributionReconciled
     ) {
-      void this.classifyAndDispatchSelectionFeedback({
+      void this.classifySelectionEvidence({
         selectionId: result.selectionId,
         sessionDigest: item.request.sessionDigest,
         evidenceWatermark: result.evidenceWatermark,
@@ -493,29 +492,15 @@ export class RecommendationEpisodeService {
     }
   }
 
-  private async classifyAndDispatchSelectionFeedback(input: {
+  private async classifySelectionEvidence(input: {
     selectionId: string
     sessionDigest: string
     evidenceWatermark: Date
   }): Promise<void> {
     try {
       await this.deps.classifySelection?.(input.selectionId)
-      const activeProfile = await resolveActiveRecommendationProfileLink(
-        this.deps.prisma,
-        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
-      )
-      if (!activeProfile) return
-      await this.deps.dispatchProfileFeedback?.({
-        sessionDigest: input.sessionDigest,
-        profileId: activeProfile.profileId,
-        privacyGeneration: activeProfile.privacyGeneration,
-        // Coalescing advances from committed server receipt time, never the
-        // browser-controlled selection timestamp.
-        evidenceWatermark: input.evidenceWatermark,
-      })
     } catch {
-      // Selection acknowledgement and navigation remain fail-open. Durable
-      // reconciliation will retry both classification and projection.
+      // Selection acknowledgement and navigation remain fail-open. Classification failures do not dispatch background learning.
     }
   }
 
@@ -574,7 +559,7 @@ export class RecommendationEpisodeService {
               state: true,
               expiresAt: true,
               sessionDigest: true,
-              experimentAssignment: { include: { profile: true } },
+              experimentAssignment: true,
             },
           },
           item: true,
@@ -906,11 +891,6 @@ export function createRecommendationEpisodeService(
     prisma,
     tokenService,
     dispatchFinalization: dispatchRecommendationEpisodeFinalization,
-    dispatchProfileFeedback: async (input) => {
-      const { dispatchRecommendationProfileFeedback } =
-        await import("./profiles/job")
-      return dispatchRecommendationProfileFeedback(input)
-    },
     classifySelection: async (selectionId) => {
       const { createRecommendationIntegrityService } =
         await import("./integrity.service")

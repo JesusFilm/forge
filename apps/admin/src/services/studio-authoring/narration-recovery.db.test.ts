@@ -110,7 +110,6 @@ class FixtureError extends Error {}
           durationInFrames: 1800,
           tracks: [{ id: "cards", kind: "visual" }],
           components: [],
-          packRevisionIds: [],
           items,
         },
       })

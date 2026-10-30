@@ -88,7 +88,10 @@ export function EasterDatesRenderer({ section }: EasterDatesRendererProps) {
   }
 
   return (
-    <View style={[layout.sectionOuter, styles.localContainer]}>
+    <View
+      testID="sdui-easter-dates"
+      style={[layout.sectionOuter, styles.localContainer]}
+    >
       <View style={styles.cardShadow}>
         <LinearGradient
           colors={["#5b9bd5", "#d4a033", "#c0392b"]}

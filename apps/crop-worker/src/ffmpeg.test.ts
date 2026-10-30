@@ -131,6 +131,8 @@ describe("probeSource", () => {
       expect(args).toEqual([
         "-v",
         "error",
+        "-tls_verify",
+        "1",
         "-protocol_whitelist",
         whitelist,
         "-print_format",

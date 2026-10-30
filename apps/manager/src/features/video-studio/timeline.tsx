@@ -1,6 +1,19 @@
 "use client"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Plus, Volume2, Type, Film } from "lucide-react"
+import { AudioClipControls } from "./audio-clip-controls"
+import { useMediaDrag, MediaDropClip, type MediaDrag } from "./media-drag"
+import { mediaDropLocation } from "./media-drop"
+import type { MediaLocation } from "./library-insertion"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  Plus,
+  Minus,
+  Volume2,
+  Layers,
+  Link2,
+  Scan,
+  ZoomIn,
+  SlidersHorizontal,
+} from "lucide-react"
 import type { StudioTimelineItem } from "@forge/studio-contracts"
 import { EditorSession, type EditorSnapshot } from "./editor-session"
 import {
@@ -9,21 +22,48 @@ import {
   itemGroup,
   groupTrackKind,
   type TimelineGroup,
+  type TimelineRow,
 } from "./timeline-layout"
 
+import { timelineRowHeight, timelineTimecode } from "./timeline-presentation"
+import { AudioWaveform } from "./audio-waveform"
+import { footageFrames, footageKey } from "./footage-presentation"
+import { useFootagePresentation } from "./use-footage-presentation"
 import { itemLabel } from "./item-presentation"
+import { timelineZoomPresets, type TimelineZoomMode } from "./timeline-zoom"
+import { timelineScale } from "./timeline-scale"
+import {
+  bindTimelineWheelZoom,
+  applyTimelineWheelZoom,
+} from "./timeline-wheel-zoom"
 export { itemLabel } from "./item-presentation"
 export function Timeline({
   session,
   state,
   onError,
   onScrub,
+  projectId,
 }: {
+  projectId?: string
   session: EditorSession
   state: EditorSnapshot
   onError: (message: string) => void
   onScrub?: () => void
 }) {
+  const [zoomMode, setZoomMode] = useState<TimelineZoomMode>("fit")
+  const mediaDrag = useMediaDrag()
+  const [target, setMediaTarget] = useState<{
+    media: MediaDrag
+    rowId: string
+    location: MediaLocation
+  } | null>(null)
+  const pendingMedia = mediaDrag?.media
+  const mediaTarget = target?.media === pendingMedia ? target : null
+  const zoomAnchor = useRef<number | null>(null)
+  const position = useRef(state.playhead)
+  useEffect(() => {
+    position.current = state.playhead
+  }, [state.playhead])
   const [zoom, setZoom] = useState(1),
     [drag, setDrag] = useState<{
       id: string
@@ -39,16 +79,112 @@ export function Timeline({
     rate: number
     mode: "move" | "left" | "right"
     track: string
+    linkedSourceAudio: boolean
   } | null>(null)
+  const timeline = useRef<HTMLElement>(null)
   const area = useRef<HTMLDivElement>(null)
+  const viewport = useRef<HTMLDivElement>(null)
+  const [viewportWidth, setViewportWidth] = useState(0)
+  useLayoutEffect(() => {
+    const element = viewport.current!
+    const measure = () => {
+      const labels =
+        element.firstElementChild?.getBoundingClientRect().width ?? 0
+      setViewportWidth(Math.max(0, element.clientWidth - labels))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
   const scrubbing = useRef<number | null>(null)
-  const doc = state.document,
-    width = Math.max(
-      700,
-      Math.min(20000, (doc.durationInFrames / doc.fps) * 24 * zoom),
-    ),
-    px = width / doc.durationInFrames
+  const footage = useFootagePresentation(projectId, state.document)
+  const doc = state.document
+  const presets = timelineZoomPresets(
+    doc.durationInFrames,
+    doc.fps,
+    viewportWidth || 700,
+  )
+  const effectiveZoom =
+    zoomMode === "fit"
+      ? presets.fit
+      : zoomMode === "detail"
+        ? presets.detail
+        : Math.max(presets.min, Math.min(presets.max, zoom))
+  const { width, px } = timelineScale(
+    doc.durationInFrames,
+    doc.fps,
+    effectiveZoom,
+    viewportWidth,
+  )
+  function customZoom(value: number) {
+    zoomAnchor.current = position.current
+    setZoom(Math.max(presets.min, Math.min(presets.max, value)))
+    setZoomMode("custom")
+  }
+  function selectZoomMode(next: TimelineZoomMode) {
+    zoomAnchor.current = position.current
+    if (next === zoomMode) {
+      viewport.current!.scrollLeft =
+        next === "fit"
+          ? 0
+          : Math.max(0, position.current * px - viewportWidth / 2)
+      zoomAnchor.current = null
+    }
+    setZoomMode(next)
+  }
+  useEffect(
+    () =>
+      bindTimelineWheelZoom(timeline.current!, (factor) => {
+        zoomAnchor.current = position.current
+        setZoom(
+          applyTimelineWheelZoom(
+            effectiveZoom,
+            factor,
+            presets.min,
+            presets.max,
+          ),
+        )
+        setZoomMode("custom")
+      }),
+    [effectiveZoom, presets.min, presets.max],
+  )
+  useLayoutEffect(() => {
+    if (zoomMode === "fit") viewport.current!.scrollLeft = 0
+    else if (zoomAnchor.current !== null)
+      viewport.current!.scrollLeft = Math.max(
+        0,
+        zoomAnchor.current * px - viewportWidth / 2,
+      )
+    zoomAnchor.current = null
+  }, [px, viewportWidth, zoomMode])
   const rows = useMemo(() => timelineRows(doc), [doc])
+  function hoverMedia(
+    event: React.DragEvent<HTMLDivElement>,
+    row: TimelineRow,
+  ) {
+    if (!pendingMedia || !state.editable || !area.current) return
+    const location = mediaDropLocation(
+      doc,
+      pendingMedia.kind,
+      row.id,
+      (event.clientX - area.current.getBoundingClientRect().left) / px,
+    )
+    if (!location) {
+      setMediaTarget(null)
+      return
+    }
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "copy"
+    onScrub?.()
+    setMediaTarget({
+      media: pendingMedia,
+      rowId: row.linkedSourceAudio
+        ? row.id.replace(/^source-audio:/, "")
+        : row.id,
+      location,
+    })
+  }
   function seekAt(x: number) {
     if (area.current)
       session.seek((x - area.current.getBoundingClientRect().left) / px)
@@ -106,6 +242,7 @@ export function Timeline({
     e: React.PointerEvent,
     item: StudioTimelineItem,
     mode: "move" | "left" | "right",
+    linkedSourceAudio = false,
   ) {
     if (!state.editable) return
     e.preventDefault()
@@ -113,6 +250,7 @@ export function Timeline({
     session.select(item.id)
     e.currentTarget.setPointerCapture(e.pointerId)
     dragStart.current = {
+      linkedSourceAudio,
       x: e.clientX,
       start: item.startFrame,
       duration: item.durationInFrames,
@@ -162,7 +300,9 @@ export function Timeline({
       ?.closest<HTMLElement>("[data-track]")
     const item = doc.items.find((i) => i.id === drag.id)
     const target =
-      item && targetRow?.dataset.group === itemGroup(item, doc)
+      !a.linkedSourceAudio &&
+      item &&
+      targetRow?.dataset.group === itemGroup(item)
         ? targetRow.dataset.track
         : undefined
     setDrag({
@@ -231,57 +371,101 @@ export function Timeline({
     }
   }
   return (
-    <section className="nle-timeline" aria-label="Timeline">
+    <section
+      ref={timeline}
+      className="nle-timeline"
+      aria-label="Timeline"
+      onDragLeave={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect()
+        if (
+          event.clientX < bounds.left ||
+          event.clientX > bounds.right ||
+          event.clientY < bounds.top ||
+          event.clientY > bounds.bottom
+        )
+          setMediaTarget(null)
+      }}
+    >
       <div className="nle-timeline-toolbar">
         <strong>Timeline</strong>
-        <span>
-          {doc.items.length} items · {doc.fps} fps
-        </span>
-        <output aria-live="off">
-          {(state.playhead / doc.fps).toFixed(2)} /{" "}
-          {(doc.durationInFrames / doc.fps).toFixed(2)}s · Frame{" "}
-          {state.playhead}
-        </output>
-        <button
-          title="Go to start"
-          onClick={() => {
-            onScrub?.()
-            session.seek(0)
-          }}
+        <div
+          className="nle-zoom-controls"
+          role="group"
+          aria-label="Timeline zoom controls"
         >
-          Start
-        </button>
-        <label>
-          Zoom
+          <button
+            aria-label="Full extent zoom"
+            title="Full extent: fit the entire edit"
+            aria-pressed={zoomMode === "fit"}
+            onClick={() => selectZoomMode("fit")}
+          >
+            <Scan size={16} />
+          </button>
+          <button
+            aria-label="Detail zoom"
+            title="Detail: ten seconds around the current position"
+            aria-pressed={zoomMode === "detail"}
+            onClick={() => selectZoomMode("detail")}
+          >
+            <ZoomIn size={16} />
+          </button>
+          <button
+            aria-label="Custom zoom"
+            title="Custom zoom"
+            aria-pressed={zoomMode === "custom"}
+            onClick={() => selectZoomMode("custom")}
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+          <button
+            aria-label="Zoom out"
+            title="Zoom out"
+            onClick={() => customZoom(effectiveZoom / 1.25)}
+          >
+            <Minus size={12} />
+          </button>
           <input
             aria-label="Timeline zoom"
+            title="Custom zoom · Cmd/Ctrl + scroll to zoom"
             type="range"
-            min={0.3}
-            max={4}
-            step={0.1}
-            value={zoom}
-            onInput={(e) => setZoom(+e.currentTarget.value)}
+            min={Math.log2(presets.min)}
+            max={Math.log2(presets.max)}
+            step="any"
+            value={Math.log2(effectiveZoom)}
+            aria-valuetext={`${Math.round((effectiveZoom / presets.fit) * 100)}% of full extent`}
+            onInput={(event) =>
+              customZoom(2 ** Number(event.currentTarget.value))
+            }
           />
-        </label>
+          <button
+            aria-label="Zoom in"
+            title="Zoom in"
+            onClick={() => customZoom(effectiveZoom * 1.25)}
+          >
+            <Plus size={12} />
+          </button>
+        </div>
       </div>
-      <div className="nle-timeline-scroll">
+      <div ref={viewport} className="nle-timeline-scroll">
         <div className="nle-track-labels">
-          <div>Tracks</div>
+          <div className="nle-timecode-corner">
+            <div className="nle-timecode">
+              <output aria-label="Playhead timecode" aria-live="off">
+                {timelineTimecode(state.playhead, doc.fps)}
+              </output>
+            </div>
+          </div>
           {timelineGroups.map((group) => (
             <div
               className="nle-group-label"
               key={group}
               style={{
-                height: rows.filter((r) => r.group === group).length * 48,
+                height: rows
+                  .filter((r) => r.group === group)
+                  .reduce((height, row) => height + timelineRowHeight(row), 0),
               }}
             >
-              {group === "Audio" ? (
-                <Volume2 size={14} />
-              ) : group === "Text" ? (
-                <Type size={14} />
-              ) : (
-                <Film size={14} />
-              )}
+              {group === "Audio" ? <Volume2 size={14} /> : <Layers size={14} />}
               <strong>{group}</strong>
               <button
                 aria-label={`Add ${group.toLowerCase()} track`}
@@ -293,23 +477,68 @@ export function Timeline({
             </div>
           ))}
         </div>
-        <div ref={area} className="nle-track-area" style={{ width }}>
+        <div
+          ref={area}
+          className="nle-track-area"
+          data-media-px={px}
+          style={{
+            width:
+              pendingMedia && mediaTarget
+                ? Math.max(
+                    width,
+                    (mediaTarget.location.startFrame +
+                      pendingMedia.durationInFrames) *
+                      px,
+                  )
+                : width,
+          }}
+        >
           <div className="nle-ruler" onPointerDown={scrubStart}>
-            {Array.from(
-              { length: Math.min(100, Math.ceil(width / 80)) },
-              (_, i) => (
-                <span key={i} style={{ left: i * 80 }}>
-                  {((i * 80) / px / doc.fps).toFixed(1)}s
-                </span>
-              ),
-            )}
+            {Array.from({ length: Math.ceil(width / 80) }, (_, i) => (
+              <span key={i} style={{ left: i * 80 }}>
+                {((i * 80) / px / doc.fps).toFixed(1)}s
+              </span>
+            ))}
           </div>
           {rows.map((row, index) => (
             <div
               key={row.id}
               data-track={row.trackId ?? undefined}
               data-group={row.group}
+              data-linked-source-audio={row.linkedSourceAudio || undefined}
               className={`nle-track ${rows[index - 1]?.group !== row.group ? "nle-group-start" : ""}`}
+              style={{
+                height:
+                  pendingMedia?.kind === "video" &&
+                  mediaTarget?.rowId === row.id
+                    ? Math.max(104, timelineRowHeight(row))
+                    : timelineRowHeight(row),
+              }}
+              onDragEnter={(event) => hoverMedia(event, row)}
+              onDragOver={(event) => hoverMedia(event, row)}
+              onDrop={(event) => {
+                if (!pendingMedia || !state.editable || !area.current) return
+                const location = mediaDropLocation(
+                  doc,
+                  pendingMedia.kind,
+                  row.id,
+                  (event.clientX - area.current.getBoundingClientRect().left) /
+                    px,
+                )
+                if (!location) return
+                event.preventDefault()
+                mediaDrag?.clear()
+                setMediaTarget(null)
+                Promise.resolve()
+                  .then(() => pendingMedia.insert(location))
+                  .catch((error: unknown) =>
+                    onError(
+                      error instanceof Error
+                        ? error.message
+                        : "Could not add media",
+                    ),
+                  )
+              }}
               onPointerDown={(e) => {
                 if (e.target === e.currentTarget) {
                   session.select(null)
@@ -320,7 +549,34 @@ export function Timeline({
                 }
               }}
             >
+              {pendingMedia &&
+                mediaTarget &&
+                (mediaTarget.rowId === row.id ||
+                  (pendingMedia.kind === "video" &&
+                    row.group === "Audio" &&
+                    row.id ===
+                      (rows.find(
+                        (r) => r.id === `source-audio:${mediaTarget.rowId}`,
+                      )?.id ?? rows.find((r) => r.group === "Audio")?.id))) && (
+                  <MediaDropClip
+                    media={pendingMedia}
+                    audio={row.group === "Audio"}
+                    left={mediaTarget.location.startFrame * px}
+                    width={Math.max(12, pendingMedia.durationInFrames * px)}
+                  />
+                )}
               {row.items.map((i) => {
+                const linked = Boolean(row.linkedSourceAudio)
+                const muted = i.kind === "video" && i.volume === 0
+                const details =
+                  i.kind === "video" ? footage[footageKey(i)] : undefined
+                const name =
+                  i.kind === "video"
+                    ? details?.name || i.source.videoId
+                    : (mediaDrag?.labels[i.id] ?? itemLabel(i, doc))
+                const label = linked
+                  ? `${name} source audio (${muted ? "muted, " : ""}linked to footage)`
+                  : name
                 const value =
                   drag?.id === i.id
                     ? drag
@@ -330,12 +586,14 @@ export function Timeline({
                     key={i.id}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${itemLabel(i, doc)} timeline item`}
+                    aria-label={`${label} timeline item`}
+                    title={linked || i.kind === "audio" ? undefined : name}
                     aria-pressed={state.selection === i.id}
-                    className={`nle-clip nle-clip-${i.kind}`}
+                    className={`nle-clip nle-clip-${linked ? "audio" : i.kind}${linked ? " nle-clip-linked" : ""}`}
                     style={{
                       left: value.start * px,
                       width: Math.max(12, value.duration * px),
+                      height: timelineRowHeight(row) - 10,
                     }}
                     onClick={() => session.select(i.id)}
                     onDoubleClick={() => session.seek(i.startFrame)}
@@ -363,7 +621,7 @@ export function Timeline({
                         }))
                       }
                     }}
-                    onPointerDown={(e) => start(e, i, "move")}
+                    onPointerDown={(e) => start(e, i, "move", linked)}
                     onPointerMove={move}
                     onPointerUp={end}
                     onPointerCancel={() => {
@@ -371,15 +629,78 @@ export function Timeline({
                       setDrag(null)
                     }}
                   >
+                    {(linked && i.kind === "video") || i.kind === "audio" ? (
+                      <AudioWaveform
+                        item={i}
+                        document={doc}
+                        projectId={projectId}
+                      />
+                    ) : null}
+                    {(linked && i.kind === "video") || i.kind === "audio" ? (
+                      <AudioClipControls
+                        item={i}
+                        fps={doc.fps}
+                        disabled={!state.editable}
+                        onGestureStart={() => {
+                          onScrub?.()
+                          session.select(i.id)
+                        }}
+                        onChange={(audio) => {
+                          try {
+                            session.edit((document) => ({
+                              ...document,
+                              items: document.items.map((item) =>
+                                item.id === i.id &&
+                                (item.kind === "video" || item.kind === "audio")
+                                  ? { ...item, ...audio }
+                                  : item,
+                              ),
+                            }))
+                          } catch (error) {
+                            onError(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not update audio",
+                            )
+                          }
+                        }}
+                      />
+                    ) : null}
+                    {!linked && i.kind === "video" && details?.frames.length ? (
+                      <div className="nle-filmstrip" aria-hidden="true">
+                        {footageFrames(details.frames, value.duration * px).map(
+                          (url, index) => (
+                            // Mux already supplies appropriately sized images; Next optimization would proxy every sample.
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              key={`${index}:${url}`}
+                              src={url}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              draggable={false}
+                              onError={(event) => {
+                                event.currentTarget.style.visibility = "hidden"
+                              }}
+                            />
+                          ),
+                        )}
+                      </div>
+                    ) : null}
                     <span
                       className="nle-trim left"
-                      onPointerDown={(e) => start(e, i, "left")}
+                      onPointerDown={(e) => start(e, i, "left", linked)}
                       aria-label="Trim start"
                     />
-                    <span>{itemLabel(i, doc)}</span>
+                    {linked && <Link2 size={12} aria-hidden="true" />}
+                    <span className="nle-clip-label">
+                      {linked
+                        ? `${name} · ${muted ? "Muted · " : ""}Linked audio`
+                        : name}
+                    </span>
                     <span
                       className="nle-trim right"
-                      onPointerDown={(e) => start(e, i, "right")}
+                      onPointerDown={(e) => start(e, i, "right", linked)}
                       aria-label="Trim end"
                     />
                   </div>

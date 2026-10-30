@@ -1,0 +1,471 @@
+{
+  "identity": {
+    "runId": "2026-10-22T11-00-00Z-c3d4",
+    "commit": "2bcf98e19a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "scope": "release",
+    "startedAt": "2026-10-22T11:00:00.000Z",
+    "endedAt": "2026-10-22T12:40:00.000Z",
+    "inputDigests": {
+      "apps/mobile/package.json": "1111111111111111111111111111111111111111111111111111111111111111",
+      "pnpm-lock.yaml": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "listDigests": {
+      "known-bugs.json": "3333333333333333333333333333333333333333333333333333333333333333",
+      "not-tested.json": "4444444444444444444444444444444444444444444444444444444444444444",
+      "test-settings.json": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "toolVersions": {
+      "xcode": "26.5 (17F42)",
+      "maestro": "2.11.0",
+      "node": "24.14.1",
+      "java": "Amazon Corretto 17.0.13"
+    },
+    "devicePins": {
+      "iphone-se": {
+        "runtime": "iOS 26.5",
+        "locale": "en_US",
+        "hardwareKeyboard": false
+      },
+      "android-phone": {
+        "image": "system-images;android-35;google_apis;arm64-v8a r3",
+        "locale": "en_US",
+        "timezone": "UTC",
+        "gpu": "host",
+        "memoryMb": 4096
+      }
+    },
+    "macTimeZone": "Pacific/Auckland"
+  },
+  "outcome": {
+    "stopReason": "completed",
+    "completedPhases": [
+      "preflight",
+      "build",
+      "build-check",
+      "devices",
+      "settings-probe",
+      "journeys",
+      "log-check",
+      "speed-pass"
+    ]
+  },
+  "attempts": [
+    {
+      "journey": "cold-launch-home",
+      "deviceId": "iphone-se",
+      "attempt": 1,
+      "status": "passed",
+      "label": "pass",
+      "class": null,
+      "failedStep": null,
+      "error": null,
+      "screenshot": null,
+      "stepTimes": [
+        {
+          "label": "Launch the app",
+          "ms": 4200
+        },
+        {
+          "label": "Home content shows",
+          "ms": 1800
+        }
+      ],
+      "restart": false,
+      "notRunSteps": [],
+      "knownBugTicket": null,
+      "screensReached": ["tab-home"]
+    },
+    {
+      "journey": "mini-player-tabs",
+      "deviceId": "android-phone",
+      "attempt": 1,
+      "status": "not_run",
+      "label": "not_run",
+      "class": null,
+      "failedStep": null,
+      "error": null,
+      "screenshot": null,
+      "stepTimes": [],
+      "restart": false,
+      "notRunSteps": [],
+      "knownBugTicket": null,
+      "screensReached": []
+    },
+    {
+      "journey": "bible-change-chapter",
+      "deviceId": "iphone-se",
+      "attempt": 1,
+      "status": "failed",
+      "label": "known",
+      "class": "selector_not_found",
+      "failedStep": "Swipe to the next chapter",
+      "error": "Element not found: id: bible-chapter-next",
+      "screenshot": "attempts/bible-change-chapter/iphone-se/1/failed-step.png",
+      "stepTimes": [
+        {
+          "label": "Open the Bible tab",
+          "ms": 1300
+        },
+        {
+          "label": "Swipe to the next chapter",
+          "ms": 10000
+        }
+      ],
+      "restart": false,
+      "notRunSteps": ["Check the chapter title"],
+      "knownBugTicket": "FORGE-2101",
+      "screensReached": ["tab-bible"]
+    },
+    {
+      "journey": "explore-five-clips",
+      "deviceId": "android-phone",
+      "attempt": 1,
+      "status": "failed",
+      "label": "flaky",
+      "class": "device_unresponsive",
+      "failedStep": "Swipe to clip 3",
+      "error": "adb did not answer within 60 seconds.",
+      "screenshot": null,
+      "stepTimes": [
+        {
+          "label": "Open the Explore tab",
+          "ms": 1400
+        },
+        {
+          "label": "Swipe to clip 2",
+          "ms": 800
+        },
+        {
+          "label": "Swipe to clip 3",
+          "ms": 60000
+        }
+      ],
+      "restart": true,
+      "notRunSteps": ["Swipe to clip 4", "Swipe to clip 5"],
+      "knownBugTicket": null,
+      "screensReached": ["tab-explore"]
+    },
+    {
+      "journey": "explore-five-clips",
+      "deviceId": "android-phone",
+      "attempt": 2,
+      "status": "passed",
+      "label": "flaky",
+      "class": null,
+      "failedStep": null,
+      "error": null,
+      "screenshot": null,
+      "stepTimes": [
+        {
+          "label": "Open the Explore tab",
+          "ms": 1500
+        },
+        {
+          "label": "Swipe to clip 2",
+          "ms": 700
+        },
+        {
+          "label": "Swipe to clip 3",
+          "ms": 750
+        },
+        {
+          "label": "Swipe to clip 4",
+          "ms": 720
+        },
+        {
+          "label": "Swipe to clip 5",
+          "ms": 710
+        }
+      ],
+      "restart": false,
+      "notRunSteps": [],
+      "knownBugTicket": null,
+      "screensReached": ["tab-explore"]
+    },
+    {
+      "journey": "search-open-result",
+      "deviceId": "android-phone",
+      "attempt": 1,
+      "status": "failed",
+      "label": "new",
+      "class": "rate_limited",
+      "failedStep": "Results show",
+      "error": "Admin refused the search results request: You are trying to access 'video' too often.",
+      "screenshot": "attempts/search-open-result/android-phone/1/failed-step.png",
+      "stepTimes": [
+        {
+          "label": "Open the Search tab",
+          "ms": 1200
+        },
+        {
+          "label": "Type the word",
+          "ms": 2200
+        },
+        {
+          "label": "Results show",
+          "ms": 15000
+        }
+      ],
+      "restart": false,
+      "notRunSteps": ["Open the first result"],
+      "knownBugTicket": null,
+      "screensReached": ["tab-watch"]
+    },
+    {
+      "journey": "search-open-result",
+      "deviceId": "android-phone",
+      "attempt": 2,
+      "status": "failed",
+      "label": "new",
+      "class": "rate_limited",
+      "failedStep": "Results show",
+      "error": "Admin refused the search results request: You are trying to access 'video' too often.",
+      "screenshot": "attempts/search-open-result/android-phone/2/failed-step.png",
+      "stepTimes": [
+        {
+          "label": "Open the Search tab",
+          "ms": 1100
+        },
+        {
+          "label": "Type the word",
+          "ms": 2100
+        },
+        {
+          "label": "Results show",
+          "ms": 15000
+        }
+      ],
+      "restart": false,
+      "notRunSteps": ["Open the first result"],
+      "knownBugTicket": null,
+      "screensReached": ["tab-watch"]
+    },
+    {
+      "journey": "open-video-play",
+      "deviceId": "iphone-se",
+      "attempt": 1,
+      "status": "failed",
+      "label": "new",
+      "class": "app_crashed",
+      "failedStep": "The video plays",
+      "error": "The app stopped. Crash report: /Users/qa-engineer/Library/Logs/DiagnosticReports/forgewatch-2026-10-22.ips",
+      "screenshot": "attempts/open-video-play/iphone-se/1/failed-step.png",
+      "stepTimes": [
+        {
+          "label": "Open the first Home tile",
+          "ms": 900
+        },
+        {
+          "label": "The video plays",
+          "ms": 4100
+        }
+      ],
+      "restart": false,
+      "notRunSteps": ["Pause, seek, and close"],
+      "knownBugTicket": null,
+      "screensReached": ["tab-home", "watch"]
+    },
+    {
+      "journey": "open-video-play",
+      "deviceId": "iphone-se",
+      "attempt": 2,
+      "status": "failed",
+      "label": "new",
+      "class": "app_crashed",
+      "failedStep": "The video plays",
+      "error": "The app stopped again at the same step.",
+      "screenshot": "attempts/open-video-play/iphone-se/2/failed step (2).png",
+      "stepTimes": [
+        {
+          "label": "Open the first Home tile",
+          "ms": 950
+        },
+        {
+          "label": "The video plays",
+          "ms": 4300
+        }
+      ],
+      "restart": false,
+      "notRunSteps": ["Pause, seek, and close"],
+      "knownBugTicket": null,
+      "screensReached": ["tab-home", "watch"]
+    }
+  ],
+  "checks": {
+    "build": {
+      "passed": true,
+      "findings": []
+    },
+    "log": {
+      "passed": true,
+      "findings": [],
+      "perDevice": {
+        "iphone-se": 120,
+        "android-phone": 131
+      },
+      "routes": {
+        "forwarded": 40,
+        "reused": 200,
+        "blocked": 11
+      }
+    },
+    "screens": {
+      "gaps": [
+        {
+          "screen": "reader-settings",
+          "platform": "android"
+        }
+      ],
+      "notReached": [
+        {
+          "screen": "tab-explore",
+          "deviceId": "android-phone"
+        }
+      ],
+      "skippedPlatforms": []
+    },
+    "settingsProbe": {
+      "passed": true,
+      "findings": []
+    }
+  },
+  "server": {
+    "routes": {
+      "forwarded": 52,
+      "reused": 310,
+      "saved-answer": 4,
+      "prefix-answer": 9,
+      "rate-limited": 2,
+      "blocked": 14
+    },
+    "rateLimitRefusals": [
+      {
+        "ts": "2026-10-22T11:20:03.000Z",
+        "field": "video",
+        "deviceId": "android-phone",
+        "journey": "search-open-result",
+        "attempt": 1
+      },
+      {
+        "ts": "2026-10-22T11:22:41.000Z",
+        "field": "video",
+        "deviceId": "android-phone",
+        "journey": "search-open-result",
+        "attempt": 2
+      },
+      {
+        "ts": "2026-10-22T11:31:10.000Z",
+        "field": "watchHomeVideos",
+        "deviceId": "android-phone",
+        "journey": "explore-five-clips",
+        "attempt": 2
+      }
+    ]
+  },
+  "notTested": [
+    {
+      "kind": "step",
+      "target": "sign-in",
+      "platforms": ["ios", "android"],
+      "reason": "Production leaves sign-in off, and a sign-in writes to production auth."
+    },
+    {
+      "kind": "screen",
+      "target": "account",
+      "platforms": ["ios", "android"],
+      "reason": "Only a signed-in viewer can open the Account screen, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "my-watch-signed-in",
+      "platforms": ["ios", "android"],
+      "reason": "Signed-in My Watch needs a sign-in, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "for-you-shelf",
+      "platforms": ["ios", "android"],
+      "reason": "Recommendations are off in the test build, because they cannot work without writes."
+    }
+  ],
+  "staleKnownBugs": [
+    {
+      "journey": "cold-launch-home",
+      "devices": ["iphone-se"],
+      "step": "Home content shows",
+      "check": "assertion_failed",
+      "ticket": "FORGE-2050"
+    }
+  ],
+  "restarts": [
+    {
+      "deviceId": "android-phone",
+      "ts": "2026-10-22T11:29:30.000Z",
+      "reason": "adb did not answer within 60 seconds."
+    }
+  ],
+  "speed": {
+    "devices": [
+      {
+        "deviceId": "iphone-se",
+        "coldLaunchMs": {
+          "median": 2200,
+          "min": 2000,
+          "max": 2500,
+          "samples": [2000, 2200, 2500]
+        },
+        "homeContentMs": {
+          "median": 3500,
+          "min": 3300,
+          "max": 3700,
+          "samples": [3300, 3500, 3700]
+        },
+        "firstFrameMs": {
+          "median": 1600,
+          "min": 1500,
+          "max": 1800,
+          "samples": [1500, 1600, 1800]
+        },
+        "peakMemoryMb": 420,
+        "failures": []
+      }
+    ]
+  },
+  "proposedActions": [
+    {
+      "type": "write_journey",
+      "reason": "The Android reader settings sheet has no journey on Android.",
+      "screen": "reader-settings",
+      "platform": "android"
+    },
+    {
+      "type": "record_search_answer",
+      "reason": "A search journey sent a query with no saved answer.",
+      "journey": "search-open-result",
+      "search": {
+        "query": "peace",
+        "limit": 20,
+        "offset": 0,
+        "language": "english"
+      }
+    },
+    {
+      "type": "remove_known_bug",
+      "reason": "The journey now passes on every device that the entry names.",
+      "journey": "cold-launch-home",
+      "devices": ["iphone-se"],
+      "step": "Home content shows",
+      "check": "assertion_failed",
+      "ticket": "FORGE-2050"
+    },
+    {
+      "type": "add_known_bug",
+      "reason": "The same step failed with the same class on both attempts.",
+      "journey": "open-video-play",
+      "devices": ["iphone-se"],
+      "step": "The video plays",
+      "check": "app_crashed",
+      "ticket": null
+    }
+  ]
+}
