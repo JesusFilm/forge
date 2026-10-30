@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-oyatdan {last}-oyatgacha, jami {total} ta, {chapter}",
     "demoVerse": "Keyingi oyat uchun yuqoriga suring",
     "demoChapter": "Keyingi bob uchun chapga suring",
+    "demoChapterRtl": "Keyingi bob uchun o‘ngga suring",
     "demoSkip": "O‘tkazib yuborish uchun bosing",
     "demoSkipAriaLabel": "Surish namoyishini o‘tkazib yuborish",
     "selectVerseAriaHint": "Bu oyatni tanlash uchun ikki marta bosing",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kitobni tanlang",
+    "chooseChapter": "Bobni tanlang",
+    "chooseVerse": "Oyatni tanlang",
     "oldTestament": "Eski Ahd",
     "newTestament": "Yangi Ahd",
     "books": "Kitoblar",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# ta kitobdan} other {# ta kitobdan}} {count} tasi",
     "twoNames": "{first} va {second}",
     "threeNames": "{first}, {second} va {third}",
-    "onDevice": "Shu qurilmada",
+    "downloaded": "Yuklab olingan",
     "downloading": "Yuklab olinmoqda: {percent}%",
     "downloadStopped": "Yuklab olish to‘xtadi",
     "updateAvailable": "Yangilanish mavjud",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Seriya posteri",
     "videosHeading": "Videolar",
     "detailsLoadError": "To‘liq ma’lumotlar yuklanmadi.",
+    "languagesTitle": "Video tili",
     "searchLanguagesPlaceholder": "Tillarni qidirish...",
     "searchLanguagesAriaLabel": "Tillarni qidirish",
     "noLanguagesFound": "Hech qanday til topilmadi",
@@ -502,6 +506,7 @@
     "resumeAt": "Davom ettirish: {time}",
     "unknownLanguage": "Noma’lum",
     "downloadedStatus": "Yuklab olingan",
+    "languagesTitle": "Video tili",
     "searchLanguagesPlaceholder": "Tillarni qidirish...",
     "searchLanguagesAriaLabel": "Tillarni qidirish",
     "noLanguagesFound": "Hech qanday til topilmadi",
@@ -773,5 +778,8 @@
     "send": "Yuborish",
     "sending": "Yuborilmoqda…",
     "sendAriaLabel": "Fikr-mulohaza yuborish"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ilova uzatish qurilmalarini topish uchun mahalliy tarmog‘ingizdan foydalanadi, shunda videolarni televizoringizda ijro eta olasiz."
   }
 }

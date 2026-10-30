@@ -18,6 +18,7 @@
  * doesn't depend on the runtime env value.
  */
 
+import { setRequestLocale } from "next-intl/server"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -390,6 +391,45 @@ describe("ShareModal — local origin fallback", () => {
 
     vi.doUnmock("@/env")
     vi.resetModules()
+  })
+
+  // QA N50a: "(opens in a new tab)" was hardcoded English in every locale.
+  it("translates the new-tab hint in the social share accessible names", async () => {
+    vi.resetModules()
+    vi.doMock("@/env", () => ({
+      env: {
+        NEXT_PUBLIC_CANONICAL_ORIGIN: "http://localhost:3000",
+      },
+    }))
+    const { ShareModal: ShareModalLocal } =
+      await import("@/components/watch/ShareModal")
+
+    setRequestLocale("ar")
+    try {
+      act(() => {
+        root.render(
+          <ShareModalLocal
+            open
+            videoSlug="the-call"
+            currentLanguageSlug="arabic"
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      expect(
+        $('[data-testid="watch-share-modal-facebook"]')?.getAttribute(
+          "aria-label",
+        ),
+      ).toBe("مشاركة على Facebook (يُفتح في علامة تبويب جديدة)")
+      expect(
+        $('[data-testid="watch-share-modal-x"]')?.getAttribute("aria-label"),
+      ).toBe("مشاركة على X (يُفتح في علامة تبويب جديدة)")
+    } finally {
+      setRequestLocale("en")
+      vi.doUnmock("@/env")
+      vi.resetModules()
+    }
   })
 
   it("keeps a valid Embed action when the share identity is invalid", () => {

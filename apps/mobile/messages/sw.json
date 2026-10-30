@@ -138,6 +138,7 @@
     "versesAriaValue": "Mistari {first} hadi {last} kati ya {total}, {chapter}",
     "demoVerse": "Telezesha juu kwa mstari unaofuata",
     "demoChapter": "Telezesha kushoto kwa sura inayofuata",
+    "demoChapterRtl": "Telezesha kulia kwa sura inayofuata",
     "demoSkip": "Gusa ili kuruka",
     "demoSkipAriaLabel": "Ruka maonyesho ya kutelezesha",
     "selectVerseAriaHint": "Gusa mara mbili ili kuchagua mstari huu",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Chagua kitabu",
+    "chooseChapter": "Chagua sura",
+    "chooseVerse": "Chagua mstari",
     "oldTestament": "Agano la Kale",
     "newTestament": "Agano Jipya",
     "books": "Vitabu",
@@ -193,7 +196,7 @@
     "someBooks": "{count} kati ya {total, plural, one {kitabu #} other {vitabu #}}",
     "twoNames": "{first} na {second}",
     "threeNames": "{first}, {second} na {third}",
-    "onDevice": "Kwenye kifaa hiki",
+    "downloaded": "Imepakuliwa",
     "downloading": "Inapakua {percent}%",
     "downloadStopped": "Upakuaji umesimama",
     "updateAvailable": "Sasisho linapatikana",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Bango la mfululizo",
     "videosHeading": "Video",
     "detailsLoadError": "Imeshindikana kupakia maelezo kamili.",
+    "languagesTitle": "Lugha ya video",
     "searchLanguagesPlaceholder": "Tafuta lugha…",
     "searchLanguagesAriaLabel": "Tafuta lugha",
     "noLanguagesFound": "Hakuna lugha zilizopatikana",
@@ -502,6 +506,7 @@
     "resumeAt": "Endelea kuanzia {time}",
     "unknownLanguage": "Haijulikani",
     "downloadedStatus": "Imepakuliwa",
+    "languagesTitle": "Lugha ya video",
     "searchLanguagesPlaceholder": "Tafuta lugha…",
     "searchLanguagesAriaLabel": "Tafuta lugha",
     "noLanguagesFound": "Hakuna lugha zilizopatikana",
@@ -773,5 +778,8 @@
     "send": "Tuma",
     "sending": "Inatuma…",
     "sendAriaLabel": "Tuma maoni"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programu inatumia mtandao wako wa karibu kutafuta vifaa unavyoweza kutuma video kwavyo, ili uweze kucheza video kwenye TV yako."
   }
 }

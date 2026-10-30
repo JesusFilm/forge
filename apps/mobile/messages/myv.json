@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-це стихстэ {last}-це стихс, весемезэ {total}, {chapter}",
     "demoVerse": "Верев — сыця стих",
     "demoChapter": "Керш ёнов — сыця пря",
+    "demoChapterRtl": "Вить ёнов — сыця пря",
     "demoSkip": "Ютамс — токак",
     "demoSkipAriaLabel": "Ютамс невтевксэнть",
     "selectVerseAriaHint": "Те стихенть кочкамс — кавксть токак",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Кочкамс книга",
+    "chooseChapter": "Кочкамс пря",
+    "chooseVerse": "Кочкамс стих",
     "oldTestament": "Ташто Завет",
     "newTestament": "Од Завет",
     "books": "Книгат",
@@ -193,7 +196,7 @@
     "someBooks": "{count} / {total, plural, one {# книга} other {# книга}}",
     "twoNames": "{first} ды {second}",
     "threeNames": "{first}, {second} ды {third}",
-    "onDevice": "Те устройствасо",
+    "downloaded": "Таргазь",
     "downloading": "Таргави {percent}%",
     "downloadStopped": "Таргамось лоткась",
     "updateAvailable": "Ули од версия",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериянь постер",
     "videosHeading": "Видеот",
     "detailsLoadError": "Весе информациясь эзь панжов.",
+    "languagesTitle": "Видеонь кель",
     "searchLanguagesPlaceholder": "Вешнемс кельть...",
     "searchLanguagesAriaLabel": "Вешнемс кельть",
     "noLanguagesFound": "Кельть эзть муеве",
@@ -502,6 +506,7 @@
     "resumeAt": "Поладомс: {time}",
     "unknownLanguage": "Апак сода кель",
     "downloadedStatus": "Таргазь",
+    "languagesTitle": "Видеонь кель",
     "searchLanguagesPlaceholder": "Вешнемс кельть...",
     "searchLanguagesAriaLabel": "Вешнемс кельть",
     "noLanguagesFound": "Кельть эзть муеве",
@@ -773,5 +778,8 @@
     "send": "Кучомс",
     "sending": "Кучови…",
     "sendAriaLabel": "Кучомс арсемат"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложениясь вешни телевизорсо невтема устройстват тынк локальной сетьсэ, секс видеотнень маштови ванномс телевизорсо."
   }
 }

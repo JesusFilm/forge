@@ -33,11 +33,12 @@ type Props = {
   // Use on routes that supply their own native navigation header (e.g.
   // experience/[slug]) to avoid doubled safe-area offsets.
   hideHeader?: boolean
+  testID?: string
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function CuratedHomeLayout({ hideHeader = false }: Props) {
+export function CuratedHomeLayout({ hideHeader = false, testID }: Props) {
   const { experience } = useExperienceContext()
   const t = useT("Sections")
   const { width: screenWidth } = useWindowDimensions()
@@ -160,7 +161,7 @@ export function CuratedHomeLayout({ hideHeader = false }: Props) {
   )
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID={testID} style={layout.screenContainer}>
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <VideoHeroRenderer
@@ -243,6 +244,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+    // The mute target draws at the hero's measured x (feat-695 KTD7), so
+    // React Native must not swap its `left` in a right-to-left app.
+    direction: "ltr",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

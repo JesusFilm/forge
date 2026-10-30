@@ -138,6 +138,7 @@
     "versesAriaValue": "Ba vɛrsɛ {first} tii {last} kati na {total}, {chapter}",
     "demoVerse": "Benda na likolo mpo na vɛrsɛ oyo ekolanda",
     "demoChapter": "Benda na loboko ya mwasi mpo na mokapo oyo ekolanda",
+    "demoChapterRtl": "Benda na loboko ya mobali mpo na mokapo oyo ekolanda",
     "demoSkip": "Fina mpo na koleka",
     "demoSkipAriaLabel": "Leka lilakisi ya kobenda",
     "selectVerseAriaHint": "Fina mbala mibale mpo na kopona vɛrsɛ oyo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pona mokanda",
+    "chooseChapter": "Pona mokapo",
+    "chooseVerse": "Pona vɛrsɛ",
     "oldTestament": "Kondimana ya Kala",
     "newTestament": "Kondimana ya Sika",
     "books": "Mikanda",
@@ -193,7 +196,7 @@
     "someBooks": "{count} kati na {total, plural, one {mokanda #} other {mikanda #}}",
     "twoNames": "{first} mpe {second}",
     "threeNames": "{first}, {second} mpe {third}",
-    "onDevice": "Ezali na esaleli oyo",
+    "downloaded": "Ekitisami",
     "downloading": "Ezali kokita {percent}%",
     "downloadStopped": "Kokitisa etelemi",
     "updateAvailable": "Lolenge ya sika ezali",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Elilingi ya série",
     "videosHeading": "Ba vidéo",
     "detailsLoadError": "Makambo nyonso ekokaki koya te.",
+    "languagesTitle": "Monoko ya vidéo",
     "searchLanguagesPlaceholder": "Luka minoko…",
     "searchLanguagesAriaLabel": "Luka minoko",
     "noLanguagesFound": "Monoko moko te ezwami",
@@ -502,6 +506,7 @@
     "resumeAt": "Koba na {time}",
     "unknownLanguage": "Eyebani te",
     "downloadedStatus": "Ekitisami",
+    "languagesTitle": "Monoko ya vidéo",
     "searchLanguagesPlaceholder": "Luka minoko…",
     "searchLanguagesAriaLabel": "Luka minoko",
     "noLanguagesFound": "Monoko moko te ezwami",
@@ -773,5 +778,8 @@
     "send": "Tinda",
     "sending": "Ezali kotinda…",
     "sendAriaLabel": "Tinda makanisi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Application esalelaka réseau ya esika ozali mpo na koluka bisaleli oyo okoki kotindela ba vidéo, mpo okoka kotambwisa ba vidéo na TV na yo."
   }
 }

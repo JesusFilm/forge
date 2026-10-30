@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "L’application utilise votre réseau local pour trouver les appareils Cast, afin que vous puissiez lire des vidéos sur votre téléviseur."
+  }
+}

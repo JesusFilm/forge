@@ -138,6 +138,7 @@
     "versesAriaValue": "Câu {first} đến {last} trên {total}, {chapter}",
     "demoVerse": "Vuốt lên để xem câu tiếp theo",
     "demoChapter": "Vuốt sang trái để xem chương tiếp theo",
+    "demoChapterRtl": "Vuốt sang phải để xem chương tiếp theo",
     "demoSkip": "Chạm để bỏ qua",
     "demoSkipAriaLabel": "Bỏ qua phần hướng dẫn thao tác vuốt",
     "selectVerseAriaHint": "Chạm hai lần để chọn câu này",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Chọn sách",
+    "chooseChapter": "Chọn chương",
+    "chooseVerse": "Chọn câu",
     "oldTestament": "Cựu Ước",
     "newTestament": "Tân Ước",
     "books": "Sách",
@@ -193,7 +196,7 @@
     "someBooks": "{count} trên {total, plural, other {# sách}}",
     "twoNames": "{first} và {second}",
     "threeNames": "{first}, {second} và {third}",
-    "onDevice": "Trên thiết bị này",
+    "downloaded": "Đã tải xuống",
     "downloading": "Đang tải xuống {percent}%",
     "downloadStopped": "Đã dừng tải xuống",
     "updateAvailable": "Có bản cập nhật",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Áp phích loạt phim",
     "videosHeading": "Các video",
     "detailsLoadError": "Không tải được đầy đủ thông tin.",
+    "languagesTitle": "Ngôn ngữ video",
     "searchLanguagesPlaceholder": "Tìm ngôn ngữ...",
     "searchLanguagesAriaLabel": "Tìm ngôn ngữ",
     "noLanguagesFound": "Không tìm thấy ngôn ngữ nào",
@@ -502,6 +506,7 @@
     "resumeAt": "Tiếp tục từ {time}",
     "unknownLanguage": "Không rõ",
     "downloadedStatus": "Đã tải xuống",
+    "languagesTitle": "Ngôn ngữ video",
     "searchLanguagesPlaceholder": "Tìm ngôn ngữ...",
     "searchLanguagesAriaLabel": "Tìm ngôn ngữ",
     "noLanguagesFound": "Không tìm thấy ngôn ngữ nào",
@@ -773,5 +778,8 @@
     "send": "Gửi",
     "sending": "Đang gửi…",
     "sendAriaLabel": "Gửi phản hồi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ứng dụng dùng mạng cục bộ của bạn để tìm các thiết bị truyền, nhờ vậy bạn có thể phát video trên TV của mình."
   }
 }

@@ -16,7 +16,7 @@ import type { View as ViewType } from "react-native"
 
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import {
   THUMB_SHADOW,
@@ -309,7 +309,7 @@ function makeVariantStyles(variant: HomeCardVariant) {
     },
     chipText: {
       fontFamily: "System",
-      fontSize: Math.round(scale(16)),
+      fontSize: readableFontSize(16),
       fontWeight: "600",
       color: WATCH_THEME.text,
     },
@@ -321,7 +321,7 @@ function makeVariantStyles(variant: HomeCardVariant) {
     },
     title: {
       fontFamily: "System",
-      fontSize: Math.round(scale(24)),
+      fontSize: readableFontSize(24),
       fontWeight: "600",
       letterSpacing: -scale(0.2),
       color: "rgba(255,255,255,0.85)",
@@ -331,7 +331,7 @@ function makeVariantStyles(variant: HomeCardVariant) {
     },
     kind: {
       fontFamily: "System",
-      fontSize: Math.round(scale(17)),
+      fontSize: readableFontSize(17),
       fontWeight: "500",
       color: "rgba(255,255,255,0.45)",
       marginTop: scale(3),

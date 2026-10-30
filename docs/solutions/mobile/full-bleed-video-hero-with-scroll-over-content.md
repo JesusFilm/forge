@@ -13,13 +13,13 @@ tags:
   - expo-video
 severity: medium
 affected_components:
-  - apps/mobile-v2/src/components/sections/CuratedHomeLayout.tsx
-  - apps/mobile-v2/src/components/sections/VideoHeroRenderer.tsx
+  - apps/mobile/src/components/sections/CuratedHomeLayout.tsx
+  - apps/mobile/src/components/sections/VideoHeroRenderer.tsx
 related_docs:
   - docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md
   - docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md
   - docs/solutions/ui-bugs/paged-hero-overlay-chrome-touch-architecture.md
-last_updated: "2026-06-11"
+last_updated: "2026-10-19"
 ---
 
 # Full-Bleed Video Hero with Scroll-Over Content
@@ -144,6 +144,15 @@ scroll. That is exactly the ancestor shape that makes `expo-glass-effect`'s
 `GlassView` render nothing at all, which is why this surface uses `expo-blur` and
 not Liquid Glass — see
 [GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
+
+> **Updated 2026-10-16 by feat-705 (PR #2750)** (noted 2026-10-19). On
+> `expo-glass-effect` 57.0.4 the glass under this shape draws on some reveals
+> and not on others; it no longer draws nothing at all. The new glass fix, a
+> dissolve through `GlassSurface` (`visible`), does not fit this surface: the
+> dissolve is on or off, and this blur strength follows the scroll position. So
+> `PlatformBlur` stays correct here. The hero's mute button uses `GlassSurface`
+> as a sibling of this wrapper, not inside it. See
+> [GlassView fails under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
 
 **Overscroll prevention (both platforms):**
 

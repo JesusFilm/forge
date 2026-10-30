@@ -1,3 +1,4 @@
+import { executionProfile } from "./execution-profile.mjs"
 import { VmInvariantError } from "./errors.mjs"
 /** Fixed host-owned layout. Neither a project nor a polling response supplies
  * image selection, mounts, Docker flags or shell commands. */
@@ -24,6 +25,10 @@ export function containerArguments({ identity, image, deadlineMs, phase }) {
     !["render", "verify"].includes(phase)
   )
     throw new VmInvariantError("Invalid fixed execution configuration")
+  const render = phase === "render"
+  const cpu = render ? executionProfile.cpu : 2
+  const memory = render ? executionProfile.memoryBytes : 2147483648
+  const pids = render ? executionProfile.aggregatePids : 128
   return [
     "create",
     "--pull=never",
@@ -37,20 +42,19 @@ export function containerArguments({ identity, image, deadlineMs, phase }) {
     "--security-opt=no-new-privileges",
     "--user=1000:1000",
     "--cgroupns=private",
-    "--pids-limit=128",
-    "--cpus=2",
-    "--memory=2147483648",
-    "--memory-swap=2147483648",
-    "--ulimit=nproc=128:128",
+    `--pids-limit=${pids}`,
+    `--cpus=${cpu}`,
+    `--memory=${memory}`,
+    `--memory-swap=${memory}`,
+    `--ulimit=nproc=${pids}:${pids}`,
     "--ulimit=nofile=256:256",
     "--ulimit=fsize=134217728:134217728",
     "--ulimit=core=0:0",
     "--restart=no",
     "--log-driver=none",
     "--shm-size=8388608",
-    // Retained HLS, Remotion's local copy, and Chrome's unlinked buffers share
-    // this mount. Its pages still count toward the unchanged 2 GiB memory cap.
-    `--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=${phase === "render" ? 1073741824 : 268435456},uid=1000,gid=1000,mode=700`,
+    // Ordered frame chunks and retained media share the hard aggregate RAM cap.
+    `--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=${phase === "render" ? 25769803776 : 268435456},uid=1000,gid=1000,mode=700`,
     `--mount=type=bind,source=${identity.directory}/${phase}-input,target=/input,readonly`,
     "--workdir=/input",
     "--entrypoint=/runtime/guard",

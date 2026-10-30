@@ -138,6 +138,7 @@
     "versesAriaValue": "Шүлүктер {first}–{last}, ниити {total}, {chapter}",
     "demoVerse": "Дараазында шүлүк дээш өрү шыйыңар",
     "demoChapter": "Дараазында эге дээш солагай талаже шыйыңар",
+    "demoChapterRtl": "Дараазында эге дээш оң талаже шыйыңар",
     "demoSkip": "Эрттирер дээш базыңар",
     "demoSkipAriaLabel": "Шыяр көргүзүгнү эрттирер",
     "selectVerseAriaHint": "Бо шүлүктү шилээр дээш ийи катап базыңар",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Ном шилиңер",
+    "chooseChapter": "Эге шилиңер",
+    "chooseVerse": "Шүлүк шилиңер",
     "oldTestament": "Бурунгу Чагыг",
     "newTestament": "Чаа Чагыг",
     "books": "Номнар",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# номдан {count}} other {# номдан {count}}}",
     "twoNames": "{first} болгаш {second}",
     "threeNames": "{first}, {second} болгаш {third}",
-    "onDevice": "Бо херекселде",
+    "downloaded": "Дүжүрүлген",
     "downloading": "Дүжүрүлүп тур: {percent}%",
     "downloadStopped": "Дүжүрери соксады",
     "updateAvailable": "Чаартылга бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериал постери",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Долу медээлер ажыттынмады.",
+    "languagesTitle": "Видеонуң дылы",
     "searchLanguagesPlaceholder": "Дылдарны дилээр…",
     "searchLanguagesAriaLabel": "Дылдарны дилээр",
     "noLanguagesFound": "Дылдар тывылбаан",
@@ -502,6 +506,7 @@
     "resumeAt": "Уламчылаар: {time}",
     "unknownLanguage": "Билдинмес",
     "downloadedStatus": "Дүжүрүлген",
+    "languagesTitle": "Видеонуң дылы",
     "searchLanguagesPlaceholder": "Дылдарны дилээр…",
     "searchLanguagesAriaLabel": "Дылдарны дилээр",
     "noLanguagesFound": "Дылдар тывылбаан",
@@ -773,5 +778,8 @@
     "send": "Чорудар",
     "sending": "Чорудуп тур…",
     "sendAriaLabel": "Санал-бодал чорудар"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Программа телевизорже дамчыдар херекселдерни тывар дээш силерниң локалдыг четкиңерни ажыглаар, ынчангаш видеоларны телевизоруңарга ойнадып болур силер."
   }
 }

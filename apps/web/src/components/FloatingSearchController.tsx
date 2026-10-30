@@ -35,6 +35,7 @@ import {
   type WatchSearchErrorKind,
 } from "@/lib/watch-search-client"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
+import { searchLanguageOptionsCacheKey } from "@/lib/search-language-cache"
 import {
   type WatchAnalyticsSearchOutcome,
   type WatchAnalyticsSearchRequestType,
@@ -53,7 +54,6 @@ import { SearchOverlay } from "./SearchOverlay"
 
 const SEARCH_PAGE_SIZE = 10
 const SEARCH_LANGUAGE_OPTIONS_FALLBACK_MS = 1200
-const DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY = "__default__"
 const WATCH_SEARCH_RESULT_SOURCE: SearchActionResultSource = "watch-search"
 
 type SearchLanguageOptionsResponse = Awaited<
@@ -305,7 +305,10 @@ export function FloatingSearchController({
     async (
       availableLanguageFacets?: Record<string, number>,
     ): Promise<SearchLanguageOption[]> => {
-      const cacheKey = searchLanguageOptionsCacheKey(availableLanguageFacets)
+      const cacheKey = searchLanguageOptionsCacheKey(
+        availableLanguageFacets,
+        uiLocale,
+      )
       const thisRequest = ++languageOptionsRequestIdRef.current
       const cachedResponse = searchLanguageOptionsCache.get(cacheKey)
 
@@ -327,6 +330,7 @@ export function FloatingSearchController({
         if (responsePromise == null) {
           responsePromise = getSearchLanguageOptions({
             availableLanguageFacets,
+            uiLocale,
           })
           searchLanguageOptionsPromiseCache.set(cacheKey, responsePromise)
         }
@@ -361,7 +365,7 @@ export function FloatingSearchController({
         }
       }
     },
-    [applyLanguageOptionsResponse],
+    [applyLanguageOptionsResponse, uiLocale],
   )
 
   useEffect(() => {
@@ -947,20 +951,4 @@ function defaultSearchLanguageOption({
   if (recommendedLanguage?.publicSlug) return recommendedLanguage
 
   return findSearchLanguageOptionByPublicSlug("english", options)
-}
-
-function searchLanguageOptionsCacheKey(
-  availableLanguageFacets?: Record<string, number>,
-): string {
-  if (
-    availableLanguageFacets == null ||
-    Object.keys(availableLanguageFacets).length === 0
-  ) {
-    return DEFAULT_LANGUAGE_OPTIONS_CACHE_KEY
-  }
-
-  return Object.entries(availableLanguageFacets)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([language, count]) => `${language}:${count}`)
-    .join("|")
 }

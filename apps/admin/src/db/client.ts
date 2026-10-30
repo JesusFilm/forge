@@ -1,11 +1,13 @@
 // Prisma client singletons.
 //
-// Two clients are exported:
+// Workload clients are exported:
 //   - `prisma`       — the main client for GraphQL + mutations
 //                      (max=10, connection timeout=20s via PrismaPg adapter)
 //   - `syncPrisma`   — dedicated client for Core sync background workflow
 //                      (max=5, connection timeout=60s via PrismaPg adapter)
 //                      so sync cannot starve read traffic.
+//   - `studioRenderPrisma` — render control plane (max=2, acquisition timeout=5s),
+//                      so ordinary request queues cannot starve lease checks.
 //
 // Next's API, RSC and SSR module caches can evaluate this file independently.
 // Reuse each client through globalThis in production as well as development
@@ -27,6 +29,7 @@ export const INCLUDE_EMBEDDING_ARG = "__includeEmbedding" as const
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
   syncPrisma?: PrismaClient
+  studioRenderPrisma?: PrismaClient
 }
 
 export function takeEmbeddingOptIn(args: unknown): {
@@ -154,5 +157,11 @@ export const syncPrisma =
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })
 
+/** Render control-plane RPCs retain canonical authority on an isolated pool. */
+export const studioRenderPrisma =
+  globalForPrisma.studioRenderPrisma ??
+  createPrismaClient("studio-render", { log: ["warn", "error"] })
+
 globalForPrisma.prisma = prisma
 globalForPrisma.syncPrisma = syncPrisma
+globalForPrisma.studioRenderPrisma = studioRenderPrisma

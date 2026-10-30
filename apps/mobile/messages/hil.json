@@ -138,6 +138,7 @@
     "versesAriaValue": "Bersikulo {first} tubtob {last} sa {total}, {chapter}",
     "demoVerse": "I-swipe pataas para sa sunod nga bersikulo",
     "demoChapter": "I-swipe pawala para sa sunod nga kapitulo",
+    "demoChapterRtl": "I-swipe patuo para sa sunod nga kapitulo",
     "demoSkip": "Tupoka para laktawan",
     "demoSkipAriaLabel": "Laktawan ang pagpakita sang pag-swipe",
     "selectVerseAriaHint": "Tupoka sing duha ka beses para pilion ini nga bersikulo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Magpili sang libro",
+    "chooseChapter": "Magpili sang kapitulo",
+    "chooseVerse": "Magpili sang bersikulo",
     "oldTestament": "Daan nga Katipan",
     "newTestament": "Bag-o nga Katipan",
     "books": "Mga Libro",
@@ -193,7 +196,7 @@
     "someBooks": "{count} sa {total, plural, one {# ka libro} other {# ka libro}}",
     "twoNames": "{first} kag {second}",
     "threeNames": "{first}, {second}, kag {third}",
-    "onDevice": "Ara sa sini nga device",
+    "downloaded": "Na-download",
     "downloading": "Gina-download {percent}%",
     "downloadStopped": "Nag-untat ang pag-download",
     "updateAvailable": "May bag-o nga update",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster sang serye",
     "videosHeading": "Mga Bidyo",
     "detailsLoadError": "Indi ma-load ang bug-os nga detalye.",
+    "languagesTitle": "Lenguahe sang bidyo",
     "searchLanguagesPlaceholder": "Pangitaa ang mga lenguahe…",
     "searchLanguagesAriaLabel": "Pangitaa ang mga lenguahe",
     "noLanguagesFound": "Wala sing nakita nga lenguahe",
@@ -502,6 +506,7 @@
     "resumeAt": "Ipadayon sa {time}",
     "unknownLanguage": "Wala nahibaluan",
     "downloadedStatus": "Na-download",
+    "languagesTitle": "Lenguahe sang bidyo",
     "searchLanguagesPlaceholder": "Pangitaa ang mga lenguahe…",
     "searchLanguagesAriaLabel": "Pangitaa ang mga lenguahe",
     "noLanguagesFound": "Wala sing nakita nga lenguahe",
@@ -773,5 +778,8 @@
     "send": "Ipadala",
     "sending": "Ginapadala…",
     "sendAriaLabel": "Ipadala ang komento"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ginagamit sang app ang imo lokal nga network sa pagpangita sang mga Cast device, agud makatukar ka sang mga bidyo sa imo TV."
   }
 }

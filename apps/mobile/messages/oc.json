@@ -138,6 +138,7 @@
     "versesAriaValue": "Versets {first} a {last} sus {total}, {chapter}",
     "demoVerse": "Fasètz lisar cap amont pel verset seguent",
     "demoChapter": "Fasètz lisar cap a esquèrra pel capítol seguent",
+    "demoChapterRtl": "Fasètz lisar cap a drecha pel capítol seguent",
     "demoSkip": "Tocatz per passar",
     "demoSkipAriaLabel": "Passar la demostracion de lisada",
     "selectVerseAriaHint": "Tocatz dos còps per seleccionar aqueste verset",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Causir un libre",
+    "chooseChapter": "Causir un capítol",
+    "chooseVerse": "Causir un verset",
     "oldTestament": "Ancian Testament",
     "newTestament": "Novèl Testament",
     "books": "Libres",
@@ -193,7 +196,7 @@
     "someBooks": "{count} sus {total, plural, one {# libre} other {# libres}}",
     "twoNames": "{first} e {second}",
     "threeNames": "{first}, {second} e {third}",
-    "onDevice": "Sus aqueste aparelh",
+    "downloaded": "Telecargat",
     "downloading": "Telecargament: {percent} %",
     "downloadStopped": "Telecargament arrestat",
     "updateAvailable": "Mesa a jorn disponibla",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Aficha de la seria",
     "videosHeading": "Vidèos",
     "detailsLoadError": "Impossible de cargar totes los detalhs.",
+    "languagesTitle": "Lenga de la vidèo",
     "searchLanguagesPlaceholder": "Recercar de lengas...",
     "searchLanguagesAriaLabel": "Recercar de lengas",
     "noLanguagesFound": "Cap de lenga pas trobada",
@@ -502,6 +506,7 @@
     "resumeAt": "Reprendre a {time}",
     "unknownLanguage": "Desconeguda",
     "downloadedStatus": "Telecargat",
+    "languagesTitle": "Lenga de la vidèo",
     "searchLanguagesPlaceholder": "Recercar de lengas...",
     "searchLanguagesAriaLabel": "Recercar de lengas",
     "noLanguagesFound": "Cap de lenga pas trobada",
@@ -773,5 +778,8 @@
     "send": "Mandar",
     "sending": "Mandadís…",
     "sendAriaLabel": "Mandar l’avís"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’aplicacion utiliza vòstra ret locala per trobar d’aparelhs de difusion, per que poscatz legir de vidèos sus vòstre televisor."
   }
 }

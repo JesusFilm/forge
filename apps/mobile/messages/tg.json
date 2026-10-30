@@ -138,6 +138,7 @@
     "versesAriaValue": "Оятҳои {first} то {last} аз {total}, {chapter}",
     "demoVerse": "Барои ояти навбатӣ ба боло кашед",
     "demoChapter": "Барои боби навбатӣ ба чап кашед",
+    "demoChapterRtl": "Барои боби навбатӣ ба рост кашед",
     "demoSkip": "Барои гузаштан ламс кунед",
     "demoSkipAriaLabel": "Гузаштан аз намоиши ишораҳо",
     "selectVerseAriaHint": "Барои интихоби ин оят ду бор ламс кунед",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китобро интихоб кунед",
+    "chooseChapter": "Бобро интихоб кунед",
+    "chooseVerse": "Оятро интихоб кунед",
     "oldTestament": "Аҳди Қадим",
     "newTestament": "Аҳди Ҷадид",
     "books": "Китобҳо",
@@ -193,7 +196,7 @@
     "someBooks": "{count} аз {total, plural, one {# китоб} other {# китоб}}",
     "twoNames": "{first} ва {second}",
     "threeNames": "{first}, {second} ва {third}",
-    "onDevice": "Дар ин дастгоҳ",
+    "downloaded": "Боргирӣ шуд",
     "downloading": "Боргирӣ {percent}%",
     "downloadStopped": "Боргирӣ қатъ шуд",
     "updateAvailable": "Навсозӣ дастрас аст",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Постери серия",
     "videosHeading": "Видеоҳо",
     "detailsLoadError": "Тафсилоти пурра бор нашуд.",
+    "languagesTitle": "Забони видео",
     "searchLanguagesPlaceholder": "Ҷустуҷӯи забонҳо…",
     "searchLanguagesAriaLabel": "Ҷустуҷӯи забонҳо",
     "noLanguagesFound": "Ҳеҷ забон ёфт нашуд",
@@ -502,6 +506,7 @@
     "resumeAt": "Идома аз {time}",
     "unknownLanguage": "Номаълум",
     "downloadedStatus": "Боргирӣ шуд",
+    "languagesTitle": "Забони видео",
     "searchLanguagesPlaceholder": "Ҷустуҷӯи забонҳо…",
     "searchLanguagesAriaLabel": "Ҷустуҷӯи забонҳо",
     "noLanguagesFound": "Ҳеҷ забон ёфт нашуд",
@@ -773,5 +778,8 @@
     "send": "Фиристодан",
     "sending": "Дар ҳоли фиристодан…",
     "sendAriaLabel": "Фиристодани бозхӯрд"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Барнома шабакаи маҳаллии шуморо барои ёфтани дастгоҳҳои пахш истифода мебарад, то шумо видеоҳоро дар телевизори худ пахш карда тавонед."
   }
 }

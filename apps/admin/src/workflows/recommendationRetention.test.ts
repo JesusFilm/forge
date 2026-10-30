@@ -88,6 +88,7 @@ describe("recommendation retention workflow", () => {
     ).resolves.toEqual(result)
     expect(retention.runRecommendationRetentionJob).toHaveBeenCalledWith({
       ledgerRunId: "workflow-run-1",
+      mode: "stored-expiry-only",
     })
   })
 

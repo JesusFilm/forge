@@ -138,6 +138,7 @@
     "versesAriaValue": "Versen {first} bis {last} vun {total}, {chapter}",
     "demoVerse": "No uewe wësche fir de nächste Vers",
     "demoChapter": "No lénks wësche fir dat nächst Kapitel",
+    "demoChapterRtl": "No riets wësche fir dat nächst Kapitel",
     "demoSkip": "Tippt, fir z’iwwersprangen",
     "demoSkipAriaLabel": "D’Demonstratioun vum Wëschen iwwersprangen",
     "selectVerseAriaHint": "Tippt duebel, fir dëse Vers auszewielen",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Buch wielen",
+    "chooseChapter": "Kapitel wielen",
+    "chooseVerse": "Vers wielen",
     "oldTestament": "Aalt Testament",
     "newTestament": "Neit Testament",
     "books": "Bicher",
@@ -193,7 +196,7 @@
     "someBooks": "{count} vun {total, plural, one {# Buch} other {# Bicher}}",
     "twoNames": "{first} an {second}",
     "threeNames": "{first}, {second} an {third}",
-    "onDevice": "Op dësem Apparat",
+    "downloaded": "Erofgelueden",
     "downloading": "Gëtt erofgelueden: {percent} %",
     "downloadStopped": "Eroflueden gestoppt",
     "updateAvailable": "Aktualiséierung verfügbar",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster vun der Serie",
     "videosHeading": "Videoen",
     "detailsLoadError": "D’Detailer konnten net komplett geluede ginn.",
+    "languagesTitle": "Videosprooch",
     "searchLanguagesPlaceholder": "Sprooche sichen…",
     "searchLanguagesAriaLabel": "Sprooche sichen",
     "noLanguagesFound": "Keng Sprooche fonnt",
@@ -502,6 +506,7 @@
     "resumeAt": "Bei {time} weiderkucken",
     "unknownLanguage": "Onbekannt",
     "downloadedStatus": "Erofgelueden",
+    "languagesTitle": "Videosprooch",
     "searchLanguagesPlaceholder": "Sprooche sichen…",
     "searchLanguagesAriaLabel": "Sprooche sichen",
     "noLanguagesFound": "Keng Sprooche fonnt",
@@ -773,5 +778,8 @@
     "send": "Schécken",
     "sending": "Gëtt geschéckt…",
     "sendAriaLabel": "Feedback schécken"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "D’App benotzt Äert lokaalt Netz, fir Streaming-Apparater ze fannen, domat Dir Videoen op Ärem Fernseh ofspille kënnt."
   }
 }

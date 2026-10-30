@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихт {first}-ста {last}-с, сембе {total}, {chapter}",
     "demoVerse": "Сай стихть инкса таргада верев",
     "demoChapter": "Сай главать инкса таргада керш ширес",
+    "demoChapterRtl": "Сай главать инкса таргада вить ширес",
     "demoSkip": "Ётамс инкса токада",
     "demoSkipAriaLabel": "Таргамань няфтемать ётамс",
     "selectVerseAriaHint": "Тя стихть кочкамс инкса кафксть токада",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Кочкада книга",
+    "chooseChapter": "Кочкада глава",
+    "chooseVerse": "Кочкада стих",
     "oldTestament": "Ташта Завет",
     "newTestament": "Од Завет",
     "books": "Книгат",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# книгаста {count}} other {# книгаста {count}}}",
     "twoNames": "{first} и {second}",
     "threeNames": "{first}, {second} и {third}",
-    "onDevice": "Тя устройстваса",
+    "downloaded": "Сявф",
     "downloading": "Сявови {percent}%",
     "downloadStopped": "Сявомась лоткась",
     "updateAvailable": "Ули од версия",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериянь постер",
     "videosHeading": "Видеот",
     "detailsLoadError": "Сембе информациять сувафтомс изь лисе.",
+    "languagesTitle": "Видеонь кяль",
     "searchLanguagesPlaceholder": "Вешендода кяль…",
     "searchLanguagesAriaLabel": "Кяльхнень вешендомс",
     "noLanguagesFound": "Кяльхть аф муфт",
@@ -502,6 +506,7 @@
     "resumeAt": "Мольфтемс: {time}",
     "unknownLanguage": "Аф содаф",
     "downloadedStatus": "Сявф",
+    "languagesTitle": "Видеонь кяль",
     "searchLanguagesPlaceholder": "Вешендода кяль…",
     "searchLanguagesAriaLabel": "Кяльхнень вешендомс",
     "noLanguagesFound": "Кяльхть аф муфт",
@@ -773,5 +778,8 @@
     "send": "Кучомс",
     "sending": "Кучови…",
     "sendAriaLabel": "Мяль кучомс"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложениясь вешенди телевизорс кучома устройстват тинь локальнай сетьсэ, сяс видеотнень лиси ваномс телевизорса."
   }
 }

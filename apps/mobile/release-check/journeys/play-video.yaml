@@ -1,0 +1,143 @@
+# Open a video, play it, pause, seek, and close (R19 starter journey). The
+# journey names the video, because the seek checks need a known length (R21).
+appId: org.jesusfilm.forgewatch
+name: play-video
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS asks before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+# The pause button sits at the player's center. A tap there shows the
+# controls when they hide and pauses when they show, and they hide 3 seconds
+# after a tap. So each pass waits for them to hide, then taps twice.
+- repeat:
+    while:
+      notVisible:
+        text: Play
+    times: 3
+    commands:
+      - repeat:
+          while:
+            visible:
+              text: Pause
+          times: 8
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: player-controls-never-shown
+                timeout: 1000
+                optional: true
+                label: Wait a moment for the controls to hide
+          label: Wait until the controls hide
+      - tapOn:
+          text: Toggle player controls
+          repeat: 2
+          delay: 1000
+          label: Show the controls and pause the video
+    label: Pause the video
+- assertVisible:
+    text: Play
+    label: The play button shows
+- tapOn:
+    text: Forward 10 seconds
+    repeat: 2
+    delay: 500
+    label: Seek forward 20 seconds
+- extendedWaitUntil:
+    visible:
+      text: "Elapsed 0:[2-4][0-9] of .+"
+    timeout: 10000
+    label: The time moves forward
+- tapOn:
+    text: Back 10 seconds
+    label: Seek back 10 seconds
+- extendedWaitUntil:
+    visible:
+      text: "Elapsed 0:[1-3][0-9] of .+"
+    timeout: 10000
+    label: The time moves back
+- tapOn:
+    text: Seek bar
+    point: 75%,50%
+    label: Seek on the seek bar
+- extendedWaitUntil:
+    visible:
+      text: "Elapsed 3:[0-9]{2} of .+"
+    timeout: 10000
+    label: The time moves to the tapped place
+# On iOS, Maestro does not see the controls on the right half of a landscape
+# screen, so only Android checks fullscreen (not-tested.json).
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: Fullscreen
+          label: Open fullscreen
+      - assertVisible:
+          text: Exit fullscreen
+          label: The fullscreen player shows
+      - tapOn:
+          text: Exit fullscreen
+          label: Leave fullscreen
+      - assertVisible:
+          text: Fullscreen
+          label: The inline player shows again
+    label: Open and leave fullscreen on Android
+- tapOn:
+    text: Play
+    label: Play the video again
+- tapOn:
+    text: Go back
+    label: Close the watch page
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again
+# A playing video keeps playing in the mini player after the page closes. The
+# video can still load after the seek, so the journey waits for it to play.
+- extendedWaitUntil:
+    visible:
+      text: "Mini player, .+, playing"
+    timeout: 15000
+    label: The mini player plays the video
+# iOS can drop the window's buttons from the accessibility tree, so the
+# journey taps the close button's place in the window's top corner.
+- tapOn:
+    id: mini-player-window
+    point: 93%,12%
+    label: Close the mini player
+- extendedWaitUntil:
+    notVisible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player closes

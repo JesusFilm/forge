@@ -7,6 +7,11 @@ import { env } from "@/config/env"
 import { StudioAuthoringService } from "./index"
 import { executeStudioRender } from "./render-rpc"
 import { StudioRenderJobs } from "./render-jobs"
+import {
+  STUDIO_RENDER_PROFILE,
+  STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
+} from "@forge/studio-contracts/render"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 const url = env.STUDIO_TEST_DATABASE_URL
 const human = {
@@ -31,8 +36,6 @@ class RenderFixtureError extends Error {}
   })
   it("atomically retains registered partial output for its exact lease before terminal recording", async () => {
     const { StudioAssetService } = await import("./assets")
-    const { STUDIO_RENDER_PROFILE } =
-      await import("@forge/studio-contracts/render")
     const commands = new StudioAuthoringService(db),
       jobs = new StudioRenderJobs(db),
       projectId = randomUUID()
@@ -52,7 +55,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const attempt = await commands.request(human, {
@@ -232,7 +234,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -298,7 +299,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -378,7 +378,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -424,7 +423,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {
@@ -506,7 +504,6 @@ class RenderFixtureError extends Error {}
           tracks: [],
           components: [],
           items: [],
-          packRevisionIds: [],
         },
       })
       const requested = await commands.request(human, {
@@ -602,6 +599,143 @@ class RenderFixtureError extends Error {}
       }
     })
 
+  it.each([STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE_V2])(
+    "does not claim or upgrade a queued historical profile and preserves its issued receipt: $id",
+    async (legacyProfile) => {
+      const commands = new StudioAuthoringService(db),
+        jobs = new StudioRenderJobs(db),
+        projectId = randomUUID()
+      await commands.create(human, {
+        projectId,
+        expectedRevision: 0,
+        idempotencyKey: randomUUID(),
+        document: {
+          version: 1,
+          title: "Historical profile",
+          language: "english",
+          runtimeVersion: STUDIO_RUNTIME_VERSION,
+          width: 320,
+          height: 180,
+          fps: 30,
+          durationInFrames: 30,
+          tracks: [],
+          components: [],
+          items: [],
+        },
+      })
+      const requested = await commands.request(human, {
+        projectId,
+        expectedRevision: 1,
+        idempotencyKey: randomUUID(),
+        kind: "RENDER",
+        instructions: [],
+      })
+      const attemptId = requested.attemptId!
+      const attempt = await db.shortAttempt.findUniqueOrThrow({
+        where: { id: attemptId },
+      })
+      const revision = await db.shortRevision.findUniqueOrThrow({
+        where: { projectId_number: { projectId, number: 1 } },
+      })
+      const snapshot = {
+        projectId,
+        revision: 1,
+        inputHash: attempt.inputHash,
+        document: revision.document!,
+        executionProfile: legacyProfile,
+      }
+      // Create a historical fixture with the original immutable descriptor.
+      await db.shortRenderJob.create({ data: { attemptId, snapshot } })
+      const assignment = {
+        poolId: "profile-fixture",
+        workerId: randomUUID(),
+        dispatchId: randomUUID(),
+      }
+      const lease = {
+        leaseId: randomUUID(),
+        expiresAt: new Date(Date.now() + legacyProfile.leaseMs),
+      }
+      expect(await jobs.pending(worker)).not.toContain(attemptId)
+      expect(await jobs.claim(worker, attemptId)).toEqual({
+        execute: false,
+        leaseId: null,
+      })
+      await db.shortRenderLease.create({
+        data: { attemptId, generation: 1, ...lease, ...assignment },
+      })
+      const { StudioAssetService } = await import("./assets")
+      await expect(
+        new StudioAssetService(db).register(
+          worker,
+          {
+            idempotencyKey: randomUUID(),
+            filename: "wrong-profile.mp4",
+            mimeType: "video/mp4",
+            role: "render",
+            provenance: {
+              status: "recorded",
+              recorded: {
+                attemptId,
+                leaseId: lease.leaseId,
+                profileId: STUDIO_RENDER_PROFILE.id,
+              },
+            },
+          },
+          Buffer.from("mismatched profile output"),
+        ),
+      ).rejects.toThrow("Issued render lease required")
+      expect(
+        await db.shortRenderRetainedAsset.count({
+          where: { attemptId, leaseId: lease.leaseId },
+        }),
+      ).toBe(0)
+      const asset = await new StudioAssetService(db).register(
+        worker,
+        {
+          idempotencyKey: randomUUID(),
+          filename: "legacy.mp4",
+          mimeType: "video/mp4",
+          role: "render",
+          provenance: {
+            status: "recorded",
+            recorded: {
+              attemptId,
+              leaseId: lease.leaseId,
+              profileId: legacyProfile.id,
+            },
+          },
+        },
+        Buffer.from("historical render output"),
+      )
+      const edges = await db.$queryRaw<
+        Array<{ asset_version_id: string }>
+      >`SELECT asset_version_id FROM short_render_retained_asset WHERE attempt_id=${attemptId} AND lease_id=${lease.leaseId}`
+      expect(edges.map((edge) => edge.asset_version_id)).toEqual([
+        asset.reference.versionId,
+      ])
+      expect(
+        await jobs.claimAssigned(worker, attemptId, {
+          poolId: assignment.poolId,
+          workerId: assignment.workerId,
+          dispatchId: assignment.dispatchId,
+        }),
+      ).toMatchObject({
+        execute: false,
+        leaseId: lease.leaseId,
+      })
+      expect((await jobs.read(worker, attemptId)).snapshot).toEqual(snapshot)
+      const terminal = {
+        attemptId,
+        leaseId: lease.leaseId!,
+        status: "FAILED",
+        result: { assets: [], costMicros: null },
+      }
+      const recorded = await jobs.finish(worker, terminal)
+      expect(await jobs.finish(worker, terminal)).toEqual(recorded)
+      expect((await jobs.read(worker, attemptId)).executions).toHaveLength(1)
+    },
+  )
+
   it("restart discovers admission before enqueue and cancellation fences an active lease permanently", async () => {
     const commands = new StudioAuthoringService(db),
       projectId = randomUUID()
@@ -621,7 +755,6 @@ class RenderFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       },
     })
     const requested = await commands.request(human, {

@@ -7,6 +7,10 @@ import { GET_WATCH_HOME_VIDEOS } from "./homeQueries"
 import type { WatchHomeVideoInput } from "./model"
 
 export type FetchPolicy = "cache-first" | "network-only" | "no-cache"
+export type HomeQueryContext = {
+  queryDeduplication: false
+  fetchOptions: { signal: AbortSignal }
+}
 
 export function homeFetchPolicy(
   platform: string,
@@ -40,6 +44,7 @@ export async function fetchTopUpVideos(
   client: TopUpApolloClient,
   coreIds: readonly string[],
   fetchPolicy: FetchPolicy,
+  context?: HomeQueryContext,
 ): Promise<WatchHomeVideoInput[]> {
   const batches = await Promise.all(
     chunk(coreIds, VIDEOS_BY_CORE_IDS_MAX).map((ids) =>
@@ -51,6 +56,7 @@ export async function fetchTopUpVideos(
           languageSlug: ENGLISH_LANGUAGE_SLUG,
         },
         fetchPolicy,
+        ...(context ? { context } : {}),
       }),
     ),
   )

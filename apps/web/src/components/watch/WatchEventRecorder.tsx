@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, type RefObject } from "react"
+import { useEffect, useRef } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import {
@@ -24,7 +24,8 @@ const MEANINGFUL_PROGRESS = 0.25
 const PLAYBACK_PROGRESS_MILESTONES = WATCH_ANALYTICS_MILESTONE_PERCENTS
 
 export type WatchEventRecorderProps = {
-  playerRef: RefObject<MuxPlayerRef | null>
+  /** Reactive attachment, including the poster-first player's initial null. */
+  player: MuxPlayerRef | null
   videoId: string
   videoDubId: string
   durationSeconds?: number | null
@@ -217,7 +218,7 @@ async function flushQueue(): Promise<void> {
 }
 
 export function WatchEventRecorder({
-  playerRef,
+  player,
   videoId,
   videoDubId,
   durationSeconds,
@@ -245,7 +246,6 @@ export function WatchEventRecorder({
   }, [videoDubId, videoId])
 
   useEffect(() => {
-    const player = playerRef.current
     if (!player) return
 
     // KTD6: the build-time flag selects ONE path for every player event, so
@@ -396,7 +396,7 @@ export function WatchEventRecorder({
       player.removeEventListener("timeupdate", evaluate)
       player.removeEventListener("ended", complete)
     }
-  }, [durationSeconds, playerRef, videoDubId, videoId])
+  }, [durationSeconds, player, videoDubId, videoId])
 
   return null
 }

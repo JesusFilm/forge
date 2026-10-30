@@ -1,10 +1,14 @@
 import { env } from "@/config/env"
+import { studioAttemptResultSchema } from "@forge/studio-contracts"
 import { StudioRenderPoolAuth } from "@/services/studio-render-pool-auth"
 import { StudioRenderPoolGateway } from "@/services/studio-render-pool-gateway"
 import { createStudioPoolHandler } from "@/services/studio-render-pool-http"
 import { studioRenderClient } from "@/services/studio-render-transport"
 import { prepareStudioDraftRenderInput } from "@/services/studio-render-input"
-import { retainStudioRenderOutput } from "@/services/studio-render-retention"
+import {
+  retainStudioRenderOutput,
+  retainStudioRenderOutputPart,
+} from "@/services/studio-render-retention"
 import { prepareStudioMuxUpload } from "@/services/studio-mux-upload"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -62,6 +66,25 @@ export async function POST(
               proof,
               signal,
             ),
+          retainPart: (snapshot, assignment, part, output, signal) =>
+            retainStudioRenderOutputPart(
+              studioRenderClient(signal).assets,
+              snapshot,
+              assignment,
+              part,
+              output,
+              signal,
+            ),
+          retainParts: async (assignment, parts, proof, signal) => {
+            return studioAttemptResultSchema.parse(
+              await studioRenderClient(signal).call("retain-output", {
+                attemptId: assignment.attemptId,
+                leaseId: assignment.leaseId,
+                parts,
+                proof,
+              }),
+            )
+          },
         }),
       )
     } catch {

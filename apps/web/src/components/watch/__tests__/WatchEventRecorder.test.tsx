@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act } from "react"
+import { act, StrictMode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -55,6 +55,165 @@ function makePlayer() {
   } as unknown as MuxPlayerRef & { dispatch(event: string): void }
 }
 
+describe.each([false, true])(
+  "deferred player attachment (v2=%s)",
+  (contractV2) => {
+    let container: HTMLDivElement
+    let root: Root
+    let gtag: ReturnType<typeof vi.fn>
+    let frames: Array<() => void>
+
+    async function renderAttachment(
+      currentPlayer: ReturnType<typeof makePlayer> | null,
+      videoId = "video-1",
+      videoDubId = "dub-1",
+    ) {
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <WatchEventRecorder
+              player={currentPlayer}
+              videoId={videoId}
+              videoDubId={videoDubId}
+              durationSeconds={120}
+            />
+          </StrictMode>,
+        )
+      })
+    }
+
+    async function step(run: () => void) {
+      await act(async () => {
+        run()
+      })
+      act(() => {
+        for (const callback of frames.splice(0, frames.length)) callback()
+      })
+    }
+
+    function countOf(name: string) {
+      return gtag.mock.calls.filter(
+        ([command, event]) => command === "event" && event === name,
+      ).length
+    }
+
+    beforeEach(() => {
+      vi.resetAllMocks()
+      resetWatchAnalyticsEmitState()
+      mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = contractV2
+      window.history.replaceState({}, "", "/watch/jesus.html")
+      window.localStorage.clear()
+      gtag = vi.fn()
+      window.gtag = gtag
+      frames = []
+      setWatchAnalyticsFrameScheduler((callback) => {
+        frames.push(callback)
+      })
+      getViewerIdMock.mockReturnValue("viewer-123")
+      recordMeaningfulWatchEventMock.mockResolvedValue({
+        ok: true,
+        recorded: true,
+      })
+      container = document.createElement("div")
+      document.body.appendChild(container)
+      root = createRoot(container)
+    })
+
+    afterEach(() => {
+      act(() => root.unmount())
+      container.remove()
+      setWatchAnalyticsFrameScheduler(null)
+      resetWatchAnalyticsEmitState()
+      window.gtag = undefined
+      window.localStorage.clear()
+      mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = undefined
+    })
+
+    it("records a player attached after mount and stops listening on detach", async () => {
+      await renderAttachment(null)
+      expect(gtag).not.toHaveBeenCalled()
+      const player = makePlayer()
+      await renderAttachment(player)
+      await step(() => {
+        player.dispatch("play")
+        player.currentTime = 30
+        player.dispatch("timeupdate")
+        player.currentTime = 120
+        player.dispatch("ended")
+        player.dispatch("ended")
+      })
+
+      expect(countOf("videostarts")).toBe(1)
+      expect(countOf("video_progress")).toBe(1)
+      expect(countOf("videocomplete")).toBe(1)
+      expect(recordMeaningfulWatchEventMock).toHaveBeenCalledTimes(1)
+      for (const milestone of [10, 25, 50, 75, 90]) {
+        expect(countOf(`a_media_progress${milestone}`)).toBe(1)
+      }
+
+      await renderAttachment(null)
+      const callsBeforeDetach = gtag.mock.calls.length
+      await step(() => {
+        player.dispatch("play")
+        player.dispatch("pause")
+        player.dispatch("timeupdate")
+        player.dispatch("ended")
+      })
+      expect(gtag).toHaveBeenCalledTimes(callsBeforeDetach)
+    })
+
+    it("moves listeners on replacement while resetting guards only on identity changes", async () => {
+      const oldPlayer = makePlayer()
+      await renderAttachment(oldPlayer)
+      await step(() => {
+        oldPlayer.dispatch("play")
+        oldPlayer.currentTime = 30
+        oldPlayer.dispatch("timeupdate")
+      })
+      const replacement = makePlayer()
+      await renderAttachment(replacement)
+      const callsBeforeReplacement = gtag.mock.calls.length
+      await step(() => {
+        oldPlayer.dispatch("play")
+        oldPlayer.dispatch("pause")
+        oldPlayer.currentTime = 120
+        oldPlayer.dispatch("timeupdate")
+        oldPlayer.dispatch("ended")
+      })
+      expect(gtag).toHaveBeenCalledTimes(callsBeforeReplacement)
+
+      await step(() => {
+        replacement.dispatch("play")
+        replacement.currentTime = 30
+        replacement.dispatch("timeupdate")
+        replacement.currentTime = 120
+        replacement.dispatch("ended")
+      })
+      expect(countOf("videoplay")).toBe(2)
+      expect(countOf("videostarts")).toBe(1)
+      expect(countOf("video_progress")).toBe(1)
+      expect(countOf("videocomplete")).toBe(1)
+      expect(recordMeaningfulWatchEventMock).toHaveBeenCalledTimes(1)
+      for (const milestone of [10, 25, 50, 75, 90]) {
+        expect(countOf(`a_media_progress${milestone}`)).toBe(1)
+      }
+
+      await renderAttachment(replacement, "video-2", "dub-2")
+      await step(() => {
+        replacement.currentTime = 0
+        replacement.dispatch("play")
+        replacement.currentTime = 120
+        replacement.dispatch("timeupdate")
+        replacement.dispatch("ended")
+      })
+      expect(countOf("videostarts")).toBe(2)
+      expect(countOf("video_progress")).toBe(2)
+      expect(countOf("videocomplete")).toBe(2)
+      expect(recordMeaningfulWatchEventMock).toHaveBeenCalledTimes(2)
+    })
+  },
+)
+
 describe("WatchEventRecorder", () => {
   let container: HTMLDivElement
   let root: Root
@@ -89,7 +248,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -167,7 +326,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -244,7 +403,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -282,7 +441,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -341,7 +500,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -366,7 +525,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: makePlayer() }}
+          player={makePlayer()}
           videoId="video-2"
           videoDubId="dub-2"
           durationSeconds={120}
@@ -392,7 +551,7 @@ describe("WatchEventRecorder", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId="video-1"
           videoDubId="dub-1"
           durationSeconds={120}
@@ -463,7 +622,7 @@ describe("WatchEventRecorder — v2 contract", () => {
     await act(async () => {
       root.render(
         <WatchEventRecorder
-          playerRef={{ current: player }}
+          player={player}
           videoId={identity.videoId}
           videoDubId={identity.videoDubId}
           durationSeconds={durationSeconds}

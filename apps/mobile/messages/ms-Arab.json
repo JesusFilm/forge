@@ -138,6 +138,7 @@
     "versesAriaValue": "ايات {first} هيڠݢ {last} درڤد {total}، {chapter}",
     "demoVerse": "ليريت ک اتس اونتوق ايات ستروسڽ",
     "demoChapter": "ليريت ک کيري اونتوق ڤاسل ستروسڽ",
+    "demoChapterRtl": "ليريت ک کانن اونتوق ڤاسل ستروسڽ",
     "demoSkip": "کتيق اونتوق لڠکاو",
     "demoSkipAriaLabel": "لڠکاو دمونستراسي ليريتن",
     "selectVerseAriaHint": "کتيق دوا کالي اونتوق مميليه ايات اين",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ڤيليه کتاب",
+    "chooseChapter": "ڤيليه ڤاسل",
+    "chooseVerse": "ڤيليه ايات",
     "oldTestament": "ڤرجنجين لام",
     "newTestament": "ڤرجنجين بهارو",
     "books": "کتاب",
@@ -193,7 +196,7 @@
     "someBooks": "مڠندوڠي {count} درڤد {total, plural, other {#}} بواه کتاب",
     "twoNames": "{first} دان {second}",
     "threeNames": "{first}، {second} دان {third}",
-    "onDevice": "ڤد ڤرانتي اين",
+    "downloaded": "دموات تورون",
     "downloading": "مموات تورون {percent}%",
     "downloadStopped": "موات تورون ترهنتي",
     "updateAvailable": "کمس کيني ترسديا",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ڤوستر سيري",
     "videosHeading": "ۏيديو",
     "detailsLoadError": "بوتيرن ڤنوه تيدق داڤت دمواتکن.",
+    "languagesTitle": "بهاس ۏيديو",
     "searchLanguagesPlaceholder": "چاري بهاس…",
     "searchLanguagesAriaLabel": "چاري بهاس",
     "noLanguagesFound": "تيادا بهاس دتموءي",
@@ -502,6 +506,7 @@
     "resumeAt": "سمبوڠ ڤد {time}",
     "unknownLanguage": "تيدق دکتاهوءي",
     "downloadedStatus": "دموات تورون",
+    "languagesTitle": "بهاس ۏيديو",
     "searchLanguagesPlaceholder": "چاري بهاس…",
     "searchLanguagesAriaLabel": "چاري بهاس",
     "noLanguagesFound": "تيادا بهاس دتموءي",
@@ -773,5 +778,8 @@
     "send": "هانتر",
     "sending": "مڠهانتر…",
     "sendAriaLabel": "هانتر معلوم بالس"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اڤليکاسي اين مڠݢوناکن رڠکاين ستمڤت اندا اونتوق منچاري ڤرانتي ڤڠهانترن سوڤاي اندا بوليه مماءينکن ۏيديو دي تيۏي اندا."
   }
 }

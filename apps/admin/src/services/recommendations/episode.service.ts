@@ -41,7 +41,8 @@ import {
   scheduleRecommendationEpisodeFinalization,
   type RecommendationFinalizationWake,
 } from "./finalization/job"
-import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
+import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
+import { checkPrecomputedBaselineClickBrowser } from "./precomputed/incumbent-baseline"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -163,6 +164,7 @@ export class RecommendationEpisodeService {
     occurredAt: string
     tabDigest?: string | null
     claimNonce: string
+    browserDigest?: string | null
   }) {
     assertWebRecommendationCaller(input.caller)
     if (input.contractVersion !== RECOMMENDATION_CONTRACTS.evidence) {
@@ -194,7 +196,7 @@ export class RecommendationEpisodeService {
     if (input.tabDigest != null && !/^[a-f0-9]{64}$/.test(input.tabDigest)) {
       throw new RecommendationInputError("Recommendation tab digest is invalid")
     }
-    const now = this.deps.now?.() ?? new Date()
+    let now = this.deps.now?.() ?? new Date()
     const item = await this.deps.prisma.recommendationServedItem.findUnique({
       where: { id: input.itemId },
       select: {
@@ -210,8 +212,9 @@ export class RecommendationEpisodeService {
             sessionDigest: true,
             surfaceVersion: true,
             manifestId: true,
+            privatePrecomputedVisitId: true,
             experimentAssignment: {
-              include: { experiment: true, profile: true },
+              include: { experiment: true },
             },
           },
         },
@@ -320,6 +323,28 @@ export class RecommendationEpisodeService {
           "Recommendation selection binding is invalid",
         )
       }
+      if (item.request.privatePrecomputedVisitId) {
+        const privateReceiptAt = await matchesPrivateVisitBrowser(tx, {
+          requestId: item.requestId,
+          expectedVisitId: item.request.privatePrecomputedVisitId,
+          browserDigest: input.browserDigest,
+          clock: this.deps.now ?? (() => new Date()),
+        })
+        if (!privateReceiptAt)
+          throw new RecommendationBindingError(
+            "Recommendation private browser binding is invalid",
+          )
+        now = privateReceiptAt
+      }
+      const baselineBrowser = await checkPrecomputedBaselineClickBrowser(tx, {
+        requestId: item.requestId,
+        browserDigest: input.browserDigest,
+        now,
+      })
+      if (baselineBrowser === "invalid")
+        throw new RecommendationBindingError(
+          "Recommendation baseline browser binding is invalid",
+        )
       await lockRecommendationItemEvidence(tx, item.id)
       const impression = await tx.recommendationImpression.findUnique({
         where: { itemId: item.id },
@@ -453,7 +478,7 @@ export class RecommendationEpisodeService {
       (result.status === "accepted" && result.attributionEligible) ||
       result.attributionReconciled
     ) {
-      void this.classifyAndDispatchSelectionFeedback({
+      void this.classifySelectionEvidence({
         selectionId: result.selectionId,
         sessionDigest: item.request.sessionDigest,
         evidenceWatermark: result.evidenceWatermark,
@@ -467,29 +492,15 @@ export class RecommendationEpisodeService {
     }
   }
 
-  private async classifyAndDispatchSelectionFeedback(input: {
+  private async classifySelectionEvidence(input: {
     selectionId: string
     sessionDigest: string
     evidenceWatermark: Date
   }): Promise<void> {
     try {
       await this.deps.classifySelection?.(input.selectionId)
-      const activeProfile = await resolveActiveRecommendationProfileLink(
-        this.deps.prisma,
-        { sessionDigest: input.sessionDigest, now: input.evidenceWatermark },
-      )
-      if (!activeProfile) return
-      await this.deps.dispatchProfileFeedback?.({
-        sessionDigest: input.sessionDigest,
-        profileId: activeProfile.profileId,
-        privacyGeneration: activeProfile.privacyGeneration,
-        // Coalescing advances from committed server receipt time, never the
-        // browser-controlled selection timestamp.
-        evidenceWatermark: input.evidenceWatermark,
-      })
     } catch {
-      // Selection acknowledgement and navigation remain fail-open. Durable
-      // reconciliation will retry both classification and projection.
+      // Selection acknowledgement and navigation remain fail-open. Classification failures do not dispatch background learning.
     }
   }
 
@@ -548,7 +559,7 @@ export class RecommendationEpisodeService {
               state: true,
               expiresAt: true,
               sessionDigest: true,
-              experimentAssignment: { include: { profile: true } },
+              experimentAssignment: true,
             },
           },
           item: true,
@@ -880,11 +891,6 @@ export function createRecommendationEpisodeService(
     prisma,
     tokenService,
     dispatchFinalization: dispatchRecommendationEpisodeFinalization,
-    dispatchProfileFeedback: async (input) => {
-      const { dispatchRecommendationProfileFeedback } =
-        await import("./profiles/job")
-      return dispatchRecommendationProfileFeedback(input)
-    },
     classifySelection: async (selectionId) => {
       const { createRecommendationIntegrityService } =
         await import("./integrity.service")

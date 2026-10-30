@@ -138,6 +138,7 @@
     "versesAriaValue": "Mga talata {first} hanggang {last} sa {total}, {chapter}",
     "demoVerse": "Mag-swipe pataas para sa susunod na talata",
     "demoChapter": "Mag-swipe pakaliwa para sa susunod na kabanata",
+    "demoChapterRtl": "Mag-swipe pakanan para sa susunod na kabanata",
     "demoSkip": "I-tap para laktawan",
     "demoSkipAriaLabel": "Laktawan ang demo ng pag-swipe",
     "selectVerseAriaHint": "I-double tap para piliin ang talatang ito",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pumili ng aklat",
+    "chooseChapter": "Pumili ng kabanata",
+    "chooseVerse": "Pumili ng talata",
     "oldTestament": "Lumang Tipan",
     "newTestament": "Bagong Tipan",
     "books": "Mga Aklat",
@@ -193,7 +196,7 @@
     "someBooks": "{count} sa {total, plural, one {# aklat} other {# na aklat}}",
     "twoNames": "{first} at {second}",
     "threeNames": "{first}, {second}, at {third}",
-    "onDevice": "Nasa device na ito",
+    "downloaded": "Na-download",
     "downloading": "Dina-download, {percent}%",
     "downloadStopped": "Huminto ang download",
     "updateAvailable": "May bagong update",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster ng serye",
     "videosHeading": "Mga Video",
     "detailsLoadError": "Hindi ma-load ang buong detalye.",
+    "languagesTitle": "Wika ng video",
     "searchLanguagesPlaceholder": "Maghanap ng mga wika…",
     "searchLanguagesAriaLabel": "Maghanap ng mga wika",
     "noLanguagesFound": "Walang nakitang wika",
@@ -502,6 +506,7 @@
     "resumeAt": "Ituloy sa {time}",
     "unknownLanguage": "Hindi alam",
     "downloadedStatus": "Na-download",
+    "languagesTitle": "Wika ng video",
     "searchLanguagesPlaceholder": "Maghanap ng mga wika…",
     "searchLanguagesAriaLabel": "Maghanap ng mga wika",
     "noLanguagesFound": "Walang nakitang wika",
@@ -773,5 +778,8 @@
     "send": "Ipadala",
     "sending": "Ipinapadala…",
     "sendAriaLabel": "Ipadala ang feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ginagamit ng app ang iyong lokal na network para mahanap ang mga Cast device, upang makapag-play ka ng mga video sa iyong TV."
   }
 }

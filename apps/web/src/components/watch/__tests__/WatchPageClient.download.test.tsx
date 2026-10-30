@@ -2,8 +2,9 @@
  * @vitest-environment jsdom
  */
 
-import { act } from "react"
+import { act, Component, type ComponentType, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import appDynamic from "next/dist/shared/lib/app-dynamic.js"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
@@ -11,6 +12,8 @@ const {
   downloadModalProps,
   getCachedWatchLanguageOptionsMock,
   languageModalProps,
+  languageDynamicFixture,
+  modalCallbacksFixture,
   loadWatchInteractionMock,
   loadWatchLanguageOptionsMock,
   redirectToAuthMock,
@@ -21,7 +24,13 @@ const {
   downloadModalProps: [] as unknown[],
   getCachedWatchLanguageOptionsMock: vi.fn(),
   languageModalProps: [] as unknown[],
-  loadWatchInteractionMock: vi.fn(async () => undefined),
+  languageDynamicFixture: {
+    component: null as ComponentType<Record<string, unknown>> | null,
+  },
+  modalCallbacksFixture: {
+    current: null as { openLanguage: () => void } | null,
+  },
+  loadWatchInteractionMock: vi.fn<() => Promise<void>>(async () => undefined),
   loadWatchLanguageOptionsMock: vi.fn(),
   redirectToAuthMock: vi.fn(),
   shareModalProps: [] as unknown[],
@@ -56,7 +65,11 @@ vi.mock("next/dynamic", () => {
         }
       }
       if (index === 1) {
-        return (props: unknown) => {
+        return function LanguageModalTestBoundary(props: unknown) {
+          const ActualDynamic = languageDynamicFixture.component
+          if (ActualDynamic) {
+            return <ActualDynamic {...(props as Record<string, unknown>)} />
+          }
           languageModalProps.push(props)
           return null
         }
@@ -75,7 +88,9 @@ vi.mock("next-intl", () => ({
     (key: string): string =>
       namespace === "DownloadButton" && key === "sessionError"
         ? "Download is temporarily unavailable. Please try again."
-        : key,
+        : namespace === "SearchOverlay" && key === "connectionHint"
+          ? "Please check your connection and try again."
+          : key,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -84,10 +99,6 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ searchOpen: false }),
-}))
-
-vi.mock("@/components/watch/BetaTesterModalProvider", () => ({
-  useBetaTesterModal: () => null,
 }))
 
 vi.mock("@/components/watch/SubtitleTranscript", () => ({
@@ -119,6 +130,8 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       openDownload: () => void
       openLanguage: () => void
       openShare: () => void
+      closeModal: () => void
+      cancelPendingLanguage?: () => void
     }
     shareHref?: string
     subtitleVttSrc?: string | null
@@ -143,6 +156,9 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
       </button>
       <button
         data-testid="watch-language-button"
+        ref={(node) => {
+          if (node) modalCallbacksFixture.current = modalCallbacks
+        }}
         type="button"
         onClick={modalCallbacks.openLanguage}
       >
@@ -154,6 +170,20 @@ vi.mock("@/components/watch/WatchSectionRenderer", () => ({
         onClick={modalCallbacks.openShare}
       >
         Share
+      </button>
+      <button
+        type="button"
+        data-testid="watch-close-modal"
+        onClick={modalCallbacks.closeModal}
+      >
+        Close
+      </button>
+      <button
+        type="button"
+        data-testid="watch-search-button"
+        onClick={modalCallbacks.cancelPendingLanguage}
+      >
+        Search
       </button>
       {downloadError ? (
         <p data-testid="watch-download-error" role="alert">
@@ -199,11 +229,14 @@ beforeEach(() => {
   document.cookie = "forge_watch_subs=; path=/watch; max-age=0"
   downloadModalProps.length = 0
   languageModalProps.length = 0
+  languageDynamicFixture.component = null
+  modalCallbacksFixture.current = null
   shareModalProps.length = 0
   checkDownloadSessionMock.mockReset()
   getCachedWatchLanguageOptionsMock.mockReset()
   getCachedWatchLanguageOptionsMock.mockReturnValue(null)
-  loadWatchInteractionMock.mockClear()
+  loadWatchInteractionMock.mockReset()
+  loadWatchInteractionMock.mockResolvedValue(undefined)
   loadWatchLanguageOptionsMock.mockReset()
   redirectToAuthMock.mockReset()
   shouldRefreshCachedWatchLanguageOptionsMock.mockReset()
@@ -228,6 +261,7 @@ function renderWatchPage({
   subtitleLanguageSlug = null,
   subtitles = [],
   videoSlug = "jesus-is-brought-to-pilate",
+  observeRenderFailure = false,
 }: {
   downloadSequence?: { position: number; total: number } | null
   image?: { mobileCinematicHigh?: string | null }
@@ -236,6 +270,7 @@ function renderWatchPage({
   subtitleLanguageSlug?: string | null
   subtitles?: unknown[]
   videoSlug?: string
+  observeRenderFailure?: boolean
 } = {}) {
   const variant = {
     documentId: "5fc705b9-1b3b-4a58-abef-755b98457de6",
@@ -269,17 +304,409 @@ function renderWatchPage({
   }
 
   act(() => {
-    root.render(
+    const page = (
       <WatchPageClient
         downloadSequence={downloadSequence}
         mergedBlocks={[]}
         variant={variant as never}
         video={video as never}
         subtitleLanguageSlug={subtitleLanguageSlug}
-      />,
+      />
+    )
+    root.render(
+      observeRenderFailure ? (
+        <RenderFailureObserver>{page}</RenderFailureObserver>
+      ) : (
+        page
+      ),
     )
   })
 }
+
+class RenderFailureObserver extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  render() {
+    return this.state.failed ? (
+      <p data-testid="page-render-failure">Page failed</p>
+    ) : (
+      this.props.children
+    )
+  }
+}
+
+function installRealLanguageDynamic(chunk: () => Promise<void>) {
+  const loader = vi.fn(async () => {
+    await chunk()
+    return {
+      default: (props: Record<string, unknown>) => {
+        languageModalProps.push(props)
+        return <div data-testid="real-language-modal" />
+      },
+    }
+  })
+  // Match the deployed App Router React.lazy layer. This controlled loader does
+  // not model Turbopack's separate network/module rejection caches.
+  languageDynamicFixture.component = appDynamic(loader, { ssr: false })
+  return loader
+}
+
+describe.each([false, true])("language component loading (v2=%s)", (v2) => {
+  let gtag: ReturnType<typeof vi.fn>
+  let frames: Array<() => void>
+
+  beforeEach(() => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = v2
+    resetWatchAnalyticsEmitState()
+    window.gtag = gtag = vi.fn()
+    frames = []
+    setWatchAnalyticsFrameScheduler((callback) => frames.push(callback))
+  })
+
+  afterEach(() => {
+    setWatchAnalyticsFrameScheduler(null)
+    resetWatchAnalyticsEmitState()
+  })
+  it("preserves a queued language callback when an older download check completes during Search close", async () => {
+    const access = deferred<{
+      ok: boolean
+      accountGateEnabled: boolean
+      authenticated: boolean
+    }>()
+    checkDownloadSessionMock.mockReturnValue(access.promise)
+    loadWatchLanguageOptionsMock.mockResolvedValue([])
+    renderWatchPage()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )!
+        .click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-search-button"]',
+        )!
+        .click()
+    })
+
+    // The provider retains this exact published callback while its Search close
+    // transition runs. A replacement would invalidate the newer globe intent.
+    const queuedLanguageOpen = modalCallbacksFixture.current!.openLanguage
+    await act(async () => {
+      access.resolve({
+        ok: true,
+        accountGateEnabled: false,
+        authenticated: true,
+      })
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("download")
+    expect(modalCallbacksFixture.current!.openLanguage).toBe(queuedLanguageOpen)
+    await act(async () => {
+      queuedLanguageOpen()
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("language")
+  })
+
+  it("contains a rejected cold language component load without poisoning the App Router lazy modal", async () => {
+    const chunk = deferred<void>()
+    const dynamicLoader = installRealLanguageDynamic(() => chunk.promise)
+    loadWatchInteractionMock.mockReturnValue(chunk.promise)
+    loadWatchLanguageOptionsMock.mockResolvedValue([])
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      renderWatchPage({ observeRenderFailure: true })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="watch-language-button"]',
+          )
+          ?.click()
+      })
+      await act(async () => {
+        chunk.reject(new Error("language component unavailable"))
+        await Promise.resolve()
+      })
+
+      expect(
+        document.querySelector('[data-testid="page-render-failure"]'),
+      ).toBeNull()
+      expect(
+        document.querySelector('[data-testid="watch-page-client"]'),
+      ).not.toBeNull()
+      expect(
+        document.querySelector('[data-testid="watch-language-component-error"]')
+          ?.textContent,
+      ).toBe("Please check your connection and try again.")
+      expect(dynamicLoader).not.toHaveBeenCalled()
+      expect(languageModalProps).toHaveLength(0)
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it("starts options in parallel, deduplicates pending activation, and waits for the component before mounting", async () => {
+    const chunk = deferred<void>()
+    const options = deferred<unknown[]>()
+    const dynamicLoader = installRealLanguageDynamic(() => chunk.promise)
+    loadWatchInteractionMock.mockReturnValue(chunk.promise)
+    loadWatchLanguageOptionsMock.mockReturnValue(options.promise)
+    renderWatchPage({ observeRenderFailure: true })
+
+    expect(loadWatchInteractionMock).not.toHaveBeenCalled()
+    expect(loadWatchLanguageOptionsMock).not.toHaveBeenCalled()
+    await act(async () => {
+      const trigger = document.querySelector<HTMLButtonElement>(
+        '[data-testid="watch-language-button"]',
+      )!
+      trigger.click()
+      trigger.click()
+    })
+
+    expect(loadWatchInteractionMock).toHaveBeenCalledTimes(1)
+    expect(loadWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
+    if (v2) expect(gtag).not.toHaveBeenCalled()
+    for (const frame of frames.splice(0)) frame()
+    // The pending guard owns both the component request and its intent event.
+    // Exercise each real flag branch with a collector present: no duplicate
+    // legacy/v2 event may hide behind missing analytics configuration.
+    expect(gtag.mock.calls.map(([, name]) => name)).toEqual([
+      "language_picker_opened",
+    ])
+    expect(gtag.mock.calls[0]?.[2]).toMatchObject(
+      v2
+        ? {
+            event_contract_version: 2,
+            watch_picker_language_class: "english",
+          }
+        : { language_slug: "english", video_id: "video-1" },
+    )
+    expect(dynamicLoader).not.toHaveBeenCalled()
+    expect(languageModalProps).toHaveLength(0)
+    expect(
+      document
+        .querySelector('[data-testid="watch-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("none")
+
+    await act(async () => {
+      chunk.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="real-language-modal"]'),
+    ).not.toBeNull()
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({ open: true, languageOptionsLoading: true }),
+    )
+    await act(async () => {
+      options.resolve([])
+    })
+  })
+
+  it("retries a controlled failed preload without ever poisoning React.lazy", async () => {
+    const first = deferred<void>()
+    const second = deferred<void>()
+    let currentChunk = first.promise
+    const dynamicLoader = installRealLanguageDynamic(() => currentChunk)
+    loadWatchInteractionMock.mockImplementation(() => currentChunk)
+    loadWatchLanguageOptionsMock.mockResolvedValue([])
+    renderWatchPage({ observeRenderFailure: true })
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    await act(async () => {
+      first.reject(new Error("component unavailable"))
+    })
+    expect(
+      document
+        .querySelector('[data-testid="watch-language-component-error"]')
+        ?.getAttribute("role"),
+    ).toBe("status")
+    expect(dynamicLoader).not.toHaveBeenCalled()
+
+    currentChunk = second.promise
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    expect(
+      document.querySelector('[data-testid="watch-language-component-error"]'),
+    ).toBeNull()
+    expect(loadWatchInteractionMock).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      second.resolve()
+    })
+
+    expect(dynamicLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="real-language-modal"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('[data-testid="page-render-failure"]'),
+    ).toBeNull()
+  })
+
+  it.each([
+    "close",
+    "share",
+    "download",
+    "search",
+    "navigation",
+    "audio-change",
+    "unmount",
+  ] as const)(
+    "ignores component success after %s supersedes the language intent",
+    async (supersedingIntent) => {
+      const chunk = deferred<void>()
+      const dynamicLoader = installRealLanguageDynamic(() => chunk.promise)
+      loadWatchInteractionMock.mockImplementation(async (key?: string) => {
+        if (key === "language") await chunk.promise
+      })
+      loadWatchLanguageOptionsMock.mockResolvedValue([])
+      checkDownloadSessionMock.mockResolvedValue({
+        ok: true,
+        accountGateEnabled: false,
+        authenticated: true,
+      })
+      renderWatchPage({ observeRenderFailure: true })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="watch-language-button"]',
+          )!
+          .click()
+      })
+
+      if (supersedingIntent === "navigation") {
+        renderWatchPage({
+          observeRenderFailure: true,
+          videoSlug: "another-video",
+        })
+      } else if (supersedingIntent === "audio-change") {
+        renderWatchPage({ observeRenderFailure: true, languageSlug: "urdu" })
+      } else if (supersedingIntent === "unmount") {
+        act(() => root.unmount())
+      } else {
+        const testId =
+          supersedingIntent === "close"
+            ? "watch-close-modal"
+            : `watch-${supersedingIntent}-button`
+        await act(async () => {
+          document
+            .querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!
+            .click()
+        })
+      }
+      await act(async () => {
+        chunk.resolve()
+      })
+
+      expect(dynamicLoader).not.toHaveBeenCalled()
+      expect(languageModalProps).toHaveLength(0)
+      expect(
+        document
+          .querySelector('[data-testid="watch-page-client"]')
+          ?.getAttribute("data-modal-state"),
+      ).not.toBe("language")
+    },
+  )
+
+  it("does not let an older failure cancel or replace a newer language intent", async () => {
+    const first = deferred<void>()
+    const second = deferred<void>()
+    loadWatchInteractionMock
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+    loadWatchLanguageOptionsMock.mockResolvedValue([])
+    renderWatchPage()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    act(() => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="watch-close-modal"]')!
+        .click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    await act(async () => {
+      first.reject(new Error("old failure"))
+    })
+    expect(
+      document.querySelector('[data-testid="watch-language-component-error"]'),
+    ).toBeNull()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    expect(loadWatchInteractionMock).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      second.resolve()
+    })
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({ open: true }),
+    )
+  })
+
+  it("keeps an options failure inside the successfully loaded dialog", async () => {
+    const dynamicLoader = installRealLanguageDynamic(async () => {})
+    loadWatchLanguageOptionsMock.mockRejectedValue(
+      new Error("options unavailable"),
+    )
+    renderWatchPage({ observeRenderFailure: true })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )!
+        .click()
+    })
+    expect(dynamicLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="page-render-failure"]'),
+    ).toBeNull()
+    expect(
+      document.querySelector('[data-testid="watch-language-component-error"]'),
+    ).toBeNull()
+    expect(languageModalProps.at(-1)).toEqual(
+      expect.objectContaining({ open: true, languageOptionsError: true }),
+    )
+  })
+})
 
 describe("WatchPageClient download boundary", () => {
   it("reports GA events for Watch modal intents", async () => {
@@ -618,7 +1045,7 @@ describe("WatchPageClient download boundary", () => {
     )
   })
 
-  it("opens the language modal instantly with cached rows while refresh is pending", async () => {
+  it("opens the language modal with cached rows without waiting for refresh", async () => {
     const cachedVariants = [
       {
         documentId: "variant-es",
@@ -640,7 +1067,7 @@ describe("WatchPageClient download boundary", () => {
     loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
     renderWatchPage()
 
-    act(() => {
+    await act(async () => {
       document
         .querySelector<HTMLButtonElement>(
           '[data-testid="watch-language-button"]',
@@ -741,7 +1168,7 @@ describe("WatchPageClient download boundary", () => {
     loadWatchLanguageOptionsMock.mockReturnValueOnce(refresh.promise)
     renderWatchPage({ videoSlug: "video-one" })
 
-    act(() => {
+    await act(async () => {
       document
         .querySelector<HTMLButtonElement>(
           '[data-testid="watch-language-button"]',

@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+// The hook's card services load the reading position store, which binds
+// AsyncStorage at import.
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+)
+
 import { InMemoryCache } from "@apollo/client"
 import { parse, print } from "graphql"
 import type { DocumentNode } from "graphql"

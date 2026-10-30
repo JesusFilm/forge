@@ -7,6 +7,7 @@ import {
   type ComponentProps,
 } from "react"
 import {
+  Animated,
   Pressable,
   Share,
   StyleSheet,
@@ -22,19 +23,24 @@ import type { VideoPlayer } from "expo-video"
 
 import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
+import { PausedGlyph } from "./PausedGlyph"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
+import { GlassSurface } from "../ui/GlassSurface"
 import { clipPosterUri } from "../../hooks/useClipAutostart"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import type { CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { EXPLORE_FAST_RATE } from "../../lib/explore/fastHold"
 import { readSeconds } from "../../lib/explore/playerRead"
 import { bandAspect, clipFraming } from "../../lib/explore/framing"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
 import type { FeedClip } from "../../lib/explore/types"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { clamp } from "../../lib/scrubber"
 import { useTabBarClearance } from "../../lib/tabBar"
 import { buildWatchShareUrl } from "../../lib/watchShareUrl"
+import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useTypography } from "../../hooks/useTypography"
 import { feedback } from "../../styles/shared"
 
@@ -44,8 +50,13 @@ export type ClipOverlayProps = {
   player: VideoPlayer
   /** The saved Explore mute choice (R11). */
   muted: boolean
-  /** Shows the play glyph (R10). The tap target itself is the feed's. */
+  /** Shows the play glyph (R10). A tap on the glyph calls `onResume`; a tap
+   *  anywhere else reaches the feed's own target. */
   paused: boolean
+  onResume: () => void
+  /** Shows the 2x cue and hides the rest of the overlay: the viewer holds a
+   *  side of the playing clip. */
+  fast: boolean
   onToggleMute: () => void
   /** A scrub to an asset time. The feed players seek, so the load is no rebuffer. */
   onSeek: (seconds: number) => void
@@ -72,10 +83,16 @@ const SCRIM_COLOR = hexToRgba(BLACK, 0.6)
 /** The fade above the title, so the scrim has no hard top edge. */
 const SCRIM_RAMP_HEIGHT = 40
 const RAIL_BUTTON_SIZE = 48
-const RAIL_LABEL_WIDTH = 76
+/** The glass that shows around the Keep watching thumbnail. */
+const KEEP_WATCHING_RIM = 3
 const CAPTION_GAP = 8
 /** A portrait clip's captions sit this much higher over it (owner, 2026-09-28). */
 const PORTRAIT_CAPTION_LIFT = 15
+/** The 2x cue's space under the safe area. */
+const FAST_CUE_GAP = 12
+/** A 2x hold hides the overlay quickly and brings it back gently. */
+const CHROME_HIDE_MS = 150
+const CHROME_SHOW_MS = 250
 
 /**
  * R13: a subtitle-only clip always shows its captions. A dubbed clip shows
@@ -95,6 +112,8 @@ export function ClipOverlay({
   player,
   muted,
   paused,
+  onResume,
+  fast,
   onToggleMute,
   onSeek,
   onKeepWatching,
@@ -106,7 +125,9 @@ export function ClipOverlay({
   const typography = useTypography()
   const t = useT("Explore")
   const titleDirection = useTextDirection().text(clip.titleLang)
-  const tabBarClearance = useTabBarClearance()
+  const tabBarClearance = useHeldClearance(useTabBarClearance(), fast)
+  const chrome = useChromeOpacity(!fast)
+  const chromeTouches = fast ? "none" : "auto"
   const safeTop = useSafeAreaInsets().top
   const [bottomHeight, setBottomHeight] = useState(0)
 
@@ -200,9 +221,11 @@ export function ClipOverlay({
   const [lowerBar, setLowerBar] = useState<number | null>(null)
   const [railLeft, setRailLeft] = useState<number | null>(null)
   const [railY, setRailY] = useState(0)
+  const [railWidth, setRailWidth] = useState(0)
   const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
     setRailLeft(Math.round(e.nativeEvent.layout.x))
     setRailY(Math.round(e.nativeEvent.layout.y))
+    setRailWidth(Math.round(e.nativeEvent.layout.width))
   }, [])
   const [muteFrame, setMuteFrame] = useState<RailFrame | null>(null)
   const [shareFrame, setShareFrame] = useState<RailFrame | null>(null)
@@ -220,9 +243,14 @@ export function ClipOverlay({
     ? Math.max(bandInset ?? 0, aboveTitle)
     : aboveTitle + PORTRAIT_CAPTION_LIFT
   const captionBottom = captionFloor + CAPTION_GAP
-  const captionRightInset =
+  // feat-695 R11: the rail mirrors to the left in a right-to-left layout. Its
+  // measured x is physical there too, so the inset side is where it sits.
+  const railOnLeft = railLeft != null && railLeft + railWidth / 2 < rowWidth / 2
+  const captionSideInset =
     railLeft != null && rowWidth > 0
-      ? rowWidth - railLeft + CAPTION_GAP
+      ? railOnLeft
+        ? railLeft + railWidth + CAPTION_GAP
+        : rowWidth - railLeft + CAPTION_GAP
       : undefined
   // The inset applies only when the caption would cover Mute or Share (owner,
   // 2026-09-28). Until both are measured, it always applies.
@@ -264,16 +292,21 @@ export function ClipOverlay({
         />
       )}
 
-      {paused && (
+      <PausedGlyph paused={paused} style={regionStyle} onPress={onResume} />
+
+      {fast && (
         <View
-          testID="clip-paused-glyph"
-          style={[styles.glyphLayer, regionStyle]}
+          testID="clip-fast-cue"
+          style={[styles.fastCue, { top: safeTop + FAST_CUE_GAP }]}
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <View style={styles.glyph}>
-            <Ionicons name="play" size={40} color={TEXT_ON_OVERLAY} />
+          <View style={styles.fastPill}>
+            <Text style={[styles.fastLabel, typography.bodySmall]}>
+              {`${EXPLORE_FAST_RATE}×`}
+            </Text>
+            <Ionicons name="play-forward" size={16} color={TEXT_ON_OVERLAY} />
           </View>
         </View>
       )}
@@ -283,8 +316,9 @@ export function ClipOverlay({
           player={player}
           vttSrc={captionSrc}
           bottomOffset={captionBottom}
-          rightInset={captionRightInset}
-          rightInsetBoxes={captionInsetBoxes}
+          sideInset={captionSideInset}
+          insetSide={railOnLeft ? "left" : "right"}
+          sideInsetBoxes={captionInsetBoxes}
         />
       )}
 
@@ -294,9 +328,9 @@ export function ClipOverlay({
         pointerEvents="box-none"
         onLayout={handleBottomLayout}
       >
-        <View
+        <Animated.View
           testID="clip-overlay-scrim"
-          style={[StyleSheet.absoluteFill, { top: scrimTop }]}
+          style={[StyleSheet.absoluteFill, { top: scrimTop, opacity: chrome }]}
           pointerEvents="none"
         >
           <LinearGradient
@@ -307,7 +341,7 @@ export function ClipOverlay({
             testID="clip-overlay-scrim-solid"
             style={[StyleSheet.absoluteFill, styles.scrimSolid]}
           />
-        </View>
+        </Animated.View>
 
         <View
           testID="clip-overlay-row"
@@ -315,9 +349,10 @@ export function ClipOverlay({
           pointerEvents="box-none"
           onLayout={handleRowLayout}
         >
-          <View
+          <Animated.View
             testID="clip-overlay-info"
-            style={styles.info}
+            style={[styles.info, { opacity: chrome }]}
+            pointerEvents={chromeTouches}
             onLayout={handleInfoLayout}
           >
             <Text
@@ -338,11 +373,13 @@ export function ClipOverlay({
               onExpand={handleExpand}
               onCollapse={handleCollapse}
             />
-          </View>
+          </Animated.View>
 
+          {/* The glass dissolves itself; a fading parent would stop it drawing. */}
           <View
             testID="clip-overlay-rail"
             style={styles.rail}
+            pointerEvents={chromeTouches}
             onLayout={handleRailLayout}
           >
             <RailButton
@@ -352,6 +389,8 @@ export function ClipOverlay({
               actionName={muted ? "explore-unmute" : "explore-mute"}
               onPress={onToggleMute}
               onLayout={handleMuteLayout}
+              visible={!fast}
+              fade={chrome}
             />
             <RailButton
               testID="clip-rail-share"
@@ -360,10 +399,14 @@ export function ClipOverlay({
               actionName="explore-share"
               onPress={handleShare}
               onLayout={handleShareLayout}
+              visible={!fast}
+              fade={chrome}
             />
             <KeepWatchingButton
               posterUri={clipPosterUri(clip)}
               onPress={handleKeepWatching}
+              visible={!fast}
+              fade={chrome}
             />
           </View>
         </View>
@@ -373,6 +416,8 @@ export function ClipOverlay({
           clipWindow={clip.window}
           onSeek={onSeek}
           veiled={veiled}
+          fade={chrome}
+          interactive={!fast}
         />
       </View>
     </View>
@@ -400,9 +445,71 @@ type RailButtonProps = {
   actionName: string
   onPress: () => void
   onLayout: (e: LayoutChangeEvent) => void
+} & RailChrome
+
+/** A 2x hold hides the rail: the glass dissolves, and the content fades. */
+type RailChrome = {
+  visible: boolean
+  fade: Animated.Value
 }
 
-/** A round button with its label under it. The whole stack is the target. */
+/** After a release, the clearance waits this long at most for the bar. */
+export const CLEARANCE_SETTLE_MS = 1000
+
+/**
+ * A 2x hold hides the iOS tab bar, which shrinks the inset. The layout keeps
+ * the last value until the inset has left it and come back, or the wait ends.
+ */
+export function useHeldClearance(live: number, fast: boolean): number {
+  const [held, setHeld] = useState(live)
+  const [settling, setSettling] = useState(false)
+  const [moved, setMoved] = useState(false)
+  const [wasFast, setWasFast] = useState(fast)
+  // A setter does not change the value this render reads, so track it here.
+  let nextSettling = settling
+  let nextMoved = moved
+  if (wasFast !== fast) {
+    setWasFast(fast)
+    nextSettling = !fast
+    if (fast) nextMoved = false
+  }
+  // After a short hold, the inset can drop only after the release.
+  if ((fast || nextSettling) && live !== held) nextMoved = true
+  if (nextSettling && nextMoved && live === held) nextSettling = false
+  if (nextSettling !== settling) setSettling(nextSettling)
+  if (nextMoved !== moved) setMoved(nextMoved)
+  if (!fast && !nextSettling && held !== live) setHeld(live)
+  useEffect(() => {
+    if (!settling) return
+    const timer = setTimeout(() => setSettling(false), CLEARANCE_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [settling])
+  return held
+}
+
+/** The overlay's opacity: 1 when shown, 0 while a 2x hold hides it. */
+function useChromeOpacity(shown: boolean): Animated.Value {
+  const reduceMotion = useReduceMotion()
+  const [opacity] = useState(() => new Animated.Value(shown ? 1 : 0))
+  useEffect(() => {
+    const toValue = shown ? 1 : 0
+    if (reduceMotion) {
+      opacity.setValue(toValue)
+      return
+    }
+    const animation = Animated.timing(opacity, {
+      toValue,
+      duration: shown ? CHROME_SHOW_MS : CHROME_HIDE_MS,
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [shown, reduceMotion, opacity])
+  return opacity
+}
+
+/** A round button. Its label is for screen readers only (owner, 2026-10-19),
+ *  as Keep watching's already was. */
 function RailButton({
   testID,
   icon,
@@ -410,24 +517,29 @@ function RailButton({
   actionName,
   onPress,
   onLayout,
+  visible,
+  fade,
 }: RailButtonProps) {
-  const typography = useTypography()
+  const glass = canUseLiquidGlass()
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
       onLayout={onLayout}
-      style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
+      style={({ pressed }) => railButtonStyle(glass, pressed)}
       accessibilityRole="button"
       accessibilityLabel={label}
       {...{ "dd-action-name": actionName }}
     >
-      <View style={styles.railCircle}>
+      <GlassSurface
+        style={styles.railCircle}
+        fallback={{ kind: "fill", style: styles.railFill }}
+        interactive
+        visible={visible}
+        fade={fade}
+      >
         <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
-      </View>
-      <Text style={[styles.railLabel, typography.caption]} numberOfLines={2}>
-        {label}
-      </Text>
+      </GlassSurface>
     </Pressable>
   )
 }
@@ -439,39 +551,59 @@ function RailButton({
 function KeepWatchingButton({
   posterUri,
   onPress,
+  visible,
+  fade,
 }: {
   posterUri: string | null
   onPress: () => void
-}) {
+} & RailChrome) {
   const t = useT("Explore")
+  const glass = canUseLiquidGlass()
   return (
     <Pressable
       testID="clip-rail-keep-watching"
       onPress={onPress}
-      style={({ pressed }) => [styles.railButton, pressed && feedback.pressed]}
+      style={({ pressed }) => railButtonStyle(glass, pressed)}
       accessibilityRole="button"
       accessibilityLabel={t("keepWatchingAriaLabel")}
       accessibilityHint={t("keepWatchingAriaHint")}
       {...{ "dd-action-name": "explore-keep-watching" }}
     >
-      <View testID="clip-keep-watching-circle" style={styles.thumbCircle}>
-        {posterUri != null && (
-          <Image
-            source={posterUri}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={posterUri}
+      <GlassSurface
+        style={styles.railCircle}
+        fallback={{ kind: "fill", style: styles.railFill }}
+        interactive
+        visible={visible}
+        fade={fade}
+      >
+        <View
+          testID="clip-keep-watching-circle"
+          style={[styles.thumbCircle, glass && styles.thumbInRim]}
+        >
+          {posterUri != null && (
+            <Image
+              source={posterUri}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={posterUri}
+            />
+          )}
+          <Ionicons
+            name="play"
+            size={24}
+            color={TEXT_ON_OVERLAY}
+            style={styles.playShadow}
           />
-        )}
-        <Ionicons
-          name="play"
-          size={24}
-          color={TEXT_ON_OVERLAY}
-          style={styles.playShadow}
-        />
-      </View>
+        </View>
+      </GlassSurface>
     </Pressable>
   )
+}
+
+/** On glass the circle takes Apple's press response instead: an opacity below
+ *  1 stops the glass. */
+function railButtonStyle(glass: boolean, pressed: boolean) {
+  return [styles.railButton, !glass && pressed && feedback.pressed]
 }
 
 /**
@@ -524,18 +656,26 @@ function ClipBandBackdrop({
 }
 
 const styles = StyleSheet.create({
-  glyphLayer: {
-    ...StyleSheet.absoluteFill,
+  // A playback cue: the glyph points forward in every layout (feat-695 R12).
+  fastCue: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     alignItems: "center",
-    justifyContent: "center",
+    direction: "ltr",
   },
-  glyph: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  fastPill: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: hexToRgba(BLACK, 0.45),
+  },
+  fastLabel: {
+    color: TEXT_ON_OVERLAY,
+    fontWeight: "700",
   },
   bottom: {
     position: "absolute",
@@ -553,11 +693,11 @@ const styles = StyleSheet.create({
   scrimSolid: {
     backgroundColor: SCRIM_COLOR,
   },
+  // Without rail labels the circles' edge lines up with the progress bar's.
   row: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingHorizontal: 16,
     gap: 8,
   },
   info: {
@@ -567,7 +707,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   rail: {
@@ -585,6 +724,10 @@ const styles = StyleSheet.create({
     borderRadius: RAIL_BUTTON_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Behind the Keep watching thumbnail, it shows only while the image loads,
+  // or when a clip has none.
+  railFill: {
     backgroundColor: hexToRgba(BLACK, 0.35),
   },
   thumbCircle: {
@@ -594,22 +737,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    // Shows only while the thumbnail loads, or when a clip has none.
-    backgroundColor: hexToRgba(BLACK, 0.35),
+  },
+  thumbInRim: {
+    width: RAIL_BUTTON_SIZE - 2 * KEEP_WATCHING_RIM,
+    height: RAIL_BUTTON_SIZE - 2 * KEEP_WATCHING_RIM,
+    borderRadius: RAIL_BUTTON_SIZE / 2 - KEEP_WATCHING_RIM,
   },
   // Keeps the white glyph visible over a very light thumbnail.
   playShadow: {
     textShadowColor: hexToRgba(BLACK, 0.6),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  railLabel: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 4,
-    maxWidth: RAIL_LABEL_WIDTH,
   },
   bandEdge: {
     backgroundColor: BLACK,

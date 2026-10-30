@@ -3,6 +3,10 @@ import { notFound } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
+import { WatchAudienceBlock } from "@/components/watch/WatchAudienceBlock"
+import { projectWatchAudience } from "@/lib/watch-audience-content"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
+
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { hasUiLocale } from "@/i18n/locales"
@@ -10,7 +14,11 @@ import {
   loadClientMessages,
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
-import { getExperiencePreview } from "@/lib/experience-preview"
+import {
+  getExperiencePreview,
+  getExperiencePreviewLayout,
+} from "@/lib/experience-preview"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import {
   DEFAULT_LOCALE,
   publicWatchAudioLanguageSlugForLocale,
@@ -46,11 +54,26 @@ type ExperiencePreviewPageProps = {
   params: Promise<{ token: string }>
 }
 
+/** Default-off: an unreadable flag is off, so the questionnaire stays dark. */
+async function isAudiencePreviewEnabled(): Promise<boolean> {
+  try {
+    return await isWatchAudienceEnabled()
+  } catch {
+    return false
+  }
+}
+
 function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
 }
 
-function DraftPreviewBanner({ locale }: { locale: string }) {
+function DraftPreviewBanner({
+  locale,
+  homepageLayout,
+}: {
+  locale: string
+  homepageLayout: boolean
+}) {
   return (
     <aside
       role="status"
@@ -60,6 +83,12 @@ function DraftPreviewBanner({ locale }: { locale: string }) {
       <span>Draft preview</span>
       <span aria-hidden="true">•</span>
       <span>{locale}</span>
+      {homepageLayout ? (
+        <>
+          <span aria-hidden="true">•</span>
+          <span>Homepage layout, not the live homepage</span>
+        </>
+      ) : null}
       <span aria-hidden="true">•</span>
       <span>Not live</span>
     </aside>
@@ -69,9 +98,11 @@ function DraftPreviewBanner({ locale }: { locale: string }) {
 function OrdinaryExperiencePreview({
   blocks,
   languageSlug,
+  audience,
 }: {
   blocks: readonly Section[]
   languageSlug: string
+  audience?: WatchAudienceResolution
 }) {
   return (
     <main className="min-h-screen bg-stone-900">
@@ -81,6 +112,15 @@ function OrdinaryExperiencePreview({
             ? block.id
             : `block-${index}`
 
+        if (block.__typename === "WatchAudienceBlock") {
+          return audience ? (
+            <WatchAudienceBlock
+              key={key}
+              audience={audience}
+              languageSlug={languageSlug}
+            />
+          ) : null
+        }
         return (
           <ExperienceSectionRenderer
             key={key}
@@ -97,8 +137,15 @@ export default async function ExperiencePreviewPage({
   params,
 }: ExperiencePreviewPageProps) {
   const { token } = await params
-  const preview = await getExperiencePreview(token)
+  // Parallel, so the layout probe adds no round trip to the preview render.
+  const [preview, homepageLayout] = await Promise.all([
+    getExperiencePreview(token),
+    getExperiencePreviewLayout(token),
+  ])
   if (!preview) notFound()
+  // Rendering context, not assignment: a homepage duplicate renders as the
+  // Watch home while `isHomepage` (live assignment) stays false.
+  const rendersAsHomepage = preview.isHomepage || homepageLayout
 
   const locale = boundedUiLocale(preview.locale)
   const languageSlug =
@@ -107,6 +154,35 @@ export default async function ExperiencePreviewPage({
     (block): block is Section => block !== null,
   )
 
+  // A capability preview renders only its own staged block. It never reads
+  // the published default template or populates a public ISR cache.
+  // Public reads project only the default template's published block, so any
+  // other Experience (or an Admin that sends no template identity) previews
+  // without it. Fail closed: only an explicit `true` shows the questionnaire.
+  // A preview link is a shareable capability, so it also honors the
+  // `forge.watch.audience` release gate: with the flag off the staged block
+  // stays in `blocks` (never stripped) but renders nothing, exactly as public.
+  const stagedAudienceBlocks =
+    preview.isDefaultTemplate === true
+      ? blocks.filter((block) => block.__typename === "WatchAudienceBlock")
+      : []
+  const audienceBlocks =
+    stagedAudienceBlocks.length > 0 && (await isAudiencePreviewEnabled())
+      ? stagedAudienceBlocks
+      : []
+  const audienceBlock = audienceBlocks[0]
+  const audience: WatchAudienceResolution | undefined = audienceBlock
+    ? audienceBlocks.length === 1 &&
+      typeof audienceBlock.sectionKey === "string"
+      ? projectWatchAudience({
+          configJson: audienceBlock.configurationJson,
+          sourceLocale: preview.locale,
+          sourceBlockId: audienceBlock.sectionKey,
+          rejected: false,
+        })
+      : { kind: "rejected" }
+    : undefined
+
   setRequestLocale(locale)
   const messages = await loadClientMessages(
     locale,
@@ -114,10 +190,14 @@ export default async function ExperiencePreviewPage({
   )
 
   let content = (
-    <OrdinaryExperiencePreview blocks={blocks} languageSlug={languageSlug} />
+    <OrdinaryExperiencePreview
+      blocks={blocks}
+      languageSlug={languageSlug}
+      audience={audience}
+    />
   )
 
-  if (preview.isHomepage) {
+  if (rendersAsHomepage) {
     const home = await resolveWatchHomePreview(
       locale,
       languageSlug,
@@ -128,8 +208,10 @@ export default async function ExperiencePreviewPage({
         <WatchHomeExperiencePage
           heroModel={home.data}
           blocks={blocks}
+          locale={locale}
           languageSlug={languageSlug}
           dynamicCollectionCacheScope="preview"
+          {...(audience ? { audienceEnabled: true, audience } : {})}
         />
       )
     }
@@ -138,7 +220,10 @@ export default async function ExperiencePreviewPage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <div lang={locale} dir={textDirectionForLocale(locale)}>
-        <DraftPreviewBanner locale={preview.locale} />
+        <DraftPreviewBanner
+          locale={preview.locale}
+          homepageLayout={homepageLayout && !preview.isHomepage}
+        />
         {content}
       </div>
     </NextIntlClientProvider>

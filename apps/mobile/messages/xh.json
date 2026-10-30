@@ -138,6 +138,7 @@
     "versesAriaValue": "Iivesi {first} ukuya ku-{last} kwe-{total}, {chapter}",
     "demoVerse": "Tyibilikisa phezulu uye kwivesi elandelayo",
     "demoChapter": "Tyibilikisa ngasekhohlo uye kwisahluko esilandelayo",
+    "demoChapterRtl": "Tyibilikisa ngasekunene uye kwisahluko esilandelayo",
     "demoSkip": "Chukumisa ukuze utsibe",
     "demoSkipAriaLabel": "Tsiba umboniso wokutyibilikisa",
     "selectVerseAriaHint": "Chukumisa kabini ukuze ukhethe le vesi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Khetha incwadi",
+    "chooseChapter": "Khetha isahluko",
+    "chooseVerse": "Khetha ivesi",
     "oldTestament": "ITestamente eNdala",
     "newTestament": "ITestamente eNtsha",
     "books": "Iincwadi",
@@ -193,7 +196,7 @@
     "someBooks": "Iincwadi: {count} kwe-{total, plural, one {#} other {#}}",
     "twoNames": "{first} no-{second}",
     "threeNames": "{first}, {second} no-{third}",
-    "onDevice": "Ikwesi sixhobo",
+    "downloaded": "Ikhutshelwe",
     "downloading": "Iyakhutshelwa {percent}%",
     "downloadStopped": "Ukukhuphela kumile",
     "updateAvailable": "Uhlaziyo luyafumaneka",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Ipowusta yothotho",
     "videosHeading": "Iividiyo",
     "detailsLoadError": "Iinkcukacha ezipheleleyo azikwazanga ukulayishwa.",
+    "languagesTitle": "Ulwimi lwevidiyo",
     "searchLanguagesPlaceholder": "Khangela iilwimi…",
     "searchLanguagesAriaLabel": "Khangela iilwimi",
     "noLanguagesFound": "Akukho lwimi lufunyenweyo",
@@ -502,6 +506,7 @@
     "resumeAt": "Qhubeka ku-{time}",
     "unknownLanguage": "Ayaziwa",
     "downloadedStatus": "Ikhutshelwe",
+    "languagesTitle": "Ulwimi lwevidiyo",
     "searchLanguagesPlaceholder": "Khangela iilwimi…",
     "searchLanguagesAriaLabel": "Khangela iilwimi",
     "noLanguagesFound": "Akukho lwimi lufunyenweyo",
@@ -773,5 +778,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela impendulo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa uthungelwano lwakho lwendawo ukukhangela izixhobo onokuthumela kuzo iividiyo, ukuze ukwazi ukudlala iividiyo kumabonakude wakho."
   }
 }

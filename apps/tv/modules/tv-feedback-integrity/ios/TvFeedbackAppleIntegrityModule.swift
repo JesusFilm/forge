@@ -8,6 +8,14 @@ public final class TvFeedbackAppleIntegrityModule: Module {
   public func definition() -> ModuleDefinition {
     Name("TvFeedbackAppleIntegrity")
 
+    Constants {
+      #if DEBUG && targetEnvironment(simulator) && os(tvOS)
+      return ["isFeedbackSimulator": true]
+      #else
+      return ["isFeedbackSimulator": false]
+      #endif
+    }
+
     AsyncFunction("attestGrant") { (challengeId: String, nonce: String, utcDay: String, promise: Promise) in
       guard DCDevice.current.isSupported else {
         promise.reject("DEVICECHECK_UNAVAILABLE", "DeviceCheck is unavailable on this Apple TV")

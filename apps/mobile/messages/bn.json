@@ -138,6 +138,7 @@
     "versesAriaValue": "{total}টি পদের মধ্যে {first} থেকে {last} নম্বর পদ, {chapter}",
     "demoVerse": "পরের পদের জন্য উপরে সোয়াইপ করুন",
     "demoChapter": "পরের অধ্যায়ের জন্য বাঁয়ে সোয়াইপ করুন",
+    "demoChapterRtl": "পরের অধ্যায়ের জন্য ডানে সোয়াইপ করুন",
     "demoSkip": "এড়িয়ে যেতে ট্যাপ করুন",
     "demoSkipAriaLabel": "সোয়াইপের প্রদর্শনী এড়িয়ে যান",
     "selectVerseAriaHint": "এই পদটি বেছে নিতে দুবার ট্যাপ করুন",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "একটি বই বেছে নিন",
+    "chooseChapter": "একটি অধ্যায় বেছে নিন",
+    "chooseVerse": "একটি পদ বেছে নিন",
     "oldTestament": "পুরাতন নিয়ম",
     "newTestament": "নতুন নিয়ম",
     "books": "বই",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {#টি বইয়ের মধ্যে {count}টি} other {#টি বইয়ের মধ্যে {count}টি}}",
     "twoNames": "{first} ও {second}",
     "threeNames": "{first}, {second} ও {third}",
-    "onDevice": "এই ডিভাইসে আছে",
+    "downloaded": "ডাউনলোড হয়েছে",
     "downloading": "ডাউনলোড হচ্ছে {percent}%",
     "downloadStopped": "ডাউনলোড বন্ধ হয়ে গেছে",
     "updateAvailable": "আপডেট উপলভ্য",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "সিরিজের পোস্টার",
     "videosHeading": "ভিডিও",
     "detailsLoadError": "সম্পূর্ণ বিবরণ লোড করা যায়নি।",
+    "languagesTitle": "ভিডিওর ভাষা",
     "searchLanguagesPlaceholder": "ভাষা সার্চ করুন…",
     "searchLanguagesAriaLabel": "ভাষা সার্চ করুন",
     "noLanguagesFound": "কোনো ভাষা পাওয়া যায়নি",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} থেকে আবার দেখুন",
     "unknownLanguage": "অজানা",
     "downloadedStatus": "ডাউনলোড হয়েছে",
+    "languagesTitle": "ভিডিওর ভাষা",
     "searchLanguagesPlaceholder": "ভাষা সার্চ করুন…",
     "searchLanguagesAriaLabel": "ভাষা সার্চ করুন",
     "noLanguagesFound": "কোনো ভাষা পাওয়া যায়নি",
@@ -773,5 +778,8 @@
     "send": "পাঠান",
     "sending": "পাঠানো হচ্ছে…",
     "sendAriaLabel": "মতামত পাঠান"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "অ্যাপটি কাস্ট ডিভাইস খুঁজতে আপনার স্থানীয় নেটওয়ার্ক ব্যবহার করে, যাতে আপনি আপনার টিভিতে ভিডিও চালাতে পারেন।"
   }
 }

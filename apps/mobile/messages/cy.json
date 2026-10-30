@@ -138,6 +138,7 @@
     "versesAriaValue": "Adnodau {first} i {last} o {total}, {chapter}",
     "demoVerse": "Sweipiwch i fyny am yr adnod nesaf",
     "demoChapter": "Sweipiwch i’r chwith am y bennod nesaf",
+    "demoChapterRtl": "Sweipiwch i’r dde am y bennod nesaf",
     "demoSkip": "Tapiwch i hepgor",
     "demoSkipAriaLabel": "Hepgor yr arddangosiad sweipio",
     "selectVerseAriaHint": "Tapiwch ddwywaith i ddewis yr adnod hon",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Dewiswch lyfr",
+    "chooseChapter": "Dewiswch bennod",
+    "chooseVerse": "Dewiswch adnod",
     "oldTestament": "Yr Hen Destament",
     "newTestament": "Y Testament Newydd",
     "books": "Llyfrau",
@@ -193,7 +196,7 @@
     "someBooks": "{count} o {total, plural, zero {# llyfr} one {# llyfr} two {# lyfr} few {# llyfr} many {# llyfr} other {# llyfr}}",
     "twoNames": "{first} a {second}",
     "threeNames": "{first}, {second} a {third}",
-    "onDevice": "Ar y ddyfais hon",
+    "downloaded": "Wedi’i lawrlwytho",
     "downloading": "Wrthi’n lawrlwytho {percent}%",
     "downloadStopped": "Stopiodd y lawrlwytho",
     "updateAvailable": "Diweddariad ar gael",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster y gyfres",
     "videosHeading": "Fideos",
     "detailsLoadError": "Methu llwytho’r manylion llawn.",
+    "languagesTitle": "Iaith y fideo",
     "searchLanguagesPlaceholder": "Chwilio ieithoedd…",
     "searchLanguagesAriaLabel": "Chwilio ieithoedd",
     "noLanguagesFound": "Heb ddod o hyd i ieithoedd",
@@ -502,6 +506,7 @@
     "resumeAt": "Ailddechrau o {time}",
     "unknownLanguage": "Anhysbys",
     "downloadedStatus": "Wedi’i lawrlwytho",
+    "languagesTitle": "Iaith y fideo",
     "searchLanguagesPlaceholder": "Chwilio ieithoedd…",
     "searchLanguagesAriaLabel": "Chwilio ieithoedd",
     "noLanguagesFound": "Heb ddod o hyd i ieithoedd",
@@ -773,5 +778,8 @@
     "send": "Anfon",
     "sending": "Wrthi’n anfon…",
     "sendAriaLabel": "Anfon adborth"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Mae’r ap yn defnyddio’ch rhwydwaith lleol i ddod o hyd i ddyfeisiau castio, er mwyn i chi allu chwarae fideos ar eich teledu."
   }
 }

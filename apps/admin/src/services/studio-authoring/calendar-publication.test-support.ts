@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 import { STUDIO_CODEC_VERIFIER_VERSION } from "@forge/studio-contracts/render"
-import { ContentPackService } from "./packs"
 import { StudioAuthoringService } from "./index"
 import { StudioAssetService } from "./assets"
 import { StudioRenderJobs } from "./render-jobs"
@@ -46,39 +45,11 @@ export async function calendarPublicationFixture(
   const commands = new StudioAuthoringService(db),
     assets = new StudioAssetService(db),
     jobs = new StudioRenderJobs(db)
-  const source = await assets.register(
-    user,
-    {
-      filename: "editorial.txt",
-      mimeType: "text/plain",
-      role: "document",
-      idempotencyKey: randomUUID(),
-      provenance: {
-        status: "recorded",
-        recorded: { author: "Owned synthetic editorial fixture" },
-      },
-    },
-    Buffer.from("Hope can grow through patient care."),
-    "LOCAL",
-  )
-  const pack = await new ContentPackService(db).write(user, {
-    packId: randomUUID(),
-    expectedRevision: 0,
-    idempotencyKey: randomUUID(),
-    document: {
-      title: "Calendar source",
-      guidance: "Hope",
-      sources: withSource
-        ? [
-            {
-              label: "Owned editorial",
-              asset: source.reference,
-              excerpt: "Hope can grow through patient care.",
-            },
-          ]
-        : [],
-    },
-  })
+  const { selectedSourceFixture } =
+    await import("./selected-source.test-support")
+  const footage = withSource
+    ? await selectedSourceFixture(db, user, language)
+    : null
   const document = {
     version: 1,
     title: "Calendar transaction fixture",
@@ -88,10 +59,9 @@ export async function calendarPublicationFixture(
     height: 180,
     fps: 30,
     durationInFrames: 30,
-    tracks: [],
-    items: [],
+    tracks: footage ? [{ id: "source-track", kind: "visual" as const }] : [],
+    items: footage ? [footage] : [],
     components: [],
-    packRevisionIds: [pack.id],
   }
   await commands.create(user, {
     projectId,
@@ -255,7 +225,6 @@ export async function calendarPublicationFixture(
     deliveryWindowMinutes: 60,
     plannerTimes: ["06:00"],
     automationEnabled: false,
-    defaultPackRevisionIds: [],
     language,
   }
   await calendar.configure(user, {
@@ -271,7 +240,6 @@ export async function calendarPublicationFixture(
     date,
     title: "Schedule transaction",
     theme: "",
-    packRevisionId: null,
     projectId,
   })
   const authorization = {

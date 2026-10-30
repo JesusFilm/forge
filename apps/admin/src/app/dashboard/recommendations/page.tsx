@@ -185,6 +185,23 @@ export default async function RecommendationsPage({
           </Link>
         </div>
       </PageSection>
+      {canReadTraces ? (
+        <PageSection
+          title="Saved Video connections"
+          meta="PRIVATE / DEFAULT OFF"
+        >
+          <div className="p-4 text-[13px] text-[var(--color-text-secondary)]">
+            Compare a saved experimental generation with the anonymous
+            contextual incumbent and current semantic retrieval input.{" "}
+            <Link
+              href="/dashboard/recommendations/precomputed"
+              className="underline underline-offset-4"
+            >
+              Open private comparison
+            </Link>
+          </div>
+        </PageSection>
+      ) : null}
       <HealthSummary overview={overview} />
       <PromotionDecision overview={overview} canOperate={canOperatePromotion} />
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />

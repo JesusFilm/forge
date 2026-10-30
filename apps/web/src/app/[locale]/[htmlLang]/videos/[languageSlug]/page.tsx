@@ -1,9 +1,11 @@
+import { cache } from "react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
+import { inventoryLanguageNameForTemplate } from "@/lib/inventory-language-name"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import {
@@ -15,6 +17,11 @@ import {
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
 } from "@/i18n/client-messages"
+
+// Share the inventory between metadata and the page during one server render.
+// React resets this memoization for later requests; persistent cache tags and
+// revalidation still belong to the resolver.
+const getInventoryForRender = cache(resolveWatchLanguageInventory)
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -43,13 +50,19 @@ export async function generateMetadata({
   if (!(await isAdmittedWatchInventoryLanguageSlug(languageSlug))) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
-  const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
+  const inventory = await getInventoryForRender(locale, languageSlug)
   const t = await getTranslations({ locale, namespace: "LanguageInventory" })
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
-  const title = t("metadataTitle", { language: languageDisplayName })
+  const languageFor = (key: "metadataTitle" | "metadataDescription") =>
+    inventoryLanguageNameForTemplate({
+      name: languageDisplayName,
+      uiLocale: locale,
+      template: t.raw(key),
+    })
+  const title = t("metadataTitle", { language: languageFor("metadataTitle") })
   const description = t("metadataDescription", {
-    language: languageDisplayName,
+    language: languageFor("metadataDescription"),
   })
   const canonical = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/${languageSlug}.html/videos`
 
@@ -81,7 +94,7 @@ export default async function LanguageVideosPage({ params }: PageProps) {
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
   const [inventory, messages] = await Promise.all([
-    resolveWatchLanguageInventory(locale, languageSlug),
+    getInventoryForRender(locale, languageSlug),
     loadClientMessages(locale, LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES),
   ])
 
