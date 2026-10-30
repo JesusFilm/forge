@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видео тӀе кӀелахьа",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Коьрта чулацаме дехьа вала"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project коьрта",
     "navigation": "Футер навигаци",

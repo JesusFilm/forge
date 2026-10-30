@@ -530,6 +530,9 @@
     "scrollToVideo": "Scrollaigh go físeán {title}",
     "forYou": "Duitse"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Léim chuig an bpríomhábhar"
+  },
   "WatchFooter": {
     "home": "Baile Jesus Film Project",
     "navigation": "Nascleanúint na buntásca",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Bla til videoen {title}",
     "forYou": "For deg"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Hopp til hovedinnholdet"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-startside",
     "navigation": "Navigasjon i bunnteksten",

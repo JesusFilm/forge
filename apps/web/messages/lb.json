@@ -530,6 +530,9 @@
     "scrollToVideo": "Zum Video {title} rullen",
     "forYou": "Fir dech"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Op den Haaptinhalt sprangen"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",
     "navigation": "Navigatioun am Foussberäich",

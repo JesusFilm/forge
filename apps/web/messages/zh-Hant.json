@@ -408,6 +408,9 @@
     "selectLanguageVersion": "選擇語言版本",
     "watchSelectedVersion": "觀看所選版本"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "跳至主要內容"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",
     "navigation": "頁尾導覽",

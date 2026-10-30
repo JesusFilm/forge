@@ -530,6 +530,9 @@
     "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Kër Jesus Film Project",
     "navigation": "Navigation bu footer",

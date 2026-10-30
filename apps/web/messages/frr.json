@@ -530,6 +530,9 @@
     "scrollToVideo": "Na {title} Video skrolle",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Gung tu a hoodinhual"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-hooftside",
     "navigation": "Footer-navigaasje",

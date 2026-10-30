@@ -530,6 +530,9 @@
     "scrollToVideo": "Desplazarse hasta el videu de {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Saltar al conteníu principal"
+  },
   "WatchFooter": {
     "home": "páxina d'inici de Jesus Film Project",
     "navigation": "Navegación del pie de páxina",

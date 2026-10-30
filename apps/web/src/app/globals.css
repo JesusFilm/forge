@@ -2794,3 +2794,19 @@
   -webkit-mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
   mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
 }
+
+/* Keyboard focus scrolled into view from below (Shift+Tab) stops under the
+   floating header, which reveals on upward scroll: without this, focused
+   controls at 320px were up to 87% covered. 5rem / 7rem clear the 52px
+   header at its phone (0.75rem) and desktop (3rem) top offsets. */
+@layer base {
+  html {
+    scroll-padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+  }
+
+  @media (width >= 48rem) {
+    html {
+      scroll-padding-top: calc(7rem + env(safe-area-inset-top, 0px));
+    }
+  }
+}

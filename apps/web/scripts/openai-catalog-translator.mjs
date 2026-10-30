@@ -46,6 +46,8 @@ const UI_SURFACE_CONTEXTS = {
   VideoLabels: "labels attached to Watch video cards",
   VideoRecommendations: "the recommended videos section",
   VideosPage: "a Watch videos listing page",
+  WatchAccessibility:
+    "keyboard and screen-reader navigation aids on every Watch page, such as the skip-to-main-content link",
   WatchFooter: "the Watch site footer",
   WatchHistory: "the user's Watch history page",
   WatchHome: "the Watch homepage",
@@ -186,6 +188,11 @@ const MESSAGE_CONTEXT_OVERRIDES = {
   "WatchHome.unmutePreview": {
     role: "video-preview accessibility action label",
     visibility: "assistive technology only",
+  },
+  "WatchAccessibility.skipToMainContent": {
+    role: "skip-link action label",
+    visibility:
+      "visible only while the link has keyboard focus; read by screen readers",
   },
   "WatchLanguageIndex.showLess": {
     role: "action label",

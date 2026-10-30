@@ -624,7 +624,9 @@ function WatchHomeTvOverlay({
           <div
             ref={actionsRef}
             data-testid="watch-home-tv-actions"
-            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-4 sm:flex-nowrap sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
+            // Wraps rather than squeezing: on the narrowest phones the
+            // timeline drops to its own line instead of truncating "Watch Now".
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
           >
             <PrimaryAction
               slide={activeSlide}

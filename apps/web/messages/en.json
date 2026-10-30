@@ -539,6 +539,9 @@
     "nextVideoPreview": "Next video preview",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project home",
     "navigation": "Footer navigation",
