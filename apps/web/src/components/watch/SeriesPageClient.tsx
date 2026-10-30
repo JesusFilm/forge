@@ -94,6 +94,7 @@ export function SeriesPageClient({
   const [modalState, setModalState] = useState<SeriesModalState>("none")
   useWatchModalActivity(modalState !== "none")
   const [downloadPending, setDownloadPending] = useState(false)
+  const downloadTriggerRef = useRef<HTMLButtonElement>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
   const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
@@ -479,6 +480,7 @@ export function SeriesPageClient({
                   <Button
                     variant="pill"
                     className="max-w-full min-w-0 px-3 text-[0.6875rem] md:max-w-none md:px-5 md:text-xs"
+                    ref={downloadTriggerRef}
                     onClick={openDownload}
                     disabled={downloadPending}
                     aria-label={t("downloadCollection")}
@@ -608,6 +610,7 @@ export function SeriesPageClient({
           accountGateEnabled={downloadAccountGateEnabled}
           authRequiredLoginUrl={downloadLoginUrl}
           onClose={closeModal}
+          returnFocusRef={downloadTriggerRef}
         />
       ) : null}
 

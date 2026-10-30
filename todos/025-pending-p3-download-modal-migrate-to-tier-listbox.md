@@ -70,3 +70,11 @@ itself; the suite's selectors were updated). The unused per-option
 `data-size-bytes` attribute was dropped instead of adding an
 `optionAttributes` hook. Modal-level keyboard scenarios live in
 `apps/web/src/components/watch/__tests__/DownloadModal.test.tsx`.
+
+# Popup placement ownership
+
+`TierListbox` opens its popup below the trigger only. It does not flip above the
+trigger and does not limit its height to the viewport. This was deferred in the
+collection quality listbox plan and is now tracked in
+`docs/roadmap/platform/feat-782-watch-download-dialog-text-and-popup-residuals.md`.
+Both download modals now use `TierListbox`; fix placement in that shared owner.

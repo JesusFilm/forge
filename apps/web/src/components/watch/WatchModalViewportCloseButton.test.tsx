@@ -62,6 +62,37 @@ describe("WatchModalViewportCloseButton", () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
+  it("can take a row of its dialog below sm instead of floating over it", () => {
+    act(() => {
+      root.render(
+        <WatchModalViewportCloseButton
+          open
+          onClose={vi.fn()}
+          testId="watch-modal-close"
+          renderInline
+          inFlowBelowSm
+        />,
+      )
+    })
+
+    const close = document.querySelector(
+      '[data-testid="watch-modal-close"]',
+    ) as HTMLButtonElement
+    // The geometry is checked in the browser at 320 px / 200% text; jsdom has
+    // no layout, so these are class-token pins for the two layout modes.
+    expect(close.className).toContain("max-sm:relative")
+    expect(close.className).toContain("max-sm:justify-self-end")
+    expect(close.className).toContain(
+      "sm:top-[max(1rem,env(safe-area-inset-top,0px))]",
+    )
+    expect(close.className).toContain(
+      "sm:right-[max(1rem,env(safe-area-inset-right,0px))]",
+    )
+    // Inline offsets would shift the in-flow button; the offsets are classes.
+    expect(close.style.top).toBe("")
+    expect(close.style.right).toBe("")
+  })
+
   it("renders nothing while its modal is closed", () => {
     act(() => {
       root.render(

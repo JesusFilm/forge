@@ -244,7 +244,13 @@ export function TierListbox({
         onKeyDown={handleTriggerKeyDown}
         className={cn(BASE_TRIGGER_CLASSES, triggerClassName)}
       >
-        <span id={valueId} className={selected ? undefined : "text-stone-400"}>
+        <span
+          id={valueId}
+          className={cn(
+            "min-w-0 [overflow-wrap:anywhere]",
+            selected ? undefined : "text-stone-400",
+          )}
+        >
           {selected ? getLabel(selected) : placeholder}
         </span>
         <ChevronDown

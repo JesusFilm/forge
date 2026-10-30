@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from "react"
+import { act, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -66,10 +66,12 @@ vi.mock("@/components/watch/WatchModalViewportCloseButton", () => ({
   WatchModalViewportCloseButton: ({
     open,
     renderInline,
+    inFlowBelowSm,
     testId,
   }: {
     open: boolean
     renderInline?: boolean
+    inFlowBelowSm?: boolean
     testId: string
   }) =>
     open ? (
@@ -77,6 +79,7 @@ vi.mock("@/components/watch/WatchModalViewportCloseButton", () => ({
         type="button"
         data-testid={testId}
         data-render-inline={String(renderInline)}
+        data-in-flow-below-sm={String(inFlowBelowSm)}
       />
     ) : null,
 }))
@@ -292,6 +295,49 @@ describe("CollectionDownloadModal", () => {
     expect(downloadAgain?.className).not.toContain("bg-white")
     expect(close?.className).toContain("bg-white")
     expect(Array.from(actions?.children ?? [])).toEqual([downloadAgain, close])
+  })
+
+  it("lets the pill actions wrap their label and icon inside the pill at 200% text", async () => {
+    runCollectionDownloadQueueMock.mockImplementationOnce(
+      async ({ items }) => ({
+        active: null,
+        authRequired: false,
+        canceled: false,
+        completed: items,
+        deliveryMode: "directory",
+        failed: [],
+        total: items.length,
+      }),
+    )
+    renderModal()
+    await flush()
+
+    // A label (or a single word of it) wider than the dialog's content column
+    // must wrap or break inside the button instead of painting past the pill.
+    // The layout itself is checked in the browser at 320 px / 200% text.
+    const start = container.querySelector(
+      '[data-testid="watch-collection-download-start"]',
+    ) as HTMLButtonElement
+    for (const token of [
+      "flex-wrap",
+      "whitespace-normal",
+      "[overflow-wrap:anywhere]",
+      "max-w-full",
+      "px-[min(1.25rem,6.25vw)]",
+    ]) {
+      expect(start.className).toContain(token)
+    }
+    expect(start.className).not.toContain("whitespace-nowrap")
+
+    await act(async () => {
+      start.click()
+    })
+    const close = container.querySelector(
+      '[data-testid="watch-collection-download-close"]',
+    ) as HTMLButtonElement
+    expect(close.className).toContain("bg-white")
+    expect(close.className).toContain("[overflow-wrap:anywhere]")
+    expect(close.className).toContain("px-[min(1.25rem,6.25vw)]")
   })
 
   it("labels native browser handoff without claiming files finished", async () => {
@@ -680,7 +726,12 @@ describe("CollectionDownloadModal", () => {
     expect(modal?.className).toContain("bg-transparent")
     expect(modal?.className).toContain("rounded-none")
     expect(modal?.className).not.toContain("bg-stone-950")
-    expect(modal?.className).toContain("sm:max-w-[960px]")
+    // Wide enough for the form, never wide enough to slide under the fixed
+    // close button: see watch-modal-presentation.ts.
+    expect(modal?.className).toContain(
+      "sm:max-w-[min(960px,calc(100vw-10rem))]",
+    )
+    expect(modal?.className).not.toContain("sm:max-w-[960px]")
   })
 
   it("scrolls at the viewport edge instead of inside the modal", async () => {
@@ -745,8 +796,13 @@ describe("CollectionDownloadModal", () => {
     )
     expect(header?.contains(summary)).toBe(true)
     expect(header?.className).toContain("gap-x-8")
+    // The column split reads the dialog's own width, not the viewport's: the
+    // dialog stays clear of the fixed close button, so it is narrower than the
+    // viewport and a viewport breakpoint would split before the columns fit.
+    expect(header?.parentElement?.className).toContain("@container")
+    expect(header?.className).not.toContain("min-[900px]:grid-cols")
     expect(header?.className).toContain(
-      "min-[900px]:grid-cols-[minmax(0,1fr)_26rem]",
+      "@min-[44rem]:grid-cols-[minmax(0,1fr)_26rem]",
     )
     const description = container.querySelector(
       '[data-testid="watch-collection-download-description"]',
@@ -767,7 +823,7 @@ describe("CollectionDownloadModal", () => {
     expect(summary?.className).not.toContain("bg-")
     expect(summary?.className).not.toContain("flex-col")
     expect(summary?.className).toContain("justify-self-center")
-    expect(summary?.className).toContain("min-[900px]:justify-self-end")
+    expect(summary?.className).toContain("@min-[44rem]:justify-self-end")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )
@@ -825,6 +881,36 @@ describe("CollectionDownloadModal", () => {
     expect(totalSize?.className).toContain("tracking-[0.08em]")
     expect(totalSize?.className).toContain("mt-0.5")
     expect(totalSize?.className).toContain("text-red-100/70")
+  })
+
+  it("keeps the select fields in a shrinkable column with an in-flow close below sm", async () => {
+    renderModal()
+    await flush()
+
+    // Class-token pins; jsdom has no layout. The geometry (field boxes inside
+    // the dialog, selected language readable, no close-button overlap) is
+    // checked in the browser at 320 px / 200% text.
+    const fields = container.querySelector(
+      '[data-testid="watch-collection-download-fields"]',
+    )
+    expect(fields?.className).toContain("grid-cols-[minmax(0,1fr)]")
+    for (const column of Array.from(fields?.children ?? [])) {
+      expect(column.className).toContain("min-w-0")
+    }
+
+    const language = container.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(language?.className).toContain("h-auto")
+    expect(language?.className).toContain(
+      "@max-[14rem]:[&_[data-testid=language-combobox-option-code]]:hidden",
+    )
+
+    const close = container.querySelector(
+      '[data-testid="watch-collection-download-modal-close"]',
+    )
+    expect(close?.getAttribute("data-render-inline")).toBe("true")
+    expect(close?.getAttribute("data-in-flow-below-sm")).toBe("true")
   })
 
   it("strengthens the form hierarchy without changing action shapes", async () => {
@@ -1457,5 +1543,109 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-progress"]',
       )?.textContent,
     ).toContain("3 of 3")
+  })
+
+  describe("focus return", () => {
+    // Mirrors SeriesPageClient: the owner disables its trigger while the
+    // session check runs, then mounts the dialog and unmounts it on close.
+    function FocusOwner() {
+      const [open, setOpen] = useState(false)
+      const [pending, setPending] = useState(false)
+      const triggerRef = useRef<HTMLButtonElement>(null)
+      return (
+        <>
+          <button
+            ref={triggerRef}
+            type="button"
+            data-testid="owner-trigger"
+            disabled={pending}
+            onClick={() => setPending(true)}
+          />
+          <button
+            type="button"
+            data-testid="owner-open"
+            onClick={() => {
+              setPending(false)
+              setOpen(true)
+            }}
+          />
+          <button type="button" data-testid="owner-elsewhere" />
+          {open ? (
+            <CollectionDownloadModal
+              open
+              collectionSlug="lumo-luke"
+              collectionTitle="LUMO Luke"
+              episodes={episodes}
+              languages={[{ slug: "english", name: "English", bcp47: "en" }]}
+              currentLanguageSlug="english"
+              accountGateEnabled={false}
+              onClose={() => setOpen(false)}
+              returnFocusRef={triggerRef}
+            />
+          ) : null}
+        </>
+      )
+    }
+
+    const byTestId = (id: string) =>
+      document.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement
+
+    async function settle() {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      })
+    }
+
+    async function openFromTrigger() {
+      act(() => {
+        root.render(<FocusOwner />)
+      })
+      const trigger = byTestId("owner-trigger")
+      trigger.focus()
+      // A browser drops focus to <body> when the focused trigger becomes
+      // disabled; jsdom does not (and ignores blur() on a disabled button),
+      // so do it by hand before the click disables it.
+      trigger.blur()
+      act(() => trigger.click())
+      expect(trigger.disabled).toBe(true)
+      expect(document.activeElement).toBe(document.body)
+      act(() => byTestId("owner-open").click())
+      await settle()
+      return trigger
+    }
+
+    // Escape is checked in a real browser (round 10): Base UI's dismiss
+    // listener does not close the dialog under jsdom.
+    it("returns focus to the trigger on every close, including a reopen", async () => {
+      const trigger = await openFromTrigger()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(
+        document.querySelector(
+          '[data-testid="watch-collection-download-modal"]',
+        ),
+      ).toBeNull()
+      expect(document.activeElement).toBe(trigger)
+
+      trigger.blur()
+      act(() => trigger.click())
+      act(() => byTestId("owner-open").click())
+      await settle()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(document.activeElement).toBe(trigger)
+    })
+
+    it("leaves focus where the user moved it outside the dialog", async () => {
+      await openFromTrigger()
+      const elsewhere = byTestId("owner-elsewhere")
+      elsewhere.focus()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(document.activeElement).toBe(elsewhere)
+    })
   })
 })

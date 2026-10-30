@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
 import { useLocale, useTranslations } from "next-intl"
@@ -29,6 +37,8 @@ import {
 import { TierListbox } from "@/components/watch/TierListbox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import {
+  WATCH_MODAL_ACTION_WRAP_CLASS,
+  WATCH_MODAL_COLLECTION_WIDTH_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -76,6 +86,14 @@ const COLLECTION_THUMBNAIL_STACK_CLASSES = [
   "top-6 w-[6.625rem] border border-black/70 brightness-[0.64] saturate-[0.55] min-[500px]:w-[9.5rem] min-[900px]:top-[2.1875rem] min-[900px]:w-[13.25rem]",
   "top-5 w-[6.25rem] border border-black/60 brightness-[0.42] saturate-[0.3] min-[500px]:w-36 min-[900px]:top-[1.875rem] min-[900px]:w-[12.5rem]",
 ] as const
+// At 200% text one label can be wider than a phone's dialog column, so each
+// footer button may shrink and wrap its label instead of overflowing.
+// `min-h-8` keeps the ghost Close at its default 2rem height when `h-auto`
+// lifts the fixed one. The pill's side padding is capped by the viewport
+// width: at 200% text its fixed `1.25rem` would take half of a 320 px
+// dialog's content column.
+const COLLECTION_ACTION_BUTTON_CLASS = `h-auto min-h-8 ${WATCH_MODAL_ACTION_WRAP_CLASS}`
+const COLLECTION_PILL_ACTION_BUTTON_CLASS = `${COLLECTION_ACTION_BUTTON_CLASS} px-[min(1.25rem,6.25vw)]`
 const COLLECTION_DECORATIVE_STACK_CLASSES = [
   "top-4 w-[5.875rem] bg-gradient-to-b from-stone-700/60 to-stone-900/90 min-[500px]:w-[8.5rem] min-[900px]:top-[1.5625rem] min-[900px]:w-[11.75rem]",
   "top-3 w-[5.5rem] bg-gradient-to-b from-stone-800/70 to-stone-950 min-[500px]:w-32 min-[900px]:top-5 min-[900px]:w-44",
@@ -197,6 +215,12 @@ export type CollectionDownloadModalProps = {
   accountGateEnabled: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
+  /**
+   * The control that opened the dialog. Its owner disables it while the
+   * session check runs, so Base UI records `<body>` as the element to return
+   * to; the dialog returns focus here instead.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 export function CollectionDownloadModal({
@@ -209,6 +233,7 @@ export function CollectionDownloadModal({
   accountGateEnabled,
   authRequiredLoginUrl = null,
   onClose,
+  returnFocusRef,
 }: CollectionDownloadModalProps) {
   const t = useTranslations("CollectionDownloadModal")
   const inventoryT = useTranslations("LanguageInventory")
@@ -400,6 +425,25 @@ export function CollectionDownloadModal({
     setError(null)
     onClose()
   }, [onClose, starting])
+
+  // Return focus to the trigger on Escape or Close, but never pull it back
+  // from somewhere the user deliberately moved it outside the dialog. Base
+  // UI's own return is turned off below: it would aim at `<body>`.
+  useEffect(() => {
+    if (!open) return
+    const returnFocusTarget = returnFocusRef?.current
+    return () => {
+      const active = document.activeElement
+      if (
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        !active.closest('[data-testid="watch-collection-download-modal"]')
+      ) {
+        return
+      }
+      returnFocusTarget?.focus()
+    }
+  }, [open, returnFocusRef])
 
   const cancelDownload = useCallback(() => {
     startVersionRef.current += 1
@@ -620,8 +664,9 @@ export function CollectionDownloadModal({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent
+        finalFocus={returnFocusRef ? false : undefined}
         data-testid="watch-collection-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(94vw,960px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_COLLECTION_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
@@ -631,15 +676,20 @@ export function CollectionDownloadModal({
           onClose={close}
           testId="watch-collection-download-modal-close"
           renderInline
+          inFlowBelowSm
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <div
           data-testid="watch-collection-download-modal-content"
-          className="flex flex-col gap-8 p-6 sm:p-9"
+          className="@container flex flex-col gap-8 p-[min(1.5rem,7.5vw)] sm:p-[min(2.25rem,5vw)]"
         >
+          {/* Two columns once the dialog's own content box holds the 26rem
+              summary column beside the text. The dialog is narrower than the
+              viewport (it keeps clear of the fixed close button), so a
+              viewport breakpoint would split too early and overflow. */}
           <div
             data-testid="watch-collection-download-header"
-            className="grid gap-x-8 gap-y-6 min-[900px]:grid-cols-[minmax(0,1fr)_26rem] min-[900px]:items-center"
+            className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6 @min-[44rem]:grid-cols-[minmax(0,1fr)_26rem] @min-[44rem]:items-center"
           >
             <div className="min-w-0">
               <p
@@ -665,7 +715,7 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex w-fit shrink-0 items-center justify-self-center gap-3 min-[500px]:gap-5 min-[900px]:justify-self-end min-[900px]:gap-6"
+                className="flex w-fit max-w-full shrink-0 flex-wrap items-center justify-center justify-self-center gap-3 min-[500px]:gap-5 @min-[44rem]:justify-self-end min-[900px]:gap-6"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
@@ -757,9 +807,23 @@ export function CollectionDownloadModal({
             <>
               <div
                 data-testid="watch-collection-download-fields"
-                className="grid gap-5 sm:grid-cols-2"
+                className="grid grid-cols-[minmax(0,1fr)] gap-5 @min-[36rem]:grid-cols-2"
               >
-                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
+                {/* The fields split into two columns by the content box of the
+                    dialog, not by the viewport. The dialog keeps clear of the
+                    fixed close button, so at large text it is much narrower
+                    than the viewport; a viewport split left each select too
+                    narrow to show its value. At 36rem each column holds
+                    "Arabic, Modern Standard" on one line at 100% text. From
+                    `sm` the dialog padding is at most 5vw, so a narrow dialog
+                    keeps its width for the fields.
+                    `@container` + `min-w-0`: the select triggers fit their
+                    column instead of widening it, and their padding and gap
+                    scale with the column. The selected language name wraps
+                    instead of truncating, and in a column narrower than 14rem
+                    (320 px at 200% text) the decorative code marker goes
+                    away. */}
+                <div className="@container flex min-w-0 flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span>{t("languageLabel")}</span>
                   <LanguageCombobox
                     options={languages}
@@ -767,10 +831,10 @@ export function CollectionDownloadModal({
                     disabled={busy}
                     onChange={setLanguageSlug}
                     compact
-                    triggerClassName="border-white/15 bg-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:ring-amber-400"
+                    triggerClassName="h-auto min-h-14 gap-[min(0.625rem,3cqi)] px-[min(1rem,6cqi)] @max-[14rem]:[&_[data-testid=language-combobox-option-code]]:hidden [&_.truncate]:whitespace-normal [&_.truncate]:[overflow-wrap:anywhere] border-white/15 bg-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:ring-amber-400"
                   />
                 </div>
-                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
+                <div className="@container flex min-w-0 flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span id={qualityLabelId}>{t("qualityLabel")}</span>
                   <TierListbox
                     tiers={options?.commonTiers ?? []}
@@ -781,7 +845,7 @@ export function CollectionDownloadModal({
                     disabled={busy || !effectiveTier}
                     labelledBy={qualityLabelId}
                     testIdPrefix="watch-collection-download-quality"
-                    triggerClassName="h-14 rounded-xl border-white/15 bg-stone-900 px-4 py-0 text-base sm:text-sm text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:border-amber-400/70 focus-visible:ring-amber-400"
+                    triggerClassName="min-h-14 rounded-xl border-white/15 bg-stone-900 px-[min(1rem,6cqi)] py-2 text-base sm:text-sm text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:border-amber-400/70 focus-visible:ring-amber-400"
                   />
                 </div>
               </div>
@@ -882,13 +946,16 @@ export function CollectionDownloadModal({
                 </p>
               ) : null}
 
+              {/* Wraps so that on 320-360px phones "Download again" and
+                  Close stack instead of widening the dialog past the screen. */}
               <div
                 data-testid="watch-collection-download-actions"
-                className="flex items-center justify-end gap-3 pt-5"
+                className="flex flex-wrap items-center justify-end gap-3 pt-5"
               >
                 {showDownloadAgain ? (
                   <>
                     <Button
+                      className={COLLECTION_ACTION_BUTTON_CLASS}
                       variant="ghost"
                       data-testid="watch-collection-download-start"
                       onClick={() => void startDownload(false)}
@@ -897,6 +964,7 @@ export function CollectionDownloadModal({
                       {t("downloadAgain")}
                     </Button>
                     <Button
+                      className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                       variant="pill"
                       data-testid="watch-collection-download-close"
                       onClick={close}
@@ -906,6 +974,7 @@ export function CollectionDownloadModal({
                   </>
                 ) : !busy ? (
                   <Button
+                    className={COLLECTION_ACTION_BUTTON_CLASS}
                     variant="ghost"
                     data-testid="watch-collection-download-close"
                     onClick={close}
@@ -915,6 +984,7 @@ export function CollectionDownloadModal({
                 ) : null}
                 {busy && !showDownloadAgain ? (
                   <Button
+                    className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-cancel"
                     onClick={cancelDownload}
@@ -924,6 +994,7 @@ export function CollectionDownloadModal({
                   </Button>
                 ) : !showDownloadAgain ? (
                   <Button
+                    className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-start"
                     disabled={
