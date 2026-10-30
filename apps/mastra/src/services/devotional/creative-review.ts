@@ -158,8 +158,10 @@ function rulesBlock(): string {
   return HOUSE_RULES.map((r, i) => `${i + 1}. ${r}`).join("\n")
 }
 
+type JsonSchemaSpec = { name: string; schema: Record<string, unknown> }
+
 /** JSON schema sent as OpenRouter's structured output for the review. */
-const REVIEW_JSON_SCHEMA = {
+const REVIEW_JSON_SCHEMA: JsonSchemaSpec = {
   name: "creative_review",
   schema: {
     type: "object",
@@ -197,9 +199,9 @@ const REVIEW_JSON_SCHEMA = {
       mostImportant: { type: "string" },
     },
   },
-} as const
+}
 
-const REVISION_JSON_SCHEMA = {
+const REVISION_JSON_SCHEMA: JsonSchemaSpec = {
   name: "creative_revision",
   schema: {
     type: "object",
@@ -222,7 +224,7 @@ const REVISION_JSON_SCHEMA = {
       },
     },
   },
-} as const
+}
 
 export function reviewPrompt(input: CreativeDraft): {
   system: string
@@ -269,6 +271,7 @@ export function revisionPrompt(
         ]
       : []),
     "Keep the draft's format, language and length roughly the same. Return the full revised draft and one decision for every review item.",
+    `There are ${review.items.length} review items: return exactly ${review.items.length} decisions, items 1 to ${review.items.length}, including the ones you reject.`,
   ].join("\n\n")
   const items = review.items
     .map(
@@ -288,9 +291,45 @@ export function revisionPrompt(
   return { system, user }
 }
 
-/** Strip em and en dashes a model slipped in (house rule 1). */
-export function stripDashes(text: string): string {
-  return text.replace(/\s*[—–]\s*/g, ", ").replace(/,\s*,/g, ",")
+/**
+ * Remove em and en dashes a model slipped in (house rule 1) without breaking
+ * the draft's layout. Unlike `stripDashes` in generate-devotional.ts (which
+ * cleans one flowing paragraph), this runs on a whole multi-line draft: a
+ * range between two numbers ("Luke 9:18–22") becomes a hyphen instead of a
+ * list, a dash that opens a line (Russian dialogue) is dropped instead of
+ * gluing the line onto the one above, and line breaks are never touched.
+ */
+export function removeDashes(text: string): string {
+  return text
+    .replace(/(\d)[ \t]*[—–][ \t]*(\d)/g, "$1-$2")
+    .replace(/^([ \t]*)[—–][ \t]*/gm, "$1")
+    .replace(/[ \t]*[—–][ \t]*$/gm, "")
+    .replace(/[ \t]*[—–][ \t]*/g, ", ")
+    .replace(/,[ \t]*,/g, ",")
+    .replace(/,([ \t]*[.!?;:])/g, "$1")
+}
+
+/**
+ * Answer budgets that grow with the draft. A fixed 6000-token cap cut the
+ * writer off mid-JSON on a whole script sheet (Boy with a Spirit,
+ * 2026-10-30): the revision repeats the full draft, and Cyrillic costs about
+ * a token per 2.5 characters. Capped well under the models' output limits.
+ */
+const MAX_ANSWER_TOKENS = 32_000
+function draftTokens(input: CreativeDraft): number {
+  return Math.ceil(input.draft.length / 2.5)
+}
+export function reviewTokenBudget(input: CreativeDraft): number {
+  return Math.min(MAX_ANSWER_TOKENS, 4000 + Math.ceil(draftTokens(input) / 2))
+}
+export function revisionTokenBudget(
+  input: CreativeDraft,
+  review: CreativeReview,
+): number {
+  return Math.min(
+    MAX_ANSWER_TOKENS,
+    2000 + Math.ceil(draftTokens(input) * 1.3) + 250 * review.items.length,
+  )
 }
 
 export async function reviewDraft(
@@ -301,12 +340,9 @@ export async function reviewDraft(
   return reviewer.complete({
     system,
     user,
-    jsonSchema: REVIEW_JSON_SCHEMA as unknown as {
-      name: string
-      schema: Record<string, unknown>
-    },
+    jsonSchema: REVIEW_JSON_SCHEMA,
     schema: CreativeReviewSchema,
-    maxTokens: 4000,
+    maxTokens: reviewTokenBudget(input),
     temperature: 0.4,
   })
 }
@@ -320,20 +356,38 @@ export async function reviseDraft(
   const out = await writer.complete({
     system,
     user,
-    jsonSchema: REVISION_JSON_SCHEMA as unknown as {
-      name: string
-      schema: Record<string, unknown>
-    },
+    jsonSchema: REVISION_JSON_SCHEMA,
     schema: CreativeRevisionSchema,
-    maxTokens: 6000,
+    maxTokens: revisionTokenBudget(input, review),
     temperature: 0.5,
   })
-  return { ...out, revised: stripDashes(out.revised) }
+  return {
+    revised: removeDashes(out.revised),
+    decisions: alignDecisions(out.decisions, review.items.length),
+  }
+}
+
+/**
+ * Keep one decision per review item, in item order: the schema only asks for
+ * `item >= 1`, so a writer can skip an item, answer one twice or number past
+ * the end. Out-of-range and repeated answers are dropped; a skipped item simply
+ * has no decision, which the markdown says out loud.
+ */
+export function alignDecisions(
+  decisions: CreativeRevision["decisions"],
+  itemCount: number,
+): CreativeRevision["decisions"] {
+  const byItem = new Map<number, CreativeRevision["decisions"][number]>()
+  for (const d of decisions)
+    if (d.item <= itemCount && !byItem.has(d.item)) byItem.set(d.item, d)
+  return [...byItem.values()].sort((a, b) => a.item - b.item)
 }
 
 export type CreativeReviewResult = {
   review: CreativeReview
   revision?: CreativeRevision
+  /** Why the writer step failed; the review above is still good. */
+  revisionError?: string
   reviewerModel: string
   writerModel?: string
 }
@@ -343,13 +397,20 @@ export async function runCreativeReview(
   models: { reviewer: DevotionalLlm; writer?: DevotionalLlm },
 ): Promise<CreativeReviewResult> {
   const review = await reviewDraft(models.reviewer, input)
-  if (!models.writer) return { review, reviewerModel: models.reviewer.model }
-  const revision = await reviseDraft(models.writer, input, review)
-  return {
-    review,
-    revision,
-    reviewerModel: models.reviewer.model,
-    writerModel: models.writer.model,
+  const base = { review, reviewerModel: models.reviewer.model }
+  // Nothing to act on: a rewrite would only add unasked-for changes.
+  if (!models.writer || review.items.length === 0) return base
+  const writerModel = models.writer.model
+  try {
+    const revision = await reviseDraft(models.writer, input, review)
+    return { ...base, revision, writerModel }
+  } catch (error) {
+    // The paid review stands on its own; never throw it away with the rewrite.
+    return {
+      ...base,
+      writerModel,
+      revisionError: error instanceof Error ? error.message : String(error),
+    }
   }
 }
 
@@ -386,6 +447,18 @@ export function reviewMarkdown(
       `   ${ru ? "Предложение" : "Suggestion"}: ${it.suggestion}`,
     )
     if (d) lines.push(`   ${ru ? "Решение" : "Decision"}: ${d.why}`)
+    else if (revision)
+      lines.push(
+        `   ${ru ? "Решение" : "Decision"}: ${ru ? "автор не ответил на это замечание" : "the writer did not answer this note"}`,
+      )
   })
+  if (review.items.length === 0) lines.push(ru ? "Замечаний нет." : "No notes.")
+  if (result.revisionError)
+    lines.push(
+      "",
+      ru
+        ? `Правка не получилась, ревью выше в силе: ${result.revisionError}`
+        : `The revision failed; the review above still stands: ${result.revisionError}`,
+    )
   return lines.join("\n") + "\n"
 }

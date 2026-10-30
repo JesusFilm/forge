@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  alignDecisions,
   HOUSE_RULES,
+  removeDashes,
   reviewMarkdown,
   reviewPrompt,
+  revisionTokenBudget,
   revisionPrompt,
   runCreativeReview,
-  stripDashes,
   type CreativeReview,
 } from "./creative-review"
 import type { DevotionalLlm } from "./llm"
@@ -75,6 +77,12 @@ describe("creative review prompts", () => {
     expect(user).toContain("1. [major] card 3")
     expect(user).toContain("2. [minor] card 2")
   })
+
+  it("tells the writer how many decisions to return", () => {
+    expect(revisionPrompt(draft, review).system).toContain(
+      "return exactly 2 decisions",
+    )
+  })
 })
 
 describe("runCreativeReview", () => {
@@ -135,8 +143,86 @@ describe("reviewMarkdown", () => {
   })
 })
 
-describe("stripDashes", () => {
+describe("removeDashes", () => {
   it("turns em and en dashes into commas and keeps hyphens", () => {
-    expect(stripDashes("one — two – three-four")).toBe("one, two, three-four")
+    expect(removeDashes("one — two – three-four")).toBe("one, two, three-four")
+  })
+
+  it("keeps a verse range a range", () => {
+    expect(removeDashes("Luke 9:18–22 and 9:12 – 17")).toBe(
+      "Luke 9:18-22 and 9:12-17",
+    )
+  })
+
+  it("never joins lines: drops a dash that opens or ends a line", () => {
+    expect(removeDashes("Card 1\n— Кто Я?\nAnd you —\nnext")).toBe(
+      "Card 1\nКто Я?\nAnd you\nnext",
+    )
+  })
+})
+
+describe("revision safety", () => {
+  const writerReply = {
+    revised: "x",
+    decisions: [
+      { item: 2, accepted: false, why: "b" },
+      { item: 1, accepted: true, why: "a" },
+      { item: 1, accepted: false, why: "dup" },
+      { item: 9, accepted: true, why: "out of range" },
+    ],
+  }
+
+  it("keeps one in-range decision per item, in item order", () => {
+    expect(alignDecisions(writerReply.decisions, 2)).toEqual([
+      { item: 1, accepted: true, why: "a" },
+      { item: 2, accepted: false, why: "b" },
+    ])
+  })
+
+  it("says when the writer skipped a note", () => {
+    const md = reviewMarkdown(
+      {
+        review,
+        reviewerModel: "m",
+        revision: { revised: "x", decisions: [writerReply.decisions[1]!] },
+      },
+      { kind: "carousel", lang: "en" },
+    )
+    expect(md).toContain("the writer did not answer this note")
+  })
+
+  it("keeps the review when the writer fails", async () => {
+    const reviewer = stub("openai/gpt-x", review)
+    const writer: DevotionalLlm = {
+      model: "anthropic/claude-x",
+      complete: async () => {
+        throw new Error("text was not valid JSON (finish: length)")
+      },
+    }
+    const result = await runCreativeReview(draft, {
+      reviewer: reviewer.llm,
+      writer,
+    })
+    expect(result.review.mostImportant).toBe("Fix card 3.")
+    expect(result.revision).toBeUndefined()
+    expect(result.revisionError).toContain("finish: length")
+    expect(reviewMarkdown(result, draft)).toContain("review above still stands")
+  })
+
+  it("does not call the writer when the review has no notes", async () => {
+    const reviewer = stub("openai/gpt-x", { ...review, items: [] })
+    const writer = stub("anthropic/claude-x", writerReply)
+    const result = await runCreativeReview(draft, {
+      reviewer: reviewer.llm,
+      writer: writer.llm,
+    })
+    expect(writer.calls).toHaveLength(0)
+    expect(result.revision).toBeUndefined()
+  })
+
+  it("gives the writer room for the whole draft", () => {
+    const long = { ...draft, draft: "я".repeat(30_000) }
+    expect(revisionTokenBudget(long, review)).toBeGreaterThan(15_000)
+    expect(revisionTokenBudget(draft, review)).toBeLessThan(3_000)
   })
 })

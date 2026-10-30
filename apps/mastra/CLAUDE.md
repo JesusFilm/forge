@@ -536,6 +536,19 @@ logic is `services/devotional/creative-review.ts`; story sessions run the same
 code with `src/scripts/creative-review.ts`. The carousel rules it reviews
 against are in `docs/devotional-carousel-playbook.md`.
 
+The route is synchronous and runs through the registered workflow, so the
+returned `mastraRunId` opens in Studio. Hosted calls use a 150 s timeout and
+at most one retry each (worst case about ten minutes for both models; a long
+Russian script sheet takes about three), and answer budgets grow with the
+draft up to 32k tokens. Input is bounded (`draft` 40k chars, `context` 60k,
+`locked` 4k) and `reviewerModel`/`writerModel` are a closed list, because the
+route bills the shared OpenRouter key; the local CLI keeps free-form models. A
+writer failure after a good review still returns 200 with the review and
+`revisionError`, and a review with no notes skips the writer. Failure reasons:
+`invalid_input` (400), `config_missing` (503, no OpenRouter key),
+`provider_failed` (502). Failures log one plain-string
+`[creative-review] event=...` line and never the draft.
+
 ### Narration cache and the video render
 
 The section above describes the TEXT pipeline. A devotional is also a rendered

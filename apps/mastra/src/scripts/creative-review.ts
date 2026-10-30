@@ -36,7 +36,7 @@ async function main() {
   const out = arg("out")
   if (!kind || !CREATIVE_KINDS.includes(kind) || !file || !out) {
     console.error(
-      `usage: --kind=${CREATIVE_KINDS.join("|")} --file=<draft> --out=<dir> [--lang=en] [--revise] [--context=<file>]`,
+      `usage: --kind=${CREATIVE_KINDS.join("|")} --file=<draft> --out=<dir> [--lang=en] [--revise] [--context=<file>] [--locked=<file>]`,
     )
     process.exit(2)
   }
@@ -89,10 +89,16 @@ async function main() {
   )
   if (result.revision) {
     const taken = result.revision.decisions.filter((d) => d.accepted).length
+    const unanswered =
+      result.review.items.length - result.revision.decisions.length
     console.log(
-      `revision: took ${taken} of ${result.revision.decisions.length} suggestion(s)`,
+      `revision: took ${taken} of ${result.review.items.length} suggestion(s)${unanswered ? `, ${unanswered} unanswered` : ""}`,
     )
   }
+  if (result.revisionError)
+    console.error(
+      `revision failed, review kept: ${result.revisionError}\n(revise by hand, or rerun the review alone without --revise)`,
+    )
   console.log(`→ ${out}`)
 }
 

@@ -175,22 +175,23 @@ export function createDevotionalLlm(options: {
         )
       })
       const text = extractText(payload)
+      // Say WHY an answer is empty or broken: after a long wait it is usually
+      // a length cap or a content filter, and the bare message named neither.
+      const choice = (
+        payload as {
+          choices?: {
+            finish_reason?: string
+            native_finish_reason?: string
+          }[]
+        }
+      ).choices?.[0]
+      const finish = `finish: ${choice?.finish_reason ?? "?"}${
+        choice?.native_finish_reason ? `/${choice.native_finish_reason}` : ""
+      }`
       if (text == null) {
-        // Say WHY: an empty answer after a long wait is usually a length cap
-        // or a content filter, and the bare message named neither.
-        const choice = (
-          payload as {
-            choices?: {
-              finish_reason?: string
-              native_finish_reason?: string
-            }[]
-          }
-        ).choices?.[0]
         throw new DevotionalLlmError(
           "validation",
-          `devotional model response did not include text output (finish: ${
-            choice?.finish_reason ?? "?"
-          }${choice?.native_finish_reason ? `/${choice.native_finish_reason}` : ""})`,
+          `devotional model response did not include text output (${finish})`,
         )
       }
 
@@ -200,7 +201,7 @@ export function createDevotionalLlm(options: {
       } catch (cause) {
         throw new DevotionalLlmError(
           "validation",
-          "devotional model response text was not valid JSON",
+          `devotional model response text was not valid JSON (${finish})`,
           cause,
         )
       }

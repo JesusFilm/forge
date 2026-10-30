@@ -90,11 +90,17 @@ goes to the owner:
 ```bash
 cd apps/mastra
 pnpm exec tsx --env-file=.env.local src/scripts/creative-review.ts \
-  --kind=carousel --lang=en --file=<draft.md> --out=<dir> --revise
+  --kind=carousel --lang=en --file=<draft.md> --locked=<decisions.txt> \
+  --out=<dir> --revise
 ```
 
-It writes `review.md` (what the reviewer found), `revision.md` (the revised
-draft and which suggestions were taken and why) and `review.json`. Paste
+Always pass `--locked` with the owner's decisions so far, one per line: on the
+first run without it both models talked her approved picks out of the
+carousel.
+
+It writes `review.md` (what the reviewer found and, per note, whether the
+writer took it and why), `revision.md` (the revised draft) and `review.json`.
+If the writer step fails, the review is still written and the CLI says so. Paste
 `review.md` into the review doc's "Review" tab so the owner sees both. The
 reviewer does not know the house rules as well as we do: never take a
 suggestion that breaks section 3 or 4.
