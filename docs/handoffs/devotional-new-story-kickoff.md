@@ -113,18 +113,17 @@ the source key (copy `lumo-luke-18-widow`):
 - `setting` only if the verses just before the scene are visible in the card;
   otherwise leave it out (the viewer never saw them, owner 2026-10-12).
 
-## 5. Stop and ask: the closing verse
+## 5. Pick the closing verse
 
-Before writing, offer Lyuba 3 closing verses from elsewhere in the Bible that
-answer the scene, each checked against the BSB corpus:
+Pick ONE closing verse from elsewhere in the Bible that answers the scene, checked
+against the BSB corpus (no options to choose from since 2026-10-30; Lyuba asks
+separately when she wants another):
 
 ```bash
 pnpm --filter @forge/mastra exec tsx src/scripts/bsb-verse.ts "Psalm 103:3" "Isaiah 53:5" "Mark 2:17"
 ```
 
-Only offer verses that print text (NOT FOUND cannot be used). Give the text
-and one line on why it fits. She picks one; if she says "use the scene", leave
-`--verse` out.
+Only use a verse that prints text (NOT FOUND cannot be used).
 
 ## 6. Write the English script
 
@@ -197,12 +196,16 @@ script_<story>_ru_read.txt; closing verse <ref>; voices <main>/<depth>`.
   (`feat(devotional): <story> source, cues and story entry`), and push the
   branch to the fork (`lyubavasilierrra/forge`). Never push `origin`.
 - Send Lyuba both scripts (paths, plus the text in the message) and stop.
-- The review doc is a Claude Doc with five tabs in this order: Intro, Русский,
-  English, Verses, Shorts (Lyuba, 2026-10-28). The Shorts tab is a table of the
-  3-4 proposed Shorts (intro + film-verse always, plus the reflection/verse turn
-  and an insight only when strong), one row each:
-  format | script of the short (the exact on-screen and spoken lines) | visual
-  (footage, cards, motion). She approves the Shorts together with the scripts.
+- The review doc is a Claude Doc split BY LANGUAGE (Lyuba, 2026-10-30), because each
+  language curator gets their own script: tabs Intro, Русский, English, Review. Each
+  language tab holds the long-form script, then a divider and the 3-4 proposed Shorts
+  (per Short: the exact spoken or on-screen words, then one "visual" line; the film Short
+  as question card / what the clip shows / ending card; dividers between Shorts), then a
+  divider and Captions (YouTube titles, description, credits, hashtags, pinned comment,
+  Shorts titles). No Verses tab and no verse options: pick the closing verse yourself;
+  she asks separately for another. Any edit to the long form is carried into that
+  language's Shorts and Captions (and the other language) in the same pass. She approves
+  the Shorts together with the scripts.
 
 ## Do not, before she approves
 
