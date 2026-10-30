@@ -1,0 +1,81 @@
+{
+  "verified_at_utc": "2026-10-20 23:18:01 UTC",
+  "next_consumers": [
+    {
+      "name": "@forge/admin",
+      "manifest": "apps/admin/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@8.0.1)(@opentelemetry/api@1.9.0)(@playwright/test@1.61.1)(@types/node@22.19.15)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/auth",
+      "manifest": "apps/auth/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@8.0.1)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.19.15)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/chat",
+      "manifest": "apps/chat/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@25.2.3)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/manager",
+      "manifest": "apps/manager/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@25.2.3)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/mastra-gateway",
+      "manifest": "apps/mastra-gateway/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.19.15)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "roadmap",
+      "manifest": "apps/roadmap/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.19.15)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/tv-feedback",
+      "manifest": "apps/tv-feedback/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@22.19.15)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": []
+    },
+    {
+      "name": "@forge/web",
+      "manifest": "apps/web/package.json",
+      "next_specifier": "^16.3.8",
+      "resolved_next": "16.3.8(patch_hash=d775pmxr7lcqy4djkbxhcf2kxi)(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@25.2.3)(babel-plugin-macros@3.1.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)",
+      "custom_cache_configuration": ["apps/web/next.config.mjs"]
+    }
+  ],
+  "runtime_regressions": {
+    "entry_points": 5,
+    "custom_app_page_buffer_expansions": 0,
+    "default_app_page_buffer_expansions": 1,
+    "builtin_fetch_size_limit_preserved": true,
+    "previous_broad_candidate_failed_default_behavior_check_on_all_five_entry_points": true
+  },
+  "admin_readiness": {
+    "source": "apps/admin/src/app/api/health/route.test.ts",
+    "passed": 7,
+    "failed": 0,
+    "runner": "existing Web-installed Vitest3.2.4, temporary config retains Admin src alias, Node environment and setup; vitest alias targets ESM entry",
+    "command": "pnpm --filter @forge/web exec vitest run --config ../../node_modules/.cache/watch-cache-size/admin-readiness.config.mjs --root ../admin src/app/api/health/route.test.ts",
+    "duration_seconds": 1.35,
+    "scope": "unit tests with mocked Redis/GraphQL; not production startup/build"
+  },
+  "patched_dependency_guard": "8 keys aligned; existing guard unit assertions pass",
+  "full_application_builds": "Web production build passed; other application builds remain for normal CI",
+  "production_changes": false,
+  "release_validation": "release-validation.json"
+}

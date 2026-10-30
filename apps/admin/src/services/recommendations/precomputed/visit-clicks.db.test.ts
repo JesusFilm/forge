@@ -38,6 +38,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     const sessionDigest = "a".repeat(64)
 
     beforeAll(async () => {
+      const databaseUrl = new URL(env.DATABASE_URL)
+      if (
+        !["127.0.0.1", "localhost"].includes(databaseUrl.hostname) ||
+        !["/forge_test", "/forge_precomputed_control_test"].includes(
+          databaseUrl.pathname,
+        ) ||
+        databaseUrl.search ||
+        databaseUrl.hash
+      )
+        throw new Error("Owned loopback precomputed fixture database required")
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
       await admin.query(`CREATE SCHEMA "${schema}"`)
@@ -295,21 +305,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(JSON.stringify(report)).not.toContain("click-item-")
     })
 
-    it("counts an ordinary click after personalization is disabled", async () => {
+    it("counts an ordinary click without a consent receipt row", async () => {
       const enrolled = await visit(RecommendationExperimentArm.CHALLENGER)
       const item = await issuedItem(enrolled.id, 2)
-      await prisma.recommendationConsentReceipt.create({
-        data: {
-          tokenDigest: createHash("sha256")
-            .update(`disabled-${enrolled.id}`)
-            .digest("hex"),
-          contractVersion: "recommendation-consent-v1",
-          choice: "ESSENTIAL_ONLY",
-          state: "ACTIVE",
-          privacyGeneration: 0,
-          expiresAt: new Date(now.getTime() + 35 * 86_400_000),
-        },
-      })
       expect(
         (
           await episodeService.select({
@@ -320,9 +318,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             itemId: item.itemId,
             sessionDigest,
             browserDigest: enrolled.browserDigest,
-            eventId: "click-after-withdrawal",
+            eventId: "click-without-receipt",
             occurredAt: now.toISOString(),
-            claimNonce: "click-client-claim-nonce-withdrawn",
+            claimNonce: "click-client-claim-nonce-no-receipt",
           })
         ).status,
       ).toBe("accepted")
@@ -339,11 +337,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { itemId: item.itemId },
         }),
       ).not.toBeNull()
-      expect(
-        await prisma.recommendationProfileSessionLink.count({
-          where: { sessionDigest },
-        }),
-      ).toBe(0)
     })
 
     it.each(["missing_browser", "different_browser"] as const)(

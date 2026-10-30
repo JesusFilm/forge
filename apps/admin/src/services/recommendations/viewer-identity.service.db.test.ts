@@ -1,14 +1,10 @@
-import { afterAll, describe, expect, it, vi } from "vitest"
+import { afterAll, describe, expect, it } from "vitest"
 import { prisma } from "@/db/client"
 import {
   RecommendationViewerService,
   resolveRecommendationIdentity,
 } from "./viewer-identity.service"
-import { RecommendationProfileService } from "./profile.service"
 import { createHash } from "node:crypto"
-vi.mock("./profiles/job", () => ({
-  dispatchRecommendationProfileProjection: vi.fn(async () => undefined),
-}))
 const caller = {
   id: null,
   role: "CONSUMER_BEARER" as const,
@@ -101,10 +97,6 @@ async function cleanPushRows(): Promise<void> {
   await prisma.pushCampaign.deleteMany({ where })
   await prisma.pushRegistration.deleteMany({ where })
 }
-const erasures = vi.spyOn(
-  RecommendationProfileService.prototype,
-  "completeErasure",
-)
 afterAll(async () => {
   await cleanPushRows()
   for (const token of handles) {
@@ -112,13 +104,12 @@ afterAll(async () => {
       where: { tokenDigest: createHash("sha256").update(token).digest("hex") },
     })
   }
-  await Promise.allSettled(erasures.mock.results.map((result) => result.value))
   await prisma.$disconnect()
 })
 describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
   "cookie-free viewer lifecycle",
   () => {
-    it("bootstraps a profile, preserves session continuity, resets history and keeps opt-out", async () => {
+    it("bootstraps only installation identity and preserves playback sessions across retired transitions", async () => {
       const viewer = await service.bootstrap(caller)
       handles.push(viewer.viewerToken)
       expect(viewer.viewerToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
@@ -127,17 +118,17 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         viewer.viewerToken,
         viewer.sessionToken,
       )
-      expect(initial.profileTokenDigest).toBeTruthy()
+      expect(initial.profileTokenDigest).toBeNull()
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),
-      ).toMatchObject({ personalization: true })
+      ).toMatchObject({ personalization: false })
       await service.transition(caller, { ...viewer, action: "reset" })
       const reset = await service.resolve(
         caller,
         viewer.viewerToken,
         viewer.sessionToken,
       )
-      expect(reset.profileTokenDigest).not.toBe(initial.profileTokenDigest)
+      expect(reset.profileTokenDigest).toBeNull()
       expect(reset.sessionDigest).toBe(initial.sessionDigest)
       await service.transition(caller, { ...viewer, action: "withdraw" })
       expect(
@@ -150,7 +141,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       await service.transition(caller, { ...viewer, action: "grant" })
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),
-      ).toMatchObject({ personalization: true })
+      ).toMatchObject({ personalization: false })
       await service.transition(caller, { ...viewer, action: "delete" })
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),

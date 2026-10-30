@@ -133,21 +133,6 @@ export const STUDIO_MCP_TOOLS = [
     schema: studioAssetReferenceSchema,
   },
   {
-    name: "shorts.packs",
-    description: "Discover reusable Content Packs.",
-    scope: "shorts:read",
-    action: "packs",
-    schema: z.object({ search: z.string().max(200).optional() }).strict(),
-  },
-  {
-    name: "shorts.pack",
-    description:
-      "Read immutable Content Pack evidence and separate editorial guidance.",
-    scope: "shorts:read",
-    action: "pack",
-    schema: z.object({ id: studioIdSchema }).strict(),
-  },
-  {
     name: "shorts.search",
     description:
       "Find exact-language playable video/dub/edition and download identities. Tracks may be empty; use trackId: null in shorts.capture for footage without subtitles.",

@@ -16,6 +16,7 @@ import { extractMuxPlaybackId } from "../lib/muxUrl"
 import { buildMuxStoryboardUrl } from "../lib/tvScrubPreview"
 import type { UpNextTarget } from "../contexts/VideoPlayerContext"
 import { inPlayerMenuVisible } from "./watch/playerSwitch"
+import { audioSwitchConfirmation } from "./watch/dubEditionSwitch"
 import { useFeedbackQr } from "./feedback/useFeedbackQr"
 import type {
   NativePlayerMoment,
@@ -135,12 +136,20 @@ export function NativeSwiftPlayer({
                       "Unknown language",
                     detail: variant.languageNameNative ?? "",
                     url: variant.hls,
+                    confirmationMessage: audioSwitchConfirmation(
+                      { editionId: session.activeVariant?.editionId },
+                      variant,
+                    ),
                   },
                 ]
               : [],
           ) ?? [])
         : [],
-    [sessionOwnsPlayback, session.video?.variants],
+    [
+      sessionOwnsPlayback,
+      session.video?.variants,
+      session.activeVariant?.editionId,
+    ],
   )
 
   const subtitleOptions = useMemo<NativePlayerOption[]>(
@@ -218,6 +227,8 @@ export function NativeSwiftPlayer({
         row.map((cell) => (cell ? "1" : "0")).join(""),
       )}
       feedbackReference={feedback.verified?.referenceCode}
+      feedbackSimulator={feedback.mode !== "verified"}
+      feedbackHostedSimulator={feedback.mode === "signed-simulator"}
       feedbackLoading={feedback.loading}
       feedbackError={feedback.error}
       onFeedbackOpen={() => {

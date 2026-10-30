@@ -1,6 +1,7 @@
 ---
 title: "A physical Android phone on a mobile dev build cannot reach local admin: the loopback rewrite targets the emulator alias on every Android device"
 date: 2026-09-28
+last_updated: 2026-10-19
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -100,6 +101,11 @@ user reported "The s20 is not connected to local admin." No env file set
 6. **Cold-restart Metro with `--clear`.** Expo inlines `EXPO_PUBLIC_*` values at
    bundler start. A reload or a shell `export` does not change the inlined value
    (`docs/solutions/mobile/expo-env-file-handling.md`).
+   Corrected 2026-10-19: a dev bundle does not inline these values. It reads
+   them through `expo/virtual/env`, where a `.env` file value beats a shell
+   value for the same key, so a shell `export` cannot override this file. The
+   cold restart is still the verified step
+   (`docs/solutions/developer-experience/expo-dev-bundle-env-file-beats-shell-override.md`).
 7. **Prove the served bundle before you relaunch the phone.** Fetch the Android
    dev bundle from Metro and grep for the new value. If it shows the old value
    or nothing, restart Metro again before you debug the phone.
@@ -135,7 +141,9 @@ The failure is quiet. The dev bundle boots, and the startup line says
 snapshot or the frozen fallback body, which looks like loaded content.
 
 The obvious fixes fail. `adb reverse` on 3003 gets no traffic. A shell `export`
-or a Metro reload does not change the inlined value. An override in `.env.local`
+or a Metro reload does not change the inlined value. (Corrected 2026-10-19:
+the value is not inlined in a dev bundle; a `.env` file value beats a shell
+value for the same key. See step 6.) An override in `.env.local`
 disappears on the next `fetch-secrets` run.
 
 A wrong port can give a false pass. A rotten dev server fails every route, and

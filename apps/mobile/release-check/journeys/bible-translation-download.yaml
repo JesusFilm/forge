@@ -1,0 +1,107 @@
+# Pick a translation that is not inside the app, open its download prompt,
+# and cancel it. The journey never downloads a whole translation
+# (not-tested.json). The reader reads the chapter from bible.helloao.org.
+appId: org.jesusfilm.forgewatch
+name: bible-translation-download
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Bible
+    label: Open the Bible tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-bible
+    timeout: 20000
+    label: The Bible tab shows
+# The first open plays a swipe demonstration over the verse. A tap skips it.
+- extendedWaitUntil:
+    visible:
+      id: bible-swipe-demo
+    timeout: 15000
+    label: The swipe demonstration shows
+- tapOn:
+    id: bible-swipe-demo
+    label: Skip the swipe demonstration
+- extendedWaitUntil:
+    notVisible:
+      id: bible-swipe-demo
+    timeout: 10000
+    label: The swipe demonstration closes
+- tapOn:
+    text: "Translation: .+"
+    label: Open the translation picker
+- extendedWaitUntil:
+    visible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker shows
+- tapOn:
+    text: Search translations
+    label: Open the translation search field
+- inputText:
+    text: World English
+    label: Type the translation name
+# On a small phone the keyboard covers the first result, so the journey
+# closes the keyboard with the return key.
+- pressKey:
+    key: Enter
+    label: Close the keyboard
+- tapOn:
+    text: "World English Bible, .+"
+    label: Pick the World English Bible
+- extendedWaitUntil:
+    notVisible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker closes
+- extendedWaitUntil:
+    visible:
+      text: "Translation: World English Bible.*"
+    timeout: 20000
+    label: The reader shows the World English Bible
+- assertVisible:
+    id: bible-verse
+    label: A World English Bible verse shows
+- tapOn:
+    text: "Translation: World English Bible.*"
+    label: Open the translation picker again
+- extendedWaitUntil:
+    visible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker shows again
+- tapOn:
+    id: translation-download-button
+    label: Open the download prompt
+- extendedWaitUntil:
+    visible:
+      text: ".*Then the whole translation reads with no connection."
+    timeout: 10000
+    label: The download prompt shows
+- tapOn:
+    text: Cancel
+    label: Cancel the download prompt
+- extendedWaitUntil:
+    notVisible:
+      text: ".*Then the whole translation reads with no connection."
+    timeout: 10000
+    label: The download prompt closes
+- assertVisible:
+    text: Download World English Bible
+    label: No download started
+- tapOn:
+    text: Close
+    label: Close the translation picker
+- extendedWaitUntil:
+    notVisible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker closes again

@@ -4396,6 +4396,27 @@ describe("TypesenseWatchSearchService", () => {
     })
 
     describe("candidate serving proxy", () => {
+      it.each(["video", "experience"] as const)(
+        "includes profile preparation in successful %s response latency",
+        async (resultType) => {
+          const { service } = serviceFor(semanticFixture())
+          const profileStartedAt = performance.now()
+          let profileDurationMs = 0
+          const response = await searchResolvedTypesenseWatchSearch(
+            async () => {
+              await delay(100)
+              profileDurationMs = performance.now() - profileStartedAt
+              return service
+            },
+            { ...input, resultTypes: [resultType] },
+            { hardTimeoutMs: 2_300, requestStartedAtMs: profileStartedAt },
+          )
+
+          expect(response.latencyMs).toBeGreaterThanOrEqual(profileDurationMs)
+          expect(response.results).toHaveLength(resultType === "video" ? 1 : 0)
+        },
+      )
+
       it("fails a profile that never resolves within the budget", async () => {
         const { logger } = serviceFor(semanticFixture())
 

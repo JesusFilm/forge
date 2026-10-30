@@ -49,7 +49,7 @@ export default function GenerationPanel({
     [selected, setSelected] = useState([projectId]),
     [nextProjectCursor, setNextProjectCursor] = useState<string | null>(null),
     [message, setMessage] = useState(
-      "Generate an editable script and composition from this project's selected sources and Content Packs. Propose canonical operations and inspectable source, coherence, depth, fidelity and voice findings. Preserve author language and manual timing. Do not narrate or publish.",
+      "Generate an editable script and composition from this project's selected sources. Propose canonical operations and inspectable source, coherence, depth, fidelity and voice findings. Preserve author language and manual timing. Do not narrate or publish.",
     ),
     [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),

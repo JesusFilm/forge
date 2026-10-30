@@ -46,6 +46,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
     <PressableCard
       onPress={handlePress}
       accessibilityLabel={tCommon("playTitleAriaLabel", { title })}
+      testID="sdui-video-card"
       {...{ "dd-action-name": "section-video-card" }}
       style={styles.container}
       surfaceStyle={[card.surface, styles.localCard]}

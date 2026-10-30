@@ -10,6 +10,7 @@ export type NativeAndroidPlayerOption = {
   url: string
   disabled?: boolean
   searchText?: string
+  confirmationMessage?: string
 }
 
 export type NativeAndroidPlayerMoment = {
@@ -68,6 +69,8 @@ export type NativeAndroidPlayerViewProps = ViewProps & {
   feedbackVisible?: boolean
   feedbackRows?: string[]
   feedbackReference?: string
+  feedbackSimulator?: boolean
+  feedbackHostedSimulator?: boolean
   feedbackLoading?: boolean
   feedbackError?: boolean
   onFeedbackOpen: () => void

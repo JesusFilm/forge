@@ -35,11 +35,6 @@ import {
   loadContinueWatching,
   type ContinueWatchingEntry,
 } from "../../lib/watchEvents/continueWatching"
-import {
-  recommendationsEnabled,
-  readPersonalizationChoice,
-  changePersonalization,
-} from "../../lib/recommendations/client"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -47,41 +42,6 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
-  const [personalized, setPersonalized] = useState(true)
-  const [recommendationsReady, setRecommendationsReady] = useState(false)
-  const [recommendationsBusy, setRecommendationsBusy] = useState(false)
-  const [recommendationsError, setRecommendationsError] = useState(false)
-  useEffect(() => {
-    let cancelled = false
-    if (recommendationsEnabled())
-      void readPersonalizationChoice()
-        .then((choice) => {
-          if (!cancelled) {
-            setPersonalized(choice !== false)
-            setRecommendationsReady(true)
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setRecommendationsError(true)
-        })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  const updateRecommendations = async (
-    action: "grant" | "withdraw" | "reset",
-  ) => {
-    if (recommendationsBusy) return
-    setRecommendationsBusy(true)
-    setRecommendationsError(false)
-    try {
-      setPersonalized(await changePersonalization(action))
-    } catch {
-      setRecommendationsError(true)
-    } finally {
-      setRecommendationsBusy(false)
-    }
-  }
   const pathname = usePathname()
   const leaveSettings = useCallback(() => router.dismissTo("/"), [router])
   useFocusEffect(
@@ -151,37 +111,6 @@ export function SettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
-      {recommendationsEnabled() ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionHeading}>Recommendations</Text>
-          <SettingsRow
-            testID="settings-personalized-recommendations"
-            icon="sparkles-outline"
-            label="Personalized recommendations"
-            checked={personalized}
-            disabled={!recommendationsReady || recommendationsBusy}
-            onPress={() => {
-              void updateRecommendations(personalized ? "withdraw" : "grant")
-            }}
-            onFocusNode={captureFocusedNode}
-          />
-          <SettingsRow
-            testID="settings-reset-recommendations"
-            icon="refresh-outline"
-            label="Reset recommendations"
-            disabled={!recommendationsReady || recommendationsBusy}
-            onPress={() => {
-              void updateRecommendations("reset")
-            }}
-            onFocusNode={captureFocusedNode}
-          />
-          {recommendationsError ? (
-            <Text style={styles.sectionNote}>
-              Could not update recommendations. Please try again.
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
 
       {Platform.OS === "android" && (
         <View style={styles.section}>

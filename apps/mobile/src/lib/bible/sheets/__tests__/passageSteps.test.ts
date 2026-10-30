@@ -6,6 +6,7 @@
 import { BIBLE_BOOKS, type UsfmBookId } from "../../text/books"
 import {
   chapterNumbers,
+  initialTestament,
   numberingFor,
   passageBooks,
   pickedBsbRef,
@@ -229,5 +230,20 @@ describe("the stand-in's numbers and names", () => {
         standInNames: new Map([["PSA", "Псалтирь"]]),
       }),
     ).toBeNull()
+  })
+})
+
+describe("initialTestament", () => {
+  it("opens on the current book's testament", () => {
+    const books = passageBooks({ id: "full", books: ALL_BOOKS })
+    expect(initialTestament(books, "HEB")).toBe("new")
+    expect(initialTestament(books, "PSA")).toBe("old")
+  })
+
+  it("opens a New Testament on its own books when no book is current", () => {
+    expect(
+      initialTestament(passageBooks({ id: "nt", books: NEW_TESTAMENT }), null),
+    ).toBe("new")
+    expect(initialTestament(passageBooks(null), null)).toBe("old")
   })
 })
