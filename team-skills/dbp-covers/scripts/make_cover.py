@@ -6,6 +6,9 @@ Three looks, matching the series covers made in Figma:
   bold    - 2-4 heavy caps words on the left, orange rule, passage label under it
   moment  - the story moment; gold pill label and a sans headline at the bottom left
 
+--side left|right and --valign top|middle|bottom move the text to where the
+frame has room (faces stay clear). Look at the result before using it.
+
 Usage:
   python3 make_cover.py --type face --frame frame.jpg --text "Not this|close." --passage "LUKE 5:1–11" --out cover.jpg
   python3 make_cover.py --type bold --frame f.jpg --text "Отойди|от|меня" --passage "ОТ ЛУКИ 5:1–11" --out c.jpg
@@ -102,58 +105,90 @@ def tracked(draw, xy, text, fnt, fill, tracking, anchor_right=False):
     return total
 
 
-def face(img, text, passage):
-    img = Image.alpha_composite(img.convert("RGBA"), gradient("right", 0.42, 1.0, 175))
+MARGIN_X, MARGIN_TOP, MARGIN_BOTTOM = 76, 80, 70
+# YouTube draws the duration over the bottom-right corner: keep text above it there.
+DURATION_CLEAR = 70
+
+
+def block_top(valign, block_h, side):
+    if valign == "top":
+        return MARGIN_TOP
+    if valign == "middle":
+        return (H - block_h) / 2
+    bottom = H - MARGIN_BOTTOM - (DURATION_CLEAR if side == "right" else 0)
+    return bottom - block_h
+
+
+def line_x(side):
+    return (W - MARGIN_X, "ra") if side == "right" else (MARGIN_X, "la")
+
+
+def shade(img, side, valign, alpha, tint=(0, 0, 0)):
+    """Darken the side and height where the text sits."""
+    img = Image.alpha_composite(img.convert("RGBA"), gradient(side, 0.42, 1.0, alpha, tint))
+    if valign in ("top", "bottom"):
+        img = Image.alpha_composite(img, gradient(valign, 0.55, 1.0, alpha // 2))
+    return img
+
+
+def face(img, text, passage, side="right", valign="middle"):
+    img = shade(img, side, valign, 175)
     d = ImageDraw.Draw(img)
-    right, max_w = W - 96, 700
-    f, lines, size = fit(text, "Literata-ExtraBold.ttf", max_w, 420, 190, d, 1.02)
-    block_h = len(lines) * size * 1.02
-    top = H * 0.56 - block_h / 2 + 40
+    f, lines, size = fit(text, "Literata-ExtraBold.ttf", 700, 420, 190, d, 1.02)
     label = font("Inter-SemiBold.ttf", 44)
-    tracked(d, (right, top - 82), passage.upper(), label, GOLD, 3, anchor_right=True)
+    block_h = 82 + len(lines) * size * 1.02
+    top = block_top(valign, block_h, side) + 82
+    x, anchor = line_x(side)
+    tracked(d, (x, top - 82), passage.upper(), label, GOLD, 3, anchor_right=side == "right")
     for i, line in enumerate(lines):
         color = GOLD if i == len(lines) - 1 and len(lines) > 1 else WHITE
-        d.text((right, top + i * size * 1.02), line, font=f, fill=color, anchor="ra")
+        d.text((x, top + i * size * 1.02), line, font=f, fill=color, anchor=anchor)
     return img
 
 
-def bold(img, text, passage):
+def bold(img, text, passage, side="left", valign="top"):
     soft = img.filter(ImageFilter.GaussianBlur(10))
-    mask = gradient("left", 0.45, 0.9, 255).getchannel("A")
+    mask = gradient(side, 0.45, 0.9, 255).getchannel("A")
     img = Image.composite(soft, img, mask)
-    img = Image.alpha_composite(
-        img.convert("RGBA"), gradient("left", 0.38, 1.0, 150, tint=(120, 62, 22))
-    )
-    img = Image.alpha_composite(img, gradient("left", 0.45, 1.0, 90))
+    img = shade(img, side, valign, 150, tint=(120, 62, 22))
+    img = Image.alpha_composite(img, gradient(side, 0.45, 1.0, 90))
     d = ImageDraw.Draw(img)
-    left = 76
     f, lines, size = fit(text, "Montserrat-ExtraBold.ttf", 640, 560, 168, d, 1.0, upper=True)
-    top = 80
-    for i, line in enumerate(lines):
-        d.text((left, top + i * size * 1.0), line, font=f, fill=WHITE)
-    y = top + len(lines) * size * 1.0 + 26
-    d.rectangle([left, y, left + 270, y + 14], fill=ORANGE)
     label = font("Inter-SemiBold.ttf", 42)
-    tracked(d, (left, y + 40), passage.upper(), label, WHITE, 2)
+    block_h = len(lines) * size + 26 + 14 + 40 + 50
+    top = block_top(valign, block_h, side)
+    x, anchor = line_x(side)
+    for i, line in enumerate(lines):
+        d.text((x, top + i * size), line, font=f, fill=WHITE, anchor=anchor)
+    y = top + len(lines) * size + 26
+    bar = [x, y, x + 270, y + 14] if side == "left" else [x - 270, y, x, y + 14]
+    d.rectangle(bar, fill=ORANGE)
+    tracked(d, (x, y + 40), passage.upper(), label, WHITE, 2, anchor_right=side == "right")
     return img
 
 
-def moment(img, text, passage):
-    img = Image.alpha_composite(img.convert("RGBA"), gradient("bottom", 0.4, 1.0, 200))
+def moment(img, text, passage, side="left", valign="bottom"):
+    img = Image.alpha_composite(img.convert("RGBA"), gradient(valign if valign != "middle" else "bottom", 0.4, 1.0, 200))
+    if valign == "middle":
+        img = Image.alpha_composite(img, gradient(side, 0.4, 1.0, 150))
     d = ImageDraw.Draw(img)
-    left = 76
     f, lines, size = fit(text, "Inter-ExtraBold.ttf", 960, 320, 144, d, 1.06)
-    bottom = H - 70
-    top = bottom - len(lines) * size * 1.06
-    for i, line in enumerate(lines):
-        d.text((left, top + i * size * 1.06), line, font=f, fill=WHITE)
     label = font("Inter-Bold.ttf", 46)
     cap = passage.upper()
     tw = d.textlength(cap, font=label) + 3 * (len(cap) - 1)
+    block_h = 112 + len(lines) * size * 1.06
+    top = block_top(valign, block_h, side) + 112
+    x, anchor = line_x(side)
+    for i, line in enumerate(lines):
+        d.text((x, top + i * size * 1.06), line, font=f, fill=WHITE, anchor=anchor)
     py = top - 112
-    d.rounded_rectangle([left, py, left + tw + 56, py + 82], radius=10, fill=PILL)
-    tracked(d, (left + 28, py + 14), cap, label, INK, 3)
+    px0 = x if side == "left" else x - tw - 56
+    d.rounded_rectangle([px0, py, px0 + tw + 56, py + 82], radius=10, fill=PILL)
+    tracked(d, (px0 + 28, py + 14), cap, label, INK, 3)
     return img
+
+
+DEFAULTS = {"face": ("right", "middle"), "bold": ("left", "top"), "moment": ("left", "bottom")}
 
 
 def main():
@@ -164,10 +199,15 @@ def main():
     p.add_argument("--passage", required=True, help='e.g. "LUKE 5:1–11" / "ОТ ЛУКИ 5:1–11"')
     p.add_argument("--focus", type=float, default=0.5, help="horizontal crop focus 0-1")
     p.add_argument("--zoom", type=float, default=1.0, help="crop in, e.g. 1.25")
+    p.add_argument("--side", choices=["left", "right"], help="where the text sits (default per type)")
+    p.add_argument("--valign", choices=["top", "middle", "bottom"], help="text height (default per type)")
     p.add_argument("--out", required=True)
     a = p.parse_args()
+    side, valign = DEFAULTS[a.type]
     img = load_frame(a.frame, a.focus, a.zoom)
-    img = {"face": face, "bold": bold, "moment": moment}[a.type](img, a.text, a.passage)
+    img = {"face": face, "bold": bold, "moment": moment}[a.type](
+        img, a.text, a.passage, a.side or side, a.valign or valign
+    )
     img.convert("RGB").save(a.out, quality=92)
     print(a.out)
 

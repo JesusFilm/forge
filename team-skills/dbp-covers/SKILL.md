@@ -18,7 +18,12 @@ python3 scripts/make_cover.py --type face --frame f.jpg --focus 0.3 --text "Not 
 python3 scripts/make_cover.py --type bold --frame f.jpg --text "Отойди|от|меня" --passage "ОТ ЛУКИ 5:1–11" --out cover_bold_RU.jpg
 ```
 
-`|` breaks a line. `--focus` (0-1) moves the crop left or right; `--zoom` crops in. Output is 1600x900 JPG.
+`|` breaks a line. Output is 1600x900 JPG. The layout adapts to the frame:
+
+- `--side left|right` and `--valign top|middle|bottom` put the text where the frame has room (defaults: face right/middle, bold left/top, moment left/bottom). The shading follows the text.
+- `--focus` (0-1) moves the crop left or right; `--zoom` crops in.
+- Text size fits itself to the space: short phrases come out larger.
+- When asked for a different look (colour, size, position), edit `scripts/make_cover.py`; it is plain Pillow code.
 
 ## Rules
 
@@ -26,6 +31,6 @@ python3 scripts/make_cover.py --type bold --frame f.jpg --text "Отойди|о�
 - **Frame**: a clean frame from the film (download the film itself; never grab a frame from our own video, which has titles on it). No text over a face; nothing in the bottom-right corner (YouTube shows the duration there).
 - **Rotation**: the cover type that leads the test alternates video to video on each channel, so the grid shows different looks side by side.
 - **Each language** gets its own set with the same frames and its own words (Russian: «ОТ ЛУКИ 5:1–11»).
-- **Check before sending**: look at all three side by side at small size (as on a phone) and with the previous video's cover; words readable, nothing cut at the edge.
+- **Check every cover before showing it (required)**: open the JPG and look at it. If text lies over a face or a key object, is cut at an edge, sits in the bottom-right corner, or is hard to read at phone size (shrink it to 320 px wide), change `--side`, `--valign`, `--focus`, `--zoom`, the line breaks or the frame, and render again. Only then show it. Finally compare all three side by side and with the previous video's cover.
 
 Figma remains fine for anyone who prefers it; this template gives the same look without it.
