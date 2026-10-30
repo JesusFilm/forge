@@ -1,9 +1,8 @@
 "use client"
 
-import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   createContext,
   useCallback,
@@ -18,25 +17,15 @@ import {
 } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
-  BarChart2,
-  Beaker,
   Bell,
-  Bot,
   Building2,
-  Captions,
-  ChevronDown,
   ChevronRight,
-  Clapperboard,
-  Crop,
   ExternalLink,
-  FileAudio2,
   FileJson2,
   KeyRound,
-  ListChecks,
   LogOut,
   Moon,
   PanelLeft,
-  SearchCheck,
   Settings2,
   ShieldCheck,
   Sun,
@@ -50,6 +39,19 @@ import {
 } from "@/lib/manager-theme"
 import { cn } from "@/lib/utils"
 import { MANAGER_SIDEBAR_COOKIE } from "@/lib/manager-sidebar"
+import {
+  getActiveStudioSubmenuItemKey,
+  getStudioCurrentProductKey,
+  getStudioProductSubmenu,
+  isPathnameInStudioProductSubmenu,
+  isSubtitleLabPathname,
+} from "./studio-product-submenu"
+import {
+  getStudioProductGroups,
+  StudioProductSwitcher,
+  type StudioSelectableProduct,
+  type StudioSelectableProductKey,
+} from "./studio-product-switcher"
 
 export type ManagerShellUser = {
   username: string
@@ -222,90 +224,16 @@ export function StudioThemeSwitch() {
   )
 }
 
-const reportOptions: Array<{
-  icon: LucideIcon
-  subtitle: string
-  value: ManagerShellReportType
-  label: string
-}> = [
-  {
-    value: "subtitles",
-    label: "Subtitles",
-    subtitle: "Subtitle coverage for the selected language.",
-    icon: Captions,
-  },
-  {
-    value: "audio",
-    label: "Audio",
-    subtitle: "Audio coverage for the selected language.",
-    icon: FileAudio2,
-  },
-  {
-    value: "meta",
-    label: "Meta",
-    subtitle: "Metadata coverage for the selected language.",
-    icon: FileJson2,
-  },
-]
+function getStudioProductLabel(key: StudioSelectableProductKey): string {
+  for (const group of getStudioProductGroups()) {
+    for (const product of group.products) {
+      if (product.key === key) {
+        return product.label
+      }
+    }
+  }
 
-const navItems: Array<{
-  href: Route
-  icon: LucideIcon
-  key: string
-  label: string
-}> = [
-  {
-    key: "coverage",
-    href: "/dashboard/coverage",
-    label: "Report",
-    icon: BarChart2,
-  },
-  {
-    key: "jobs",
-    href: "/dashboard/jobs",
-    label: "Jobs",
-    icon: ListChecks,
-  },
-  {
-    key: "subtitle-lab",
-    href: "/dashboard/subtitle-lab" as Route,
-    label: "Subtitle Lab",
-    icon: Beaker,
-  },
-  {
-    key: "smart-crop",
-    href: "/dashboard/smart-crop",
-    label: "Smart Crop",
-    icon: Crop,
-  },
-  {
-    key: "shorts",
-    href: "/dashboard/shorts",
-    label: "Shorts",
-    icon: Clapperboard,
-  },
-  {
-    key: "seo",
-    href: "/dashboard/seo",
-    label: "SEO",
-    icon: SearchCheck,
-  },
-  {
-    key: "alerts",
-    href: "/dashboard/alerts",
-    label: "Alerts",
-    icon: Bell,
-  },
-  {
-    key: "agents",
-    href: "/dashboard/agents",
-    label: "Agents",
-    icon: Bot,
-  },
-]
-
-export function getManagerShellNavigation() {
-  return navItems
+  return key
 }
 
 function readStoredReportType(): ManagerShellReportType {
@@ -323,20 +251,6 @@ function readStoredReportType(): ManagerShellReportType {
   }
 
   return "subtitles"
-}
-
-function isActiveRoute(pathname: string, href: string): boolean {
-  if (href === "/dashboard/coverage") {
-    return (
-      pathname === "/dashboard" || pathname.startsWith("/dashboard/coverage")
-    )
-  }
-
-  if (href === "/dashboard/jobs") {
-    return pathname.startsWith("/dashboard/jobs")
-  }
-
-  return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 function getBreadcrumbs(pathname: string): string[] {
@@ -401,110 +315,6 @@ function getBreadcrumbs(pathname: string): string[] {
   }
 
   return ["Studio", "Coverage"]
-}
-
-function ReportIcon({
-  icon: Icon,
-  value,
-}: {
-  icon: LucideIcon
-  value: ManagerShellReportType
-}) {
-  return (
-    <span className={`design-system-report-icon is-${value}`}>
-      <Icon size={18} aria-hidden="true" strokeWidth={2} />
-    </span>
-  )
-}
-
-function StudioReportSwitcher() {
-  const shell = useManagerShellState()
-  const [isOpen, setIsOpen] = useState(false)
-  const shellRef = useRef<HTMLDivElement | null>(null)
-  const selectedReport =
-    reportOptions.find((option) => option.value === shell.reportType) ??
-    reportOptions[0]
-  const SelectedIcon = selectedReport.icon
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false)
-      }
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        shellRef.current &&
-        !shellRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-    document.addEventListener("mousedown", handleClickOutside)
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
-
-  return (
-    <div
-      className={`design-system-report-switch${isOpen ? " is-open" : ""}`}
-      ref={shellRef}
-    >
-      <button
-        type="button"
-        className="design-system-workspace-button"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-label={`Current report: ${selectedReport.label}`}
-        onClick={() => setIsOpen((prev) => !prev)}
-      >
-        <span className="design-system-avatar design-system-avatar--report">
-          <ReportIcon icon={SelectedIcon} value={selectedReport.value} />
-        </span>
-        <span className="design-system-workspace-copy">
-          <strong>{selectedReport.label}</strong>
-          <small>{selectedReport.subtitle}</small>
-        </span>
-        <ChevronDown size={16} aria-hidden="true" />
-      </button>
-
-      {isOpen ? (
-        <div
-          className="design-system-report-switch-menu"
-          role="listbox"
-          aria-label="Report selector"
-        >
-          {reportOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`design-system-report-switch-option${
-                option.value === selectedReport.value ? " is-selected" : ""
-              }`}
-              role="option"
-              aria-selected={option.value === selectedReport.value}
-              onClick={() => {
-                shell.setReportType(option.value)
-                setIsOpen(false)
-              }}
-            >
-              <ReportIcon icon={option.icon} value={option.value} />
-              <span className="design-system-report-switch-copy">
-                <strong>{option.label}</strong>
-                <small>{option.subtitle}</small>
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 function StudioUserMenu({ user }: { user: ManagerShellUser }) {
@@ -786,6 +596,8 @@ export function ManagerDashboardShell({
   user: ManagerShellUser
 }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
@@ -793,7 +605,40 @@ export function ManagerDashboardShell({
     () => readStoredReportType(),
   )
   const [queueCount, setQueueCount] = useState<number | null>(null)
+  // A product chosen in the switcher whose route has not loaded yet, so its
+  // submenu shows immediately; it lapses once the pathname changes.
+  const [pendingProduct, setPendingProduct] = useState<{
+    key: StudioSelectableProductKey
+    pathname: string
+  } | null>(null)
   const breadcrumbs = useMemo(() => getBreadcrumbs(pathname), [pathname])
+
+  const pendingKey =
+    pendingProduct?.pathname === pathname ? pendingProduct.key : null
+  if (pendingProduct && !pendingKey) {
+    setPendingProduct(null)
+  }
+
+  // Subtitle Lab belongs only to Subtitles, so visiting it selects that report
+  // (unless Audio or Meta was just chosen and the report is loading).
+  const isSubtitleLab = isSubtitleLabPathname(pathname)
+  if (isSubtitleLab && !pendingKey && reportType !== "subtitles") {
+    setReportTypeState("subtitles")
+  }
+
+  // Route products are current on their pages; Report and Jobs follow the
+  // report context. The selected product owns the submenu below the switcher.
+  const currentProductKey =
+    pendingKey ?? getStudioCurrentProductKey(pathname, reportType)
+  const submenuItems = getStudioProductSubmenu(currentProductKey)
+  // While the chosen product's route loads, none of its items is active yet.
+  const activeSubmenuKey = pendingKey
+    ? null
+    : getActiveStudioSubmenuItemKey(
+        submenuItems,
+        pathname,
+        searchParams?.toString(),
+      )
 
   const setReportType = useCallback(
     (nextReportType: ManagerShellReportType) => {
@@ -811,6 +656,49 @@ export function ManagerDashboardShell({
     },
     [],
   )
+
+  const handleProductSelect = useCallback(
+    (product: StudioSelectableProduct) => {
+      if (product.kind === "report") {
+        setReportType(product.key)
+
+        // Report and Jobs are shared by every report product; other pages
+        // (Subtitle Lab, route products) fall back to the report.
+        if (
+          isPathnameInStudioProductSubmenu(
+            product.key,
+            pathname,
+            searchParams?.toString(),
+          )
+        ) {
+          setPendingProduct(null)
+          return
+        }
+
+        setPendingProduct({ key: product.key, pathname })
+        router.push("/dashboard/coverage")
+        return
+      }
+
+      setPendingProduct(
+        pathname === product.href ? null : { key: product.key, pathname },
+      )
+      router.push(product.href)
+    },
+    [pathname, router, searchParams, setReportType],
+  )
+
+  useEffect(() => {
+    if (!isSubtitleLab) {
+      return
+    }
+
+    try {
+      window.sessionStorage.setItem(REPORT_STORAGE_KEY, "subtitles")
+    } catch {
+      // ignore storage errors
+    }
+  }, [isSubtitleLab])
 
   useEffect(() => {
     let cancelled = false
@@ -888,29 +776,20 @@ export function ManagerDashboardShell({
             </div>
 
             <div className="design-system-sidebar-content">
-              {pathname.startsWith("/dashboard/shorts") ? (
-                <Link
-                  href="/dashboard/shorts"
-                  className="design-system-workspace-button"
-                  aria-label="Shorts"
-                  title="Shorts"
-                >
-                  <span className="design-system-avatar design-system-avatar--report">
-                    <Clapperboard size={18} />
-                  </span>
-                  <span className="design-system-workspace-copy">
-                    <strong>Shorts</strong>
-                    <small>Standalone projects</small>
-                  </span>
-                </Link>
-              ) : (
-                <StudioReportSwitcher />
-              )}
+              <StudioProductSwitcher
+                currentKey={currentProductKey}
+                onSelect={handleProductSelect}
+                triggerClassName={TOPBAR_ICON_BUTTON_CLASS}
+              />
 
-              <nav className="design-system-shell-nav" aria-label="Primary">
-                {navItems.map((item) => {
+              <nav
+                className="design-system-shell-nav"
+                aria-label={`${getStudioProductLabel(currentProductKey)} menu`}
+                data-product={currentProductKey}
+              >
+                {submenuItems.map((item) => {
                   const Icon = item.icon
-                  const isActive = isActiveRoute(pathname, item.href)
+                  const isActive = item.key === activeSubmenuKey
 
                   return (
                     <Link
@@ -923,7 +802,7 @@ export function ManagerDashboardShell({
                     >
                       <Icon size={19} aria-hidden="true" />
                       <span>{item.label}</span>
-                      {item.key === "jobs" &&
+                      {item.badge === "job-queue" &&
                       queueCount != null &&
                       queueCount > 0 ? (
                         <span className="studio-shell-nav-badge">
