@@ -55,6 +55,7 @@ import {
 } from "@/lib/watch-home-hero-fit"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import {
+  watchHomeHeroSlidesToTvCarouselSlides,
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
 } from "@/components/home/WatchHomeTvCarousel"
@@ -4136,6 +4137,64 @@ describe("WatchHomePage", () => {
       })
     }
   })
+
+  // Card bytes follow admin's WATCH_CHAPTER_CAROUSEL_RECIPE. The hero
+  // resolver keeps the existing HeroPlayer request order (time then width),
+  // WEBP format and no height/fit_mode, including for portrait playback IDs.
+  it.each([
+    [
+      "mux-card",
+      "https://image.mux.com/mux-card/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+      "https://image.mux.com/mux-card/thumbnail.webp?time=2&width=1280",
+    ],
+    [
+      "  mux/card?x=1  ",
+      "https://image.mux.com/mux%2Fcard%3Fx%3D1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+      "https://image.mux.com/mux%2Fcard%3Fx%3D1/thumbnail.webp?time=2&width=1280",
+    ],
+    [null, null, null],
+    [undefined, null, null],
+    ["", null, null],
+    ["  ", null, null],
+  ])(
+    "pins converted carousel recipes for playback id %j",
+    (playbackId, thumbnailUrl, posterUrl) => {
+      const slides = watchHomeHeroSlidesToTvCarouselSlides([
+        {
+          ...makeCard({ imageUrl: null, playbackId }),
+          eyebrow: "Featured",
+        } as WatchHomeModel["heroSlides"][number],
+      ])
+
+      expect(slides).toHaveLength(1)
+      expect(slides[0]?.thumbnailUrl).toBe(thumbnailUrl)
+      expect(slides[0]?.posterUrl).toBe(posterUrl)
+    },
+  )
+
+  it.each([
+    [
+      "mux-card",
+      "https://image.mux.com/mux-card/thumbnail.webp?time=2&width=1280",
+    ],
+    [null, "https://cdn.example/curated.jpg"],
+  ])(
+    "keeps authored carousel cards and frame-first hero with playback id %j",
+    (playbackId, posterUrl) => {
+      const slides = watchHomeHeroSlidesToTvCarouselSlides([
+        {
+          ...makeCard({
+            imageUrl: "https://cdn.example/curated.jpg",
+            playbackId,
+          }),
+          eyebrow: "Featured",
+        } as WatchHomeModel["heroSlides"][number],
+      ])
+
+      expect(slides[0]?.thumbnailUrl).toBe("https://cdn.example/curated.jpg")
+      expect(slides[0]?.posterUrl).toBe(posterUrl)
+    },
+  )
 
   it("posters the intro from the Mux frame, not the mobile-sized authored image", async () => {
     // makeModel() has no carousel pools, so the component builds its slides
