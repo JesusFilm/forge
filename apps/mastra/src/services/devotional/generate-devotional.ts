@@ -206,6 +206,7 @@ const VOICE_ENUM = z.enum([
   "male-e",
   "female-c",
   "female-d",
+  "female-clara",
   "russian",
   "spanish",
   "spanish-female",

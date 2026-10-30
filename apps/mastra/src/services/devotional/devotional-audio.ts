@@ -561,6 +561,20 @@ const VOICE_DELIVERY: Record<
     },
     take: "f4",
   },
+  // Clara (owner's pick for English when female-d is out of reach,
+  // 2026-10-30): her library sample read too calm and slow for a
+  // devotional ("не хочется, чтобы он был слишком медленный"), so she runs
+  // faster and livelier than her default.
+  "female-clara": {
+    settings: {
+      stability: 0.3,
+      similarity_boost: 0.8,
+      style: 0.6,
+      use_speaker_boost: true,
+      speed: 1.15,
+    },
+    take: "c115",
+  },
   // The Spanish reflection voice (Luisa) read the Prodigal at 8:03 on the
   // default 1.1: brought up toward the English F4 pace so the cut fits the
   // 8-minute limit with the same text (2026-09-30).

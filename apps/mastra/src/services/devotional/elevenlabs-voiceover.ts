@@ -43,6 +43,10 @@ export const DEVOTIONAL_VOICES = {
   // Owner's pick for the reflection voice from the Prodigal Son on
   // (2026-09-30), replacing female-c there.
   "female-d": "98ujrzs7rxAMEsaC4EpW",
+  // "Clara - Relaxing, Calm and Soothing" from the voice library. Owner's
+  // pick (2026-10-30, Teach Us to Pray) for the English reflection when the
+  // JFP-only clone behind female-d is out of reach; read a little faster.
+  "female-clara": "Qggl4b0xRMiqOwhPtVWT",
   // Russian-locale narration voice (owner pick "JFvoice_Rus"); selected in
   // devotional-locale.ts. Good for Russian, NOT for English (owner-tested).
   // (English uses the rotation above; a fixed English voice was a local
