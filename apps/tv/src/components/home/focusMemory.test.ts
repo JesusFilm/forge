@@ -53,10 +53,10 @@ describe("createFocusMemory", () => {
     expect(a.calls).toEqual(["a", "a"])
   })
 
-  it("tolerates a node missing requestTVFocus (detached) and returns true", () => {
+  it("tolerates a node missing requestTVFocus (detached) and returns false", () => {
     const mem = createFocusMemory()
     mem.capture({} as never)
     expect(() => mem.restore()).not.toThrow()
-    expect(mem.restore()).toBe(true)
+    expect(mem.restore()).toBe(false)
   })
 })

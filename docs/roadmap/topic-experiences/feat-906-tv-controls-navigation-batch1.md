@@ -3,7 +3,7 @@ id: "feat-906"
 title: "Repair Watch TV playback controls and Home navigation"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-30"
 duration: 3
 depends_on: []
@@ -59,3 +59,22 @@ including focused hero dwell and transition-adjacent selection, Home Back,
 return focus/offset, playback pause/resume, scrub cancel and saved progress.
 Compare Home loading work/timings under matched conditions. Preserve failed
 evidence and disclose any environment or physical-device limitations.
+
+## Verified implementation
+
+`codex/tv-controls-batch1` combines the reviewed native Select gesture, focused
+hero/Menu ownership and logical section/card restoration. The fresh-history
+Android insertion condition reproduced TV-19 and passed after the repair;
+ordinary deep offset, Search and post-return navigation also passed. Final Home
+JavaScript passed the 4K Apple simulator checks. Native binaries were unchanged
+for the later JS repair, with explicit payload/input-equivalence verification.
+
+Typecheck, full TV lint/Jest, formatting, native builds/tests, canonical asset
+compatibility and the declared bounded Home performance comparisons passed.
+The owner approved the batch on 30 October. PR #2964 follows the normal CI and
+squash-merge path; Linear and the HTML report record the final merge/install
+state. Physical Chromecast installation and store distribution remain deferred.
+
+Exact source/build identities, retained failures and measurement limits are in
+`docs/plans/2026-10-30-tv-controls-batch1.md`. This work does not close the separate
+strict whole-startup investigation in feat-889.

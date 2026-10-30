@@ -2,7 +2,7 @@
 // title over a FlatList of HomeCards. Fixed card dims → getItemLayout; empty
 // sections render nothing; onRowFocus reports the focused row for scroll anchoring.
 
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useMemo, useState, useRef, useEffect } from "react"
 import {
   Dimensions,
   FlatList,
@@ -12,6 +12,8 @@ import {
   Text,
   View,
   type ListRenderItemInfo,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
   type View as ViewType,
 } from "react-native"
 
@@ -128,12 +130,25 @@ type HomeRailProps = {
   rowIndex: number
   /** Re-emits the focused card object plus its native node (closed over
    *  per-card in HomeCard) so the screen can re-focus it after a nav push/pop. */
-  onCardFocus: (card: WatchHomeCard, node: ViewType | null) => void
+  onCardFocus: (
+    card: WatchHomeCard,
+    node: ViewType | null,
+    activation?: boolean,
+  ) => boolean | void
   /** Fires alongside onCardFocus with this rail's rowIndex — drives the
    *  screen's row-anchored scrolling and deep/browse chrome state. */
   onRowFocus?: (rowIndex: number) => void
   onCardPress: (card: WatchHomeCard) => void
   onCardNode?: (card: WatchHomeCard, node: ViewType | null) => void
+  /** One screen-return request, independent of ordinary vertical rail entry. */
+  restoreCardId?: string
+  restoreRequest?: string
+  isRestorePending?: (cardId: string) => boolean
+  restoreOffset?: number
+  onPositionChange?: (cardId: string, offset: number) => void
+  onRestoreReady?: () => void
+  onRestoreUnavailable?: () => void
+  canRememberPosition?: () => boolean
   /** Long-press per card (hold Select) — threaded to HomeCard; the Continue
    *  Watching shelf wires "remove" here. */
   onCardLongPress?: (card: WatchHomeCard) => void
@@ -169,12 +184,86 @@ export const HomeRail = memo(function HomeRail({
   onRowFocus,
   onCardPress,
   onCardNode,
+  restoreCardId,
+  restoreRequest,
+  isRestorePending,
+  restoreOffset,
+  onPositionChange,
+  onRestoreReady,
+  onRestoreUnavailable,
+  canRememberPosition,
   onCardLongPress,
   upFocusTarget,
   restoreLastFocus,
   active = true,
   variant = "landscape",
 }: HomeRailProps) {
+  const listRef = useRef<FlatList<RailItem> | null>(null)
+  const mountedCards = useRef(new Map<string, ViewType>())
+  const offset = useRef(0)
+  const acceptedFocus = useRef(false)
+  const restoringPosition = useRef<{ cardId: string; offset: number } | null>(
+    null,
+  )
+  const rememberedPosition = useRef<{ cardId: string; offset: number } | null>(
+    null,
+  )
+  const recordOffset = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      offset.current = event.nativeEvent.contentOffset.x
+      if (restoringPosition.current) {
+        if (Math.abs(offset.current - restoringPosition.current.offset) > 1)
+          return
+        restoringPosition.current = null
+      }
+      if (
+        acceptedFocus.current &&
+        canRememberPosition?.() !== false &&
+        rememberedPosition.current
+      ) {
+        rememberedPosition.current.offset = offset.current
+        onPositionChange?.(rememberedPosition.current.cardId, offset.current)
+      }
+    },
+    [canRememberPosition, onPositionChange],
+  )
+  useEffect(() => {
+    if (
+      !restoreRequest ||
+      !restoreCardId ||
+      isRestorePending?.(restoreCardId) === false
+    )
+      return
+    const index = cards.findIndex((card) => card.id === restoreCardId)
+    if (index < 0) {
+      onRestoreUnavailable?.()
+      return
+    }
+    // Retain the existing horizontal position when the card is already mounted.
+    // Virtualized targets are brought into the window using the fixed geometry.
+    const saved =
+      restoreOffset != null
+        ? { cardId: restoreCardId, offset: restoreOffset }
+        : rememberedPosition.current
+    if (saved?.cardId === restoreCardId) {
+      // An incidental first-card focus can already have scrolled the native
+      // list. Reapply the last accepted card's offset, including end offsets.
+      acceptedFocus.current = false
+      restoringPosition.current = { ...saved }
+      listRef.current?.scrollToOffset({ offset: saved.offset, animated: false })
+    } else if (!mountedCards.current.has(restoreCardId)) {
+      listRef.current?.scrollToIndex({ index, animated: false })
+    }
+    onRestoreReady?.()
+  }, [
+    cards,
+    restoreCardId,
+    restoreRequest,
+    isRestorePending,
+    restoreOffset,
+    onRestoreReady,
+    onRestoreUnavailable,
+  ])
   // This rail's last real card node — the bounce target for the pad cards.
   // State (not a ref) so the pads re-render with it once it mounts.
   const [lastCardNode, setLastCardNode] = useState<ViewType | null>(null)
@@ -182,6 +271,8 @@ export const HomeRail = memo(function HomeRail({
     () =>
       onCardNode
         ? cards.map((card, index) => (node: ViewType | null) => {
+            if (node) mountedCards.current.set(card.id, node)
+            else mountedCards.current.delete(card.id)
             if (index === cards.length - 1) setLastCardNode(node)
             onCardNode?.(card, node)
           })
@@ -190,11 +281,31 @@ export const HomeRail = memo(function HomeRail({
   )
 
   const handleCardFocus = useCallback(
-    (card: WatchHomeCard, node: ViewType | null) => {
-      onRowFocus?.(rowIndex)
-      onCardFocus(card, node)
+    (card: WatchHomeCard, node: ViewType | null, activation = false) => {
+      const accepted = onCardFocus(card, node, activation) !== false
+      acceptedFocus.current = accepted
+      if (accepted) {
+        onRowFocus?.(rowIndex)
+        if (restoringPosition.current?.cardId !== card.id)
+          restoringPosition.current = null
+        rememberedPosition.current = {
+          cardId: card.id,
+          offset: restoringPosition.current?.offset ?? offset.current,
+        }
+        onPositionChange?.(card.id, rememberedPosition.current.offset)
+      }
     },
-    [onCardFocus, onRowFocus, rowIndex],
+    [onCardFocus, onRowFocus, rowIndex, onPositionChange],
+  )
+
+  const handleCardPress = useCallback(
+    (card: WatchHomeCard) => {
+      // Select may activate a native default whose focus was rejected while a
+      // return was pending. Record the actual action before navigating away.
+      handleCardFocus(card, mountedCards.current.get(card.id) ?? null, true)
+      onCardPress(card)
+    },
+    [handleCardFocus, onCardPress],
   )
 
   // Real cards + invisible over-hang pads (see homeRailItems.buildRailItems).
@@ -222,7 +333,7 @@ export const HomeRail = memo(function HomeRail({
             card={item.card}
             index={index}
             onFocus={handleCardFocus}
-            onPress={onCardPress}
+            onPress={handleCardPress}
             onLongPress={onCardLongPress}
             // Coalesce null -> undefined: a null nextFocusUp (search node not
             // captured yet) should fall back to geometry, not wire to nothing.
@@ -247,7 +358,7 @@ export const HomeRail = memo(function HomeRail({
       cards.length,
       items.length,
       handleCardFocus,
-      onCardPress,
+      handleCardPress,
       onCardNode,
       nodeRefs,
       onCardLongPress,
@@ -283,6 +394,10 @@ export const HomeRail = memo(function HomeRail({
         trapFocusRight={IS_ANDROID}
       >
         <FlatList
+          ref={listRef}
+          onLayout={restoreRequest ? onRestoreReady : undefined}
+          onScroll={recordOffset}
+          scrollEventThrottle={16}
           data={items}
           extraData={lastCardNode}
           horizontal

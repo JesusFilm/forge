@@ -64,3 +64,40 @@ the failure and inspect recorded frames offline with distinct Details, artwork
 and focus milestones. Do not subtract overhead to manufacture a pass. Inspect
 actual APK configuration, native executable sections and bundled functions;
 matching local environment files alone do not establish artifact parity.
+
+## Restore logical identity after asynchronous shelf insertion
+
+An existing Continue Watching row concealed the Android return fault. A fresh QA
+user reproduced it without deleting the original history: opening the fourth
+Happy?: Trailer, naturally watching past 25%, and returning created the first
+shelf above the curated rows and selected the first card instead.
+
+`homeFocusRestore.ts` records section and card IDs independently of numeric row
+positions or a remembered native node. Commit local shelf results together, wait
+for the selected section's current layout and visible scroll position, then
+request focus on its currently registered node. Preserve horizontal position.
+Late callbacks must check live active/pending/identity state. Explicit activation
+records the actual action even when no new focus event arrives. A fresh remote
+action cancels deferred restoration; Android key releases are not fresh actions.
+Chrome and hero activation clear stale rail identity. First mount retains Search.
+
+Keep the existing measurement seam: compute the pure effect using the previous
+Y, write the new Y once, then skip scroll effects while restoration is pending.
+Do not weaken the read-before-write guard to accommodate a duplicate early write.
+
+## Source maps do not prove Android asset compatibility
+
+Reusing an existing APK's native payload with a worker-generated Hermes bundle
+passed source-content checks yet rendered blank icons. Shared dependency symlinks
+outside the worker changed generated `httpServerLocation` values and therefore
+Android resource lookup names. Fourteen of 27 generated registrations no longer
+matched native resources, including both icon fonts. Composed Hermes maps omitted
+these virtual asset registrations.
+
+Use the original project's release-JS build root, or an isolated dependency clone
+with the same relative physical layout. Verify actual generated asset identifiers,
+content hashes, scales and compiled resource names, alongside source maps,
+configuration, signatures and ABI alignment. PNG bytes can differ after AAPT
+processing; identify that representation difference explicitly. Test rendered
+glyphs in a fresh profile so an old cache cannot conceal the mismatch. Preserve
+invalid diagnostic artifacts; do not benchmark or distribute them as valid builds.

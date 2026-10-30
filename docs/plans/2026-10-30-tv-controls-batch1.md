@@ -1,7 +1,7 @@
 # Watch TV controls and navigation — batch 1
 
 Roadmap: feat-906. Base: `48ad42865`. Branch: `codex/tv-controls-batch1`.
-Scope: TV-34, TV-12, TV-13, TV-19. All four remain Todo in refreshed Linear.
+Scope: TV-34, TV-12, TV-13, TV-19. Update Linear only after verified merge.
 
 ## Execution ownership
 
@@ -59,6 +59,11 @@ Wait for an explicit response. Approval is required before merging and before
 implementing the next batch; silence is not approval. No physical Chromecast
 installation, store upload or direct production deployment is authorized.
 
+The owner explicitly replied **Approve this batch** on 30 October 2026. That
+approval persists while the remaining verification is completed; no repeat
+approval is required for these expected behaviors. Personal HTML checkboxes are
+optional notes and do not determine implementation or approval status.
+
 ## Reproduction and repairs
 
 Installed baseline APK SHA-256:
@@ -80,10 +85,18 @@ matched the host after cold boot; existing saved data was retained.
   toggles once and owns the matching release/repeats across focus transfer.
   Error handling and visible child controls retain their behavior. This product
   decision is not batch merge approval.
-- TV-19 was not reproduced in baseline cases on either target. Fourth Happy
-  trailer detail/player return and deep horizontal card return preserved the
-  selected card and placement. No new-row insertion was fabricated or proven.
-  No speculative focus repair was made; the physical report remains open.
+- TV-19 initially passed with an already-present Continue Watching row. A separate
+  Android QA user with empty history exposed the condition: natural playback of
+  the fourth Happy?: Trailer for 17/57 seconds created the first shelf; Back
+  returned focus to the first card. The emulator reproduced wrong identity,
+  without the physical report's clipping. Restoration now remembers section/card
+  identity and horizontal offset, waits for shelf results and measured layout,
+  and focuses the current registered node. Explicit activation and fresh remote
+  input supersede pending restoration; Android releases do not cancel it.
+  Another isolated user on the corrected canonical APK played 18/57 seconds,
+  created a real new shelf, and retained the fourth card at its original viewport
+  after Back and the later capture. Deep India end offset, subsequent navigation
+  and Search return also passed. No history was injected or cleared.
 
 Home `ac9952523` / `f647f8660` and native `d563d2666` are combined. Independent
 Sol review rejected ignored activation and repaired stale key-timeout ownership
@@ -97,11 +110,12 @@ ownership. Android-only Kotlin changes do not affect native Apple inputs. The
 existing Debug client is identified by dylib SHA in the retained provenance and
 served this checkout's JS; no packaged Release-JS claim is made for Apple.
 
-Three warmed-Metro process launches using Details readiness measured baseline
-3.280/2.832/2.642 seconds and candidate 2.639/2.616/2.620. No repeated paired
+Final `c084704df` warmed-Metro process launches using Details readiness measured
+baseline 3.280/2.832/2.642 seconds and candidate 3.261/2.630/2.870. No paired
 degradation exceeded max(10%, 200 ms). Cold bundling and an obsolete driver
 readiness attempt remain excluded setup metrics. This bounded observation does
-not close the historical strict startup gate in feat-889.
+not close the historical strict startup gate in feat-889. The shared host also
+had an unrelated test workload; no isolated-host guarantee is made.
 
 Current harness typecheck, full TV lint/Jest and touched-file format passed.
 The combined Android Release QA build succeeded with 20 native unit tests,
@@ -122,25 +136,50 @@ native compilation proof, not a self-contained Release package. Before building,
 two stale absolute paths in the copied generated Pods autolinking shell script
 were rebased to this checkout. Project/lockfile inspection alone missed them.
 
-The first Android screenshot/OCR performance metric exceeded its bound in two
-pairs. PNG capture overhead depended on artwork completion. A separate
-record-only comparison still exceeded its loader-to-Details bound in two pairs:
-baseline 1.527/1.767/1.176 seconds versus candidate 2.985/1.227/2.237. Source
-attribution remains unresolved. Actual APK inspection found matching GraphQL
-endpoint/token, recommendation enablement and native executable code, but
-different feedback configuration. A control export with current configuration
-and only the two Home files restored to baseline was blocked by Metro resolving
-workspace packages through the reused installation. No control APK or Hermes
-bundle was produced. The capped failed attempts and exact preparation remain
-retained. Repair the experiment's dependency resolution before another measured
-comparison; no application optimization is justified by an assumed cause.
-Preserve these failed measurements; no performance pass or merge readiness is
-claimed. Human review of the implemented behavior can proceed while this remains
-a merge blocker. TV-19's asynchronous insertion and physical case stay open.
+The original Android screenshot/OCR and unmatched record-only comparisons
+exceeded their observation bound. PNG capture overhead depended on artwork,
+and actual APK inspection found different feedback configuration. Five early
+control exports failed on workspace resolution; four full logs were overwritten,
+with errors retained in the session and failure history. These limits remain
+disclosed. Later worker exports passed source-map checks but fresh-user testing
+found blank icons: external dependency paths changed generated asset lookup
+identifiers. Those signed diagnostic APKs remain preserved and explicitly invalid
+for release/performance certification.
 
-The owner authorized routine future cleanup of generated TV build caches
-without another permission question. Tested APK/native products, signing,
-source, reports, recordings and device data remain preserved. Both native builds
+The corrected final APK uses the original project's normal Expo/Hermes release
+JS stage with unchanged tested native binaries. The old-Home control uses an
+isolated dependency clone with the same relative layout. All 27 generated asset
+registrations, hashes, numeric scales and native resource lookups match; source
+maps and configuration functions identify only the intended Home differences.
+Native compressed payloads, certificate, ABI coverage and alignment were verified.
+
+Eight cold and six warm recordings completed with no observer/recorder limits.
+Two cold warmups were excluded. All six measured cold captures show JESUS,
+61 chapters, matching artwork/copy, rendered icons and Search focus. Old-to-final
+branding-to-Details pairs were 1.701 to 1.175, 2.143 to 1.464 and 1.304 to 1.119
+seconds; artwork and focus also had zero violations of max(10%, 1 second).
+All encoded frames were inspected, retaining timestamp brackets and outliers.
+Warm foreground entries were HOT without another Watch loader; intentional hero
+rotation and the OS launcher crossfade prevent a controlled warm React-latency
+claim. The native cold pair-three 1560 versus 918 ms outlier is recorded separately.
+This scoped comparison supports no observed encoded Home slowdown at the declared
+bound, not whole-startup or physical-device certification. Earlier failures remain
+unchanged.
+
+Final application source: `c084704df82275d20cb41ea61d7382ffc22c70a3`.
+Valid canonical QA APK SHA-256:
+`d6a31ea1f23e97edd789e7e74d7c544955d4fa9b066a2dd8a8118bf6595ae683`.
+It was upgrade-installed with non-incremental delivery and data retained. Final
+typecheck, full TV lint/Jest and touched-file formatting passed. The existing
+layout-order guard was preserved by computing the pure measurement effect before
+the single write, then suppressing scrolling while restoration is pending.
+
+The owner authorized routine future cleanup of generated build caches without
+another permission question. Every final tested/diagnostic APK, native product,
+signing, source, report, recording and device snapshot remains preserved; only
+unsigned/alignment build-stage caches and other rebuildable caches were removed.
+Temporary QA users were stopped, and original user-zero history was independently
+verified. Both native builds
 started above 12 GiB free and stayed above the 2 GiB stop floor.
 
 Finished shortlist and Home worktrees were archived with needed data preserved.

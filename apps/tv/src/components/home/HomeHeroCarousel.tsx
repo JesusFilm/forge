@@ -50,7 +50,7 @@ type HomeHeroCarouselProps = {
   upFocusTarget?: ViewType | null
   /** Reports the focused hero button's node so the screen can re-focus it after
    *  a nav push/pop (the Details CTA is a valid "last focused element"). */
-  onFocusNode?: (node: ViewType | null) => void
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 export function HomeHeroCarousel({
@@ -199,7 +199,10 @@ export function HomeHeroCarousel({
               <HeroCtaButton
                 label="Details"
                 onPress={() => {
-                  if (active) onSelect(current)
+                  if (active) {
+                    onFocusNode?.(seeMoreNodeRef.current, true)
+                    onSelect(current)
+                  }
                 }}
                 onFocus={handleSeeMoreFocus}
                 onBlur={handleSeeMoreBlur}
@@ -210,7 +213,10 @@ export function HomeHeroCarousel({
               <View>
                 <HeroChevronButton
                   onPress={() => {
-                    if (active) onRequestAdvance(1)
+                    if (active) {
+                      onFocusNode?.(chevronNodeRef.current, true)
+                      onRequestAdvance(1)
+                    }
                   }}
                   onFocus={handleChevronFocus}
                   onBlur={handleChevronBlur}
