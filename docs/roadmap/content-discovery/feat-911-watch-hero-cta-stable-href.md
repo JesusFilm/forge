@@ -146,3 +146,14 @@ Still `in-progress`: local integration and unit validation do not establish runt
   the existing local consumer credential returned HTTP 403 from the public
   Admin endpoint. That endpoint cannot currently supply healthy real-content
   acceptance; no auth, backend or telemetry flag was disabled to bypass it.
+- **CI harness repair, 2026-10-30:** the integrated-head Web job found five
+  failures in the inherited full-carousel prefetch suite, which the earlier
+  focused run omitted. Locally, all five reproduced the missing App Router
+  harness. Supplying that dependency exposed three stale intent-gated
+  expectations; these now assert the approved hero-only explicit opt-out.
+  Production code and category-prefetch behavior are unchanged. The repaired
+  hero/PrimaryAction/category controls pass 25 tests together; the full Web
+  command, including locale generation and cache-size checks, passes with
+  7,079 tests passed, 13 skipped and one todo across 350 passing test files
+  (three skipped). Scoped lint and formatting pass. New published-head CI
+  and the runtime/performance acceptance above remain required.

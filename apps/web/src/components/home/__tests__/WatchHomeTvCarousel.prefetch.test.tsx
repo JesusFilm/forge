@@ -1,11 +1,13 @@
 /**
  * @vitest-environment jsdom
  *
- * Pins the hero "Watch Now" action's touch-gated prefetch posture (W-025).
+ * Pins the hero "Watch Now" action's explicit prefetch opt-out (W-003).
  *
  * The action re-targets on every hero advance, so on a phone an ungated
  * viewport prefetch fetched each slide's page in turn while the intro video
- * was still buffering. `next/link` strips `prefetch` before spreading onto the
+ * was still buffering. The hero stays opted out on desktop and after intent;
+ * the category rail retains its separate intent gate. `next/link` strips
+ * `prefetch` before spreading onto the
  * anchor, so `WatchHomePage.test.tsx` (real Link) cannot see the prop; this
  * file mocks `next/link` to reflect it onto `data-prefetch`.
  */
@@ -15,6 +17,12 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import enMessages from "../../../../messages/en.json"
+
+// The carousel's resume handler reads the App Router. This isolated prop
+// suite supplies that dependency; it does not exercise actual navigation.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
 
 vi.mock("next/link", () => ({
   default: ({
@@ -155,14 +163,14 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     expect(watchNowPrefetch()).toBe("false")
   })
 
-  it("keeps the eager desktop posture on a hover-capable device", () => {
+  it("keeps hero prefetch off on a hover-capable device", () => {
     stubPointer("mouse")
     renderCarousel()
 
-    expect(watchNowPrefetch()).toBe("undefined")
+    expect(watchNowPrefetch()).toBe("false")
   })
 
-  it("arms on focus, so keyboard and tap users still get a warm page", () => {
+  it("keeps prefetch off when keyboard or tap users focus the hero action", () => {
     stubPointer("touch")
     const watchNow = renderCarousel()
 
@@ -171,7 +179,7 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     })
 
     expect(document.activeElement).toBe(watchNow)
-    expect(watchNowPrefetch()).toBe("undefined")
+    expect(watchNowPrefetch()).toBe("false")
   })
 
   it("does not arm on touch movement, which is scrolling rather than intent", () => {
@@ -185,7 +193,7 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     expect(watchNowPrefetch()).toBe("false")
   })
 
-  it("arms on deliberate mouse movement, for a hybrid device", () => {
+  it("keeps prefetch off on deliberate mouse movement on a hybrid device", () => {
     stubPointer("touch")
     const watchNow = renderCarousel()
 
@@ -193,6 +201,6 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
       watchNow?.dispatchEvent(pointerEvent("pointermove", "mouse"))
     })
 
-    expect(watchNowPrefetch()).toBe("undefined")
+    expect(watchNowPrefetch()).toBe("false")
   })
 })
