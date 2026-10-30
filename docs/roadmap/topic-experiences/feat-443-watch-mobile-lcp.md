@@ -48,6 +48,15 @@ isolated before changing the media-heavy rendering path. Linear: FGE-117.
   preload, matching the hero poster's responsive candidates.
 - Added unit coverage for route-shape cardinality, RUM context merging, promo
   loading intent, and probe parsing/classification.
+- October 30 review follow-up: corrected Link-header tokenization, retained
+  responsive sizes and width/density descriptors, and resolved resource URLs
+  against the actual final response URL. Discriminating parse-to-classify
+  regressions cover R1-2624-1/2/3. Scope and source-only verification are in
+  `docs/plans/2026-10-30-pr2624-preload-probe-repair-plan.md`; these offline
+  probe repairs do not establish page-load or field improvements.
+- R2 density follow-up: effective source sets also include each nonempty
+  default `src`/`href` at `1x` when neither width descriptors nor explicit `1x`
+  candidates override it; matching covers preload and high-priority identity.
 
 Search Console URL groups, current Datadog field distributions, five-run
 mobile traces, post-deploy facet creation, and follow-up Search Console

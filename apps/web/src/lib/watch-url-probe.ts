@@ -305,6 +305,8 @@ export type ProbeResult = {
   status: number
   /** Final pathname (origin-stripped) after redirects — the comparable key across hosts. */
   finalPath: string
+  /** Actual final response URL, used only to resolve resource references. */
+  finalUrl?: string
   redirectHops: number
   ms: number
   structuredData?: {
@@ -320,8 +322,8 @@ export type ProbeResult = {
     openGraphUrl: string | null
   }
   imagePreloads?: ImagePreloadIdentity[]
-  heroPoster?: { src: string | null; srcSet: string | null } | null
-  highPriorityImages?: Array<{ src: string | null; srcSet: string | null }>
+  heroPoster?: ImageIdentity | null
+  highPriorityImages?: ImageIdentity[]
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
   error?: string
 }
@@ -329,7 +331,14 @@ export type ProbeResult = {
 export type ImagePreloadIdentity = {
   href: string | null
   imageSrcSet: string | null
+  imageSizes?: string | null
   fetchPriority: string | null
+}
+
+type ImageIdentity = {
+  src: string | null
+  srcSet: string | null
+  sizes?: string | null
 }
 
 export type StructuredDataContract = {
@@ -919,11 +928,110 @@ export function parseDocumentIdentity(html: string): {
   }
 }
 
-function parseImageSrcSet(value: string | null): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((candidate) => candidate.trim().replace(/\s+\d+(?:w|x)$/, ""))
-    .filter(Boolean)
+/** Split Link syntax without treating quoted/URI-reference separators as lists. */
+function splitLinkSyntax(value: string, separator: "," | ";"): string[] {
+  const parts: string[] = []
+  let start = 0
+  let quoted = false
+  let escaped = false
+  let bracketed = false
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]
+    if (quoted) {
+      if (escaped) escaped = false
+      else if (char === "\\") escaped = true
+      else if (char === '"') quoted = false
+    } else if (bracketed) {
+      if (char === ">") bracketed = false
+    } else if (char === '"') quoted = true
+    else if (char === "<") bracketed = true
+    else if (char === separator) {
+      parts.push(value.slice(start, i).trim())
+      start = i + 1
+    }
+  }
+  parts.push(value.slice(start).trim())
+  return parts
+}
+
+function parseLinkValue(value: string) {
+  const [target, ...parameters] = splitLinkSyntax(value, ";")
+  const href = target?.match(/^<([^<>]*)>$/)?.[1]
+  if (href == null) return null
+  const params = new Map<string, string>()
+  for (const parameter of parameters) {
+    const match = parameter.match(/^([^=\s]+)\s*=\s*([\s\S]*)$/)
+    if (!match) continue
+    const name = match[1].toLowerCase()
+    let content = match[2].trim()
+    if (content.startsWith('"')) {
+      if (!content.endsWith('"') || content.length < 2) continue
+      content = content.slice(1, -1).replace(/\\(.)/g, "$1")
+    }
+    // RFC 8288: later occurrences of a parameter do not replace the first.
+    if (!params.has(name)) params.set(name, content)
+  }
+  return { href, params }
+}
+
+/** Common width/density srcset syntax, retaining the resource-selection inputs. */
+function parseImageSrcSet(
+  value: string,
+  defaultSource: string | null,
+): Array<{
+  url: string
+  descriptor: string
+}> | null {
+  const candidates: Array<{ url: string; descriptor: string }> = []
+  let remaining = value.trim()
+  while (remaining) {
+    remaining = remaining.replace(/^[\s,]+/, "")
+    if (!remaining) break
+    const token = remaining.match(/^\S+/)?.[0]
+    if (!token) return null
+    remaining = remaining.slice(token.length)
+    let url = token
+    let descriptor = "1x"
+    if (url.endsWith(",")) url = url.replace(/,+$/, "")
+    else {
+      const end = remaining.indexOf(",")
+      const raw = (end < 0 ? remaining : remaining.slice(0, end)).trim()
+      remaining = end < 0 ? "" : remaining.slice(end + 1)
+      if (raw) {
+        if (
+          /^\d+w$/.test(raw) &&
+          Number.isSafeInteger(Number(raw.slice(0, -1))) &&
+          Number(raw.slice(0, -1)) > 0
+        ) {
+          descriptor = `${Number(raw.slice(0, -1))}w`
+        } else if (
+          /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?x$/.test(raw) &&
+          Number.isFinite(Number(raw.slice(0, -1))) &&
+          Number(raw.slice(0, -1)) > 0
+        ) {
+          descriptor = `${Number(raw.slice(0, -1))}x`
+        } else return null
+      }
+    }
+    if (!url) return null
+    candidates.push({ url, descriptor })
+  }
+  if (!candidates.length) return null
+  const descriptors = candidates.map(({ descriptor }) => descriptor)
+  if (new Set(descriptors).size !== descriptors.length) return null
+  if (new Set(descriptors.map((descriptor) => descriptor.at(-1))).size !== 1) {
+    return null
+  }
+  // Both img.src and link.href supply an implicit 1x source when no width
+  // candidate or explicit 1x density overrides that default (HTML source sets).
+  if (
+    defaultSource &&
+    !descriptors.includes("1x") &&
+    !descriptors.some((descriptor) => descriptor.endsWith("w"))
+  ) {
+    candidates.push({ url: defaultSource, descriptor: "1x" })
+  }
+  return candidates
 }
 
 export function parseImagePreloadHints(
@@ -931,8 +1039,8 @@ export function parseImagePreloadHints(
   linkHeader?: string | null,
 ): {
   imagePreloads: ImagePreloadIdentity[]
-  heroPoster: { src: string | null; srcSet: string | null } | null
-  highPriorityImages: Array<{ src: string | null; srcSet: string | null }>
+  heroPoster: ImageIdentity | null
+  highPriorityImages: ImageIdentity[]
 } {
   const linkTags = Array.from(html.matchAll(/<link\b[^>]*>/gi), ([tag]) => tag)
   const imagePreloads = linkTags.flatMap((tag) => {
@@ -947,25 +1055,35 @@ export function parseImagePreloadHints(
       {
         href: htmlAttribute(tag, "href"),
         imageSrcSet: htmlAttribute(tag, "imagesrcset"),
+        imageSizes: htmlAttribute(tag, "imagesizes"),
         fetchPriority: htmlAttribute(tag, "fetchpriority"),
       },
     ]
   })
-  const headerPreloads = (linkHeader ?? "")
-    .split(/,(?=\s*<)/)
-    .flatMap((entry) => {
-      const match = entry.match(/^\s*<([^>]+)>\s*;(.*)$/)
-      if (!match) return []
-      const params = match[2]
-      const rel = params.match(/(?:^|;)\s*rel\s*=\s*"?([^;"]+)/i)?.[1]
-      const as = params.match(/(?:^|;)\s*as\s*=\s*"?([^;"]+)/i)?.[1]
-      if (rel?.toLowerCase() !== "preload" || as?.toLowerCase() !== "image") {
+  // A quoted title may itself contain a comma followed by an angle bracket.
+  const headerPreloads = splitLinkSyntax(linkHeader ?? "", ",").flatMap(
+    (entry) => {
+      const link = parseLinkValue(entry)
+      if (
+        !link?.params
+          .get("rel")
+          ?.toLowerCase()
+          .split(/\s+/)
+          .includes("preload") ||
+        link.params.get("as")?.toLowerCase() !== "image"
+      )
         return []
-      }
-      const fetchPriority =
-        params.match(/(?:^|;)\s*fetchpriority\s*=\s*"?([^;"]+)/i)?.[1] ?? null
-      return [{ href: match[1], imageSrcSet: null, fetchPriority }]
-    })
+      return [
+        {
+          href: link.href,
+          // Responsive image attributes are an HTML link mechanism, not HTTP Link.
+          imageSrcSet: null,
+          imageSizes: null,
+          fetchPriority: link.params.get("fetchpriority") ?? null,
+        },
+      ]
+    },
+  )
 
   const imageTags = Array.from(html.matchAll(/<img\b[^>]*>/gi), ([tag]) => tag)
   const heroTag = imageTags.find(
@@ -974,6 +1092,7 @@ export function parseImagePreloadHints(
   const toImageIdentity = (tag: string) => ({
     src: htmlAttribute(tag, "src"),
     srcSet: htmlAttribute(tag, "srcset"),
+    sizes: htmlAttribute(tag, "sizes"),
   })
   const highPriorityImages = imageTags
     .filter(
@@ -1006,24 +1125,53 @@ export function heroImagePreloadViolations(result: ProbeResult): string[] {
     violations.push("hero image preload is not high priority")
   }
 
-  const sameSrcSet = (left: string | null, right: string | null) => {
-    const leftCandidates = parseImageSrcSet(left)
-    const rightCandidates = parseImageSrcSet(right)
-    return (
-      leftCandidates.length > 0 &&
-      leftCandidates.length === rightCandidates.length &&
-      leftCandidates.every(
-        (candidate, index) => candidate === rightCandidates[index],
+  const resourceUrl = (value: string | null): string | null => {
+    if (value == null) return null
+    try {
+      return new URL(value, result.finalUrl).href
+    } catch {
+      // Legacy pure-helper callers can still compare identical relative refs.
+      return result.finalUrl ? null : value
+    }
+  }
+  const sourceSizes = (value?: string | null) =>
+    (value?.trim() || "100vw").replace(/\s+/g, " ").replace(/\s*,\s*/g, ",")
+  const sameImage = (left: ImageIdentity, right: ImageIdentity): boolean => {
+    if (left.srcSet?.trim() || right.srcSet?.trim()) {
+      if (!left.srcSet?.trim() || !right.srcSet?.trim()) return false
+      const leftCandidates = parseImageSrcSet(left.srcSet, left.src)
+      const rightCandidates = parseImageSrcSet(right.srcSet, right.src)
+      if (!leftCandidates || !rightCandidates) return false
+      const keys = (items: typeof leftCandidates) =>
+        items
+          .map(({ url, descriptor }) => {
+            const normalized = resourceUrl(url)
+            return normalized == null ? null : `${descriptor} ${normalized}`
+          })
+          .sort()
+      const leftKeys = keys(leftCandidates)
+      const rightKeys = keys(rightCandidates)
+      return (
+        !leftKeys.includes(null) &&
+        !rightKeys.includes(null) &&
+        leftKeys.length === rightKeys.length &&
+        leftKeys.every((key, index) => key === rightKeys[index]) &&
+        (!leftCandidates[0].descriptor.endsWith("w") ||
+          sourceSizes(left.sizes) === sourceSizes(right.sizes))
       )
-    )
+    }
+    const leftUrl = resourceUrl(left.src)
+    return leftUrl != null && leftUrl === resourceUrl(right.src)
   }
   if (preload && hero) {
-    const matchesHero =
-      preload.imageSrcSet && hero.srcSet
-        ? sameSrcSet(preload.imageSrcSet, hero.srcSet)
-        : preload.href != null &&
-          (preload.href === hero.src ||
-            parseImageSrcSet(hero.srcSet).includes(preload.href))
+    const matchesHero = sameImage(
+      {
+        src: preload.href,
+        srcSet: preload.imageSrcSet,
+        sizes: preload.imageSizes,
+      },
+      hero,
+    )
     if (!matchesHero) {
       violations.push("image preload candidates do not match the hero poster")
     }
@@ -1036,8 +1184,7 @@ export function heroImagePreloadViolations(result: ProbeResult): string[] {
   } else if (
     hero &&
     highPriorityImages[0] &&
-    highPriorityImages[0].src !== hero.src &&
-    !sameSrcSet(highPriorityImages[0].srcSet, hero.srcSet)
+    !sameImage(highPriorityImages[0], hero)
   ) {
     violations.push("high-priority image does not match the hero poster")
   }
@@ -1114,6 +1261,7 @@ export async function probeUrl(
       }
 
       const contentType = res.headers.get("content-type") ?? ""
+      const finalUrl = res.url || currentUrl
       const html = contentType.includes("text/html") ? await res.text() : null
       const structuredData = html ? parseJsonLdScripts(html) : undefined
       const documentIdentity = html ? parseDocumentIdentity(html) : undefined
@@ -1123,7 +1271,8 @@ export async function probeUrl(
 
       return {
         status: res.status,
-        finalPath: new URL(currentUrl).pathname,
+        finalPath: new URL(finalUrl).pathname,
+        finalUrl,
         redirectHops: hops,
         ms: Date.now() - start,
         ...(structuredData && { structuredData }),

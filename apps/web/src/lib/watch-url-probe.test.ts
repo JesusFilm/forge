@@ -73,6 +73,7 @@ describe("Watch hero image preload contract", () => {
       {
         href: null,
         imageSrcSet: heroSrcSet,
+        imageSizes: "100vw",
         fetchPriority: "high",
       },
     ],
@@ -82,11 +83,13 @@ describe("Watch hero image preload contract", () => {
       heroPoster: {
         src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
         srcSet: heroSrcSet,
+        sizes: "100vw",
       },
       highPriorityImages: [
         {
           src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
           srcSet: heroSrcSet,
+          sizes: "100vw",
         },
       ],
     })
@@ -95,20 +98,27 @@ describe("Watch hero image preload contract", () => {
     expect(
       parseImagePreloadHints(`
         <link rel="preload" as="image" fetchpriority="high" imagesrcset="${heroSrcSet}" imagesizes="100vw">
-        <img data-testid="hero-player-poster" src="https://image.mux.com/pb/thumbnail.webp?width=1280" srcset="${heroSrcSet}" fetchpriority="high">
+        <img data-testid="hero-player-poster" src="https://image.mux.com/pb/thumbnail.webp?width=1280" srcset="${heroSrcSet}" sizes="100vw" fetchpriority="high">
       `),
     ).toEqual({
       imagePreloads: [
-        { href: null, imageSrcSet: heroSrcSet, fetchPriority: "high" },
+        {
+          href: null,
+          imageSrcSet: heroSrcSet,
+          imageSizes: "100vw",
+          fetchPriority: "high",
+        },
       ],
       heroPoster: {
         src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
         srcSet: heroSrcSet,
+        sizes: "100vw",
       },
       highPriorityImages: [
         {
           src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
           srcSet: heroSrcSet,
+          sizes: "100vw",
         },
       ],
     })
@@ -121,7 +131,12 @@ describe("Watch hero image preload contract", () => {
         '</poster.jpg>; rel="preload"; as="image"; fetchpriority="high"',
       ).imagePreloads,
     ).toEqual([
-      { href: "/poster.jpg", imageSrcSet: null, fetchPriority: "high" },
+      {
+        href: "/poster.jpg",
+        imageSrcSet: null,
+        imageSizes: null,
+        fetchPriority: "high",
+      },
     ])
   })
 
@@ -191,6 +206,254 @@ describe("Watch hero image preload contract", () => {
       outcome: "hard-regression",
       note: expect.stringContaining("IMAGE PRELOAD CONTRACT"),
     })
+  })
+})
+
+describe("hero preload probe review regressions", () => {
+  const fixture = {
+    path: "/watch/source-check",
+    expect: "ok" as const,
+    performanceHint: "hero-image-preload" as const,
+  }
+  const poster =
+    '<img data-testid="hero-player-poster" src="/poster.jpg" fetchpriority="high">'
+  const responsivePoster =
+    '<img data-testid="hero-player-poster" src="/large.jpg" srcset="/small.jpg 640w, /large.jpg 1280w" sizes="100vw" fetchpriority="high">'
+  const responsivePreload =
+    '<link rel="preload" as="image" imagesrcset="/small.jpg 640w, /large.jpg 1280w" imagesizes="100vw" fetchpriority="high">'
+  const classify = (html: string, link: string | null = null) => {
+    const preview = result({
+      finalPath: fixture.path,
+      finalUrl: `https://preview.test${fixture.path}`,
+      ...parseImagePreloadHints(html, link),
+    })
+    return classifyProbe(preview, preview, fixture).outcome
+  }
+
+  it.each([
+    "</promo.jpg>; rel=preload ; as=image; fetchpriority=high",
+    '</promo.jpg>; rel="preload alternate"; as="image"; fetchpriority="high"',
+    '</promo.jpg>; AS = IMAGE ; REL = "alternate PRELOAD" ; fetchpriority = high ',
+  ])("counts a second preload from Link syntax: %s", (header) => {
+    expect(classify(responsivePreload + responsivePoster, header)).toBe(
+      "hard-regression",
+    )
+  })
+
+  it.each([
+    '</poster.jpg>; title="hero, <poster>"; rel=preload; as=image; fetchpriority=high',
+    String.raw`</poster.jpg>; title="hero; a \"quoted\" name, <poster>"; rel=preload; as=image; fetchpriority=high`,
+    '</font.woff2>; rel=preload; as=font, </poster.jpg>; title="hero, <poster>"; rel=preload; as=image; fetchpriority=high, </app.js>; rel=preload; as=script',
+  ])(
+    "preserves a single header preload with quoted separators: %s",
+    (header) => {
+      expect(classify(poster, header)).toBe("match")
+    },
+  )
+
+  it("preserves commas inside the bracketed URI", () => {
+    expect(
+      classify(
+        poster.replace("/poster.jpg", "/poster,one.jpg"),
+        "</poster,one.jpg>; rel=preload; as=image; fetchpriority=high",
+      ),
+    ).toBe("match")
+  })
+
+  it("uses the first repeated relation parameter", () => {
+    expect(
+      classify(
+        poster,
+        "</poster.jpg>; rel=preload; rel=stylesheet; as=image; fetchpriority=high",
+      ),
+    ).toBe("match")
+    expect(
+      classify(
+        poster,
+        "</poster.jpg>; rel=stylesheet; rel=preload; as=image; fetchpriority=high",
+      ),
+    ).toBe("hard-regression")
+  })
+
+  it("accepts corresponding responsive candidates and source sizes", () => {
+    expect(classify(responsivePreload + responsivePoster)).toBe("match")
+  })
+
+  it.each([
+    responsivePreload.replace('imagesizes="100vw"', 'imagesizes="10vw"'),
+    responsivePreload.replace(
+      "640w, /large.jpg 1280w",
+      "1280w, /large.jpg 640w",
+    ),
+    '<link rel="preload" as="image" href="/small.jpg" fetchpriority="high">',
+  ])("rejects a different responsive selection input: %s", (preload) => {
+    expect(classify(preload + responsivePoster)).toBe("hard-regression")
+  })
+
+  it("compares density descriptors, including fractional densities", () => {
+    const img = poster.replace(
+      'src="/poster.jpg"',
+      'src="/poster.jpg" srcset="/poster.jpg 1x, /large.jpg 1.5x"',
+    )
+    const preload =
+      '<link rel="preload" as="image" imagesrcset="/large.jpg 1.50x, /poster.jpg 1.0x" fetchpriority="high">'
+    expect(classify(preload + img)).toBe("match")
+    expect(classify(preload.replace("1.50x", "2x") + img)).toBe(
+      "hard-regression",
+    )
+  })
+
+  it("accepts equivalent candidate order and numeric/size whitespace", () => {
+    const preload = responsivePreload
+      .replace(
+        "/small.jpg 640w, /large.jpg 1280w",
+        "/large.jpg 01280w, /small.jpg 0640w",
+      )
+      .replace('imagesizes="100vw"', 'imagesizes=" 100vw "')
+    expect(classify(preload + responsivePoster)).toBe("match")
+  })
+
+  it("preserves commas within responsive resource URLs", () => {
+    const srcset = "/poster.jpg?crop=1,2 640w, /large.jpg?crop=3,4 1280w"
+    expect(
+      classify(
+        responsivePreload.replace("/small.jpg 640w, /large.jpg 1280w", srcset) +
+          responsivePoster.replace("/small.jpg 640w, /large.jpg 1280w", srcset),
+      ),
+    ).toBe("match")
+  })
+
+  it.each(["/poster.jpg", "poster.jpg", "https://preview.test/poster.jpg"])(
+    "resolves absolute/root/document-relative identity: %s",
+    (src) => {
+      const html = `<link rel="preload" as="image" href="${src === "poster.jpg" ? "https://preview.test/watch/poster.jpg" : "https://preview.test/poster.jpg"}" fetchpriority="high">${poster.replace("/poster.jpg", src)}`
+      expect(classify(html)).toBe("match")
+    },
+  )
+
+  it.each([
+    "https://other.test/poster.jpg",
+    "https://preview.test/poster.jpg?v=2",
+    "https://preview.test/watch/poster.jpg",
+  ])("keeps distinct origin/query/base-path resources distinct: %s", (href) => {
+    expect(
+      classify(
+        `<link rel="preload" as="image" href="${href}" fetchpriority="high">${poster}`,
+      ),
+    ).toBe("hard-regression")
+  })
+
+  it.each(["2x", "2.0x"])(
+    "density default source: rejects distinct implicit 1x defaults (%s)",
+    (density) => {
+      expect(
+        classify(
+          `<link rel="preload" as="image" href="/promo.jpg" imagesrcset="/large.jpg ${density}" fetchpriority="high">` +
+            '<img data-testid="hero-player-poster" src="/hero.jpg" srcset="/large.jpg 2x" fetchpriority="high">',
+        ),
+      ).toBe("hard-regression")
+    },
+  )
+
+  it.each([
+    "poster.jpg",
+    "/watch/poster.jpg",
+    "https://preview.test/watch/poster.jpg",
+  ])(
+    "density default source: matches equivalent implicit 1x URLs (%s)",
+    (href) => {
+      expect(
+        classify(
+          `<link rel="preload" as="image" href="${href}" imagesrcset="/large.jpg 2x" fetchpriority="high">` +
+            '<img data-testid="hero-player-poster" src="/watch/poster.jpg" srcset="/large.jpg 2x" fetchpriority="high">',
+        ),
+      ).toBe("match")
+    },
+  )
+
+  it("density default source: equates explicit and implicit 1x candidates", () => {
+    expect(
+      classify(
+        '<link rel="preload" as="image" href="/poster.jpg" imagesrcset="/large.jpg 2x" fetchpriority="high">' +
+          '<img data-testid="hero-player-poster" src="/unused.jpg" srcset="/poster.jpg 1x, /large.jpg 2x" fetchpriority="high">',
+      ),
+    ).toBe("match")
+  })
+
+  it("density default source: ignores fallbacks when explicit 1x already exists", () => {
+    expect(
+      classify(
+        '<link rel="preload" as="image" href="/unused-preload.jpg" imagesrcset="/poster.jpg 1x, /large.jpg 2x" fetchpriority="high">' +
+          '<img data-testid="hero-player-poster" src="/unused-image.jpg" srcset="/poster.jpg 1x, /large.jpg 2x" fetchpriority="high">',
+      ),
+    ).toBe("match")
+  })
+
+  it("density default source: ignores fallback URLs for width sets", () => {
+    expect(
+      classify(
+        responsivePreload.replace(
+          'as="image"',
+          'as="image" href="/unused-preload.jpg"',
+        ) +
+          responsivePoster.replace(
+            'src="/large.jpg"',
+            'src="/unused-image.jpg"',
+          ),
+      ),
+    ).toBe("match")
+  })
+
+  it("density default source: rejects an unrelated high-priority implicit fallback", () => {
+    const preview = result({
+      finalPath: fixture.path,
+      finalUrl: `https://preview.test${fixture.path}`,
+      ...parseImagePreloadHints(
+        '<link rel="preload" as="image" href="/hero.jpg" imagesrcset="/large.jpg 2x" fetchpriority="high">' +
+          '<img data-testid="hero-player-poster" src="/hero.jpg" srcset="/large.jpg 2x">' +
+          '<img src="/promo.jpg" srcset="/large.jpg 2x" fetchpriority="high">',
+      ),
+    })
+    expect(heroImagePreloadViolations(preview)).toContain(
+      "high-priority image does not match the hero poster",
+    )
+    expect(classifyProbe(preview, preview, fixture).outcome).toBe(
+      "hard-regression",
+    )
+  })
+
+  it("resolves redirected response resources from its final URL, not SEO canonical", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: {
+            location: "https://preview.test/watch/destination/page.html",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          '<link rel="canonical" href="https://production.test/elsewhere.html">' +
+            '<link rel="preload" as="image" href="../poster.jpg" fetchpriority="high">' +
+            poster.replace(
+              "/poster.jpg",
+              "https://preview.test/watch/poster.jpg",
+            ),
+          { headers: { "content-type": "text/html" } },
+        ),
+      )
+    const response = await probeUrl(
+      "https://initial.test",
+      "/watch/source-check",
+      { fetchImpl },
+    )
+    expect(response.finalUrl).toBe(
+      "https://preview.test/watch/destination/page.html",
+    )
+    expect(heroImagePreloadViolations(response)).toEqual([])
+    expect(fetchImpl.mock.calls[1][0]).toBe(response.finalUrl)
   })
 })
 
