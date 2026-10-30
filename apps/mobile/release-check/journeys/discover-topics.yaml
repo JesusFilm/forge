@@ -1,0 +1,65 @@
+# Open a browse topic card on the Search tab and open a video from its
+# results. Runs answer the topic searches from config/search-answers.json, and
+# the `search` tag makes record-search run this journey (KTD10).
+appId: org.jesusfilm.forgewatch
+name: discover-topics
+tags:
+  - search
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Search
+    label: Open the Search tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows
+- assertVisible:
+    text: Search Bible Stories
+    label: The browse topic cards show
+- tapOn:
+    text: Search Parables
+    label: Open the Parables topic
+# A video result reads "<title>, <length>".
+- extendedWaitUntil:
+    visible:
+      text: ".+, ([0-9]+:)?[0-9]+:[0-9]{2}"
+    timeout: 20000
+    label: The topic results show
+- assertNotVisible:
+    text: Search Bible Stories
+    label: The results replace the topic cards
+- tapOn:
+    text: ".+, ([0-9]+:)?[0-9]+:[0-9]{2}"
+    label: Open the first video result
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- tapOn:
+    text: Go back
+    label: Leave the watch page
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows again
+# On iOS 26 the Search tab replaces the tab bar with a Home button (README 2).
+- tapOn:
+    text: Home
+    label: Leave the Search tab by its Home button
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again

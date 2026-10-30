@@ -32,7 +32,6 @@ const project: Short = {
         properties: {},
       },
     ],
-    packRevisionIds: [],
   },
 }
 it("saves timing and crop after undo without resetting selection or playhead", async () => {
@@ -314,4 +313,82 @@ it("keeps an explicit sign-in warning after an expired-session save and later ed
   expect(session.getSnapshot().document.items).toEqual([])
   session.edit((doc) => ({ ...doc, title: "Keep working" }))
   expect(session.getSnapshot().error).toContain("sign in again")
+})
+
+it("saves audio envelopes and amplification with undo/redo and source identity intact", async () => {
+  let stored: Short = {
+    ...structuredClone(project),
+    document: {
+      ...structuredClone(project.document),
+      tracks: [{ id: "audio", kind: "audio" }],
+      items: [
+        {
+          id: "music",
+          kind: "audio",
+          trackId: "audio",
+          startFrame: 30,
+          durationInFrames: 150,
+          asset: { assetId: "music", versionId: "v1", digest: "a".repeat(64) },
+          sourceStartMs: 5000,
+          volume: 1,
+        },
+      ],
+    },
+  }
+  const transport = {
+    read: async () => structuredClone(stored),
+    apply: async (input: StudioApply) => {
+      const operation = input.operations[0]
+      if (operation.kind !== "restore-document")
+        throw new StudioEditorFixtureError("Restore expected")
+      stored = {
+        ...stored,
+        revision: stored.revision + 1,
+        document: structuredClone(operation.document),
+      }
+      return {
+        projectId: stored.projectId,
+        revision: stored.revision,
+        outcome: "ACCEPTED" as const,
+      }
+    },
+  }
+  const session = new EditorSession(stored, transport)
+  session.select("music")
+  session.seek(80)
+  const audioFade = {
+    fadeInFrames: 30,
+    fadeOutFrames: 20,
+    fadeInCurve: 0.5,
+    fadeOutCurve: -0.5,
+    fadeInCurvePosition: 0.75,
+    fadeOutCurvePosition: 0.25,
+  }
+  session.edit((document) => ({
+    ...document,
+    items: document.items.map((item) =>
+      item.kind === "audio" ? { ...item, volume: 10 ** 1.5, audioFade } : item,
+    ),
+  }))
+  session.undo()
+  expect(session.getSnapshot().document.items[0]).toMatchObject({ volume: 1 })
+  expect(session.getSnapshot().document.items[0]).not.toHaveProperty(
+    "audioFade",
+  )
+  session.redo()
+  await session.save()
+  const reopened = new EditorSession(await transport.read(), transport)
+  expect(reopened.getSnapshot().document.items[0]).toMatchObject({
+    volume: 10 ** 1.5,
+    audioFade,
+    startFrame: 30,
+    durationInFrames: 150,
+    sourceStartMs: 5000,
+    asset: { assetId: "music", versionId: "v1" },
+  })
+  expect(session.getSnapshot()).toMatchObject({
+    selection: "music",
+    playhead: 80,
+    status: "saved",
+  })
 })

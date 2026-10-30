@@ -1,0 +1,22 @@
+{
+  "name": "[forge-admin] Watch search deadline failures",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin env:prod \\\"event=watch_search_deadline_exceeded\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 3",
+  "message": "Watch search exceeded its request budget at least three times in five minutes. Inspect the stage field and correlated APM trace. For serving_profile, inspect transcript compatibility preparation and database pool waiting; language_resolution and availability_hydration require their own attribution. This count is not a population error rate. A healthy /api/search/health does not establish successful search delivery. Follow docs/reports/2026-10-23-watch-search-timeout-investigation.md. Confirm the serving revision and cold/warm known-query results before recovery sign-off. Do not extend deadlines or restart services as an automatic response.",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:watch-search"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": { "critical": 3 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 0,
+    "enable_logs_sample": false,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

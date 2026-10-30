@@ -1,5 +1,5 @@
-import { print } from "graphql"
-import type { DocumentNode } from "graphql"
+import { Kind, print, visit } from "graphql"
+import type { DocumentNode, FieldNode } from "graphql"
 
 import {
   GET_VIDEO_BY_SLUG,
@@ -15,6 +15,35 @@ import {
 // string/shape assertions on the selection set.
 function asSdl(doc: unknown): string {
   return print(doc as DocumentNode)
+}
+
+function fieldsNamed(doc: unknown, name: string): FieldNode[] {
+  const fields: FieldNode[] = []
+  visit(doc as DocumentNode, {
+    Field(field) {
+      if (field.name.value === name) fields.push(field)
+    },
+  })
+  return fields
+}
+
+function expectOnlyEditionIdentity(doc: unknown) {
+  const editions = fieldsNamed(doc, "videoEdition")
+  // Presence is required: an empty traversal must not pass this payload guard.
+  expect(editions).toHaveLength(1)
+  expect(
+    editions[0].selectionSet?.selections.map((selection) =>
+      selection.kind === Kind.FIELD
+        ? {
+            name: selection.name.value,
+            hasNestedSelection: selection.selectionSet != null,
+          }
+        : { kind: selection.kind },
+    ),
+  ).toEqual([{ name: "id", hasNestedSelection: false }])
+  // Check actual field names rather than aliases, across the whole document.
+  expect(fieldsNamed(doc, "subtitles")).toHaveLength(0)
+  expect(fieldsNamed(doc, "downloads")).toHaveLength(0)
 }
 
 const bulkSdl = asSdl(GET_VIDEO_BY_SLUG)
@@ -93,11 +122,9 @@ describe("GET_VIDEO_BY_SLUG (lean bulk video + dub list)", () => {
     expect(bulkFragmentSdl).not.toContain("downloads")
   })
 
-  it("EXCLUDES videoEdition.subtitles from the bulk selection", () => {
-    expect(bulkSdl).not.toContain("videoEdition")
-    expect(bulkSdl).not.toContain("subtitles")
-    expect(bulkFragmentSdl).not.toContain("videoEdition")
-    expect(bulkFragmentSdl).not.toContain("subtitles")
+  it("selects only canonical edition identity and EXCLUDES per-dub media", () => {
+    expectOnlyEditionIdentity(GET_VIDEO_BY_SLUG)
+    expectOnlyEditionIdentity(watchVideoFragment)
   })
 })
 
@@ -167,6 +194,7 @@ describe("GET_SERIES_BY_SLUG (series detail: lean — own children, no language 
   })
 
   it("EXCLUDES per-dub media everywhere in the document", () => {
+    expectOnlyEditionIdentity(GET_SERIES_BY_SLUG)
     expect(seriesSdl).not.toContain("downloads")
     expect(seriesSdl).not.toContain("subtitles")
   })

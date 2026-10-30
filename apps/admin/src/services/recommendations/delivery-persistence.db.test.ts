@@ -111,7 +111,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       const diagnostic = await controller.query(outcomeDiagnostic)
       expect(diagnostic.rows).toEqual([
         expect.objectContaining({
-          cohort: "returning",
+          cohort: "cold_start",
           delivered_slates: "2",
         }),
       ])

@@ -90,7 +90,6 @@ class FixtureError extends Error {}
         durationInFrames: 90,
         tracks: [{ id: "main", kind: "visual" }],
         components: [],
-        packRevisionIds: [],
         items: [
           {
             id: "settle",
@@ -210,7 +209,6 @@ class FixtureError extends Error {}
           kind: "restore-document",
           document: {
             ...admitted,
-            packRevisionIds: [],
             items: admitted.items.map((item) => ({
               ...item,
               speech: {
@@ -279,7 +277,6 @@ class FixtureError extends Error {}
           kind: "restore-document",
           document: {
             ...admitted,
-            packRevisionIds: [],
             items: admitted.items.map((item) => ({
               ...item,
               speech: {

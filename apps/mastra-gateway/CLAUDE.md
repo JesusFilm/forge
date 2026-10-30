@@ -58,3 +58,15 @@ pnpm --filter @forge/mastra-gateway test
 pnpm --filter @forge/mastra-gateway typecheck
 pnpm --filter @forge/mastra-gateway lint
 ```
+
+## Controlled build proposal
+
+`Dockerfile` pins Node 24.22.1 and filters OS certificate stores before package
+installation. The frozen filtered install explicitly generates Prisma, then
+builds the existing standalone output and copies its static assets.
+`start-production.sh` preserves database migration before standalone startup.
+The source `railway.toml` selects this image; services without that config path
+continue to use the dashboard until an owner approves the corresponding binding.
+Image CI exercises the actual command with disposable PostgreSQL and no external
+network after public certificate controls. It does not sign in a real user or
+invoke an upstream model.

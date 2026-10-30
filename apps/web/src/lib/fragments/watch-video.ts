@@ -393,6 +393,7 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           order
           osisId
           passage(languageSlug: $languageSlug) {
+            languageSlug
             content
             copyright
             humanReference

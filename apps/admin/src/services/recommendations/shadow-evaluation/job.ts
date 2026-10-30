@@ -1,3 +1,7 @@
+import {
+  refuseBehavioralRecommendations,
+  BEHAVIORAL_RETIREMENT_REASON,
+} from "../behavioral-retirement"
 import { WorkflowRunStatus } from "@prisma/client"
 import { prisma } from "@/db/client"
 import {
@@ -16,13 +20,6 @@ import {
   SEMANTIC_CANDIDATE_GENERATOR_VERSION,
   type CandidateNomination,
 } from "../candidate"
-import { createDatabaseProfileSourceNominationGenerator } from "../candidates/profile-candidate.service"
-import { COWATCH_MMR_TRIAL_MANIFEST_ID } from "../promotion/manifest"
-import { createCowatchTrialShadowGenerator } from "./cowatch-trial-generator"
-import {
-  COWATCH_SHADOW_GENERATOR_KEY,
-  createDatabaseCowatchShadowGenerator,
-} from "../cowatch/candidate.service"
 import {
   claimNextShadowRun,
   completeShadowEvaluation,
@@ -30,7 +27,6 @@ import {
   failClaimedShadowRun,
   heartbeatShadowRun,
   sampleShadowEvaluationContexts,
-  sampleProfileShadowEvaluationContexts,
   type ShadowGenerator,
 } from "./service"
 
@@ -63,28 +59,13 @@ export async function runRecommendationShadowEvaluationJob(
       failedRuns: 0,
     }
   }
+  if (input.generatorKey !== SEMANTIC_AA_SHADOW_GENERATOR_KEY) {
+    return finishFenced(input, runtimeRunId, BEHAVIORAL_RETIREMENT_REASON, 0, 0)
+  }
   let processedRuns = 0
   let failedRuns = 0
   try {
-    if (
-      input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY &&
-      (!input.ledgerRunId ||
-        !/^[a-f0-9]{64}$/.test(input.cowatchGenerationId ?? ""))
-    ) {
-      return finishFenced(
-        input,
-        runtimeRunId,
-        "cowatch_dispatch_generation_unpinned",
-        processedRuns,
-        failedRuns,
-      )
-    }
-    const sampled = await (
-      input.generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY ||
-        input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY
-        ? sampleProfileShadowEvaluationContexts
-        : sampleShadowEvaluationContexts
-    )(prisma, {
+    const sampled = await sampleShadowEvaluationContexts(prisma, {
       evaluationId: input.evaluationId,
       expectedGeneration: input.expectedGeneration,
     })
@@ -197,32 +178,11 @@ async function finishFenced(
 
 export function resolveShadowGenerator(
   generatorKey: string,
-  cowatchGenerationId?: string,
+  _cowatchGenerationId?: string,
 ): ShadowGenerator {
-  if (generatorKey === SEMANTIC_AA_SHADOW_GENERATOR_KEY) {
-    return semanticAaShadowGenerator
-  }
-  if (generatorKey === COWATCH_SHADOW_GENERATOR_KEY) {
-    if (!cowatchGenerationId || !/^[a-f0-9]{64}$/.test(cowatchGenerationId)) {
-      throw new RangeError("Co-watch shadow graph generation is unpinned")
-    }
-    const legacy = createDatabaseCowatchShadowGenerator(
-      prisma,
-      () => new Date(),
-      cowatchGenerationId,
-    )
-    const trial = createCowatchTrialShadowGenerator(prisma, cowatchGenerationId)
-    return (context) =>
-      context.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
-        ? trial(context)
-        : legacy(context)
-  }
-  if (generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY) {
-    return createHybridPersonalizedShadowGenerator(
-      createDatabaseProfileSourceNominationGenerator(prisma),
-    )
-  }
-  throw new RangeError(`Unsupported shadow generator key: ${generatorKey}`)
+  if (generatorKey !== SEMANTIC_AA_SHADOW_GENERATOR_KEY)
+    refuseBehavioralRecommendations()
+  return semanticAaShadowGenerator
 }
 
 const semanticAaShadowGenerator: ShadowGenerator = async (context) => ({

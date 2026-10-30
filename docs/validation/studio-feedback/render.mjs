@@ -26,7 +26,6 @@ const document = {
     { id: "text", kind: "caption" },
   ],
   components: [],
-  packRevisionIds: [],
   items: [0, 1, 2, 3].map((i) => ({
     id: "v" + i,
     kind: "video",

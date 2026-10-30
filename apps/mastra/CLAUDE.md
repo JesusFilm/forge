@@ -2398,3 +2398,14 @@ to stdout/stderr for Railway's platform logs.
 For Studio hosted instructions, OAuth MCP authority, or execution admission, read
 `docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
 root before changing those boundaries.
+
+## Controlled build trust
+
+`Dockerfile` filters CA trust before package downloads, including dependencies
+installed by `mastra build --studio`. Build analysis uses development/memory
+only; actual-image CI boots production with disposable PostgreSQL and native
+DuckDB. Runtime still requires PostgreSQL, the persistent `/data` volume and
+one replica. Preserve private-only networking, Studio/gateway containment,
+service/lane authority and all existing scheduler/provider flags. The Docker
+TOML proposal requires the separate dashboard binding before it controls the
+production service. Source merge alone does not close the build finding.

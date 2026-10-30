@@ -91,11 +91,12 @@ describe("source-free Web adapter", () => {
   })
   it("forwards digests only and leaves a profile dormant without its receipt", async () => {
     const raw = "a".repeat(43)
-    await POST(
+    const response = await POST(
       request(body, {
         cookie: `forge_recommendation_session=${raw}; forge_recommendation_profile=${"b".repeat(43)}`,
       }),
     )
+    expect(response.headers.get("set-cookie")).toBeNull()
     expect(query.mock.calls[0][0].variables).toMatchObject({
       sessionDigest: createHash("sha256").update(raw).digest("hex"),
       profileTokenDigest: null,
