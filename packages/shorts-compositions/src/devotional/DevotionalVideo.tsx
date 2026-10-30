@@ -234,6 +234,10 @@ function reveal(
 
 /** Smooth letter-by-letter reveal: each character fades in, staggered. Keeps
  *  line-wrapping (pre-wrap) and highlights the given phrase. */
+/** A takeaway longer than this pages sentence by sentence (the longest
+ *  one-screen takeaways so far run ~110 characters). */
+const CONCLUSION_PAGE_CHARS = 120
+
 function LetterReveal({
   text,
   highlight,
@@ -5950,6 +5954,79 @@ function CardBody({
   }
 
   if (card.kind === "conclusion") {
+    // A takeaway too long for one screen (owner, 2026-10-30, Teach Us to
+    // Pray: "show one sentence, then the other") pages sentence by sentence.
+    // Each page starts when the voice reaches its first word; without word
+    // times the switch falls where its share of the letters says. Short
+    // takeaways stay one page, so older renders are unchanged.
+    const fullText = card.text ?? ""
+    const sentences =
+      fullText.length > CONCLUSION_PAGE_CHARS
+        ? (fullText.match(/[^.!?]+[.!?]+["»”]?\s*/g) ?? [fullText]).map((s) =>
+            s.trim(),
+          )
+        : [fullText]
+    if (sentences.length > 1) {
+      const pageStarts = sentences.map((_, i) => {
+        if (i === 0) return 0
+        const wordsBefore = sentences
+          .slice(0, i)
+          .join(" ")
+          .split(/\s+/)
+          .filter(Boolean).length
+        const timed = card.words?.[wordsBefore]?.startSec
+        if (timed != null) return Math.round(timed * fps)
+        const charsBefore = sentences.slice(0, i).join(" ").length
+        return Math.round((durationInFrames * charsBefore) / fullText.length)
+      })
+      let page = 0
+      for (let i = 0; i < pageStarts.length; i++)
+        if (frame >= pageStarts[i]) page = i
+      const pageText = sentences[page]
+      const pageFrame = frame - pageStarts[page]
+      return (
+        <AbsoluteFill
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center",
+            padding: pad,
+            paddingLeft: igSafe ? igSafeRight : undefined,
+            paddingRight: igSafe ? igSafeRight : undefined,
+            paddingBottom: igSafe ? igSafeBottom : undefined,
+            transform: "translateY(-8px)",
+          }}
+        >
+          <p
+            key={page}
+            style={{
+              margin: 0,
+              fontFamily: textFont === "serif" ? SERIF : SANS,
+              fontStyle: "italic",
+              fontWeight: 400,
+              fontSize: px(41),
+              lineHeight: 1.18,
+              letterSpacing: px(-0.4),
+              color: style.body,
+              ...(letters ? {} : reveal(pageFrame, fps, 0.2, 1, "up")),
+            }}
+          >
+            {letters ? (
+              <LetterReveal
+                text={pageText}
+                highlight={pageText}
+                style={style}
+                frame={pageFrame}
+                fps={fps}
+                delaySec={0.2}
+              />
+            ) : (
+              withHighlight(pageText, pageText, style)
+            )}
+          </p>
+        </AbsoluteFill>
+      )
+    }
     // The emotional ending: always centered on the blurred background, whatever
     // the layout — a held, highlighted closing beat (not bottom-anchored, not in
     // a frost panel).
