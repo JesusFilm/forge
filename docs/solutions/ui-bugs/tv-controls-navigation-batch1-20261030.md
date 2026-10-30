@@ -44,3 +44,23 @@ Directional reveal timeouts match both key and generation before clearing state.
 `NativeSelectGestureTest.kt`. Runtime proof remains necessary for focus,
 rendering, pause and seek. Source-text assertions and emulator success do not
 establish physical-device behavior.
+
+## Inspect generated build scripts when moving a native project
+
+Copied Xcode project files and matching Pods locks can still hide absolute paths
+in `Pods/Target Support Files/Pods-JesusFilmWatch/expo-configure-project.sh`.
+Inspect the generated scripts as well as project files before building; rebase
+the provider output and entitlement input to the selected checkout. Preserve the
+source project and signing identity. A fresh Debug build with `SKIP_BUNDLING=1`
+proves native compilation, while current JavaScript needs separate runtime
+evidence.
+
+## Separate capture latency from application readiness
+
+Android PNG capture/transfer took 0.8–1.1 seconds for a mostly black hero and
+3.3–3.5 seconds for loaded artwork on the same emulator. A launch-to-OCR metric
+included that overhead and accepted different visual completion states. Retain
+the failure and inspect recorded frames offline with distinct Details, artwork
+and focus milestones. Do not subtract overhead to manufacture a pass. Inspect
+actual APK configuration, native executable sections and bundled functions;
+matching local environment files alone do not establish artifact parity.

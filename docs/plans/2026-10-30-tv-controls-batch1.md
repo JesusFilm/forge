@@ -109,7 +109,39 @@ including three gesture sequence tests. Existing debug signing was verified;
 ARMv7 and ARM64 core libraries are present. Source `d563d2666`, APK SHA-256:
 `692cbaf447de183da8338acb5427cbed0acff3c11106a516a43d108a0a21b7f7`.
 Upgrade install on `emulator-5562` succeeded with data retained. Packaged Android
-interaction checks are being completed before the owner checkpoint.
+pause/resume, shell longpress, seek commit/cancel, focused hero dwell, matching
+selection, ambient rotation and Home Back passed. Real saved progress survived
+exit/reentry at 4:39 and advanced to 4:40. Controlled 5-second network latency
+provided a real loading window: Back returned to details with Play focused;
+normal latency was restored. Earlier unobserved and recorder-timeout attempts
+remain retained with their limits.
+
+A fresh Apple Debug native build from this integration succeeded using Xcode
+27.1 and the selected 4K simulator destination. Debug skips JS bundling: this is
+native compilation proof, not a self-contained Release package. Before building,
+two stale absolute paths in the copied generated Pods autolinking shell script
+were rebased to this checkout. Project/lockfile inspection alone missed them.
+
+The first Android screenshot/OCR performance metric exceeded its bound in two
+pairs. PNG capture overhead depended on artwork completion. A separate
+record-only comparison still exceeded its loader-to-Details bound in two pairs:
+baseline 1.527/1.767/1.176 seconds versus candidate 2.985/1.227/2.237. Source
+attribution remains unresolved. Actual APK inspection found matching GraphQL
+endpoint/token, recommendation enablement and native executable code, but
+different feedback configuration. A control export with current configuration
+and only the two Home files restored to baseline was blocked by Metro resolving
+workspace packages through the reused installation. No control APK or Hermes
+bundle was produced. The capped failed attempts and exact preparation remain
+retained. Repair the experiment's dependency resolution before another measured
+comparison; no application optimization is justified by an assumed cause.
+Preserve these failed measurements; no performance pass or merge readiness is
+claimed. Human review of the implemented behavior can proceed while this remains
+a merge blocker. TV-19's asynchronous insertion and physical case stay open.
+
+The owner authorized routine future cleanup of generated TV build caches
+without another permission question. Tested APK/native products, signing,
+source, reports, recordings and device data remain preserved. Both native builds
+started above 12 GiB free and stayed above the 2 GiB stop floor.
 
 Finished shortlist and Home worktrees were archived with needed data preserved.
 Archiving the earlier runner was refused because another active task uses it;
