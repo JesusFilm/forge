@@ -3,7 +3,7 @@ id: "feat-910"
 title: "Studio sidebar product switcher"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-29"
 duration: 1
 depends_on: []
@@ -12,6 +12,27 @@ tags: [manager, studio, navigation, ui]
 ---
 
 ## Problem
+
+Acceptance reopened on 2026-10-30 for independent coordinator findings R1/R2
+at published head `18e0698cd6796a870953743f7f754063db123e79`. The scoped local
+repair preserves dirty-editor cancellation for product click/Enter and lifts the
+menu out of the editor sidebar scrollport using the browser top layer. See
+`docs/plans/2026-10-30-pr2967-editor-switcher-repair.md` and
+`docs/solutions/ui-bugs/manager-switcher-editor-navigation-and-top-layer.md`.
+The original public reporter remains unknown; these findings are independent
+review findings. Historical result entries below describe the original owner's
+executions, not acceptance of this repair.
+
+Keep this ticket in progress pending independent candidate review and actual
+authenticated runtime/performance acceptance. Prior 20-sample development/mock
+measurements found +88ms median cold mobile LCP, +10,578 transferred bytes and
++25ms custom blocking time against requested current-main baseline
+`067a1c27b53590db9d384b608e0a352b7847e090`; that is not production no-regression
+proof. Git's graph merge-base is `1279e6cfc07f34c59ad9e8a2cae6c64fcf63062a`.
+Local editor overflow below 850px retains the existing 720px minimum documented
+in feat-869; the product menu must add no further horizontal overflow. A stored
+non-default report also needs a real reload/hydration recheck; the historical
+"no hydration warning" claim below is not blanket acceptance for that state.
 
 The Manager Studio shell does not name the product it belongs to (Watch) or
 show the other planned products. Operators need a global "Switch product"
@@ -131,6 +152,17 @@ and behaviorally unchanged.
   network request.
 
 ## Result
+
+- Hydration follow-up (2026-10-30): independent review resolved the editor
+  navigation and top-layer repairs, then confirmed stored Audio/Meta causes
+  different server/initial-client submenu children. The shell now retains its
+  client report state behind a deterministic hydration snapshot, preserving
+  saved selection and Subtitle Lab ownership. True SSR-to-`hydrateRoot`
+  StrictMode regressions reproduce four failing Audio/Meta cases before the
+  change; all 95 focused shell/editor tests pass afterward, including default,
+  invalid and denied-storage companions. Matched actual-app reload/loading
+  evidence and fresh changed-source review remain pending; earlier local
+  browser results do not validate this follow-up. Status stays in progress.
 
 - PR preparation (2026-10-30): renumbered from feat-889, which `main`
   already uses for `topic-experiences/feat-889-tv-streaming-ux-followup.md`.
@@ -334,3 +366,13 @@ cursor-not-allowed` (no new tokens; the earlier muted-text overrides are
   820px and 390px with no extra network requests; the revised sidebar
   placement relies on the running mock dev server's hot reload for visual
   review.
+
+## Delayed-consumer hydration follow-up
+
+Coordinator review R4 found a remaining saved-report mismatch when the report
+subtree hydrates after the shell. Both exported shell hooks now retain the
+server report snapshot until each consumer hydrates; live state and stable
+setters remain authoritative afterward. Controlled Suspense regressions and
+scoped checks are required; actual delayed Next Coverage, fresh review, current
+CI and the earlier runtime/performance/device acceptance remain open. Ordinary
+matched reload success on the previous candidate remains scoped prior evidence.

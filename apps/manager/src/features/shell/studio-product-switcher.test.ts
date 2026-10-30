@@ -162,6 +162,13 @@ describe("StudioProductSwitcher", () => {
   }
 
   beforeEach(async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    )
     container = document.createElement("div")
     outside = document.createElement("button")
     document.body.append(container, outside)
@@ -177,6 +184,7 @@ describe("StudioProductSwitcher", () => {
     })
     container.remove()
     outside.remove()
+    vi.unstubAllGlobals()
   })
 
   const trigger = () =>
@@ -327,6 +335,49 @@ describe("StudioProductSwitcher", () => {
     ).toHaveLength(12)
     expect(activeOption()).toBe(subtitles)
     expect(optionClasses(subtitles)).toContain(ACTIVE_HIGHLIGHT)
+  })
+
+  it("uses the top layer and releases positioning work when closed", async () => {
+    // jsdom has no layout/top layer. These doubles verify its lifecycle;
+    // actual editor clipping and hit-testing are verified in a real browser.
+    const show = vi.fn()
+    const hide = vi.fn()
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, "showPopover", {
+      configurable: true,
+      value: show,
+    })
+    Object.defineProperty(HTMLElement.prototype, "hidePopover", {
+      configurable: true,
+      value: hide,
+    })
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = observe
+        disconnect = disconnect
+      },
+    )
+    try {
+      expect(observe).not.toHaveBeenCalled()
+      expect(show).not.toHaveBeenCalled()
+      await openSwitcher()
+      const menu = container.querySelector('[role="dialog"]')!
+      expect(menu.getAttribute("popover")).toBe("manual")
+      expect(show).toHaveBeenCalledTimes(1)
+      expect(observe).toHaveBeenCalledWith(menu)
+      expect(document.activeElement).toBe(input())
+      await press("Escape")
+      expect(hide).toHaveBeenCalledTimes(1)
+      expect(disconnect).toHaveBeenCalledTimes(1)
+      expectClosedWithFocusOnTrigger()
+      window.dispatchEvent(new Event("resize"))
+      expect(show).toHaveBeenCalledTimes(1)
+    } finally {
+      Reflect.deleteProperty(HTMLElement.prototype, "showPopover")
+      Reflect.deleteProperty(HTMLElement.prototype, "hidePopover")
+    }
   })
 
   it("marks the supplied report or route key as current and starts there", async () => {

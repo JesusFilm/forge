@@ -8946,12 +8946,6 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
     .studio-product-switch-chevron {
     display: none;
   }
-
-  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-    .studio-product-switch-menu {
-    top: 0;
-    left: calc(100% + 8px);
-  }
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)

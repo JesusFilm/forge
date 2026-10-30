@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -388,11 +389,10 @@ export function StudioProductSwitcher({
    */
   currentKey: StudioSelectableProductKey
   /**
-   * Called with the chosen report or route entry after the popover closes and
-   * focus returns to the trigger. The parent switches the report context or
-   * navigates, so this component imports neither shell state nor the router.
+   * The parent may cancel before the popover closes or selection state changes.
+   * This component imports neither shell state nor the router.
    */
-  onSelect: (product: StudioSelectableProduct) => void
+  onSelect: (product: StudioSelectableProduct) => void | boolean
   triggerClassName: string
 }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -402,6 +402,7 @@ export function StudioProductSwitcher({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const baseId = useId()
   const listboxId = `${baseId}-products`
   const optionId = (key: StudioProductKey) => `${baseId}-product-${key}`
@@ -419,6 +420,41 @@ export function StudioProductSwitcher({
   const candidate = products[activeIndex]
   const activeProduct = candidate?.available ? candidate : null
   const activeOptionId = activeProduct ? optionId(activeProduct.key) : null
+
+  // The top layer escapes the editor sidebar scrollport without reparenting
+  // the menu: scoped theme tokens, blur handling and Tab order stay inherited.
+  // All layout measurement/listeners exist only for the mounted open menu.
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    const menu = menuRef.current!
+    const trigger = triggerRef.current!
+    const position = () => {
+      const rect = trigger.getBoundingClientRect()
+      const sidebar = trigger.closest(".design-system-shell-sidebar")
+      const besideRail =
+        window.innerWidth > 900 &&
+        sidebar?.querySelector<HTMLInputElement>(
+          ".design-system-sidebar-checkbox",
+        )?.checked
+      const width = menu.getBoundingClientRect().width
+      const height = menu.getBoundingClientRect().height
+      menu.style.left = `${Math.max(16, Math.min(besideRail ? rect.right + 8 : rect.left, window.innerWidth - width - 16))}px`
+      menu.style.top = `${Math.max(16, Math.min(besideRail ? rect.top : rect.bottom + 8, window.innerHeight - height - 16))}px`
+    }
+    menu.showPopover?.()
+    position()
+    // Search changes the height; keep the smaller result anchored as well.
+    const observer = new ResizeObserver(position)
+    observer.observe(menu)
+    window.addEventListener("resize", position)
+    window.addEventListener("scroll", position, true)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", position)
+      window.removeEventListener("scroll", position, true)
+      menu.hidePopover?.()
+    }
+  }, [isOpen])
 
   // Keep the keyboard-active option visible when the list scrolls.
   useEffect(() => {
@@ -479,9 +515,8 @@ export function StudioProductSwitcher({
       return
     }
 
+    if (onSelect(product) === false) return
     close(true)
-    // Report entries switch the shell context in place; route entries navigate.
-    onSelect(product)
   }
 
   /** Moves to the next/previous selectable entry, wrapping at either end. */
@@ -582,7 +617,9 @@ export function StudioProductSwitcher({
 
       {isOpen ? (
         <div
-          className="studio-product-switch-menu absolute left-0 top-[calc(100%+8px)] z-[70] w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+12px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3 shadow-[0_20px_55px_rgba(17,17,17,0.14)] animate-in fade-in-0 zoom-in-95 duration-150"
+          ref={menuRef}
+          popover="manual"
+          className="studio-product-switch-menu fixed inset-auto m-0 max-h-[calc(100dvh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[calc(var(--ds-radius)+12px)] border border-[color:var(--ds-line)] bg-[color:var(--ds-panel)] p-3 shadow-[0_20px_55px_rgba(17,17,17,0.14)]"
           role="dialog"
           aria-label="Switch product"
         >
@@ -625,7 +662,7 @@ export function StudioProductSwitcher({
             id={listboxId}
             role="listbox"
             aria-label="Products"
-            className="mt-2 flex max-h-[min(26rem,calc(100vh-12rem))] flex-col gap-2 overflow-y-auto"
+            className="mt-2 flex max-h-[min(26rem,calc(100dvh-8rem))] flex-col gap-2 overflow-y-auto"
           >
             {groups.map((group) => (
               <div

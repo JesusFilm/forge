@@ -39,6 +39,7 @@ import {
 } from "@/lib/manager-theme"
 import { cn } from "@/lib/utils"
 import { MANAGER_SIDEBAR_COOKIE } from "@/lib/manager-sidebar"
+import { requestClientNavigation } from "@/lib/client-navigation"
 import {
   getActiveStudioSubmenuItemKey,
   getStudioCurrentProductKey,
@@ -251,6 +252,18 @@ function readStoredReportType(): ManagerShellReportType {
   }
 
   return "subtitles"
+}
+
+function subscribeToHydration() {
+  return () => undefined
+}
+
+function getClientHydrationSnapshot() {
+  return true
+}
+
+function getServerHydrationSnapshot() {
+  return false
 }
 
 function getBreadcrumbs(pathname: string): string[] {
@@ -534,8 +547,25 @@ export function StudioUserMenuPanel({
   )
 }
 
-export function useManagerShellState(): ManagerShellContextValue {
+function useHydrationSafeManagerShellState(): ManagerShellContextValue | null {
   const context = useContext(ManagerShellContext)
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
+  )
+
+  // The shell can finish hydrating while a report behind Suspense is still
+  // dehydrated. Each consumer must match its own server snapshot first.
+  return useMemo(() => {
+    if (!context || hydrated || context.reportType === "subtitles")
+      return context
+    return { ...context, reportType: "subtitles" }
+  }, [context, hydrated])
+}
+
+export function useManagerShellState(): ManagerShellContextValue {
+  const context = useHydrationSafeManagerShellState()
 
   if (!context) {
     throw new Error(
@@ -547,7 +577,7 @@ export function useManagerShellState(): ManagerShellContextValue {
 }
 
 export function useOptionalManagerShellState(): ManagerShellContextValue | null {
-  return useContext(ManagerShellContext)
+  return useHydrationSafeManagerShellState()
 }
 
 export function ManagerShellHeaderSlot({ children }: { children: ReactNode }) {
@@ -601,9 +631,16 @@ export function ManagerDashboardShell({
   const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
-  const [reportType, setReportTypeState] = useState<ManagerShellReportType>(
-    () => readStoredReportType(),
+  const [clientReportType, setReportTypeState] =
+    useState<ManagerShellReportType>(() => readStoredReportType())
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientHydrationSnapshot,
+    getServerHydrationSnapshot,
   )
+  // The first hydration render must match the server's submenu structure.
+  // Retain the saved client value without writing over it during restoration.
+  const reportType = hydrated ? clientReportType : "subtitles"
   const [queueCount, setQueueCount] = useState<number | null>(null)
   // A product chosen in the switcher whose route has not loaded yet, so its
   // submenu shows immediately; it lapses once the pathname changes.
@@ -659,18 +696,25 @@ export function ManagerDashboardShell({
 
   const handleProductSelect = useCallback(
     (product: StudioSelectableProduct) => {
+      const inPlace =
+        product.kind === "report" &&
+        isPathnameInStudioProductSubmenu(
+          product.key,
+          pathname,
+          searchParams?.toString(),
+        )
+      const href =
+        product.kind === "report" ? "/dashboard/coverage" : product.href
+      // Ask the active editor before changing report storage or the pending
+      // submenu. In-place Report/Jobs context changes do not leave the page.
+      if (!inPlace && !requestClientNavigation(href)) return false
+
       if (product.kind === "report") {
         setReportType(product.key)
 
         // Report and Jobs are shared by every report product; other pages
         // (Subtitle Lab, route products) fall back to the report.
-        if (
-          isPathnameInStudioProductSubmenu(
-            product.key,
-            pathname,
-            searchParams?.toString(),
-          )
-        ) {
+        if (inPlace) {
           setPendingProduct(null)
           return
         }

@@ -1,4 +1,5 @@
 import type { EditorSession } from "./editor-session"
+import { CLIENT_NAVIGATION_REQUEST } from "@/lib/client-navigation"
 
 /** Read current dirty state at navigation time, including unresolved save receipts. */
 export function guardEditorNavigation(
@@ -6,6 +7,27 @@ export function guardEditorNavigation(
   browser: Window,
   page: Document,
 ) {
+  const mayLeave = (href: string) => {
+    if (!session.getSnapshot().hasUnsavedChanges) return true
+    const destination = new URL(href, browser.location.href)
+    if (
+      destination.origin === browser.location.origin &&
+      destination.pathname === browser.location.pathname &&
+      destination.search === browser.location.search
+    )
+      return true
+    return browser.confirm(
+      "Your changes are not saved. Leave this page anyway?",
+    )
+  }
+  const request = (event: Event) => {
+    if (
+      event instanceof CustomEvent &&
+      typeof event.detail?.href === "string" &&
+      !mayLeave(event.detail.href)
+    )
+      event.preventDefault()
+  }
   const unload = (event: BeforeUnloadEvent) => {
     if (!session.getSnapshot().hasUnsavedChanges) return
     event.preventDefault()
@@ -32,15 +54,7 @@ export function guardEditorNavigation(
       return
     const destination = new URL(link.href, browser.location.href)
     if (!["http:", "https:"].includes(destination.protocol)) return
-    if (
-      destination.origin === browser.location.origin &&
-      destination.pathname === browser.location.pathname &&
-      destination.search === browser.location.search
-    )
-      return
-    if (
-      !browser.confirm("Your changes are not saved. Leave this page anyway?")
-    ) {
+    if (!mayLeave(destination.href)) {
       event.preventDefault()
       event.stopImmediatePropagation()
     }
@@ -66,19 +80,14 @@ export function guardEditorNavigation(
       !session.getSnapshot().hasUnsavedChanges
     )
       return
-    const destination = new URL(event.destination.url)
-    if (
-      destination.pathname === browser.location.pathname &&
-      destination.search === browser.location.search
-    )
-      return
-    if (!browser.confirm("Your changes are not saved. Leave this page anyway?"))
-      event.preventDefault()
+    if (!mayLeave(event.destination.url)) event.preventDefault()
   }
+  browser.addEventListener(CLIENT_NAVIGATION_REQUEST, request)
   navigation?.addEventListener("navigate", traverse)
   browser.addEventListener("beforeunload", unload)
   page.addEventListener("click", click, true)
   return () => {
+    browser.removeEventListener(CLIENT_NAVIGATION_REQUEST, request)
     navigation?.removeEventListener("navigate", traverse)
     browser.removeEventListener("beforeunload", unload)
     page.removeEventListener("click", click, true)
