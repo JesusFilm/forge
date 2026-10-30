@@ -1,7 +1,7 @@
 ---
 title: "Remove drained behavioral recommendation code and schema"
 type: refactor
-status: active
+status: completed
 date: 2026-10-30
 ticket: feat-905
 ---
@@ -111,3 +111,29 @@ No direct deploy/redeploy, production fault injection, timeout widening,
 manual ordinary-expiry run or `VACUUM FULL` is part of this work. A provider
 failure is preserved and reported; it does not permit bypassing release or
 catalog checks. Existing daily expiry remains enabled.
+
+## October 30 execution receipt
+
+U1 [#2963](https://github.com/JesusFilm/forge/pull/2963) merged as
+`fef631df330a6d0dd6c5477f2209cfeed09fd993`; every actual HTTP/worker replica
+was verified before U2 admission. U2 [#2965](https://github.com/JesusFilm/forge/pull/2965)
+merged as `161fd1e36d64453ac549bccc69b362a68cecf304` after exact-head review,
+green checks and fresh zero/reference/workflow/authority evidence. Preflight
+compared selected constraints/triggers/functions, not a complete `pg_depend`
+or enum-ownership inventory; explicit atomic `RESTRICT` guarded against
+unexpected dependencies. The migration checked the runtime status enum itself.
+
+Actual U2 replicas, migration checksum, named catalog absence, retained
+NULL checks, two guard hashes and 12 enabled attachments were verified.
+Independent evidence review accepted physical cleanup with its bounded
+retained-contract proof. The [release report](../reports/2026-10-30-retired-behavioral-schema-removal.md)
+contains separate relation/database/filesystem/WAL observations and ordinary
+21-family/two-extra receipts. The existing daily observer uses that inventory;
+no ordinary cycle credit or fix for its historical failures is claimed.
+
+The serving/error review retained all caps and genuine observations. Existing
+feat-792 owns uncoupled fact retry and unresolved HTTP 403 signals; new feat-907
+owns the unlocalized Web React ref errors. These remain explicit reliability
+follow-ups, not hidden by successful requests or used to revive retired scope.
+The dirty original checkout was preserved. No direct deploy, manual ordinary
+purge, fault injection, timeout widening or VACUUM FULL occurred.
