@@ -48,6 +48,7 @@ export function TextRenderer({ section }: TextRendererProps) {
 
   return (
     <View
+      testID="sdui-text"
       style={[
         layout.sectionOuter,
         styles.localContainer,

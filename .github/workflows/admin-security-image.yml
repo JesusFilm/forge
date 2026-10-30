@@ -1,0 +1,74 @@
+name: Admin production image
+on:
+  pull_request:
+    paths:
+      - "apps/admin/**"
+      - "packages/experience-schema/**"
+      - "packages/feature-flags/**"
+      - "packages/studio-contracts/**"
+      - "packages/studio-server/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - "scripts/upload-datadog-sourcemaps.mjs"
+      - ".github/workflows/admin-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/admin/**"
+      - "packages/experience-schema/**"
+      - "packages/feature-flags/**"
+      - "packages/studio-contracts/**"
+      - "packages/studio-server/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - "scripts/upload-datadog-sourcemaps.mjs"
+      - ".github/workflows/admin-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify transitive workspace packaging and image triggers
+        run: node --test apps/admin/scripts/docker-workspace-packaging.test.mjs
+      - name: Build actual image with filtered package trust and PostgreSQL18 clients
+        run: docker build -f apps/admin/Dockerfile -t admin-security-ci .
+      - name: Verify independent runtime and OS trust contexts
+        run: docker run --rm --entrypoint sh admin-security-ci apps/admin/verify-image-trust.sh
+      - name: Start disposable PostgreSQL and Redis on an isolated network
+        run: |
+          docker network create --internal admin-security-ci
+          docker run -d --name admin-security-db --network admin-security-ci \
+            -e POSTGRES_USER=forge -e POSTGRES_PASSWORD=synthetic-only-test-password \
+            -e POSTGRES_DB=forge_admin_image --entrypoint sh pgvector/pgvector:pg18-trixie -c \
+            'openssl req -x509 -newkey rsa:2048 -nodes -subj /CN=admin-security-db -addext subjectAltName=DNS:admin-security-db -keyout /tmp/admin-image-pg.key -out /tmp/admin-image-pg.crt -days 1 2>/dev/null && chmod 600 /tmp/admin-image-pg.key && chown postgres:postgres /tmp/admin-image-pg.key /tmp/admin-image-pg.crt && exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/tmp/admin-image-pg.crt -c ssl_key_file=/tmp/admin-image-pg.key'
+          docker run -d --name admin-security-redis --network admin-security-ci redis:8.2-bookworm
+          for attempt in $(seq 1 60); do
+            if docker exec admin-security-db pg_isready -h 127.0.0.1 -U forge -d forge_admin_image && docker exec admin-security-redis redis-cli ping; then docker cp admin-security-db:/tmp/admin-image-pg.crt /tmp/admin-image-pg.crt; exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify migrations, shipped clients and actual web and worker production startup
+        run: |
+          docker run --rm --network admin-security-ci \
+            -v /tmp/admin-image-pg.crt:/tmp/admin-image-pg.crt:ro \
+            -e ADMIN_IMAGE_FIXTURE=isolated \
+            -e DATABASE_URL=postgresql://forge:synthetic-only-test-password@admin-security-db:5432/forge_admin_image \
+            -e REDIS_HOST=admin-security-redis \
+            -e WORKFLOW_POSTGRES_URL=postgresql://forge:synthetic-only-test-password@admin-security-db:5432/forge_admin_image \
+            --entrypoint sh admin-security-ci -c \
+            'sh /app/apps/admin/predeploy-production.sh web && sh /app/apps/admin/predeploy-production.sh worker && pnpm --filter @forge/admin workflow:setup:postgres && node apps/admin/verify-production-image.mjs'
+      - name: Remove disposable services
+        if: always()
+        run: |
+          docker rm -f admin-security-db admin-security-redis || true
+          docker network rm admin-security-ci || true

@@ -37,6 +37,8 @@ export type WatchVariant = {
   published: boolean
   hls: string | null
   duration: number | null
+  /** Canonical cut identity. Missing identity does not imply a shared timeline. */
+  editionId?: string | null
   languageCoreId: string | null
   languageBcp47: string | null
   languageSlug: string | null
@@ -364,6 +366,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       published: v.published ?? false,
       hls: cleanStreamUrl(v.hls),
       duration: v.duration ?? null,
+      editionId: v.videoEdition?.id ?? null,
       languageCoreId: v.language?.coreId ?? null,
       languageBcp47: v.language?.bcp47 ?? null,
       languageSlug: v.language?.slug ?? null,

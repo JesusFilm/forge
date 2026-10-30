@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="emulator-5640" tests="1" failures="1" time="35.857" timestamp="2026-10-23T13:00:25">
+    <testcase id="collection-autoplay" name="collection-autoplay" classname="collection-autoplay" file="apps/mobile/release-check/journeys/collection-autoplay.yaml" time="35.847" timestamp="2026-10-23T13:00:25" status="ERROR">
+      <failure>Assertion is false: id: screen-experience is visible</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

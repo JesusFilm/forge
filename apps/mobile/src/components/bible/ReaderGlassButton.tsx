@@ -144,7 +144,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+  // A pill in a narrow slot shrinks and lets its label truncate.
   pill: {
+    maxWidth: "100%",
     height: READER_GLASS_SIZE,
     borderRadius: READER_GLASS_SIZE / 2,
     paddingHorizontal: 16,
@@ -154,6 +156,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   content: {
+    flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

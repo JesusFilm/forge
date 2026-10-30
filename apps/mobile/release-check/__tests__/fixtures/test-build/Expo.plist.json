@@ -1,0 +1,8 @@
+{
+  "EXUpdatesEnabled": false,
+  "EXUpdatesLaunchWaitMs": 0,
+  "EXUpdatesCheckOnLaunch": "ALWAYS",
+  "EXUpdatesEnableBsdiffPatchSupport": true,
+  "EXUpdatesRuntimeVersion": "file:fingerprint",
+  "EXUpdatesURL": "https://u.expo.dev/e8e41dde-3482-4571-a499-3b82673cdb39"
+}

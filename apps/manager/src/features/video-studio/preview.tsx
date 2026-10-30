@@ -1,11 +1,20 @@
 "use client"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react"
 import { Player, type PlayerRef } from "@remotion/player"
 import { StudioComposition } from "@forge/shorts-compositions/studio/Composition"
 import {
   studioPreviewSchema,
   type StudioPreview,
 } from "@forge/studio-contracts/preview"
+import { pausedFootageFrame } from "./preview-pause"
 import { previewSignature } from "./preview-state"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
 
@@ -20,12 +29,15 @@ type Prepared = {
   mediaUrls: Record<string, string>
   signature: string
 }
+export type PreviewPlaybackHandle = { pause: () => void }
 type Props = {
+  playbackRef?: Ref<PreviewPlaybackHandle>
   session: Pick<EditorSession, "edit" | "seek" | "reportPlaybackFrame"> &
     Partial<Pick<EditorSession, "requireSignIn">>
   state: EditorSnapshot
   projectId: string
   playing: boolean
+  looping?: boolean
   onPlaying: (value: boolean) => void
 }
 function PlaybackError({
@@ -40,12 +52,16 @@ function PlaybackError({
 }
 function LivePlayer({
   prepared,
+  playbackRef,
   state,
   session,
   playing,
+  looping,
   onPlaying,
   onError,
 }: Props & { prepared: Prepared; onError: (message: string) => void }) {
+  const root = useRef<HTMLDivElement>(null)
+  const playingSeek = useRef<EditorSnapshot["seekRequest"] | null>(null)
   const player = useRef<PlayerRef>(null)
   const lastSeekRequest = useRef<EditorSnapshot["seekRequest"] | null>(null)
   const latestPlayhead = useRef(state.playhead)
@@ -86,25 +102,54 @@ function LivePlayer({
     lastSeekRequest.current = state.seekRequest
     if (current.getCurrentFrame() !== target) current.seekTo(target)
   }, [state.seekRequest])
+  const pauseNow = useCallback(() => {
+    const current = player.current
+    if (!current?.isPlaying()) return
+    const videos = Array.from(root.current?.querySelectorAll("video") ?? [])
+    const frame = pausedFootageFrame(input, current.getCurrentFrame(), (id) => {
+      const video = videos.find(
+        (video) =>
+          video.closest<HTMLElement>("[data-studio-item]")?.dataset
+            .studioItem === id,
+      )
+      return video && video.readyState >= 2 ? video.currentTime : undefined
+    })
+    videos.forEach((video) => video.pause())
+    current.pause()
+    if (frame !== current.getCurrentFrame()) current.seekTo(frame)
+    session.reportPlaybackFrame(frame)
+  }, [input, session])
+  useImperativeHandle(playbackRef, () => ({ pause: pauseNow }), [pauseNow])
   useEffect(() => {
-    if (playing) player.current?.play()
-    else player.current?.pause()
-  }, [playing])
+    const current = player.current
+    if (!current) return
+    if (playing) {
+      playingSeek.current = state.seekRequest
+      current.play()
+    } else {
+      if (playingSeek.current === state.seekRequest) pauseNow()
+      else current.pause()
+      playingSeek.current = null
+    }
+  }, [playing, pauseNow, state.seekRequest])
   return (
-    <Player
-      ref={player}
-      component={StudioComposition}
-      inputProps={inputProps}
-      compositionWidth={input.document.width}
-      compositionHeight={input.document.height}
-      durationInFrames={input.document.durationInFrames}
-      fps={input.document.fps}
-      acknowledgeRemotionLicense
-      style={{ width: "100%", height: "100%" }}
-      errorFallback={({ error }) => (
-        <PlaybackError error={error} onError={onError} />
-      )}
-    />
+    <div ref={root} style={{ width: "100%", height: "100%" }}>
+      <Player
+        ref={player}
+        component={StudioComposition}
+        inputProps={inputProps}
+        compositionWidth={input.document.width}
+        compositionHeight={input.document.height}
+        durationInFrames={input.document.durationInFrames}
+        fps={input.document.fps}
+        loop={looping}
+        acknowledgeRemotionLicense
+        style={{ width: "100%", height: "100%" }}
+        errorFallback={({ error }) => (
+          <PlaybackError error={error} onError={onError} />
+        )}
+      />
+    </div>
   )
 }
 export default function Preview(props: Props) {

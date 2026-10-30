@@ -53,6 +53,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "watchCollectionFeed",
         "watchLanguageInventory",
         "watchFilmFinder",
+        "myWatchLearningProgress",
         "watchSearch",
         "watchSearchSuggestions",
         "videosByCoreIds",
@@ -430,6 +431,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const preview = schema.getType("ExperiencePreview") as GraphQLObjectType
     expect(String(preview.getFields().isHomepage!.type)).toBe("Boolean!")
     expect(String(preview.getFields().homepageLayout!.type)).toBe("Boolean!")
+    // Lets Web restrict the audience questionnaire preview to the template.
+    expect(String(preview.getFields().isTemplate!.type)).toBe("Boolean!")
     const effective = schema.getType(
       "ExperienceLocaleEffective",
     ) as GraphQLObjectType
@@ -475,6 +478,21 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const fields = mutation!.getFields()
     expect(fields.createManagerJob).toBeDefined()
     expect(fields.updateManagerJob).toBeDefined()
+  })
+
+  it("registers own learning queries and mutations in the assembled schema", () => {
+    const query = schema.getQueryType()!.getFields().myWatchLearningProgress
+    expect(String(query.type)).toBe("[WatchLearningLessonProgress!]!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "contentVersion",
+      "courseId",
+    ])
+    const mutations = schema.getMutationType()!.getFields()
+    for (const name of [
+      "saveMyWatchLearningProgress",
+      "resetMyWatchLearningProgress",
+    ])
+      expect(String(mutations[name].type)).toBe("WatchLearningSaveResult!")
   })
 
   it("Mutation root exposes the private watch-event write contract", () => {

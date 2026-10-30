@@ -413,6 +413,11 @@ PassageRef.implement({
   description:
     "Cached Bible passage text for a video citation, fetched server-side from an approved provider.",
   fields: (t) => ({
+    languageSlug: t.exposeString("languageSlug", {
+      nullable: true,
+      description:
+        "Content language of the selected Bible version, including English fallback; absent in older snapshots.",
+    }),
     content: t.exposeString("content"),
     copyright: t.exposeString("copyright"),
     humanReference: t.exposeString("humanReference"),

@@ -1,0 +1,381 @@
+[
+  {
+    "command": {
+      "defineVariablesCommand": {
+        "env": {
+          "EXPLORE_TAB": "hidden",
+          "MAESTRO_DISABLE_UPDATE_CHECK": "true",
+          "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED": "true",
+          "MAESTRO_CLI_NO_ANALYTICS": "1",
+          "MAESTRO_FILENAME": "search-open-result",
+          "MAESTRO_DEVICE_UDID": "emulator-5640",
+          "MAESTRO_SHARD_ID": "1",
+          "MAESTRO_SHARD_INDEX": "0"
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656697184,
+      "duration": 1,
+      "sequenceNumber": 0,
+      "depth": 0,
+      "evaluatedCommand": {
+        "defineVariablesCommand": {
+          "env": {
+            "EXPLORE_TAB": "hidden",
+            "MAESTRO_DISABLE_UPDATE_CHECK": "true",
+            "MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED": "true",
+            "MAESTRO_CLI_NO_ANALYTICS": "1",
+            "MAESTRO_FILENAME": "search-open-result",
+            "MAESTRO_DEVICE_UDID": "emulator-5640",
+            "MAESTRO_SHARD_ID": "1",
+            "MAESTRO_SHARD_INDEX": "0"
+          },
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "applyConfigurationCommand": {
+        "config": {
+          "appId": "org.jesusfilm.forgewatch",
+          "name": "search-open-result",
+          "tags": ["search"]
+        },
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656697186,
+      "duration": 0,
+      "sequenceNumber": 1,
+      "depth": 0,
+      "evaluatedCommand": {
+        "applyConfigurationCommand": {
+          "config": {
+            "appId": "org.jesusfilm.forgewatch",
+            "name": "search-open-result",
+            "tags": ["search"]
+          },
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "launchAppCommand": {
+        "appId": "org.jesusfilm.forgewatch",
+        "permissions": {
+          "notifications": "deny"
+        },
+        "label": "Launch the app",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656697186,
+      "duration": 51,
+      "sequenceNumber": 2,
+      "depth": 0,
+      "evaluatedCommand": {
+        "launchAppCommand": {
+          "appId": "org.jesusfilm.forgewatch",
+          "permissions": {
+            "notifications": "deny"
+          },
+          "label": "Launch the app",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "idRegex": "screen-tab-home",
+            "optional": false
+          }
+        },
+        "timeout": "60000",
+        "label": "Home shows",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656697237,
+      "duration": 1757,
+      "sequenceNumber": 3,
+      "depth": 0,
+      "evaluatedCommand": {
+        "assertConditionCommand": {
+          "condition": {
+            "visible": {
+              "idRegex": "screen-tab-home",
+              "optional": false
+            }
+          },
+          "timeout": "60000",
+          "label": "Home shows",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "tapOnElement": {
+        "selector": {
+          "textRegex": "Search",
+          "optional": false
+        },
+        "retryIfNoChange": false,
+        "waitUntilVisible": false,
+        "longPress": false,
+        "label": "Open the Search tab",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656698994,
+      "duration": 3289,
+      "sequenceNumber": 4,
+      "depth": 0,
+      "evaluatedCommand": {
+        "tapOnElement": {
+          "selector": {
+            "textRegex": "Search",
+            "optional": false
+          },
+          "retryIfNoChange": false,
+          "waitUntilVisible": false,
+          "longPress": false,
+          "label": "Open the Search tab",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "idRegex": "screen-tab-watch",
+            "optional": false
+          }
+        },
+        "timeout": "20000",
+        "label": "Search shows",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656702283,
+      "duration": 583,
+      "sequenceNumber": 5,
+      "depth": 0,
+      "evaluatedCommand": {
+        "assertConditionCommand": {
+          "condition": {
+            "visible": {
+              "idRegex": "screen-tab-watch",
+              "optional": false
+            }
+          },
+          "timeout": "20000",
+          "label": "Search shows",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "tapOnElement": {
+        "selector": {
+          "textRegex": "Search for videos about any topic.*",
+          "optional": false
+        },
+        "retryIfNoChange": false,
+        "waitUntilVisible": false,
+        "longPress": false,
+        "label": "Open the search field",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656702866,
+      "duration": 2941,
+      "sequenceNumber": 6,
+      "depth": 0,
+      "evaluatedCommand": {
+        "tapOnElement": {
+          "selector": {
+            "textRegex": "Search for videos about any topic.*",
+            "optional": false
+          },
+          "retryIfNoChange": false,
+          "waitUntilVisible": false,
+          "longPress": false,
+          "label": "Open the search field",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "inputTextCommand": {
+        "text": "creation",
+        "label": "Type the search word",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656705807,
+      "duration": 3506,
+      "sequenceNumber": 7,
+      "depth": 0,
+      "evaluatedCommand": {
+        "inputTextCommand": {
+          "text": "creation",
+          "label": "Type the search word",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "textRegex": "Creation, .+",
+            "optional": false
+          }
+        },
+        "timeout": "20000",
+        "label": "The results show",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656709313,
+      "duration": 127,
+      "sequenceNumber": 8,
+      "depth": 0,
+      "evaluatedCommand": {
+        "assertConditionCommand": {
+          "condition": {
+            "visible": {
+              "textRegex": "Creation, .+",
+              "optional": false
+            }
+          },
+          "timeout": "20000",
+          "label": "The results show",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "tapOnElement": {
+        "selector": {
+          "textRegex": "Creation, .+",
+          "optional": false
+        },
+        "retryIfNoChange": false,
+        "waitUntilVisible": false,
+        "longPress": false,
+        "label": "Open the first video result",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "COMPLETED",
+      "timestamp": 1792656709440,
+      "duration": 2665,
+      "sequenceNumber": 9,
+      "depth": 0,
+      "evaluatedCommand": {
+        "tapOnElement": {
+          "selector": {
+            "textRegex": "Creation, .+",
+            "optional": false
+          },
+          "retryIfNoChange": false,
+          "waitUntilVisible": false,
+          "longPress": false,
+          "label": "Open the first video result",
+          "optional": false
+        }
+      }
+    }
+  },
+  {
+    "command": {
+      "assertConditionCommand": {
+        "condition": {
+          "visible": {
+            "idRegex": "screen-watch",
+            "optional": false
+          }
+        },
+        "timeout": "30000",
+        "label": "The watch page shows",
+        "optional": false
+      }
+    },
+    "metadata": {
+      "status": "FAILED",
+      "timestamp": 1792656712105,
+      "duration": 30055,
+      "error": {
+        "message": "Assertion is false: id: screen-watch is visible",
+        "debugMessage": "Assertion 'id: screen-watch is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.\n\nPossible causes:\n- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.\n- Element may be temporarily unavailable due to loading state\n- This could be a real regression that needs to be addressed"
+      },
+      "sequenceNumber": 10,
+      "depth": 0,
+      "evaluatedCommand": {
+        "assertConditionCommand": {
+          "condition": {
+            "visible": {
+              "idRegex": "screen-watch",
+              "optional": false
+            }
+          },
+          "timeout": "30000",
+          "label": "The watch page shows",
+          "optional": false
+        }
+      },
+      "artifacts": [
+        {
+          "type": "SCREEN_HIERARCHY",
+          "path": "screen-hierarchy/step-011-assertCondition-screen-watch.json"
+        },
+        {
+          "type": "SCREENSHOT",
+          "path": "screenshots/step-011-assertCondition-screen-watch.png"
+        }
+      ]
+    }
+  }
+]

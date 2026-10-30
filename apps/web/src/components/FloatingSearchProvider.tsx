@@ -36,6 +36,8 @@ import {
   type WatchRouteSurfaceContextValue,
 } from "./FloatingSearchContext"
 import { AccountControl } from "@/components/watch/AccountControl"
+import { WatchRoleChip } from "@/components/watch/WatchRoleChip"
+import { useWatchAudiencePresence } from "@/components/watch/watch-audience-presence"
 import type { GlobalLanguagePickerModalProps } from "@/components/watch/GlobalLanguagePickerModal"
 import {
   WATCH_MODAL_CLOSE_DELAY_MS,
@@ -216,6 +218,7 @@ export function FloatingSearchProvider({
   initialRouteSurface?: WatchRouteSurface | null
 }) {
   const t = useTranslations("FloatingSearch")
+  const audiencePresence = useWatchAudiencePresence()
   const searchT = useTranslations("SearchOverlay")
   const languageT = useTranslations("LanguagePickerModal")
   const languageComboboxT = useTranslations("LanguageCombobox")
@@ -1055,10 +1058,7 @@ export function FloatingSearchProvider({
               unoptimized
               className={
                 isWatchHome
-                  ? // Large text (see FLOATING_HEADER_CONTAINER_CLASS): the
-                    // wordmark shrinks to the sign's width so the language
-                    // control stays on screen.
-                    "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px] @max-[17rem]/header:w-11"
+                  ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
                   : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
               }
             />
@@ -1087,6 +1087,7 @@ export function FloatingSearchProvider({
                 : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
             }
           >
+            {!modalChromeHidden ? <WatchRoleChip /> : null}
             {!modalChromeHidden && languageVideosHref ? (
               <Link
                 href={languageVideosHref}
@@ -1117,7 +1118,10 @@ export function FloatingSearchProvider({
                   aria-hidden
                   className="h-6 w-6 shrink-0 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
                 />
-                <span className="text-xs font-bold tracking-[0.14em] whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)] sm:text-[10px]">
+                {/* The label yields to the role chip between xl and 1700px. */}
+                <span
+                  className={`text-xs font-bold tracking-[0.14em] whitespace-nowrap uppercase drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)] sm:text-[10px]${audiencePresence ? " xl:hidden min-[1700px]:inline" : ""}`}
+                >
                   {t("library")}
                 </span>
               </Link>

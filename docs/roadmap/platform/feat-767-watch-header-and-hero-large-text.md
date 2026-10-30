@@ -16,6 +16,19 @@ tags:
   - "ui"
 ---
 
+## October 29 header correction
+
+The second-row proposal in the historical implementation below was rejected:
+it extended beyond the one-row backdrop, hover zone and page offset. Below a
+17rem named header container, keep the existing 52px row and show search and
+language as 44px-wide icon controls. Their translated accessible names remain.
+The existing wordmark is cropped to its leading brand mark in a 44px slot; the optional Library link and language code are
+hidden in that compact header. The open search modal keeps its own layout.
+
+Verify header/control geometry at 320/390/768/1280px and 100/200% root text,
+keyboard opening/closing, and loading/CLS. No new client state, effects,
+requests or media are introduced. The hero portion remains in PR #2829.
+
 ## Problem
 
 Round-04 audit, production `/watch`, 2026-10-20. The page was checked at
@@ -100,3 +113,13 @@ ticket complete once both are merged.
 Not checked: real Android large-font and iOS Larger Text. The root
 `font-size` override does not move `md:` media breakpoints the way a
 browser default-font setting does.
+
+## Current browser evidence
+
+October 29 Chromium, real local Web with anonymous production Admin reads:
+16 closed-header cases pass across home and What's New, 320/390/768/1280px,
+100/200% root text. All visible controls stay in the header box with no overlaps
+or off-screen controls; backdrop and hover band cover the row. At 320/200%,
+keyboard opening focuses a visible search input. The separate return-focus
+repair is in #2663. Final combined hero and page-load checks remain release
+gates before this draft is marked ready. No new requests or client effects.

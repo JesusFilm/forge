@@ -4,14 +4,7 @@ import { env } from "@/config/env"
 import { prisma as defaultPrisma } from "@/db/client"
 import { SceneRecommendationsService } from "@/services/scene-recommendations.service"
 import { createRecommendationDeliveryAdmission } from "./admission"
-import { getLiveProfileCandidates } from "./candidates/profile-candidate.service"
 import { retrieveCuratedFallback } from "./curated-fallback"
-import { loadViewingModeAffinity } from "./viewing-mode.service"
-import { assignProfileUsefulnessExperiment } from "./experiment/usefulness-routing"
-import {
-  RECOMMENDATION_CONTRACTS,
-  RECOMMENDATION_PROFILE_SESSION_LINK_HOURS,
-} from "./contracts"
 import { getSemanticDeliveryCandidatePool } from "./delivery-retriever"
 import {
   runRecommendationDeliveryTransaction,
@@ -19,16 +12,7 @@ import {
 } from "./delivery-runtime"
 import type { DeliveryDependencies } from "./delivery.types"
 import { RecommendationDeliveryService } from "./delivery.service"
-import {
-  composeDeliveryCowatchTrial,
-  resolveDeliveryStudyAuthority,
-} from "./delivery-trial.service"
-import {
-  composeDeliveryOwnerCowatch,
-  resolveDeliveryOwnerAuthority,
-} from "./delivery-owner.service"
 import { getRecommendationServingState } from "./manifest.service"
-import { getRecommendationRecentContext } from "./recent-context.service"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
 
 export function createRecommendationDeliveryService(
@@ -55,33 +39,8 @@ export function createRecommendationDeliveryDependencies(
     prisma,
     admission: createRecommendationDeliveryAdmission(),
     tokenService: token,
-    assignProfileExperiment: timed("assignProfileExperiment", (input) =>
-      assignProfileUsefulnessExperiment(prisma, input),
-    ),
-    resolveStudyAuthority: timed("resolveStudyAuthority", (input) =>
-      resolveDeliveryStudyAuthority(prisma, input),
-    ),
-    composeCowatchTrial: timed("composeCowatchTrial", (input) =>
-      composeDeliveryCowatchTrial(prisma, input),
-    ),
-    resolveOwnerAuthority: timed("resolveOwnerAuthority", (input) =>
-      resolveDeliveryOwnerAuthority(prisma, input),
-    ),
-    composeOwnerCowatch: timed("composeOwnerCowatch", (input) =>
-      composeDeliveryOwnerCowatch(prisma, input),
-    ),
     retrieveCuratedFallback: timed("retrieveCuratedFallback", (input) =>
       retrieveCuratedFallback(prisma, input),
-    ),
-    loadViewingModeAffinity: timed("loadViewingModeAffinity", (input) =>
-      env.RECOMMENDATION_VIEWING_MODE_ENABLED === "false"
-        ? Promise.resolve(null)
-        : runRecommendationDeliveryTransaction(
-            prisma,
-            input.deadlineAt,
-            (tx) => loadViewingModeAffinity(tx, input),
-            Date.now,
-          ),
     ),
     getServingState: timed("getServingState", ({ deadlineAt }) =>
       runRecommendationDeliveryTransaction(
@@ -125,92 +84,6 @@ export function createRecommendationDeliveryDependencies(
           new SceneRecommendationsService({
             prisma: scopedPrisma,
           }).recheckEligibility(items, input.locale, input.audioLanguageSlug),
-      ),
-    ),
-    authorizeProfile: timed("authorizeProfile", (input) =>
-      runRecommendationDeliveryTransaction(
-        prisma,
-        input.deadlineAt,
-        async (tx) => {
-          const receipt = await tx.recommendationConsentReceipt.findUnique({
-            where: { tokenDigest: input.consentReceiptDigest },
-            include: { profile: true },
-          })
-          const authorized = Boolean(
-            receipt &&
-            receipt.state === "ACTIVE" &&
-            receipt.contractVersion === "recommendation-consent-v1" &&
-            receipt.choice === "PERSONALIZATION" &&
-            receipt.expiresAt > input.now &&
-            receipt.profile != null &&
-            receipt.profile.tokenDigest === input.profileTokenDigest &&
-            receipt.profile.state === "ACTIVE" &&
-            receipt.profile.privacyGeneration === receipt.privacyGeneration &&
-            receipt.profile.expiresAt > input.now,
-          )
-          if (!authorized || !receipt?.profile) return false
-          const expiresAt = new Date(
-            Math.min(
-              receipt.expiresAt.getTime(),
-              receipt.profile.expiresAt.getTime(),
-              input.now.getTime() +
-                RECOMMENDATION_PROFILE_SESSION_LINK_HOURS * 3_600_000,
-            ),
-          )
-          await tx.recommendationProfileSessionLink.upsert({
-            where: {
-              profileId_privacyGeneration_sessionDigest: {
-                profileId: receipt.profile.id,
-                privacyGeneration: receipt.profile.privacyGeneration,
-                sessionDigest: input.sessionDigest,
-              },
-            },
-            create: {
-              profileId: receipt.profile.id,
-              privacyGeneration: receipt.profile.privacyGeneration,
-              sessionDigest: input.sessionDigest,
-              linkedAt: input.now,
-              expiresAt,
-            },
-            update: { expiresAt },
-          })
-          return true
-        },
-        Date.now,
-      ),
-    ),
-    retrieveProfile: timed("retrieveProfile", (input) =>
-      runRecommendationRetrievalQuery(
-        prisma,
-        input.deadlineAt,
-        (scopedPrisma) =>
-          getLiveProfileCandidates(scopedPrisma, {
-            sessionDigest: input.sessionDigest,
-            profileTokenDigest: input.profileTokenDigest,
-            now: input.now,
-            context: {
-              surface: RECOMMENDATION_CONTRACTS.surface,
-              purpose: "watch",
-              locale: input.locale,
-              audioLanguageSlug: input.audioLanguageSlug,
-              seedMediaId: input.seedMediaId,
-              manifestId: input.manifestId,
-            },
-          }),
-      ),
-    ),
-    resolveRecentContext: timed("resolveRecentContext", (input) =>
-      runRecommendationRetrievalQuery(
-        prisma,
-        input.deadlineAt,
-        (scopedPrisma) =>
-          getRecommendationRecentContext(scopedPrisma, {
-            sessionDigest: input.sessionDigest,
-            profileTokenDigest: input.profileTokenDigest,
-            allowDurableProfileLinks: input.allowDurableProfileLinks,
-            locale: input.locale,
-            now: input.now,
-          }),
       ),
     ),
   }

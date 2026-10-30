@@ -2794,3 +2794,63 @@
   -webkit-mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
   mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
 }
+
+/* Enlarged text must not add an unaccounted second row to fixed Watch chrome.
+   Icon-only controls retain their existing translated accessible names. Pixel
+   dimensions keep these non-text targets within the existing 52px header row. */
+@container header (width < 17rem) {
+  [data-testid="floating-header-logo"],
+  [data-testid="floating-header-language-button"] {
+    width: 44px;
+    min-width: 44px;
+    height: 52px;
+  }
+
+  [data-testid="floating-header-logo"] {
+    overflow: hidden;
+  }
+
+  [data-testid="floating-header-logo"] img {
+    width: 44px;
+    max-width: 44px;
+    height: auto;
+  }
+
+  /* The existing full logo begins with the compact brand mark. Crop to that
+     mark at its normal size rather than shrinking the entire wordmark. */
+  [data-testid="floating-header-logo"] img[src$="jesus-film-logo-full.svg"] {
+    width: 139px;
+    max-width: none;
+    flex-shrink: 0;
+  }
+
+  [data-testid="floating-header-trailing-controls"] {
+    height: 52px;
+    gap: 0;
+  }
+
+  [data-testid="floating-header-language-button"] {
+    margin-right: 0;
+    padding-inline: 0;
+    gap: 0;
+  }
+
+  [data-testid="floating-search-desktop-button"] {
+    min-width: 44px;
+    padding-inline: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  [data-testid="floating-search-desktop-button"] svg,
+  [data-testid="floating-header-language-button"] svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  [data-testid="floating-search-desktop-button"] span,
+  [data-testid="floating-header-language-code"],
+  [data-testid="floating-header-language-videos-link"] {
+    display: none;
+  }
+}

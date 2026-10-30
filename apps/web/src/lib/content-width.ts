@@ -24,18 +24,13 @@ export const FLOATING_HEADER_LAYOUT_CLASS =
   "grid h-[52px] grid-cols-[minmax(max-content,1fr)_minmax(0,800px)_minmax(max-content,1fr)] items-center gap-3 md:gap-5"
 export const FLOATING_HEADER_FIELD_WIDTH_CLASS = "min-w-0 w-full max-w-[800px]"
 /**
- * Large text: the header is a size container, and when it is narrower than
- * 17rem the search field drops to its own full-width row instead of
- * overlapping the logo and language controls (and the home wordmark shrinks
- * to the sign's width). `rem` here follows the root font size, so this tracks
- * the user's text setting: a 320px phone header at default text is 17.5rem
- * and never triggers it; a 390px phone at 150% (12.9rem) or a 768px tablet
- * at 200% (16rem) does. `w-0 min-w-full` keeps the spanning field's label
- * from widening the logo and language columns; it still fills the row.
+ * Keep the header on one 52px row when enlarged text leaves less than 17rem.
+ * The named container activates compact icon controls in globals.css. A second
+ * row would extend beyond the fixed backdrop, hover band and page offset.
  */
 export const FLOATING_HEADER_CONTAINER_CLASS = "@container/header"
 export const FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS =
-  "@max-[17rem]/header:col-span-3 @max-[17rem]/header:col-start-1 @max-[17rem]/header:row-start-2 @max-[17rem]/header:w-0 @max-[17rem]/header:min-w-full"
+  "@max-[17rem]/header:min-w-[44px]"
 export const FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS =
   "h-[calc(env(safe-area-inset-top,0px)+0.75rem+52px+0.75rem)]"
 export const FLOATING_HEADER_TOP_CLASS =
@@ -45,7 +40,7 @@ export const FLOATING_HEADER_PINNED_TOP_CLASS =
 export const FLOATING_HEADER_LOGO_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
 export const FLOATING_HEADER_HOME_LOGO_SLOT_CLASS =
-  "h-11 w-20 shrink-0 sm:w-28 md:h-[52px] md:w-[139px] @max-[17rem]/header:w-11"
+  "h-11 w-20 shrink-0 sm:w-28 md:h-[52px] md:w-[139px]"
 export const FLOATING_HEADER_TRAILING_SLOT_CLASS =
   "h-11 w-11 shrink-0 md:h-[52px] md:w-12"
 export const FLOATING_HEADER_TRAILING_GROUP_CLASS =

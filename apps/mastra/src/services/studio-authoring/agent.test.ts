@@ -45,8 +45,7 @@ it("does not replay a retained truncated tool call through the native SDK loop",
     model,
     signal: new AbortController().signal,
     emit: () => {},
-    assetCall: async (action) => {
-      if (action === "pack") return current.pack
+    assetCall: async () => {
       throw new Error("Unexpected tool action in retained fixture")
     },
   }).catch((error: unknown) => error)
@@ -74,7 +73,6 @@ const project = studioProjectSchema.parse({
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   },
 })
 const frozen = {
