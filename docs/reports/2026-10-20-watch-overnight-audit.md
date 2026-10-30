@@ -12,6 +12,25 @@ PR**, not shipped. Per-round detail lives in the round reports
 (`2026-10-20-watch-website-audit-round-01.md` in #2821, round 02 in #2825,
 round 03 in #2827, round 04 in #2832).
 
+## October 29 merge-preparation disposition
+
+This report preserves the October 20 audit and its measurements. Updated PR
+heads and their checks supersede the old readiness table below. Implemented
+code is prepared for review, not merged or deployed by this task.
+
+The History ticket is now feat-909 (#2822); the routing freshness ticket is
+feat-908 (#2848). The old crypto import edge disappeared when main retired the
+recommendation controls; #2821 now adds a source-graph regression guard.
+The authoritative feat-774 ticket is carried by its implementing PR #2849,
+including the retry-intent and temporary-focus cleanup corrections. #2841
+therefore no longer adds a competing copy of that ticket.
+
+#2663 and the corrected single-row header in #2835 await combined production
+qualification. #2845 remains draft because the reservation worsens empty/partial
+outcomes; the narrower native-anchoring prototype did not clear that blocker.
+#2626 is superseded by #2829 and remains excluded. Current dispositions are
+recorded with the merge-preparation work in #2855.
+
 ## Answer first
 
 - 23 open PRs from this audit (19 code, 4 docs, including this one). 4 of

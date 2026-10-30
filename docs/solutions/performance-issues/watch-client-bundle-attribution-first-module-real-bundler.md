@@ -24,6 +24,14 @@ tags:
   - watch
 ---
 
+## October 29 source update
+
+Main retired the three recommendation controls that supplied this historical
+import edge. PR #2821 now keeps the source-graph guard without restoring those
+controls or their event module. The attribution method below still applies to
+future client/server boundary leaks; the old control paths are historical
+examples, not setup instructions.
+
 ## Problem
 
 The 2026-10-20 overnight audit chased three big client chunks on Watch:
