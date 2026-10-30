@@ -37,18 +37,32 @@ jest.mock("expo-image", () => ({ Image: () => null }))
 // The root stack's navigation object, which the slot reaches through
 // `getParent()`. A case fires its transitionEnd through these listeners.
 const mockParentListeners = new Map<string, Set<(event: unknown) => void>>()
-jest.mock("expo-router", () => ({
-  useNavigation: () => ({
+// The slot's own screen: its focus, and the events a push and a pop send.
+const mockOwnListeners = new Map<string, Set<(event: unknown) => void>>()
+const mockFocus = { focused: true }
+function mockListen(
+  listeners: Map<string, Set<(event: unknown) => void>>,
+  name: string,
+  listener: (event: unknown) => void,
+) {
+  const set = listeners.get(name) ?? new Set()
+  set.add(listener)
+  listeners.set(name, set)
+  return () => set.delete(listener)
+}
+jest.mock("expo-router", () => {
+  // One object, as the router gives one screen.
+  const navigation = {
+    isFocused: () => mockFocus.focused,
+    addListener: (name: string, listener: (event: unknown) => void) =>
+      mockListen(mockOwnListeners, name, listener),
     getParent: () => ({
-      addListener: (name: string, listener: (event: unknown) => void) => {
-        const set = mockParentListeners.get(name) ?? new Set()
-        set.add(listener)
-        mockParentListeners.set(name, set)
-        return () => set.delete(listener)
-      },
+      addListener: (name: string, listener: (event: unknown) => void) =>
+        mockListen(mockParentListeners, name, listener),
     }),
-  }),
-}))
+  }
+  return { useNavigation: () => navigation }
+})
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -105,6 +119,7 @@ function slot(
 ): ReactElement {
   return (
     <PlayerSlot
+      page="watch"
       streamingUrl={URL_A}
       posterUrl={POSTER}
       autostart
@@ -209,6 +224,8 @@ beforeEach(() => {
   requestStore.reset()
   sessionStore.end("abandoned")
   mockParentListeners.clear()
+  mockOwnListeners.clear()
+  mockFocus.focused = true
   datadog.datadogLog.warn.mockClear()
   // Back to dropping the callback, which is both the mock's own default and
   // the cold open this component defends against.
@@ -289,6 +306,7 @@ describe("PlayerSlot", () => {
     // paints over this screen — and its unmount reads as a back press.
     const renderer = await render(
       <PlayerSlot
+        page="watch"
         streamingUrl={null}
         posterUrl={POSTER}
         autostart
@@ -578,5 +596,88 @@ describe("PlayerSlot under the reader cover", () => {
     })
     mounted = null
     expect(transitionEndListeners()).toHaveLength(0)
+  })
+})
+
+// 2026-10-20: a screen pushed over this one keeps it mounted, so the slot
+// tells the host. A pop also blurs the screen, and must never read as a push.
+describe("PlayerSlot under another screen", () => {
+  function ownListeners(name: string) {
+    return [...(mockOwnListeners.get(name) ?? [])]
+  }
+
+  /** The router's order: the state changes, THEN the event fires. */
+  async function emit(
+    name: "beforeRemove" | "blur" | "focus",
+    focused: boolean,
+  ) {
+    mockFocus.focused = focused
+    await act(async () => {
+      for (const listener of ownListeners(name)) listener({})
+    })
+  }
+
+  it("publishes a screen pushed over it, and clears it on the return", async () => {
+    await render(slot())
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await emit("focus", true)
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+  })
+
+  it("never reads a pop as a screen above: the removal comes before the blur", async () => {
+    await render(slot())
+
+    // `beforeRemove` fires while the screen still has focus.
+    await emit("beforeRemove", true)
+    await emit("blur", false)
+
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+  })
+
+  // dismissTo("/(tabs)") from Downloads removes the covered page with it. The
+  // page keeps its cover until it unmounts, so its detach decides the window.
+  it("keeps a covered page under its screen while it leaves", async () => {
+    await render(slot())
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await emit("beforeRemove", false)
+    await emit("focus", true)
+
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+  })
+
+  it("names the page that mounts it", async () => {
+    await render(slot())
+
+    expect(requestStore.getSnapshot().slotPage).toBe("watch")
+  })
+
+  it("publishes a screen that mounts without focus as under one", async () => {
+    mockFocus.focused = false
+    await render(slot())
+
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+  })
+
+  it("holds one listener per event through StrictMode's effect cycle", async () => {
+    await render(<StrictMode>{slot()}</StrictMode>)
+
+    for (const name of ["beforeRemove", "blur", "focus"])
+      expect(ownListeners(name)).toHaveLength(1)
+    // The re-attached slot is the one that hears the push.
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+    for (const name of ["beforeRemove", "blur", "focus"])
+      expect(ownListeners(name)).toHaveLength(0)
   })
 })

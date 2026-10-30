@@ -138,6 +138,7 @@
     "versesAriaValue": "Aaya {first} ba {last} ci {total}, {chapter}",
     "demoVerse": "Yóbbul sa baaraam ci kaw ngir aaya bi ci topp",
     "demoChapter": "Yóbbul sa baaraam ci càmmooñ ngir saar bi ci topp",
+    "demoChapterRtl": "Yóbbul sa baaraam ci ndijoor ngir saar bi ci topp",
     "demoSkip": "Bësal ngir weesu",
     "demoSkipAriaLabel": "Weesu wone bi",
     "selectVerseAriaHint": "Bësal ñaari yoon ngir tànn aaya bii",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Tànnal ab téere",
+    "chooseChapter": "Tànnal ab saar",
+    "chooseVerse": "Tànnal ab aaya",
     "oldTestament": "Kóllëre gu Yàgg",
     "newTestament": "Kóllëre gu Bees",
     "books": "Téere yi",
@@ -193,7 +196,7 @@
     "someBooks": "Téere: {count} ci {total, plural, other {#}}",
     "twoNames": "{first} ak {second}",
     "threeNames": "{first}, {second} ak {third}",
-    "onDevice": "Mi ngi ci telefon bii",
+    "downloaded": "Yebbi nañu ko",
     "downloading": "Ñu ngi yebbi {percent}%",
     "downloadStopped": "Yebbi bi taxaw na",
     "updateAvailable": "Am na lu bees",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Nataalu seeri bi",
     "videosHeading": "Wideyo yi",
     "detailsLoadError": "Mënuñu woon a yeb leeral yi yépp.",
+    "languagesTitle": "Làkku wideyo bi",
     "searchLanguagesPlaceholder": "Seet làkk yi…",
     "searchLanguagesAriaLabel": "Seet làkk yi",
     "noLanguagesFound": "Gisuñu benn làkk",
@@ -502,6 +506,7 @@
     "resumeAt": "Wéyal ci {time}",
     "unknownLanguage": "Xamuñu ko",
     "downloadedStatus": "Yebbi nañu ko",
+    "languagesTitle": "Làkku wideyo bi",
     "searchLanguagesPlaceholder": "Seet làkk yi…",
     "searchLanguagesAriaLabel": "Seet làkk yi",
     "noLanguagesFound": "Gisuñu benn làkk",
@@ -773,5 +778,8 @@
     "send": "Yónnee",
     "sending": "Mi ngi yónnee…",
     "sendAriaLabel": "Yónnee sa xalaat"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App bi dafay jëfandikoo sa réseau bu jege ngir wut jumtukaay yu mën a wone wideyo yi nga yónnee, ngir nga mën a doxal wideyo ci sa tele."
   }
 }

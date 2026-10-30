@@ -138,6 +138,7 @@
     "versesAriaValue": "Ditemana {first} go ya go {last} tsa {total}, {chapter}",
     "demoVerse": "Sutisa monwana kwa godimo go bona temana e e latelang",
     "demoChapter": "Sutisa monwana kwa molemeng go bona kgaolo e e latelang",
+    "demoChapterRtl": "Sutisa monwana kwa mojeng go bona kgaolo e e latelang",
     "demoSkip": "Tobetsa go tlola",
     "demoSkipAriaLabel": "Tlola pontsho ya go sutisa monwana",
     "selectVerseAriaHint": "Tobetsa gabedi go tlhopha temana eno",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Tlhopha buka",
+    "chooseChapter": "Tlhopha kgaolo",
+    "chooseVerse": "Tlhopha temana",
     "oldTestament": "Kgolagano e Kgologolo",
     "newTestament": "Kgolagano e Ntšhwa",
     "books": "Dibuka",
@@ -193,7 +196,7 @@
     "someBooks": "Dibuka: {count} mo go {total, plural, one {#} other {#}}",
     "twoNames": "{first} le {second}",
     "threeNames": "{first}, {second} le {third}",
-    "onDevice": "E mo sedirisweng se",
+    "downloaded": "E bolokilwe",
     "downloading": "E a bolokwa {percent}%",
     "downloadStopped": "Go boloka go emile",
     "updateAvailable": "Go na le ntšhafatso",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Phousetara ya lenaneo",
     "videosHeading": "Dibidio",
     "detailsLoadError": "Dintlha tsotlhe ga di a kgona go bulwa.",
+    "languagesTitle": "Puo ya bidio",
     "searchLanguagesPlaceholder": "Batla dipuo…",
     "searchLanguagesAriaLabel": "Batla dipuo",
     "noLanguagesFound": "Ga go a bonwa dipuo",
@@ -502,6 +506,7 @@
     "resumeAt": "Tswelela go tloga ka {time}",
     "unknownLanguage": "Ga e itsiwe",
     "downloadedStatus": "E bolokilwe",
+    "languagesTitle": "Puo ya bidio",
     "searchLanguagesPlaceholder": "Batla dipuo…",
     "searchLanguagesAriaLabel": "Batla dipuo",
     "noLanguagesFound": "Ga go a bonwa dipuo",
@@ -773,5 +778,8 @@
     "send": "Romela",
     "sending": "E a romelwa…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e dirisa neteweke ya gago ya selegae go batla didirisiwa tse o ka romelang dibidio kwa go tsone, gore o kgone go tshameka dibidio mo TV ya gago."
   }
 }

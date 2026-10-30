@@ -138,6 +138,7 @@
     "versesAriaValue": "Ẹsẹ {first} sí {last} nínú {total}, {chapter}",
     "demoVerse": "Fa ìka sókè fún ẹsẹ tó tẹ̀lé",
     "demoChapter": "Fa ìka sí òsì fún orí tó tẹ̀lé",
+    "demoChapterRtl": "Fa ìka sí ọ̀tún fún orí tó tẹ̀lé",
     "demoSkip": "Tẹ̀ ẹ́ láti fò ó",
     "demoSkipAriaLabel": "Fo àfihàn bí a ṣe ń fa ìka",
     "selectVerseAriaHint": "Tẹ̀ ẹ́ lẹ́ẹ̀mejì láti yan ẹsẹ yìí",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Yan ìwé kan",
+    "chooseChapter": "Yan orí kan",
+    "chooseVerse": "Yan ẹsẹ kan",
     "oldTestament": "Májẹ̀mú Láéláé",
     "newTestament": "Májẹ̀mú Titun",
     "books": "Àwọn ìwé",
@@ -193,7 +196,7 @@
     "someBooks": "{count} nínú {total, plural, other {ìwé #}}",
     "twoNames": "{first} àti {second}",
     "threeNames": "{first}, {second} àti {third}",
-    "onDevice": "Ó wà lórí ẹ̀rọ yìí",
+    "downloaded": "A ti gbà á sílẹ̀",
     "downloading": "Ń gbà sílẹ̀ {percent}%",
     "downloadStopped": "Ìgbàsílẹ̀ dúró",
     "updateAvailable": "Ìmúdójúìwọ̀n wà",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Àwòrán ìpolówó ọ̀wọ́",
     "videosHeading": "Àwọn fídíò",
     "detailsLoadError": "A kò lè gbé gbogbo àlàyé wá.",
+    "languagesTitle": "Èdè fídíò",
     "searchLanguagesPlaceholder": "Wá àwọn èdè…",
     "searchLanguagesAriaLabel": "Wá àwọn èdè",
     "noLanguagesFound": "A kò rí èdè kankan",
@@ -502,6 +506,7 @@
     "resumeAt": "Tẹ̀síwájú láti {time}",
     "unknownLanguage": "Èdè àìmọ̀",
     "downloadedStatus": "A ti gbà á sílẹ̀",
+    "languagesTitle": "Èdè fídíò",
     "searchLanguagesPlaceholder": "Wá àwọn èdè…",
     "searchLanguagesAriaLabel": "Wá àwọn èdè",
     "noLanguagesFound": "A kò rí èdè kankan",
@@ -773,5 +778,8 @@
     "send": "Fi ránṣẹ́",
     "sending": "Ń fi ránṣẹ́…",
     "sendAriaLabel": "Fi èrò rẹ ránṣẹ́"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Áàpù náà ń lo nẹ́tíwọ́ọ̀kì tó wà nítòsí rẹ láti wá àwọn ẹ̀rọ tí o lè fi fídíò hàn lórí wọn, kí o lè wo àwọn fídíò lórí TV rẹ."
   }
 }

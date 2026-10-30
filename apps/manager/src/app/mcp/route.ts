@@ -67,6 +67,7 @@ export async function POST(request: Request) {
             name: t.name,
             description: t.description,
             inputSchema: z.toJSONSchema(t.schema),
+            ...("annotations" in t ? { annotations: t.annotations } : {}),
           })),
       }
     else if (call && tool) {
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
           input:
             tool.action === "read"
               ? z.object({ projectId: z.string() }).parse(input).projectId
-              : ["source", "pack"].includes(tool.action)
+              : tool.action === "source"
                 ? z.object({ id: z.string() }).parse(input).id
                 : input,
         })

@@ -37,7 +37,8 @@ import {
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { isAutoplayBlockedError } from "@/lib/autoplay-refusal"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { getViewerId } from "@/lib/viewer-id"
@@ -74,6 +75,7 @@ import {
 } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { MUX_HERO_POSTER_MAX_WIDTH, resolveMuxHeroPosterUrl } from "@/lib/url"
+import { withBandwidthTestStart } from "@/lib/hls-start-level"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -227,7 +229,9 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
-const HERO_HLS_CONFIG = {
+// Measure bandwidth before picking the first rendition, so slow connections
+// start low instead of on Mux's first-listed 720p rung. See hls-start-level.ts.
+const HERO_HLS_CONFIG = withBandwidthTestStart({
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
@@ -235,7 +239,7 @@ const HERO_HLS_CONFIG = {
   // subtitle selection through the injected track below, so keep HLS.js from
   // creating/auto-selecting Mux's generated caption tracks.
   enableWebVTT: false,
-}
+})
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
@@ -320,15 +324,6 @@ function shouldUseFastMobilePreview(windowRef: Window): boolean {
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
 
-// `<MuxVideo>` (bare `<video>`) emits a generic error and the autoplay refusal
-// surfaces as a Promise rejection from `play()` with
-// `DOMException("NotAllowedError")`.
-function isAutoplayBlockedError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false
-  const named = err as { name?: unknown }
-  return named.name === "NotAllowedError" || named.name === "AutoplayNotAllowed"
-}
-
 // Minimum number of playable language variants before the language-switch
 // audio button appears. With only one variant there's nothing to switch to.
 const MIN_VARIANTS_FOR_LANGUAGE_SWITCH = 2
@@ -339,6 +334,7 @@ export function HeroPlayer({
   onPlayerActivated,
   onPlayerViewabilityChange,
   onLanguageClick,
+  onCancelLanguageOpen,
   onShareClick,
   languageSlug,
   playableLanguageCount,
@@ -356,6 +352,7 @@ export function HeroPlayer({
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
   onPlayerViewabilityChange?: (visible: boolean) => void
   onLanguageClick?: () => void
+  onCancelLanguageOpen?: () => void
   onShareClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
@@ -1493,13 +1490,18 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
-  const variantLanguageCode = languageCodeFor({
+  const explicitLanguageCode = languageBadgeCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageBadgeCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
     slug: variant.language?.slug,
   })
   const languageCode = explicitLanguageCode ?? variantLanguageCode
+  const languageName = explicitLanguageCode
+    ? variant.language?.slug === languageSlug
+      ? (variant.language?.name ?? explicitLanguageCode)
+      : explicitLanguageCode
+    : variant.language?.name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current
@@ -1604,7 +1606,10 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            cancelPendingOpen: onCancelLanguageOpen,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            languageName:
+              showTopLanguageSwitch && languageCode ? languageName : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -1613,7 +1618,9 @@ export function HeroPlayer({
   }, [
     headerLanguageSwitcherOwnerToken,
     languageCode,
+    languageName,
     onLanguageClick,
+    onCancelLanguageOpen,
     showTopLanguageSwitch,
   ])
 
@@ -1628,6 +1635,7 @@ export function HeroPlayer({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -1881,6 +1889,7 @@ export function HeroPlayer({
             playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
+            languageName={languageName}
             subtitleLanguageCode={subtitleLanguageCode}
             subtitleEnabled={Boolean(subtitleVttSrc)}
             // In-chrome audio control intentionally stays visible in fullscreen

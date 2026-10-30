@@ -41,7 +41,7 @@ tags:
 
 The Explore tab is a vertical clip feed. Its pager is a JS `PanResponder` that is an ANCESTOR of each clip's open description, and the open description is a `ScrollView` on the same vertical axis. On Fabric iOS, a scroll view refuses to start a drag while any ancestor holds the JS responder. So a slow drag on long text gave the drag to the pager, which moved the feed to another clip.
 
-Paths below that start with `RN/` are in the installed React Native 0.86.3 package (`node_modules/.pnpm/react-native@0.86.3_*/node_modules/react-native/`), and their line numbers are for that version. The fix is in PR #2528, open and unmerged as of 2026-10-01.
+Paths below that start with `RN/` are in the installed React Native 0.86.3 package (`node_modules/.pnpm/react-native@0.86.3_*/node_modules/react-native/`), and their line numbers are for that version. The fix is in PR #2528, merged to `main` on 2026-10-01.
 
 ## Symptoms
 
@@ -68,7 +68,7 @@ Paths below that start with `RN/` are in the installed React Native 0.86.3 packa
 
 ## Solution
 
-The fix gives a child of the pager a way to stop the pager from claiming a drag. The child takes that "hold" from TOUCH events, not from the responder system. (Fix in PR #2528, unmerged as of 2026-10-01.)
+The fix gives a child of the pager a way to stop the pager from claiming a drag. The child takes that "hold" from TOUCH events, not from the responder system. (Fix in PR #2528, merged 2026-10-01.)
 
 ### 1. The pager exposes a hold with two scopes
 
@@ -190,10 +190,12 @@ It deletes each `changedTouches` id on touch end, and releases when its set is e
 
 **For new children of `ExplorePager`.** Any child that scrolls vertically (a list, a long text, a sheet-like panel) must call `useExplorePagerHold()` and take `drag` in `onTouchStart`, as `OpenDescription` does. Gate the hold on "the content really scrolls", so a short view still swipes. Release on own-fingers-up, on cancel, and on unmount.
 
+A child that holds a press across a clip end takes `feedMove`, never `drag`. The 2x side strips (`ClipFastSides` in `ExploreFeed.tsx`, PR #2727, open as of 2026-10-15) do this. The clip end loops under the finger, and a vertical drag still lets the pager take the touch, which ends the press. Release in `onPressOut`, which fires on a release and on a terminate, and on unmount.
+
 **Do not:**
 
 - Wrap the scroll view in a responder view. The wrapper is an ancestor and blocks the scroll.
-- Put a responder child inside the scroll view. A coasting `ScrollView` captures the touch start first and then gives the move to the pager.
+- Make a responder child inside the scroll view the drag owner. A coasting `ScrollView` captures the touch start first and then gives the move to the pager. A tap-only `Pressable` inside it is fine, because the `drag` hold still comes from the `ScrollView`'s own `onTouchStart`. "Less" is one. PR #2727 adds a second around the open text. On the iPhone 17 Pro Max simulator on 2026-10-15, a slow drag and a fast drag on that text scrolled it, and a clip with its description open looped at its end. The coast case (item 3 below) was not re-run after that change.
 - Release a touch-start hold on `touches.length === 0` alone. On iOS, a finger on another view keeps that list full.
 - Rely on `onShouldBlockNativeResponder` on iOS. Fabric iOS ignores it.
 
@@ -240,6 +242,7 @@ The pager suite pins the scopes: `drag` blocks claims and `requestMove`, a relea
 5. A short open description. A drag still swipes the feed.
 6. A clip that ends while its description is open. It loops.
 7. A scrub held across the clip end. The clip stays.
+8. A side hold held across the clip end (PR #2727). The clip loops at 2x. A vertical drag during the hold ends 2x and moves the feed.
 
 In this session, the matrix passed on the iPhone SE, iPhone 17 and iPhone 17 Pro Max simulators and on a Pixel 9a emulator (2026-10-01). The two-finger case could not be driven, because idb and adb have no multi-touch. Jest covers it.
 
@@ -247,6 +250,7 @@ In this session, the matrix passed on the iPhone SE, iPhone 17 and iPhone 17 Pro
 
 - After an edit to `ExplorePager.tsx`, or to any engine built once into a ref, do a cold relaunch. Do not trust Fast Refresh or `/reload`. Confirm a new "iOS Bundled" line in Metro's log.
 - When an automatic move exists (clip-end auto-advance), log the move trigger (`viewer` or `clipEnd`) before you call a clip change a leaked swipe. `explore.swipe` carries `explore_swipe_trigger` for the same purpose in telemetry (`apps/mobile/CLAUDE.md`).
+- A press that holds still and then drags (item 8) can be driven on Android with `adb shell input motionevent DOWN`, `MOVE` and `UP`. The iOS simulator tools (idb, XcodeBuildMCP) cannot hold still and then move. See `docs/solutions/developer-experience/android-emulator-plays-video-slower-than-its-reported-rate.md`.
 
 ## Related Issues
 
@@ -256,4 +260,4 @@ These are different touch conflicts, not duplicates:
 - `docs/solutions/ui-bugs/mobile-scrubber-ios26-fullwidth-backswipe-dismiss.md`: a native back-swipe claims the touch before `PanResponder` runs.
 - `docs/solutions/ui-bugs/paged-hero-overlay-chrome-touch-architecture.md`: a list wins the responder race over hero chrome on Home.
 - `apps/mobile/CLAUDE.md`, section "Explore clips feed (feat-552)": the standing hold rules for any new child of `ExplorePager`.
-- Fix: PR #2528, open and unmerged as of 2026-10-01.
+- Fix: PR #2528, merged 2026-10-01.

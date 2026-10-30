@@ -9,6 +9,7 @@ vi.mock("@/config/env", () => ({ env: config }))
 import { prepareStudioRenderInput } from "./studio-render-input"
 const bytes = new Map<string, Buffer>(),
   metadata = new Map<string, unknown>()
+const reads = new Map<string, number>()
 let corrupt = false
 const server = createServer((req, res) => {
   const key = req.url?.split("/").at(-1) ?? ""
@@ -17,6 +18,7 @@ const server = createServer((req, res) => {
     res.writeHead(404).end()
     return
   }
+  reads.set(key, (reads.get(key) ?? 0) + 1)
   res.end(corrupt ? Buffer.from("altered") : data)
 })
 beforeAll(async () => {
@@ -156,7 +158,6 @@ function fixture() {
         controls: {},
       },
     ],
-    packRevisionIds: [],
     items: [
       {
         id: "video-item",
@@ -291,4 +292,47 @@ it("requires retained crossfade handles as well as the authored source trim", as
     ),
   ).rejects.toThrow("retained export bytes")
   expect(f.actions).toEqual(["preview-sources"])
+})
+
+it("packages repeated source clips with one retained segment read and one media file", async () => {
+  const f = fixture()
+  reads.clear()
+  const document = {
+    ...f.document,
+    durationInFrames: 17 * 30,
+    items: Array.from({ length: 17 }, (_, i) => ({
+      ...f.document.items[0]!,
+      id: `clip-${i}`,
+      startFrame: i * 30,
+    })),
+  }
+  const call: StudioBrokerClient = (action, input) =>
+    action === "preview-sources"
+      ? Promise.resolve(
+          document.items.map((item) => ({
+            snapshot: f.snapshot,
+            itemId: item.id,
+            startMs: 500,
+            endMs: 1500,
+          })),
+        )
+      : f.call(action, input)
+  const result = await prepareStudioRenderInput(
+    call,
+    "project",
+    document,
+    proofKey,
+    new AbortController().signal,
+  )
+  const digest = createHash("sha256").update("EXPORT RESOLUTION").digest("hex")
+  expect(reads.get(digest)).toBe(1)
+  expect(result.files.filter((file) => file.digest === digest)).toHaveLength(1)
+  for (const item of document.items) {
+    const playlist = result.files.find(
+      (file) => file.name === result.input.media[item.id]!.file,
+    )!
+    expect(Buffer.from(playlist.base64, "base64").toString()).toContain(
+      result.files.find((file) => file.digest === digest)!.name,
+    )
+  }
 })

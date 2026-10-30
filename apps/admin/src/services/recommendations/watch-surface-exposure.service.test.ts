@@ -44,10 +44,48 @@ describe("anonymous Watch exposure ingestion", () => {
       data: expect.objectContaining({
         kind: "selected",
         visibilityCapability: null,
-        expiresAt: new Date("2026-10-27T00:00:00.000Z"),
+        expiresAt: new Date("2026-10-12T00:00:00.000Z"),
       }),
     })
   })
+
+  it.each(["rendered", "eligible", "selected"] as const)(
+    "retains new V1 %s facts for exactly fourteen days through both ingestion paths",
+    async (kind) => {
+      const fact = {
+        ...event,
+        kind,
+        visibilityCapability: kind === "eligible" ? "unknown" : null,
+      }
+      const create = vi.fn().mockResolvedValue({})
+      const createManyAndReturn = vi
+        .fn()
+        .mockResolvedValue([{ eventId: fact.eventId }])
+      const prisma = {
+        watchSurfaceExposure: {
+          findUnique: vi.fn().mockResolvedValue(null),
+          findFirst: vi.fn().mockResolvedValue(null),
+          create,
+          createManyAndReturn,
+        },
+        $queryRaw: vi
+          .fn()
+          .mockResolvedValue([{ ...fact, occurredAt: now, repeated: false }]),
+      } as unknown as PrismaClient
+      await recordWatchSurfaceExposure(prisma, null, fact, now)
+      await recordWatchSurfaceExposureBatch(prisma, null, [fact], now)
+      const expected = expect.objectContaining({
+        kind,
+        expiresAt: new Date("2026-10-12T00:00:00.000Z"),
+      })
+      expect(create).toHaveBeenCalledWith({ data: expected })
+      expect(createManyAndReturn).toHaveBeenCalledWith({
+        data: [expected],
+        skipDuplicates: true,
+        select: { eventId: true },
+      })
+    },
+  )
 
   it("records the same event identity as replay and rejects a conflicting payload", async () => {
     const update = vi.fn().mockResolvedValue({})
@@ -234,9 +272,14 @@ describe("origin-issued Watch manifests", () => {
       items: manifest.items,
     })
     expect(issued.windowId).toMatch(/^[a-f0-9-]{36}$/)
-    expect(await issueWatchSurfaceDelivery(prisma, caller, input, now)).toEqual(
-      { ...issued, status: "replay" },
-    )
+    expect(
+      await issueWatchSurfaceDelivery(
+        prisma,
+        caller,
+        input,
+        new Date(now.getTime() + 60_000),
+      ),
+    ).toEqual({ ...issued, status: "replay" })
     expect(
       await issueWatchSurfaceDelivery(
         prisma,
@@ -264,7 +307,7 @@ describe("origin-issued Watch manifests", () => {
       kind: "served",
       policyVersion: "watch-exposure-v2",
       visibilityCapability: null,
-      expiresAt: new Date("2026-10-27T00:00:00.000Z"),
+      expiresAt: new Date("2026-10-12T00:00:00.000Z"),
     })
   })
 
@@ -331,6 +374,63 @@ describe("origin-issued Watch manifests", () => {
       ).rejects.toThrow()
     }
   })
+
+  it.each([14, 29])(
+    "preserves exact served expiry for V2 single and batched facts from a %i-day binding",
+    async (days) => {
+      const servedExpiry = new Date(now.getTime() + days * 86_400_000)
+      const eventTime = new Date(now.getTime() + 60_000)
+      const facts = (["rendered", "eligible", "selected"] as const).map(
+        (kind, index) => ({
+          ...event,
+          eventId: `00000000-0000-4000-8000-00000000000${index + 3}`,
+          policyVersion: "watch-exposure-v2",
+          kind,
+          visibilityCapability: kind === "eligible" ? "unknown" : null,
+          occurredAt: eventTime.toISOString(),
+        }),
+      )
+      const create = vi.fn().mockResolvedValue({})
+      const createManyAndReturn = vi
+        .fn()
+        .mockResolvedValue(facts.map(({ eventId }) => ({ eventId })))
+      const prisma = {
+        watchSurfaceExposure: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([{ ...event, expiresAt: servedExpiry }]),
+          findUnique: vi.fn().mockResolvedValue(null),
+          findFirst: vi.fn().mockResolvedValue(null),
+          create,
+          createManyAndReturn,
+        },
+        $queryRaw: vi.fn().mockResolvedValue(
+          facts.map((fact) => ({
+            ...fact,
+            occurredAt: eventTime,
+            repeated: false,
+          })),
+        ),
+      } as unknown as PrismaClient
+      for (const fact of facts) {
+        await recordWatchSurfaceExposure(prisma, caller, fact, eventTime)
+      }
+      await recordWatchSurfaceExposureBatch(prisma, caller, facts, eventTime)
+      expect(create).toHaveBeenCalledTimes(3)
+      for (const call of create.mock.calls) {
+        expect(call[0].data.expiresAt).toEqual(servedExpiry)
+      }
+      expect(createManyAndReturn).toHaveBeenCalledWith({
+        data: facts.map((fact) => ({
+          ...fact,
+          occurredAt: eventTime,
+          expiresAt: servedExpiry,
+        })),
+        skipDuplicates: true,
+        select: { eventId: true },
+      })
+    },
+  )
 
   it("requires exact issued card identity for V2 client facts and never admits client served", async () => {
     const findMany = vi.fn().mockResolvedValue([

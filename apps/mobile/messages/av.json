@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} аяталдаса {last} аяталде, жамгӀ {total}, {chapter}",
     "demoVerse": "Хадусеб аят бихьизе тӀадехун бачине",
     "demoChapter": "Хадусеб бутӀа бихьизе рахъалде бачине",
+    "demoChapterRtl": "Хадусеб бутӀа бихьизе кваранаб рахъалде бачине",
     "demoSkip": "Тезе бокьани, экраналда квер щвезабе",
     "demoSkipAriaLabel": "Бачиялъул бихьизаби тезе",
     "selectVerseAriaHint": "Гьаб аят тӀаса бищизе кӀицӀ квер щвезабе",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ТӀехь тӀаса бище",
+    "chooseChapter": "БутӀа тӀаса бище",
+    "chooseVerse": "Аят тӀаса бище",
     "oldTestament": "Хераб Завет",
     "newTestament": "ЦӀияб Завет",
     "books": "ТӀахьал",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# тӀехьалдаса {count}} other {# тӀехьалдаса {count}}}",
     "twoNames": "{first} ва {second}",
     "threeNames": "{first}, {second} ва {third}",
-    "onDevice": "Гьаб алаталда",
+    "downloaded": "Босана",
     "downloading": "Босулеб буго: {percent}%",
     "downloadStopped": "Боси чӀана",
     "updateAvailable": "ЦӀияб версия буго",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалалъул постер",
     "videosHeading": "Видеоял",
     "detailsLoadError": "ТӀубараб баян рагьизе кӀвечӀо.",
+    "languagesTitle": "Видеоялъул мацӀ",
     "searchLanguagesPlaceholder": "МацӀал хъирще...",
     "searchLanguagesAriaLabel": "МацӀал хъирщизе",
     "noLanguagesFound": "МацӀал батичӀо",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} бакӀалдаса цебехун балагьизе",
     "unknownLanguage": "Лъалареб",
     "downloadedStatus": "Босана",
+    "languagesTitle": "Видеоялъул мацӀ",
     "searchLanguagesPlaceholder": "МацӀал хъирще...",
     "searchLanguagesAriaLabel": "МацӀал хъирщизе",
     "noLanguagesFound": "МацӀал батичӀо",
@@ -773,5 +778,8 @@
     "send": "БитӀизе",
     "sending": "БитӀулеб буго…",
     "sendAriaLabel": "Пикру битӀизе"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложениялъ дур локал сеть хӀалтӀизабула телевизоралде битӀиялъул алатал ратизе, гьединлъидал видеоял дур телевизоралда рихьизаризе бегьула."
   }
 }

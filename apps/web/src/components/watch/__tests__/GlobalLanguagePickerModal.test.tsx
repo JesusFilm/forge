@@ -183,6 +183,21 @@ describe("GlobalLanguagePickerModal", () => {
     expect(loadGlobalWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
   })
 
+  it("names the dialog from its single visible heading", async () => {
+    loadGlobalWatchLanguageOptionsMock.mockReturnValue(
+      deferred<GlobalLanguageOption[]>().promise,
+    )
+    await renderHarness()
+
+    const headings = Array.from(document.querySelectorAll("h2")).filter(
+      (h) => h.textContent === "Language",
+    )
+    expect(headings).toHaveLength(1)
+    expect(
+      query("global-language-picker-modal")?.getAttribute("aria-labelledby"),
+    ).toBe(headings[0]?.id)
+  })
+
   it("announces loading, then focuses the language field when options arrive", async () => {
     const request = deferred<GlobalLanguageOption[]>()
     loadGlobalWatchLanguageOptionsMock.mockReturnValue(request.promise)

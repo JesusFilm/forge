@@ -49,7 +49,6 @@ class AssignmentFixtureError extends Error {}
           tracks: [],
           components: [],
           items: [],
-          packRevisionIds: [],
         },
       })
       const request = await commands.request(human, {

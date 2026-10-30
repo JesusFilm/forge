@@ -12,6 +12,7 @@ import {
 } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
+import { GlassSurface } from "../ui/GlassSurface"
 import { useTypography } from "../../hooks/useTypography"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
@@ -33,6 +34,11 @@ type ClipProgressBarProps = {
   onSeek: (seconds: number) => void
   /** The clip loads under its veil, so the player's time is not yet its own. */
   veiled: boolean
+  /** A 2x hold hides the bar. The fade reaches the track only: the scrub pill
+   *  is glass, and glass under a fading parent may not draw. */
+  fade?: Animated.Value
+  /** False while hidden: the bar takes no touches. */
+  interactive?: boolean
 }
 
 /**
@@ -91,6 +97,8 @@ export function ClipProgressBar({
   clipWindow,
   onSeek,
   veiled,
+  fade,
+  interactive = true,
 }: ClipProgressBarProps) {
   const typography = useTypography()
   const t = useT("Explore")
@@ -251,6 +259,7 @@ export function ClipProgressBar({
     <View
       testID="clip-progress-bar"
       style={styles.hitArea}
+      pointerEvents={interactive ? "auto" : "none"}
       onLayout={handleLayout}
       // iOS promotes a plain View with a role only when `accessible` is set.
       accessible
@@ -266,11 +275,14 @@ export function ClipProgressBar({
       onAccessibilityAction={handleAction}
       {...pan.panHandlers}
     >
-      <View style={styles.track} pointerEvents="none">
+      <Animated.View
+        style={[styles.track, fade != null && { opacity: fade }]}
+        pointerEvents="none"
+      >
         <Animated.View
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
-      </View>
+      </Animated.View>
       {dragging && trackWidth > 0 && (
         <Animated.View
           testID="clip-progress-thumb"
@@ -285,18 +297,20 @@ export function ClipProgressBar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           onLayout={(e) => setPillWidth(Math.round(e.nativeEvent.layout.width))}
-          style={[
-            styles.pill,
-            // Hidden for the one frame before its width is known.
-            {
-              opacity: pillWidth > 0 ? 1 : 0,
-              transform: [{ translateX: pillX }],
-            },
-          ]}
+          style={[styles.pill, { transform: [{ translateX: pillX }] }]}
         >
-          <Text style={[styles.pillText, typography.caption]}>
-            {scrubTime(scrubSeconds, total)}
-          </Text>
+          {/* Hidden for the one frame before its width is known. On glass
+              only the time fades, and the glass dissolves. */}
+          <GlassSurface
+            style={styles.pillShape}
+            fallback={{ kind: "fill", style: styles.pillFill }}
+            visible={pillWidth > 0}
+            fade={pillWidth > 0 ? 1 : 0}
+          >
+            <Text style={[styles.pillText, typography.caption]}>
+              {scrubTime(scrubSeconds, total)}
+            </Text>
+          </GlassSurface>
         </Animated.View>
       )}
     </View>
@@ -308,6 +322,9 @@ const styles = StyleSheet.create({
     height: HIT_HEIGHT,
     marginHorizontal: 16,
     justifyContent: "center",
+    // Playback does not mirror (feat-695 R12). React Native swaps `left` and
+    // `right` in a right-to-left app, so the bar sets its own direction.
+    direction: "ltr",
   },
   track: {
     height: TRACK_HEIGHT,
@@ -337,15 +354,18 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     bottom: HIT_HEIGHT / 2 + THUMB / 2 + 6,
+  },
+  pillShape: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
+  },
+  pillFill: {
     backgroundColor: hexToRgba(BLACK, 0.75),
   },
   // Fixed-width digits, so the pill does not change width as the time runs.
   pillText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },

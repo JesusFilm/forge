@@ -138,6 +138,7 @@
     "versesAriaValue": "Tindzimana ta {first} ku ya eka {last} eka {total}, {chapter}",
     "demoVerse": "Kokela ehenhla u ya eka ndzimana leyi landzelaka",
     "demoChapter": "Kokela hi le ximatsini u ya eka ndzima leyi landzelaka",
+    "demoChapterRtl": "Kokela hi le xineneni u ya eka ndzima leyi landzelaka",
     "demoSkip": "Khumba u tlula",
     "demoSkipAriaLabel": "Tlula xikombiso xa ku kokela",
     "selectVerseAriaHint": "Khumba kambirhi ku hlawula ndzimana leyi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Hlawula buku",
+    "chooseChapter": "Hlawula ndzima",
+    "chooseVerse": "Hlawula ndzimana",
     "oldTestament": "Testamente ya Khale",
     "newTestament": "Testamente Leyintshwa",
     "books": "Tibuku",
@@ -193,7 +196,7 @@
     "someBooks": "{count} eka {total, plural, one {# buku} other {# tibuku}}",
     "twoNames": "{first} na {second}",
     "threeNames": "{first}, {second} na {third}",
-    "onDevice": "Eka xitirhisiwa lexi",
+    "downloaded": "Yi dawunilodiwile",
     "downloading": "Ku dawuniloda {percent}%",
     "downloadStopped": "Ku dawuniloda ku yimile",
     "updateAvailable": "Ku na mpfuxeto",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Phosta ya seri",
     "videosHeading": "Tivhidiyo",
     "detailsLoadError": "A swi kotekanga ku layicha vuxokoxoko hinkwabyo.",
+    "languagesTitle": "Ririmi ra vhidiyo",
     "searchLanguagesPlaceholder": "Lava tindzimi…",
     "searchLanguagesAriaLabel": "Lava tindzimi",
     "noLanguagesFound": "A ku kumekanga ririmi",
@@ -502,6 +506,7 @@
     "resumeAt": "Ya emahlweni ku suka eka {time}",
     "unknownLanguage": "Ririmi leri nga tiviwiki",
     "downloadedStatus": "Yi dawunilodiwile",
+    "languagesTitle": "Ririmi ra vhidiyo",
     "searchLanguagesPlaceholder": "Lava tindzimi…",
     "searchLanguagesAriaLabel": "Lava tindzimi",
     "noLanguagesFound": "A ku kumekanga ririmi",
@@ -773,5 +778,8 @@
     "send": "Rhumela",
     "sending": "Ku rhumela…",
     "sendAriaLabel": "Rhumela mavonelo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App yi tirhisa netiweke ya wena ya kusuhi ku lavisisa switirhisiwa leswi u nga kombisaka tivhidiyo eka swona, leswaku u kota ku tlanga tivhidiyo eka TV ya wena."
   }
 }

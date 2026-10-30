@@ -45,7 +45,7 @@ const IDLE_STATE: HeroStreamState = {
  */
 export function useHeroStream(slug: string | null): HeroStreamState {
   const [state, setState] = useState<HeroStreamState>(IDLE_STATE)
-  // Stale-response guard (mirrors watch.tsx's search guard): a slide change
+  // Stale-response guard (mirrors Discover's search guard): a slide change
   // bumps the id so a superseded resolution can't land on the new slide.
   const requestIdRef = useRef(0)
 
@@ -98,7 +98,7 @@ export function useHeroStream(slug: string | null): HeroStreamState {
 }
 
 // ── Next-slide prefetch ─────────────────────────────────────────────
-// Mirrors Discover's capped prefetch (app/(tabs)/watch.tsx): deduped by slug,
+// Mirrors Discover's capped prefetch (app/(tabs)/watch/index.tsx): deduped by slug,
 // capped in flight so fast swiping can't burst the per-video query. cache-first
 // makes a resolved slug a network no-op; a failed prefetch releases its slug.
 

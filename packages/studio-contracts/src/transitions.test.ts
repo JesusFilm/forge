@@ -18,7 +18,6 @@ const document = studioDocumentSchema.parse({
   durationInFrames: 180,
   tracks: [{ id: "video", kind: "visual" }],
   components: [],
-  packRevisionIds: [],
   items: [0, 1].map((i) => ({
     id: `v${i}`,
     kind: "video",

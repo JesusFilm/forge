@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { act } from "react"
-import { createRoot, type Root } from "react-dom/client"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { InventoryFilterShell } from "./InventoryFilterShell"
@@ -56,6 +57,7 @@ describe("InventoryFilterShell", () => {
   })
 
   afterEach(() => {
+    window.history.replaceState(null, "", "/")
     act(() => root.unmount())
     container.remove()
   })
@@ -85,6 +87,117 @@ describe("InventoryFilterShell", () => {
     container
       .querySelector('[data-testid="language-inventory-filters-count"]')
       ?.textContent?.trim() ?? null
+
+  it("hydrates filter state from the query string", () => {
+    window.history.replaceState(null, "", "/?length=over30&type=bogus")
+    renderShell(
+      <>
+        <Item id="short" length="under5" />
+        <Item id="long" length="over30" />
+      </>,
+    )
+
+    expect(isHidden("short")).toBe(true)
+    expect(isHidden("long")).toBe(false)
+    expect(readout()).toBe("1 of 2 shown")
+  })
+
+  it("server-renders the unfiltered shell whatever the URL says (static-cache safe)", () => {
+    // The route is `force-static`: its HTML is built once and shared by every
+    // visitor, so the server pass must never depend on the query. The query is
+    // applied only after hydration, from the client snapshot.
+    window.history.replaceState(null, "", "/?length=under5")
+    const html = renderToString(
+      <InventoryFilterShell>
+        <Item id="a" />
+      </InventoryFilterShell>,
+    )
+
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).not.toContain('aria-pressed="true"')
+    expect(html).not.toContain("language-inventory-filters-clear")
+  })
+
+  it("hydrates a filtered URL over unfiltered server HTML", () => {
+    // Real hydration path: the server snapshot ("") is used for the first
+    // client render, then the client snapshot applies the URL. Without the
+    // server snapshot React would report a hydration mismatch on the chips.
+    const tree = (
+      <InventoryFilterShell>
+        <Item id="short" length="under5" />
+        <Item id="long" length="over30" />
+      </InventoryFilterShell>
+    )
+    window.history.replaceState(null, "", "/")
+    // A container already used by `createRoot` cannot be hydrated, so swap in
+    // a fresh one for this test.
+    act(() => root.unmount())
+    container.remove()
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    container.innerHTML = renderToString(tree)
+    window.history.replaceState(null, "", "/?length=under5")
+    const errors: unknown[] = []
+    act(() => {
+      root = hydrateRoot(container, tree, {
+        onRecoverableError: (error) => errors.push(error),
+      })
+    })
+
+    expect(errors).toEqual([])
+    expect(isHidden("long")).toBe(true)
+    expect(isHidden("short")).toBe(false)
+    expect(readout()).toBe("1 of 2 shown")
+  })
+
+  it("keeps window.history.state when it writes the query", () => {
+    // Next's App Router stores its own marker in history.state; replacing it
+    // with null would hand the entry to Next's patched replaceState.
+    window.history.replaceState({ marker: 1 }, "", "/")
+    renderShell(<Item id="a" />)
+    expand()
+    click("language-inventory-filter-length-under5")
+
+    expect(window.location.search).toBe("?length=under5")
+    expect(window.history.state).toEqual({ marker: 1 })
+  })
+
+  it("writes filter changes to the query, keeping other params and the hash", () => {
+    window.history.replaceState(null, "", "/?keep=1#top")
+    renderShell(<Item id="a" />)
+    expect(window.location.search).toBe("?keep=1")
+
+    expand()
+    click("language-inventory-filter-length-under5")
+    click("language-inventory-filter-added-60d")
+    expect(window.location.search).toBe("?keep=1&length=under5&added=60d")
+    expect(window.location.hash).toBe("#top")
+
+    click("language-inventory-filters-clear")
+    expect(window.location.search).toBe("?keep=1")
+  })
+
+  it("restores state on back/forward (popstate)", () => {
+    renderShell(
+      <>
+        <Item id="short" length="under5" />
+        <Item id="long" length="over30" />
+      </>,
+    )
+    expect(isHidden("long")).toBe(false)
+
+    act(() => {
+      window.history.replaceState(null, "", "/?length=under5")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+    })
+    expect(isHidden("long")).toBe(true)
+
+    act(() => {
+      window.history.replaceState(null, "", "/")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+    })
+    expect(isHidden("long")).toBe(false)
+  })
 
   it("starts collapsed, with the options behind the disclosure", () => {
     renderShell(<Item id="a" />)

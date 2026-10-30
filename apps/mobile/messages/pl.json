@@ -138,6 +138,7 @@
     "versesAriaValue": "Wersety od {first} do {last} z {total}, {chapter}",
     "demoVerse": "Przesuń w górę, aby przejść do następnego wersetu",
     "demoChapter": "Przesuń w lewo, aby przejść do następnego rozdziału",
+    "demoChapterRtl": "Przesuń w prawo, aby przejść do następnego rozdziału",
     "demoSkip": "Dotknij, aby pominąć",
     "demoSkipAriaLabel": "Pomiń pokaz przesuwania",
     "selectVerseAriaHint": "Dotknij dwukrotnie, aby zaznaczyć ten werset",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Wybierz księgę",
+    "chooseChapter": "Wybierz rozdział",
+    "chooseVerse": "Wybierz werset",
     "oldTestament": "Stary Testament",
     "newTestament": "Nowy Testament",
     "books": "Księgi",
@@ -193,7 +196,7 @@
     "someBooks": "{count} z {total, plural, one {# księgi} few {# ksiąg} many {# ksiąg} other {# księgi}}",
     "twoNames": "{first} i {second}",
     "threeNames": "{first}, {second} i {third}",
-    "onDevice": "Na tym urządzeniu",
+    "downloaded": "Pobrano",
     "downloading": "Pobieranie: {percent}%",
     "downloadStopped": "Pobieranie przerwane",
     "updateAvailable": "Dostępna aktualizacja",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakat serii",
     "videosHeading": "Filmy",
     "detailsLoadError": "Nie udało się wczytać wszystkich szczegółów.",
+    "languagesTitle": "Język wideo",
     "searchLanguagesPlaceholder": "Szukaj języków…",
     "searchLanguagesAriaLabel": "Szukaj języków",
     "noLanguagesFound": "Nie znaleziono języków",
@@ -502,6 +506,7 @@
     "resumeAt": "Wznów od {time}",
     "unknownLanguage": "Nieznany",
     "downloadedStatus": "Pobrano",
+    "languagesTitle": "Język wideo",
     "searchLanguagesPlaceholder": "Szukaj języków…",
     "searchLanguagesAriaLabel": "Szukaj języków",
     "noLanguagesFound": "Nie znaleziono języków",
@@ -773,5 +778,8 @@
     "send": "Wyślij",
     "sending": "Wysyłanie…",
     "sendAriaLabel": "Wyślij opinię"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacja korzysta z Twojej sieci lokalnej, aby znaleźć urządzenia do przesyłania, dzięki czemu możesz odtwarzać filmy na swoim telewizorze."
   }
 }

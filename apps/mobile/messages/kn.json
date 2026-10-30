@@ -138,6 +138,7 @@
     "versesAriaValue": "ವಚನಗಳು {first} ರಿಂದ {last} ರವರೆಗೆ, ಒಟ್ಟು {total}, {chapter}",
     "demoVerse": "ಮುಂದಿನ ವಚನಕ್ಕಾಗಿ ಮೇಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ",
     "demoChapter": "ಮುಂದಿನ ಅಧ್ಯಾಯಕ್ಕಾಗಿ ಎಡಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ",
+    "demoChapterRtl": "ಮುಂದಿನ ಅಧ್ಯಾಯಕ್ಕಾಗಿ ಬಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ",
     "demoSkip": "ಬಿಟ್ಟುಬಿಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ",
     "demoSkipAriaLabel": "ಸ್ವೈಪ್ ಪ್ರದರ್ಶನವನ್ನು ಬಿಟ್ಟುಬಿಡಿ",
     "selectVerseAriaHint": "ಈ ವಚನವನ್ನು ಆಯ್ಕೆಮಾಡಲು ಡಬಲ್-ಟ್ಯಾಪ್ ಮಾಡಿ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ಪುಸ್ತಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "chooseChapter": "ಅಧ್ಯಾಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "chooseVerse": "ವಚನವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
     "oldTestament": "ಹಳೆಯ ಒಡಂಬಡಿಕೆ",
     "newTestament": "ಹೊಸ ಒಡಂಬಡಿಕೆ",
     "books": "ಪುಸ್ತಕಗಳು",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# ಪುಸ್ತಕದಲ್ಲಿ} other {# ಪುಸ್ತಕಗಳಲ್ಲಿ}} {count}",
     "twoNames": "{first} ಮತ್ತು {second}",
     "threeNames": "{first}, {second} ಮತ್ತು {third}",
-    "onDevice": "ಈ ಸಾಧನದಲ್ಲಿ ಇದೆ",
+    "downloaded": "ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ",
     "downloading": "ಡೌನ್‌ಲೋಡ್ ಆಗುತ್ತಿದೆ {percent}%",
     "downloadStopped": "ಡೌನ್‌ಲೋಡ್ ನಿಂತಿದೆ",
     "updateAvailable": "ಅಪ್‌ಡೇಟ್ ಲಭ್ಯವಿದೆ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ಸೀರೀಸ್ ಪೋಸ್ಟರ್",
     "videosHeading": "ವೀಡಿಯೊಗಳು",
     "detailsLoadError": "ಪೂರ್ಣ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "languagesTitle": "ವೀಡಿಯೊ ಭಾಷೆ",
     "searchLanguagesPlaceholder": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ…",
     "searchLanguagesAriaLabel": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ",
     "noLanguagesFound": "ಯಾವುದೇ ಭಾಷೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} ರಿಂದ ಮುಂದುವರಿಸಿ",
     "unknownLanguage": "ಅಜ್ಞಾತ",
     "downloadedStatus": "ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ",
+    "languagesTitle": "ವೀಡಿಯೊ ಭಾಷೆ",
     "searchLanguagesPlaceholder": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ…",
     "searchLanguagesAriaLabel": "ಭಾಷೆಗಳನ್ನು ಹುಡುಕಿ",
     "noLanguagesFound": "ಯಾವುದೇ ಭಾಷೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
@@ -773,5 +778,8 @@
     "send": "ಕಳುಹಿಸಿ",
     "sending": "ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ…",
     "sendAriaLabel": "ಪ್ರತಿಕ್ರಿಯೆ ಕಳುಹಿಸಿ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ಕ್ಯಾಸ್ಟ್ ಸಾಧನಗಳನ್ನು ಹುಡುಕಲು ಆ್ಯಪ್ ನಿಮ್ಮ ಸ್ಥಳೀಯ ನೆಟ್‌ವರ್ಕ್ ಅನ್ನು ಬಳಸುತ್ತದೆ, ಇದರಿಂದ ನೀವು ನಿಮ್ಮ ಟಿವಿಯಲ್ಲಿ ವೀಡಿಯೊಗಳನ್ನು ಪ್ಲೇ ಮಾಡಬಹುದು."
   }
 }

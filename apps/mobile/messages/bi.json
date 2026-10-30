@@ -138,6 +138,7 @@
     "versesAriaValue": "Ves {first} kasem {last} long {total}, {chapter}",
     "demoVerse": "Swaepem i go antap blong nekis ves",
     "demoChapter": "Swaepem i go long lef blong nekis japta",
+    "demoChapterRtl": "Swaepem i go long raet blong nekis japta",
     "demoSkip": "Tajem blong jamp ova",
     "demoSkipAriaLabel": "Jamp ova long soem blong swaep",
     "selectVerseAriaHint": "Tajem tu taem blong jusum ves ia",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Jusum wan buk",
+    "chooseChapter": "Jusum wan japta",
+    "chooseVerse": "Jusum wan ves",
     "oldTestament": "Olfala Testamen",
     "newTestament": "Niufala Testamen",
     "books": "Ol buk",
@@ -193,7 +196,7 @@
     "someBooks": "{count} long {total, plural, one {# buk} other {# buk}}",
     "twoNames": "{first} mo {second}",
     "threeNames": "{first}, {second}, mo {third}",
-    "onDevice": "I stap long fon ia",
+    "downloaded": "I daonlod finis",
     "downloading": "I stap daonlod {percent}%",
     "downloadStopped": "Daonlod i stop",
     "updateAvailable": "Niufala vesen i stap",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Posta blong seris",
     "videosHeading": "Ol vidio",
     "detailsLoadError": "I no save lodem olgeta infomesen.",
+    "languagesTitle": "Lanwis blong vidio",
     "searchLanguagesPlaceholder": "Lukaotem lanwis...",
     "searchLanguagesAriaLabel": "Lukaotem lanwis",
     "noLanguagesFound": "I no faenem eni lanwis",
@@ -502,6 +506,7 @@
     "resumeAt": "Gohed bakegen long {time}",
     "unknownLanguage": "Lanwis we yumi no save",
     "downloadedStatus": "I daonlod finis",
+    "languagesTitle": "Lanwis blong vidio",
     "searchLanguagesPlaceholder": "Lukaotem lanwis...",
     "searchLanguagesAriaLabel": "Lukaotem lanwis",
     "noLanguagesFound": "I no faenem eni lanwis",
@@ -773,5 +778,8 @@
     "send": "Sanem",
     "sending": "I stap sanem…",
     "sendAriaLabel": "Sanem tingting blong yu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App ia i yusum lokol netwok blong yu blong faenem ol masin blong soem long TV, blong mekem se yu save pleim ol vidio long TV blong yu."
   }
 }

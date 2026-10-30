@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículo {first} guive {last} peve, {total} apytégui, {chapter}",
     "demoVerse": "Embosyry yvate gotyo versículo oúvape",
     "demoChapter": "Embosyry asu gotyo capítulo oúvape",
+    "demoChapterRtl": "Embosyry akatúa gotyo capítulo oúvape",
     "demoSkip": "Epoko ehasa hag̃ua",
     "demoSkipAriaLabel": "Ehasa pe jehechauka mbosyry rehegua",
     "selectVerseAriaHint": "Epoko mokõi jey eiporavo hag̃ua ko versículo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Eiporavo peteĩ aranduka",
+    "chooseChapter": "Eiporavo peteĩ capítulo",
+    "chooseVerse": "Eiporavo peteĩ versículo",
     "oldTestament": "Testamento Ymaguare",
     "newTestament": "Testamento Pyahu",
     "books": "Arandukakuéra",
@@ -193,7 +196,7 @@
     "someBooks": "{count} aranduka, {total, plural, one {# apytégui} other {# apytégui}}",
     "twoNames": "{first} ha {second}",
     "threeNames": "{first}, {second} ha {third}",
-    "onDevice": "Oĩ ko mba'e'okápe",
+    "downloaded": "Oñemboguejýma",
     "downloading": "Oñemboguejyhína {percent}%",
     "downloadStopped": "Ñemboguejy opyta",
     "updateAvailable": "Oĩ mbohekopyahu",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serie ra'ãnga",
     "videosHeading": "Ta'ãngamýikuéra",
     "detailsLoadError": "Ndaikatúi oñemyanyhẽpa ñemombe'u.",
+    "languagesTitle": "Ta'ãngamýi ñe'ẽ",
     "searchLanguagesPlaceholder": "Eheka ñe'ẽ…",
     "searchLanguagesAriaLabel": "Eheka ñe'ẽ",
     "noLanguagesFound": "Ndojejuhúi ñe'ẽ",
@@ -502,6 +506,7 @@
     "resumeAt": "Ehecha {time} guive",
     "unknownLanguage": "Ojekuaa'ỹva",
     "downloadedStatus": "Oñemboguejýma",
+    "languagesTitle": "Ta'ãngamýi ñe'ẽ",
     "searchLanguagesPlaceholder": "Eheka ñe'ẽ…",
     "searchLanguagesAriaLabel": "Eheka ñe'ẽ",
     "noLanguagesFound": "Ndojejuhúi ñe'ẽ",
@@ -773,5 +778,8 @@
     "send": "Emondo",
     "sending": "Oñemondohína…",
     "sendAriaLabel": "Emondo ne remiandu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ko tembiporu’i oipuru nde ñanduti tendapegua ohekávo mba’e’oka omondóva TV-pe, ikatu hag̃uáicha rehecha ta’ãngamýi nde TV-pe."
   }
 }

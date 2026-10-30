@@ -1,0 +1,288 @@
+[
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      161.83147300000002, 131.74108, 93.15383399999996, 110.01076499999999,
+      89.78475800000001, 79.67525200000011, 67.42185299999983, 172.602934,
+      75.902736, 121.47497300000009, 121.84187199999997, 111.08588899999995
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 0,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      19.853808000000015, 17.841156000000012, 14.413629000000014,
+      46.74582699999996, 12.223783000000026, 12.256955000000005, 14.233294,
+      12.547848999999985, 11.632785000000013, 15.513095000000021,
+      11.335197999999991, 13.800227000000007
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 0,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      20.58070600000002, 16.086532000000034, 24.382086999999956,
+      59.67560800000001, 19.274618000000032, 12.542870999999991,
+      12.024405999999999, 15.94189399999999, 15.496769000000029,
+      13.42945199999997, 15.61996099999999, 12.169094000000086
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 1,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      95.981603, 81.94822900000003, 70.99472800000001, 71.91864599999997,
+      69.91424499999994, 75.99085200000002, 77.39333799999997,
+      87.43120799999997, 75.579386, 69.449165, 102.25686399999995,
+      124.09012900000016
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 1,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      103.47243300000002, 102.88572699999997, 82.40835100000004, 89.445333,
+      123.01731799999993, 71.84908600000006, 76.32640299999991, 76.365276,
+      89.89763900000003, 87.33156299999996, 76.33456999999999, 99.19463800000017
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 2,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      29.813738, 23.26406800000001, 15.670484999999985, 31.283451000000014,
+      14.783884000000057, 19.430870000000027, 13.005131000000006,
+      13.972615999999903, 18.928423000000066, 24.21964200000002,
+      25.28725799999995, 12.169868000000065
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 2,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      23.439076, 18.895735000000002, 16.49816199999998, 37.77299499999998,
+      13.94965000000002, 24.579076999999984, 15.945742999999993,
+      20.766700000000014, 17.533560999999963, 15.162003000000027,
+      15.035495999999966, 14.817727999999988
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 3,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      179.75761700000004, 102.95504599999992, 84.12917500000003,
+      111.90839600000004, 85.01978099999997, 80.18687199999988,
+      85.18085900000005, 82.35396999999989, 90.60754600000018,
+      129.11102400000004, 137.33960000000002, 75.29048899999998
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 3,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      172.79374599999994, 115.98945000000003, 83.99267400000008,
+      73.42572699999994, 78.61976800000002, 76.52800500000001,
+      75.42310500000008, 83.35738300000003, 93.95022399999993,
+      94.51904200000013, 74.70391900000004, 75.13063699999998
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 4,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      19.67361600000001, 16.558928999999978, 14.202512000000013,
+      32.76368200000002, 20.849366999999972, 12.44639699999999,
+      16.305672000000015, 14.564074000000005, 14.738134000000002,
+      14.340382999999974, 19.24098399999997, 15.996668
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 4,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      19.065268000000003, 58.13809699999996, 14.741860999999972,
+      59.88407500000005, 18.0231, 22.323192000000006, 17.155417999999997,
+      33.96139199999999, 31.246730000000014, 22.458927000000017,
+      18.524279999999976, 33.23451899999998
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 5,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      111.66764899999998, 94.14747299999999, 127.63732500000003,
+      122.65340800000001, 84.64116000000001, 85.89010499999995,
+      149.8112689999998, 138.45699799999988, 154.99085600000012,
+      167.46164599999997, 141.0172819999998, 113.95670400000017
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 5,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      77.07535599999994, 95.56662299999994, 84.79710999999998,
+      74.55154000000005, 93.89443500000004, 86.73822700000005, 73.1777689999999,
+      75.84442000000013, 84.08013099999994, 121.67753400000015, 70.088659,
+      69.61472299999991
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 6,
+    "mode": "baseline"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      20.649211000000037, 16.834699999999998, 14.386799999999994,
+      33.66789799999998, 15.672240999999985, 35.67272200000002,
+      11.178904999999986, 19.612998000000005, 12.477363999999966,
+      47.47260800000004, 48.997356000000025, 14.983764999999948
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 6,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      23.33282600000001, 16.535460999999998, 13.872582000000023, 45.270939,
+      18.323199999999986, 15.047852000000034, 13.042745999999966,
+      21.569829000000027, 13.689050000000009, 17.762749999999983,
+      18.99364300000002, 14.08301599999993
+    ],
+    "buffer_json_expansions": 0,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 7,
+    "mode": "candidate"
+  },
+  {
+    "runtime": "app-page-turbo.runtime.prod.js",
+    "node": "v24.20.0",
+    "next": "16.3.8",
+    "fixture_buffer_bytes": 1941310,
+    "iterations": 12,
+    "pending_hit_ms": [
+      101.45054799999997, 141.72765299999998, 168.3911999999999,
+      102.86728899999991, 70.15088700000001, 134.0951520000001,
+      170.47767399999998, 106.35419100000013, 115.7324309999999,
+      74.86058000000003, 105.61678200000006, 117.20198200000004
+    ],
+    "buffer_json_expansions": 13,
+    "storage_codec": "base64+JSON",
+    "scope": "synthetic storage; actual Next get/set; not HTTP TTFB",
+    "pair": 7,
+    "mode": "baseline"
+  }
+]

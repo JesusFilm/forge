@@ -1,6 +1,7 @@
 ---
 title: "PlaybackRequest identity comparison on a merged cast field caused an infinite render loop"
 date: 2026-08-19
+last_updated: 2026-10-20
 category: runtime-errors
 module: apps/mobile
 problem_type: runtime_error
@@ -64,14 +65,14 @@ useEffect(() => {
 
 The only thing that keeps that effect quiet is the store's comparator. `updateSlot` returns before
 it commits when the new request equals the old one
-(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:425-431`):
+(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:536-542`):
 
 ```ts
 updateSlot(id: number, request: PlaybackRequest): void {
   const slot = slots.get(id)
   if (slot == null) return
   if (samePlaybackRequest(slot.request, request)) return
-  slots.set(id, { request, rect: slot.rect })
+  slots.set(id, { ...slot, request })
   commit()
 },
 ```
@@ -386,3 +387,7 @@ has not been measured.
   — the session-identity predicate that now governs replacement, merge, and adoption in the same
   slot-to-host channel. This doc compares one descriptor field by reference. The new doc reconciles
   two identity predicates that disagreed.
+- [`docs/solutions/logic-errors/screen-pushed-over-mounted-page-keeps-root-player-drawn.md`](../logic-errors/screen-pushed-over-mounted-page-keeps-root-player-drawn.md)
+  — since 2026-10-20 the slot also carries facts outside the request (`underScreen`, `page`). They
+  never pass through `samePlaybackRequest`: each has its own setter that returns early on an equal
+  value, and `updateSlot` spreads the slot so a request change keeps them.

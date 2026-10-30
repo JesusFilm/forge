@@ -49,6 +49,52 @@ afterEach(() => {
 })
 
 describe("resolveWatchUnavailableRecovery", () => {
+  it("carries provider-owned requested identity without another metadata request", async () => {
+    reset = setWatchRouteManifestSourceForTest(async () => ({
+      ...manifest,
+      audioLanguageSlugs: [...manifest.audioLanguageSlugs, "french-african"],
+    }))
+    const requestedLanguage = {
+      publicSlug: "french-african",
+      englishName: "French, African",
+      nativeName: null,
+      bcp47: "fra",
+      regionNames: [],
+    }
+    resolveVariantsMock.mockResolvedValue([])
+    resolveTargetMock.mockResolvedValue({
+      contentTitle: "JESUS",
+      imageUrl: null,
+      requestedLanguage,
+    })
+    const result = await resolveWatchUnavailableRecovery({
+      contentSlug: "jesus",
+      requestedLanguageSlug: "french-african",
+    })
+    expect(result.requestedLanguage).toEqual(requestedLanguage)
+    expect(resolveTargetMock).toHaveBeenCalledTimes(1)
+    expect(resolveVariantsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("drops metadata for a fallback language instead of relabeling the selection", async () => {
+    reset = setWatchRouteManifestSourceForTest(async () => manifest)
+    resolveVariantsMock.mockResolvedValue([])
+    resolveTargetMock.mockResolvedValue({
+      requestedLanguage: {
+        publicSlug: "english",
+        englishName: "English",
+        nativeName: null,
+        bcp47: "en",
+        regionNames: [],
+      },
+    })
+    const result = await resolveWatchUnavailableRecovery({
+      contentSlug: "good-friday-live",
+      requestedLanguageSlug: "chinese-simplified",
+    })
+    expect(result.requestedLanguage).toBeNull()
+  })
+
   it("returns only exact admitted audio versions of the unavailable video", async () => {
     let reads = 0
     reset = setWatchRouteManifestSourceForTest(async () => {
@@ -229,6 +275,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         requestedLanguageSlug: "chinese-simplified",
       }),
     ).resolves.toEqual({
+      requestedLanguage: null,
       verifiedGap: true,
       contentTitle: "耶稣受难日直播",
       targetImageUrl:
@@ -273,6 +320,7 @@ describe("resolveWatchUnavailableRecovery", () => {
         requestedLanguageSlug: "chinese-simplified",
       }),
     ).resolves.toEqual({
+      requestedLanguage: null,
       verifiedGap: false,
       contentTitle: null,
       targetImageUrl: null,

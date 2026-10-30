@@ -872,7 +872,7 @@ hidden); anonymous/denied users are unaffected.
 
 ## Deployment
 
-Railway via `railway.toml` (railpack builder), but only once the service's
+Railway via `railway.toml` (pinned Docker builder), but only once the service's
 "Config-as-code Path" points at the file — see README's wiring checklist
 and its `configFile` verification step.
 

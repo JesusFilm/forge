@@ -138,6 +138,7 @@
     "versesAriaValue": "Amavesi {first} kuya ku-{last} ku-{total}, {chapter}",
     "demoVerse": "Swayipha phezulu ukuthola ivesi elilandelayo",
     "demoChapter": "Swayipha ngakwesokhohlo ukuthola isahluko esilandelayo",
+    "demoChapterRtl": "Swayipha ngakwesokudla ukuthola isahluko esilandelayo",
     "demoSkip": "Thinta ukuze weqe",
     "demoSkipAriaLabel": "Yeqa umboniso wokuswayipha",
     "selectVerseAriaHint": "Thinta kabili ukuze ukhethe leli vesi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Khetha ibhuku",
+    "chooseChapter": "Khetha isahluko",
+    "chooseVerse": "Khetha ivesi",
     "oldTestament": "ITestamente Elidala",
     "newTestament": "ITestamente Elitsha",
     "books": "Amabhuku",
@@ -193,7 +196,7 @@
     "someBooks": "Amabhuku {count} ku-{total, plural, one {#} other {#}}",
     "twoNames": "{first} la-{second}",
     "threeNames": "{first}, {second} la-{third}",
-    "onDevice": "Kule divayisi",
+    "downloaded": "Kulandiwe",
     "downloading": "Kuyalandwa {percent}%",
     "downloadStopped": "Ukulanda kumile",
     "updateAvailable": "Ukuvuselelwa kuyatholakala",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Iphosta yochungechunge",
     "videosHeading": "Amavidiyo",
     "detailsLoadError": "Kakukwazekanga ukuvula yonke imininingwane.",
+    "languagesTitle": "Ulimi lwevidiyo",
     "searchLanguagesPlaceholder": "Dinga indimi...",
     "searchLanguagesAriaLabel": "Dinga indimi",
     "noLanguagesFound": "Kakula zindimi ezitholakeleyo",
@@ -502,6 +506,7 @@
     "resumeAt": "Qhubeka ku-{time}",
     "unknownLanguage": "Kalwaziwa",
     "downloadedStatus": "Kulandiwe",
+    "languagesTitle": "Ulimi lwevidiyo",
     "searchLanguagesPlaceholder": "Dinga indimi...",
     "searchLanguagesAriaLabel": "Dinga indimi",
     "noLanguagesFound": "Kakula zindimi ezitholakeleyo",
@@ -773,5 +778,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela umbono"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa inethiwekhi yakho yendawo ukudinga amadivayisi ongathumela kuwo amavidiyo, ukuze ukwazi ukudlala amavidiyo ku-TV yakho."
   }
 }

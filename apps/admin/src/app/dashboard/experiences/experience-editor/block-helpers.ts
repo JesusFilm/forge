@@ -1,3 +1,4 @@
+import { createWatchAudienceConfiguration } from "@forge/experience-schema"
 import { type Blocks } from "@/domain/blocks"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
@@ -22,6 +23,7 @@ export type BlockTemplateKey =
   | "cta"
   | "easterDates"
   | "infoBlocks"
+  | "watchAudience"
   | "languageGlobe"
   | "mediaCollection"
   | "dynamicMediaCollection"
@@ -48,6 +50,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "watchHomeHero",
   "watchHomeCategoryRail",
   "homepageRecommendations",
+  "watchAudience",
   "languageGlobe",
   "routeVideoHero",
   "routeVideo",
@@ -563,6 +566,16 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchAudience") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Audience",
+      title: "Audience questionnaire",
+      body: "Four roles · three questions each · shared published default-template configuration",
+      tone: "standard",
+      badges: ["WATCH_AUDIENCE"],
+    }
+  }
   if (type === "languageGlobe") {
     return {
       key: summaryKey,
@@ -888,6 +901,13 @@ export function createTemplateBlock(
     }
   }
 
+  if (template === "watchAudience") {
+    return {
+      t: "watchAudience",
+      sectionKey: `watch-audience-${index}`,
+      configuration: createWatchAudienceConfiguration(),
+    }
+  }
   if (template === "languageGlobe") {
     return {
       t: "languageGlobe",

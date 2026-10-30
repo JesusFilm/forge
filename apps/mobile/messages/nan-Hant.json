@@ -138,6 +138,7 @@
     "versesAriaValue": "{chapter}，第 {first} 到 {last} 節，總共 {total} 節",
     "demoVerse": "向頂懸滑看後一節",
     "demoChapter": "向倒爿滑看後一章",
+    "demoChapterRtl": "向正爿滑看後一章",
     "demoSkip": "揤一下跳過",
     "demoSkipAriaLabel": "跳過滑動示範",
     "selectVerseAriaHint": "揤兩下揀這節",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "揀書卷",
+    "chooseChapter": "揀章",
+    "chooseVerse": "揀節",
     "oldTestament": "舊約",
     "newTestament": "新約",
     "books": "書卷",
@@ -193,7 +196,7 @@
     "someBooks": "{count} 卷，總共 {total, plural, one {# 卷} other {# 卷}}",
     "twoNames": "{first}佮{second}",
     "threeNames": "{first}、{second}佮{third}",
-    "onDevice": "佇這台裝置",
+    "downloaded": "下載好矣",
     "downloading": "咧下載 {percent}%",
     "downloadStopped": "下載停去矣",
     "updateAvailable": "有更新",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "系列海報",
     "videosHeading": "影片",
     "detailsLoadError": "完整資料載袂出來。",
+    "languagesTitle": "影片語言",
     "searchLanguagesPlaceholder": "搜尋語言…",
     "searchLanguagesAriaLabel": "搜尋語言",
     "noLanguagesFound": "揣無語言",
@@ -502,6 +506,7 @@
     "resumeAt": "對 {time} 繼續",
     "unknownLanguage": "毋知",
     "downloadedStatus": "下載好矣",
+    "languagesTitle": "影片語言",
     "searchLanguagesPlaceholder": "搜尋語言…",
     "searchLanguagesAriaLabel": "搜尋語言",
     "noLanguagesFound": "揣無語言",
@@ -773,5 +778,8 @@
     "send": "送出",
     "sending": "咧送出…",
     "sendAriaLabel": "送出意見"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "應用程式會用你的區域網路揣投放裝置，予你會當佇電視播影片。"
   }
 }

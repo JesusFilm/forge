@@ -138,6 +138,7 @@
     "versesAriaValue": "آیتونه {first} تر {last}، له {total} څخه، {chapter}",
     "demoVerse": "د بل آیت لپاره پورته کش کړئ",
     "demoChapter": "د بل څپرکي لپاره کیڼ لور ته کش کړئ",
+    "demoChapterRtl": "د بل څپرکي لپاره ښي لور ته کش کړئ",
     "demoSkip": "د تېرېدو لپاره ټک وکړئ",
     "demoSkipAriaLabel": "د کش کولو ښودنه پرېږدئ",
     "selectVerseAriaHint": "د دې آیت د ټاکلو لپاره دوه ځله ټک وکړئ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "یو کتاب وټاکئ",
+    "chooseChapter": "یو څپرکی وټاکئ",
+    "chooseVerse": "یو آیت وټاکئ",
     "oldTestament": "زوړ عهد",
     "newTestament": "نوی عهد",
     "books": "کتابونه",
@@ -193,7 +196,7 @@
     "someBooks": "{count} له {total, plural, one {# کتاب} other {# کتابونو}} څخه",
     "twoNames": "{first} او {second}",
     "threeNames": "{first}، {second} او {third}",
-    "onDevice": "په دې وسیله کې",
+    "downloaded": "ډاونلوډ شوی",
     "downloading": "ډاونلوډ کېږي، {percent}%",
     "downloadStopped": "ډاونلوډ ودرېد",
     "updateAvailable": "تازه نسخه شته",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "د لړۍ پوسټر",
     "videosHeading": "ویډیوګانې",
     "detailsLoadError": "بشپړ جزئیات بار نه شول.",
+    "languagesTitle": "د ویډیو ژبه",
     "searchLanguagesPlaceholder": "ژبې ولټوئ…",
     "searchLanguagesAriaLabel": "ژبې ولټوئ",
     "noLanguagesFound": "هېڅ ژبه ونه موندل شوه",
@@ -502,6 +506,7 @@
     "resumeAt": "له {time} څخه دوام ورکړئ",
     "unknownLanguage": "نامعلومه",
     "downloadedStatus": "ډاونلوډ شوی",
+    "languagesTitle": "د ویډیو ژبه",
     "searchLanguagesPlaceholder": "ژبې ولټوئ…",
     "searchLanguagesAriaLabel": "ژبې ولټوئ",
     "noLanguagesFound": "هېڅ ژبه ونه موندل شوه",
@@ -773,5 +778,8 @@
     "send": "لېږل",
     "sending": "لېږل کېږي…",
     "sendAriaLabel": "نظر ولېږئ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اپ ستاسو ځايي شبکه د کاسټ وسیلو موندلو لپاره کاروي، ترڅو وکولای شئ ویډیوګانې په خپل تلویزیون کې وچلوئ."
   }
 }

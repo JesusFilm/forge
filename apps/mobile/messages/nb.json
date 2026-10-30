@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} av {total}, {chapter}",
     "demoVerse": "Sveip opp for neste vers",
     "demoChapter": "Sveip til venstre for neste kapittel",
+    "demoChapterRtl": "Sveip til høyre for neste kapittel",
     "demoSkip": "Trykk for å hoppe over",
     "demoSkipAriaLabel": "Hopp over sveipedemonstrasjonen",
     "selectVerseAriaHint": "Dobbelttrykk for å velge dette verset",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Velg en bok",
+    "chooseChapter": "Velg et kapittel",
+    "chooseVerse": "Velg et vers",
     "oldTestament": "Det gamle testamente",
     "newTestament": "Det nye testamente",
     "books": "Bøker",
@@ -193,7 +196,7 @@
     "someBooks": "{count} av {total, plural, one {# bok} other {# bøker}}",
     "twoNames": "{first} og {second}",
     "threeNames": "{first}, {second} og {third}",
-    "onDevice": "På denne enheten",
+    "downloaded": "Lastet ned",
     "downloading": "Laster ned {percent} %",
     "downloadStopped": "Nedlastingen stoppet",
     "updateAvailable": "Oppdatering tilgjengelig",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakat for serien",
     "videosHeading": "Videoer",
     "detailsLoadError": "Kunne ikke laste inn alle detaljene.",
+    "languagesTitle": "Videospråk",
     "searchLanguagesPlaceholder": "Søk etter språk …",
     "searchLanguagesAriaLabel": "Søk etter språk",
     "noLanguagesFound": "Fant ingen språk",
@@ -502,6 +506,7 @@
     "resumeAt": "Fortsett fra {time}",
     "unknownLanguage": "Ukjent",
     "downloadedStatus": "Lastet ned",
+    "languagesTitle": "Videospråk",
     "searchLanguagesPlaceholder": "Søk etter språk …",
     "searchLanguagesAriaLabel": "Søk etter språk",
     "noLanguagesFound": "Fant ingen språk",
@@ -773,5 +778,8 @@
     "send": "Send inn",
     "sending": "Sender …",
     "sendAriaLabel": "Send tilbakemelding"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen bruker det lokale nettverket ditt til å finne enheter å sende til, slik at du kan spille av videoer på TV-en din."
   }
 }

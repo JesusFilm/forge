@@ -12,8 +12,24 @@ import { PanelLoading } from "./PanelLoading"
 import { useVariantList } from "./useVariantList"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
+import { NativeDetailsTrackPanel } from "./NativeDetailsTrackPanel"
 
-export function LanguagePanel({
+type Props = {
+  visible: boolean
+  onClose: () => void
+  dataState?: DetailsDataState
+  onRetry?: () => void
+}
+
+export function LanguagePanel(props: Props) {
+  if (Platform.OS === "android" || Platform.OS === "ios")
+    return props.visible ? (
+      <NativeDetailsTrackPanel kind="audio" {...props} />
+    ) : null
+  return <ReactLanguagePanel {...props} />
+}
+
+function ReactLanguagePanel({
   visible,
   onClose,
   dataState,

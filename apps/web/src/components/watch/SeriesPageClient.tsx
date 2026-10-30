@@ -29,7 +29,7 @@ import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProv
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageBadgeCodeFor, languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -311,9 +311,14 @@ export function SeriesPageClient({
   const currentLanguageSlug =
     resolveSeriesLanguageIdentity(languageOptions, locale, { slug: locale })
       ?.slug ?? ""
-  const currentLanguageCode = languageCodeFor(
-    languageOptions.find((option) => option.slug === currentLanguageSlug) ?? {},
+  const currentLanguageOption = languageOptions.find(
+    (option) => option.slug === currentLanguageSlug,
   )
+  const currentLanguageCode = languageBadgeCodeFor(currentLanguageOption ?? {})
+  const currentLanguageName = deriveLanguageDisplay(
+    currentLanguageSlug,
+    currentLanguageOption?.name ?? null,
+  ).name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("series-page-language-switcher"),
   ).current
@@ -371,6 +376,9 @@ export function SeriesPageClient({
             languageCode: headerLanguageSwitcherVisible
               ? currentLanguageCode
               : null,
+            languageName: headerLanguageSwitcherVisible
+              ? currentLanguageName
+              : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -386,6 +394,7 @@ export function SeriesPageClient({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -394,6 +403,7 @@ export function SeriesPageClient({
     }
   }, [
     currentLanguageCode,
+    currentLanguageName,
     headerLanguageSwitcherOwnerToken,
     headerLanguageSwitcherVisible,
     heroOwnsHeaderLanguageSwitcher,
