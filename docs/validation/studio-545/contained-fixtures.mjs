@@ -130,7 +130,6 @@ for (const name of process.env.STUDIO_INSPECTION_FIXTURE_NAMES?.split(",") ?? [
     ],
     items,
     components: [],
-    packRevisionIds: [],
   }
   const input = {
     document,

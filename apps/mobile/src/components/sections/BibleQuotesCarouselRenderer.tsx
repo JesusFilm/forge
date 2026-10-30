@@ -717,7 +717,7 @@ export function BibleQuotesCarouselRenderer({
   if (quotes.length === 0) return null
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-bible-quotes" style={layout.sectionOuter}>
       <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text

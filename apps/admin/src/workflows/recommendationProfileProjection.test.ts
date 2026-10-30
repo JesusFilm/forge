@@ -1,39 +1,13 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
+import { runRecommendationProfileProjection } from "./recommendationProfileProjection"
 
-const runRecommendationProfileProjectionJob = vi.hoisted(() => vi.fn())
-const markRecommendationProfileProjectionRuntimeStarted = vi.hoisted(() =>
-  vi.fn(),
-)
-vi.mock("@/services/recommendations/profiles/job", () => ({
-  runRecommendationProfileProjectionJob,
-  markRecommendationProfileProjectionRuntimeStarted,
-}))
-vi.mock("workflow", () => ({
-  getWorkflowMetadata: () => ({ workflowRunId: "runtime-1" }),
-}))
-
-describe("recommendation profile projection durable workflow", () => {
-  it("executes the generation-fenced private projection run", async () => {
-    runRecommendationProfileProjectionJob.mockResolvedValue({
-      status: "published",
-      generationId: "projection-1",
-    })
-    const { runRecommendationProfileProjection } =
-      await import("./recommendationProfileProjection")
+describe("retired profile projection workflow identity", () => {
+  it("refuses resumed behavioral work", async () => {
     await expect(
       runRecommendationProfileProjection({
-        runId: "run-1",
+        runId: "old",
         expectedGeneration: 1,
       }),
-    ).resolves.toMatchObject({ status: "published" })
-    expect(
-      markRecommendationProfileProjectionRuntimeStarted,
-    ).toHaveBeenCalledWith(
-      { runId: "run-1", expectedGeneration: 1 },
-      "runtime-1",
-    )
-    expect(
-      markRecommendationProfileProjectionRuntimeStarted,
-    ).toHaveBeenCalledBefore(runRecommendationProfileProjectionJob)
+    ).rejects.toThrow("behavioral_recommendations_retired")
   })
 })

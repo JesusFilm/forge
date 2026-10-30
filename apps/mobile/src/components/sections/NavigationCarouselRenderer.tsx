@@ -42,7 +42,7 @@ export function NavigationCarouselRenderer({
   if (items.length === 0) return null
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-navigation-carousel" style={layout.sectionOuter}>
       <Text
         style={[text.sectionHeadingPadded, typography.heading]}
         accessibilityRole="header"

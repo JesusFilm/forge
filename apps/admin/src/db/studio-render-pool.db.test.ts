@@ -70,7 +70,6 @@ it.skipIf(!env.STUDIO_TEST_DATABASE_URL)(
           tracks: [],
           components: [],
           items: [],
-          packRevisionIds: [],
         },
       })
       const requested = await commands.request(human, {

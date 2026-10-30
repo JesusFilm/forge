@@ -34,6 +34,11 @@ type ClipProgressBarProps = {
   onSeek: (seconds: number) => void
   /** The clip loads under its veil, so the player's time is not yet its own. */
   veiled: boolean
+  /** A 2x hold hides the bar. The fade reaches the track only: the scrub pill
+   *  is glass, and glass under a fading parent may not draw. */
+  fade?: Animated.Value
+  /** False while hidden: the bar takes no touches. */
+  interactive?: boolean
 }
 
 /**
@@ -92,6 +97,8 @@ export function ClipProgressBar({
   clipWindow,
   onSeek,
   veiled,
+  fade,
+  interactive = true,
 }: ClipProgressBarProps) {
   const typography = useTypography()
   const t = useT("Explore")
@@ -252,6 +259,7 @@ export function ClipProgressBar({
     <View
       testID="clip-progress-bar"
       style={styles.hitArea}
+      pointerEvents={interactive ? "auto" : "none"}
       onLayout={handleLayout}
       // iOS promotes a plain View with a role only when `accessible` is set.
       accessible
@@ -267,11 +275,14 @@ export function ClipProgressBar({
       onAccessibilityAction={handleAction}
       {...pan.panHandlers}
     >
-      <View style={styles.track} pointerEvents="none">
+      <Animated.View
+        style={[styles.track, fade != null && { opacity: fade }]}
+        pointerEvents="none"
+      >
         <Animated.View
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
-      </View>
+      </Animated.View>
       {dragging && trackWidth > 0 && (
         <Animated.View
           testID="clip-progress-thumb"

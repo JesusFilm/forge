@@ -1,0 +1,57 @@
+name: RAG production image
+on:
+  pull_request:
+    paths:
+      - "apps/rag/**"
+      - "packages/rag-contracts/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/rag-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/rag/**"
+      - "packages/rag-contracts/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/rag-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the actual production image with filtered package trust
+        run: docker build -f apps/rag/Dockerfile -t rag-security-ci .
+      - name: Verify independent runtime and OS trust contexts
+        run: docker run --rm --entrypoint sh rag-security-ci apps/rag/verify-image-trust.sh
+      - name: Start isolated disposable PostgreSQL
+        run: |
+          docker network create --internal rag-security-ci
+          docker run -d --name rag-security-db --network rag-security-ci \
+            -e POSTGRES_USER=forge -e POSTGRES_PASSWORD=synthetic-only-test-password \
+            -e POSTGRES_DB=forge_rag_image pgvector/pgvector:pg18-trixie
+          for attempt in $(seq 1 60); do
+            if docker exec rag-security-db pg_isready -h 127.0.0.1 -U forge -d forge_rag_image; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify migrations and actual production startup without external networking
+        run: |
+          docker run --rm --network rag-security-ci \
+            -e RAG_IMAGE_FIXTURE=isolated \
+            -e DATABASE_URL=postgresql://forge:synthetic-only-test-password@rag-security-db:5432/forge_rag_image \
+            --entrypoint sh rag-security-ci -c \
+            'pnpm --filter @forge/rag db:migrate:deploy && node apps/rag/verify-production-image.mjs'
+      - name: Remove disposable services
+        if: always()
+        run: |
+          docker rm -f rag-security-db || true
+          docker network rm rag-security-ci || true

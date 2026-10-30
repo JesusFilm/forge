@@ -242,11 +242,11 @@ dissolve on the glass itself and a fade on a child layer are both safe.
 
 ### Three blur mechanisms live in this app — pick deliberately
 
-| Mechanism                                    | What it is                                     | Use when                                                                                        |
-| -------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `GlassView` via `GlassSurface`               | iOS 26 system Liquid Glass material            | Any floating control on iOS 26, including auto-hide chrome, with no fading ancestor             |
-| `BlurView` (`expo-blur`), via `PlatformBlur` | Live backdrop blur on iOS, flat dim on Android | The `GlassSurface` fallback, and a surface whose ancestor must fade, such as the hero backdrops |
-| `blurRadius` on `Image`                      | A blurred bitmap, not a vibrancy surface       | A soft wash derived from a still image, as in `WatchAmbient.tsx`                                |
+| Mechanism                                    | What it is                                     | Use when                                                                                                                        |
+| -------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `GlassView` via `GlassSurface`               | iOS 26 system Liquid Glass material            | Any floating control on iOS 26, including auto-hide chrome, with no fading ancestor                                             |
+| `BlurView` (`expo-blur`), via `PlatformBlur` | Live backdrop blur on iOS, flat dim on Android | The `GlassSurface` fallback, and a surface whose ancestor must fade, such as the hero backdrops                                 |
+| `blurRadius` on `Image`                      | A blurred bitmap, not a vibrancy surface       | A soft wash derived from a still image, as in `WatchAmbient.tsx` (iOS only since feat-784; Android uses `stretchedDecodeStyle`) |
 
 The third is easy to mistake for the other two by eye. It blurs a bitmap and
 never samples what is behind it, so it is immune to this whole class of problem

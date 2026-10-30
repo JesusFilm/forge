@@ -72,6 +72,9 @@ const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
   "read:watch-progress:own": true,
   "write:watch-progress:own": true,
   "delete:watch-progress:own": true,
+  "read:watch-learning-progress:own": true,
+  "write:watch-learning-progress:own": true,
+  "delete:watch-learning-progress:own": true,
   "write:manager-enrichment-trigger": true,
   "write:manager-jobs": true,
   "write:manager-subtitle-eval": true,
@@ -334,9 +337,13 @@ describe("hasPermission — Web user bearer gate", () => {
     "read:watch-progress:own",
     "write:watch-progress:own",
     "delete:watch-progress:own",
+    // feat-731: own-data learning progress, WEB_USER-only.
+    "read:watch-learning-progress:own",
+    "write:watch-learning-progress:own",
+    "delete:watch-learning-progress:own",
   ])
 
-  it("grants exactly the watch-event write and the three own-data scopes", () => {
+  it("grants exactly the watch-event write and the own-data scopes", () => {
     // Exhaustive walk, matching MOBILE_USER's: an assertion list that only
     // names the granted keys pins the NARROWING direction and says nothing
     // about widening — the direction that actually matters when a future key
@@ -388,6 +395,55 @@ describe("hasPermission — Mobile user gate", () => {
     expect(hasPermission(ADMIN, "delete:watch-progress:own")).toBe(true)
     expect(hasPermission(VIEWER, "read:watch-progress:own")).toBe(false)
     expect(hasPermission(PUBLIC_USER, "read:watch-progress:own")).toBe(false)
+  })
+})
+
+describe("hasPermission — own learning progress (feat-731)", () => {
+  const LEARNING_KEYS: PermissionKey[] = [
+    "read:watch-learning-progress:own",
+    "write:watch-learning-progress:own",
+    "delete:watch-learning-progress:own",
+  ]
+
+  it("grants the learning keys to a checked WEB_USER", () => {
+    for (const key of LEARNING_KEYS) {
+      expect(hasPermission(WEB_USER, key)).toBe(true)
+    }
+  })
+
+  it("denies every other principal, including ADMIN — no editorial override", () => {
+    // Unlike watch-progress:own, these keys have no tier fallback: an
+    // editor's own id is not a learning account, so ADMIN gets nothing.
+    const denied: Array<Principal | null> = [
+      PUBLIC_USER,
+      VIEWER,
+      EDITOR_ALICE,
+      ADMIN,
+      MANAGER_OPERATOR_ADMIN,
+      SYSTEM,
+      { id: null, role: "PUBLIC" },
+      { id: null, role: "WORKFLOW_TRIGGER" },
+      { id: null, role: "VIDEO_MAPPER" },
+      MANAGER_BACKEND_PRINCIPAL,
+      CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "consumer:web" }),
+      { id: "auth-user-2", role: "MOBILE_USER", rateLimitBucketKey: "m" },
+    ]
+    for (const principal of denied) {
+      for (const key of LEARNING_KEYS) {
+        expect(hasPermission(principal, key)).toBe(false)
+      }
+    }
+  })
+
+  it("denies a WEB_USER without a subject", () => {
+    for (const key of LEARNING_KEYS) {
+      expect(
+        hasPermission(
+          { id: null, role: "WEB_USER", rateLimitBucketKey: "x" },
+          key,
+        ),
+      ).toBe(false)
+    }
   })
 })
 

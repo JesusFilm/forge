@@ -243,7 +243,10 @@ export function PlayerSettingsSheet({
           pointerEvents="none"
           style={[styles.scrim, { opacity: progress }]}
         />
+        {/* The root testID sits on the full-screen backdrop: inside a Modal,
+            the iOS UI test tree drops a plain view's id but keeps a button's. */}
         <Pressable
+          testID="screen-player-settings"
           style={styles.backdrop}
           onPress={close}
           accessibilityRole="button"

@@ -1,0 +1,5 @@
+List of devices attached
+emulator-5640	device
+emulator-5554	device
+R58N123ABC	device
+

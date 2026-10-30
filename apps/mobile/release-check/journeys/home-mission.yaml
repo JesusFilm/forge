@@ -1,0 +1,99 @@
+# Scroll Home to the mission section and open the Mission screen. The beta
+# signup opens a web page, so the journey asserts it and never taps it (KTD12).
+appId: org.jesusfilm.forgewatch
+name: home-mission
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- assertVisible:
+    id: home-body-live
+    label: The Home body comes from the live Experience
+- assertNotVisible:
+    id: home-body-fallback
+    label: The Home body is not the frozen fallback
+- scrollUntilVisible:
+    element:
+      text: "The message doesn't change.*"
+    direction: DOWN
+    centerElement: true
+    timeout: 60000
+    label: Scroll to the mission section
+- assertVisible:
+    text: "3 items in Built for global missions"
+    label: The mission rail shows three cards
+- swipe:
+    from:
+      text: What we are building next
+    direction: LEFT
+    label: Swipe the mission rail to its last card
+- assertVisible:
+    text: Become a beta tester
+    label: The beta signup card shows
+# A swipe never starts on the beta card, so it cannot become a tap there.
+- swipe:
+    from:
+      text: What we are building next
+    direction: RIGHT
+    label: Swipe the mission rail back
+- tapOn:
+    text: "The message doesn't change.*"
+    label: Open the mission card
+- extendedWaitUntil:
+    visible:
+      id: screen-mission
+    timeout: 20000
+    label: The Mission screen shows
+- scrollUntilVisible:
+    element:
+      text: Become a beta tester
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+    label: Scroll to the beta signup button
+- assertVisible:
+    text: Become a beta tester
+    label: The beta signup button shows
+- tapOn:
+    text: Go back
+    label: Leave the Mission screen
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again
+# An iPad shows Home from the top again, so the journey finds the card. The
+# second card in the rail can be partly off the screen's edge.
+- scrollUntilVisible:
+    element:
+      text: What we are building next
+    direction: DOWN
+    visibilityPercentage: 50
+    centerElement: true
+    timeout: 60000
+    label: Scroll to the roadmap card
+- tapOn:
+    text: What we are building next
+    label: Open the roadmap card
+- extendedWaitUntil:
+    visible:
+      id: screen-mission
+    timeout: 20000
+    label: The Mission screen shows at the roadmap
+- assertVisible:
+    text: What we are building next
+    label: The roadmap section shows
+- tapOn:
+    text: Go back
+    label: Leave the Mission screen again
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows at the end

@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
+import { textDirectionForLocale } from "@/lib/locale"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
@@ -65,6 +66,7 @@ function DialogContent({
   portalContainer?: HTMLElement | null
 }) {
   const t = useTranslations("WatchModal")
+  const locale = useLocale()
   const popup = (
     <DialogPrimitive.Popup
       data-slot="dialog-content"
@@ -82,6 +84,8 @@ function DialogContent({
         <DialogPrimitive.Close
           data-slot="dialog-close"
           data-testid="dialog-close-button"
+          lang={locale}
+          dir={textDirectionForLocale(locale)}
           render={
             <Button
               variant="ghost"

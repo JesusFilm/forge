@@ -1,13 +1,11 @@
 import { builder } from "@/graphql/builder"
 import { StudioAssetService } from "@/services/studio-authoring/assets"
-import { ContentPackService } from "@/services/studio-authoring/packs"
 import { StudioSourceService } from "@/services/studio-authoring/sources"
 import { StudioTransferService } from "@/services/studio-authoring/transfers"
 import { StudioExperimentService } from "@/services/studio-authoring/experiments"
 import type { StudioAssetReference } from "@forge/studio-contracts"
 import type { ShortAssetVersion } from "@forge/studio-contracts/assets"
 import type { ShortSourceSnapshot } from "@forge/studio-contracts/sources"
-import type { ContentPackRevision } from "@prisma/client"
 
 /** @classification abac-gated */
 const reference = builder
@@ -38,18 +36,6 @@ const asset = builder
         resolve: (r) => r.narration,
       }),
       voice: t.field({ type: "JSON", nullable: true, resolve: (r) => r.voice }),
-    }),
-  })
-/** @classification abac-gated */
-const pack = builder
-  .objectRef<ContentPackRevision>("ContentPackRevision")
-  .implement({
-    authScopes: { loggedIn: true },
-    fields: (t) => ({
-      id: t.exposeID("id"),
-      packId: t.exposeID("packId"),
-      number: t.exposeInt("number"),
-      document: t.field({ type: "JSON", resolve: (r) => r.document }),
     }),
   })
 /** @classification abac-gated */
@@ -127,19 +113,6 @@ builder.queryFields((t) => ({
         a.speech,
       ),
   }),
-  shortsContentPacks: t.field({
-    type: [pack],
-    authScopes: { loggedIn: true },
-    args: { input: t.arg({ type: "JSON" }) },
-    resolve: (_, a, c) =>
-      new ContentPackService(c.prisma).list(c.user, a.input ?? {}),
-  }),
-  shortsContentPackRevision: t.field({
-    type: pack,
-    authScopes: { loggedIn: true },
-    args: { id: t.arg.id({ required: true }) },
-    resolve: (_, a, c) => new ContentPackService(c.prisma).read(c.user, a.id),
-  }),
   shortsSourceEligibility: t.field({
     type: "JSON",
     authScopes: { loggedIn: true },
@@ -162,13 +135,6 @@ builder.queryFields((t) => ({
   }),
 }))
 builder.mutationFields((t) => ({
-  writeShortsContentPack: t.field({
-    type: pack,
-    authScopes: { loggedIn: true },
-    args: { input: t.arg({ type: "JSON", required: true }) },
-    resolve: (_, a, c) =>
-      new ContentPackService(c.prisma).write(c.user, a.input),
-  }),
   captureShortsSource: t.field({
     type: source,
     authScopes: { loggedIn: true },

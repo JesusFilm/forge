@@ -109,8 +109,10 @@ Reads: `{cropPlanAssetId}/smart-crop-plan-9x16-v1.json` and
 
 ## FFmpeg notes
 
-- Railway uses the NIXPACKS builder; the repo-root `nixpacks.toml` adds
-  `ffmpeg` (which includes `ffprobe`) to the setup phase. The service does NOT
+- Railway uses `apps/crop-worker/Dockerfile` through the configured
+  `apps/crop-worker/railway.toml`. Its digest-pinned patched Node and filtered CA
+  stores precede dependency downloads. The image builds the official, SHA-pinned
+  FFmpeg 7.1.5 maintenance release with the native TLS verification default enabled. The service does NOT
   assume the binaries exist: a spawn ENOENT is classified into a
   `MissingBinaryError` ("ffmpeg/ffprobe is required for crop-worker...")
   instead of an opaque failure.
@@ -123,6 +125,13 @@ Reads: `{cropPlanAssetId}/smart-crop-plan-9x16-v1.json` and
   0 and 1 (the expected case); any other keyframe set — including 2
   keyframes at other progress values — uses nested `if(lt(t,...))` piecewise
   lerp that honors the progress values.
+- **Source TLS verification:** `sourceTlsOptions` supplies `-tls_verify 1`
+  before every HTTPS input in probe, fingerprint and render. The native FFmpeg
+  transport previously accepted both affected chains without explicit verification.
+  FFmpeg 7 does not propagate this CLI option to nested HLS reads, so the image
+  also enables the native protocol default in its verified 7.1.5 source build.
+  Local generated files receive no TLS options. Actual-image CI tests nested HLS, bad/valid
+  public TLS, local synthetic encoding/probing and safe production HTTP guards.
 - **Source protocol whitelist:** every ffmpeg/ffprobe invocation that reads
   the request-supplied `source.url` (probe, both fingerprint passes, render
   segments) passes `-protocol_whitelist` — `https,tls,tcp,crypto,hls` in

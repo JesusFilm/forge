@@ -21,7 +21,6 @@ const initial = {
       { id: "main", kind: "visual" },
       { id: "audio", kind: "audio" },
     ],
-    packRevisionIds: [],
     components: [],
     items: [
       {

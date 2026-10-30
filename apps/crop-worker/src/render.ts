@@ -23,6 +23,7 @@ import {
   classifyCommandError,
   defaultRunCommand,
   sourceProtocolWhitelist,
+  sourceTlsOptions,
   type RunCommand,
 } from "./ffmpeg.js"
 import { createStorage, type Storage } from "./storage.js"
@@ -268,6 +269,7 @@ export async function runRender({
           "ffmpeg",
           [
             "-y",
+            ...sourceTlsOptions(sourceUrl),
             "-protocol_whitelist",
             protocolWhitelist,
             "-ss",

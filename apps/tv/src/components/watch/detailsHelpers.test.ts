@@ -4,6 +4,7 @@ import {
   formatBadgeLabel,
   formatDuration,
   formatResumeLabel,
+  getSavedResumePosition,
   shouldOfferResumeChoice,
   shouldShowUpNextRail,
 } from "./detailsHelpers"
@@ -161,5 +162,40 @@ describe("formatResumeLabel", () => {
   it("floors fractional seconds and clamps negatives", () => {
     expect(formatResumeLabel(59.9)).toBe("Resume from 0:59")
     expect(formatResumeLabel(-3)).toBe("Resume from 0:00")
+  })
+})
+
+describe("getSavedResumePosition", () => {
+  it("uses only the current video's valid saved position", () => {
+    expect(
+      getSavedResumePosition("a", { videoId: "a", positionSeconds: 754 }),
+    ).toBe(754)
+    for (const positionSeconds of [null, 0, -1, NaN, Infinity]) {
+      expect(
+        getSavedResumePosition("a", { videoId: "a", positionSeconds }),
+      ).toBeNull()
+    }
+    expect(
+      getSavedResumePosition(undefined, { videoId: "a", positionSeconds: 754 }),
+    ).toBeNull()
+    expect(getSavedResumePosition("a", null)).toBeNull()
+  })
+
+  it("rejects a previous video's late storage completion while the next video loads", async () => {
+    let completeRead!: (position: number) => void
+    const read = new Promise<number>((resolve) => {
+      completeRead = resolve
+    })
+    let shownVideo = "a"
+    const result = read.then((positionSeconds) => ({
+      videoId: "a",
+      positionSeconds,
+    }))
+    shownVideo = "b"
+    completeRead(754)
+    expect(getSavedResumePosition(shownVideo, await result)).toBeNull()
+    expect(
+      getSavedResumePosition(shownVideo, { videoId: "b", positionSeconds: 62 }),
+    ).toBe(62)
   })
 })

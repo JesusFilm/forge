@@ -52,7 +52,6 @@ const document = studioDocumentSchema.parse({
   tracks: [],
   items: [],
   components: [],
-  packRevisionIds: [],
 })
 const attemptId = "retention-attempt",
   leaseId = randomUUID(),
