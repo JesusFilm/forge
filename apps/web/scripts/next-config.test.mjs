@@ -402,14 +402,6 @@ describe("Next.js image optimizer is not an open proxy", () => {
     // instead, so each literal is either allowlisted or explicitly known to
     // bypass the optimizer.
     const sourceRoot = fileURLToPath(new URL("../src", import.meta.url))
-    // Emitted only as absolute og:image / twitter:image meta content
-    // (DEFAULT_OG_IMAGE in src/lib/experience-metadata.ts). Crawlers fetch it
-    // straight from Unsplash; it never reaches /watch/_next/image, so it needs
-    // no optimizer entry. Production /watch on 2026-10-10 carried it only in
-    // those two meta tags.
-    const metadataOnly = new Set([
-      "https://images.unsplash.com/photo-1482424917728-d82d29662023",
-    ])
     const found = new Map()
     for (const entry of readdirSync(sourceRoot, {
       recursive: true,
@@ -425,16 +417,22 @@ describe("Next.js image optimizer is not an open proxy", () => {
       }
     }
 
-    // Anti-vacuous: the sweep must actually see the known literals.
-    expect(found.size).toBeGreaterThanOrEqual(3)
+    // Confirm that the sweep finds both remaining rendered placeholders.
+    for (const url of [
+      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c",
+      "https://images.unsplash.com/photo-1650658720644-e1588bd66de3",
+    ]) {
+      expect(found.has(url), `${url} is missing from the source sweep`).toBe(
+        true,
+      )
+    }
     for (const [url, file] of found) {
-      if (metadataOnly.has(url)) continue
       expect(matchesAnyPattern(url), `${url} in ${file}`).toBe(true)
     }
-    for (const url of metadataOnly) {
-      expect(found.has(url), `${url} is no longer in src`).toBe(true)
-      expect(matchesAnyPattern(url), url).toBe(false)
-    }
+    const retiredMetadataImage =
+      "https://images.unsplash.com/photo-1482424917728-d82d29662023"
+    expect(found.has(retiredMetadataImage)).toBe(false)
+    expect(matchesAnyPattern(retiredMetadataImage)).toBe(false)
   })
 
   // NOTE: these two assert path SHAPE only. Both CDNs are multitenant and use

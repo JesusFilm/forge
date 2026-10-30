@@ -70,3 +70,18 @@ Keep the existing route, visual, CI, and target acceptance limits.
 
 Durable lesson: unchanged consumers can produce different results when a shared
 fallback changes. Check each consumer when generic text becomes image-specific.
+
+## CI inventory repair (2026-10-30)
+
+The integrated CI run exposed a stale image-inventory assertion.
+It expected three Unsplash URLs and required the retired metadata-only URL.
+The source now contains two rendered placeholders.
+
+Require both named placeholders in the source sweep. Check every discovered URL
+through Next's real image matcher. Remove the retired metadata exemption and
+assert that its URL is absent and disallowed. Keep the arbitrary-photo rejection
+and both real placeholder allowlist controls.
+
+Run the configuration suite before and after this repair, then the metadata
+controls and scoped static checks. This changes test coverage only; runtime
+source, the reviewed image, and the existing acceptance limits stay intact.
