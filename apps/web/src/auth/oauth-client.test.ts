@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 async function importClient() {
   vi.resetModules()
@@ -31,6 +31,15 @@ async function importProductionClient() {
   )
   return import("./oauth-client")
 }
+
+async function importResourceBoundClient() {
+  vi.stubEnv("WEB_AUTH_ADMIN_RESOURCE", "http://localhost:4318/api/graphql")
+  return importClient()
+}
+
+beforeEach(() => {
+  vi.stubEnv("WEB_AUTH_ADMIN_RESOURCE", "")
+})
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -132,5 +141,66 @@ describe("Web OAuth client", () => {
         scope: "openid web:watch-events:write",
       }),
     ).rejects.toThrow("missing an id_token")
+  })
+
+  it("leaves the authorize request and exchange audience-less by default", async () => {
+    const {
+      buildWebAuthorizeUrl,
+      exchangeWebAuthorizationCode,
+      getWebOAuthConfig,
+    } = await importClient()
+    const config = getWebOAuthConfig()!
+    expect(
+      buildWebAuthorizeUrl({
+        config,
+        state: "s",
+        codeChallenge: "c",
+      }).searchParams.has("resource"),
+    ).toBe(false)
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ access_token: "t" })))
+    await exchangeWebAuthorizationCode({
+      config,
+      code: "code",
+      codeVerifier: "v",
+    })
+    const body = fetchMock.mock.calls[0][1]?.body as URLSearchParams
+    expect(body.has("resource")).toBe(false)
+  })
+
+  it("binds both authorize and exchange to Admin's resource when configured", async () => {
+    // Auth only lets Admin's confidential client introspect a public-client
+    // token whose audience names a resource both clients are linked to.
+    const {
+      buildWebAuthorizeUrl,
+      exchangeWebAuthorizationCode,
+      getWebOAuthConfig,
+    } = await importResourceBoundClient()
+    const config = getWebOAuthConfig()!
+    const url = buildWebAuthorizeUrl({ config, state: "s", codeChallenge: "c" })
+    expect(url.searchParams.get("resource")).toBe(
+      "http://localhost:4318/api/graphql",
+    )
+    // Still the public PKCE client with the same scopes.
+    expect(url.searchParams.get("client_id")).toBe("jfp_web_local")
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256")
+    expect(url.searchParams.get("scope")).toBe(
+      "openid profile:read email:read web:watch-events:write",
+    )
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ access_token: "t" })))
+    await exchangeWebAuthorizationCode({
+      config,
+      code: "code",
+      codeVerifier: "v",
+    })
+    const body = fetchMock.mock.calls[0][1]?.body as URLSearchParams
+    expect(body.get("resource")).toBe("http://localhost:4318/api/graphql")
+    expect(body.get("code_verifier")).toBe("v")
+    expect(body.has("client_secret")).toBe(false)
   })
 })

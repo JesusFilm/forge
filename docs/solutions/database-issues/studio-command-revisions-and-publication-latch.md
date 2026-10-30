@@ -76,3 +76,27 @@ cover independent-client edit races, retries, stale results, narration approval,
 publication/edit serialization, immutable history and late operational completion.
 Use the explicit `STUDIO_TEST_DATABASE_URL`; never use a shared DATABASE_URL as
 test authorization. Completion evidence and commands are in the feat-454 ticket.
+
+## Editor project settings (2026-10-20)
+
+Project title and dimensions live in a lazy-loaded Project settings modal, not
+the no-selection item inspector. Stage values locally and apply via a single
+`EditorSession.edit` so validation, undo and autosave use the same document path.
+Cancel/Escape must not edit the session; preserve read-only gating. Component
+control labels are display-only formatting: never rename stored property keys
+when humanising camelCase. Use the same generic formatter for every property;
+do not introduce field-specific aliases.
+
+## Live inspector scrubbing (2026-10-21)
+
+`use-inspector-preview.ts` holds a temporary document only for the player and
+canvas selection overlay. Numeric labels schedule the latest draft once per
+animation frame; the inspector continues reading the committed document so its
+inputs and pointer capture stay mounted. Drafts are bound to the originating
+document identity and selection, and discarded on cancellation, capture loss,
+window blur or unmount. A release clears the draft and makes one ordinary
+`EditorSession.edit`. Never send these intermediate documents through session
+edits: doing so would pollute history, recovery and autosave. Source preparation
+is still keyed by `previewSignature`, so appearance changes reuse prepared media
+and the mounted player. Integration tests observe the actual Preview's player
+props, request count and mount count through a drag and undo.

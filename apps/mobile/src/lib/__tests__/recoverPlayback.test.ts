@@ -207,4 +207,82 @@ describe("recoverPlayback", () => {
 
     expect(player.currentTime).toBe(5)
   })
+  // KTD16: the reload reports the URL it loads, before the load and once it is
+  // set, so a monitor can open a new view for it. No Mux code lives here.
+  describe("the reload observer", () => {
+    function observer() {
+      const events: string[] = []
+      const onReload = jest.fn((url: string) => {
+        events.push(`begin:${url}`)
+        return () => events.push(`settle:${url}`)
+      })
+      return { events, onReload }
+    }
+
+    it("reports the URL before the load starts and settles once it is set", async () => {
+      const player = makeFakePlayer()
+      const { events, onReload } = observer()
+      player.replaceAsync.mockImplementationOnce((source: string) => {
+        events.push(`load:${source}`)
+        return Promise.resolve()
+      })
+
+      const done = recoverPlayback(player, URL, 0, () => true, onReload)
+      await Promise.resolve()
+      player.__emit("sourceLoad", { videoSource: URL })
+      await done
+
+      expect(events).toEqual([`begin:${URL}`, `load:${URL}`, `settle:${URL}`])
+    })
+
+    it("settles once on the synchronous fallback", async () => {
+      const player = makeFakePlayer()
+      const { events, onReload } = observer()
+
+      const done = recoverPlayback(player, URL, 0, () => true, onReload)
+      player.__settleReplace(new Error("network down"))
+      await done
+
+      expect(events).toEqual([`begin:${URL}`, `settle:${URL}`])
+    })
+
+    it("does not settle when every recovery route fails", async () => {
+      const player = makeFakePlayer()
+      const { events, onReload } = observer()
+      player.replace.mockImplementationOnce(() => {
+        throw new Error("released")
+      })
+
+      const done = recoverPlayback(player, URL, 0, () => true, onReload)
+      player.__settleReplace(new Error("network down"))
+      await done
+
+      expect(events).toEqual([`begin:${URL}`])
+    })
+
+    // A settle that throws inside the replaceAsync continuation would
+    // otherwise run the fallback and load the source a second time.
+    it("recovers with one load when the observer throws", async () => {
+      const player = makeFakePlayer()
+      const thrower = () => {
+        throw new Error("observer fault")
+      }
+
+      const begins = recoverPlayback(player, URL, 0, () => true, thrower)
+      player.__settleReplace()
+      await expect(begins).resolves.toBe("recovered")
+
+      const second = makeFakePlayer()
+      const settles = recoverPlayback(
+        second,
+        URL,
+        0,
+        () => true,
+        () => thrower,
+      )
+      second.__settleReplace()
+      await expect(settles).resolves.toBe("recovered")
+      expect(second.replace).not.toHaveBeenCalled()
+    })
+  })
 })

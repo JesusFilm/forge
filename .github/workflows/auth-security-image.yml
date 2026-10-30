@@ -1,0 +1,57 @@
+name: Auth production image
+on:
+  pull_request:
+    paths:
+      - "apps/auth/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/auth-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/auth/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/auth-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the actual production image with filtered package trust
+        run: docker build -f apps/auth/Dockerfile -t auth-security-ci .
+      - name: Verify independent runtime and OS trust contexts
+        run: docker run --rm --entrypoint sh auth-security-ci apps/auth/verify-image-trust.sh
+      - name: Start isolated disposable PostgreSQL
+        run: |
+          docker network create --internal auth-security-ci
+          docker run -d --name auth-security-db --network auth-security-ci \
+            -e POSTGRES_USER=forge -e POSTGRES_PASSWORD=synthetic-only-test-password \
+            -e POSTGRES_DB=forge_auth_image pgvector/pgvector:pg18-trixie
+          for attempt in $(seq 1 60); do
+            if docker exec auth-security-db pg_isready -h 127.0.0.1 -U forge -d forge_auth_image; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify migrations and actual production startup without external networking
+        run: |
+          docker run --rm --network auth-security-ci \
+            -e AUTH_IMAGE_FIXTURE=isolated \
+            -e DATABASE_URL=postgresql://forge:synthetic-only-test-password@auth-security-db:5432/forge_auth_image \
+            --entrypoint sh auth-security-ci -c \
+            'pnpm --filter @forge/auth db:migrate:deploy && pnpm --filter @forge/auth seed:first-party-apps && node apps/auth/verify-production-image.mjs'
+      - name: Remove disposable services
+        if: always()
+        run: |
+          docker rm -f auth-security-db || true
+          docker network rm auth-security-ci || true

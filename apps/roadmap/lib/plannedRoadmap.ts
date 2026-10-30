@@ -90,17 +90,29 @@ type PlannedWeek = {
 
 const DAY_MS = 86400000
 const WEEK_MS = 7 * 86400000
-const PLANNED_START_DATE = new Date("2026-04-28T00:00:00")
+const PLANNED_START_DATE = new Date("2026-04-28T00:00:00Z")
 
 function addWeeks(date: Date, weeks: number): Date {
   return new Date(date.getTime() + weeks * WEEK_MS)
 }
 
 function formatDateRangeLabel(startDate: Date, endDate: Date): string {
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
+  const startMonth = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const startDay = startDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
+  const endMonth = endDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const endDay = endDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
 
   if (startMonth === endMonth) {
     return `${startMonth} ${startDay}-${endDay}`

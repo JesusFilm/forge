@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { key, redis } from "./redis"
+import { signedSimulatorSessionAllowed } from "./signedSimulator"
 
 const RETENTION_SECONDS = 7 * 24 * 60 * 60
 const DAILY_REPORT_LIMIT = 3
@@ -17,6 +18,8 @@ export type Grant = {
   sessionExpiresAt?: number
   reportId?: string
   revoked?: boolean
+  source?: "signed-simulator"
+  signingKeyId?: string
 }
 
 export type Session = {
@@ -28,6 +31,8 @@ export type Session = {
   images: number
   videos: number
   reservations: number
+  source?: "signed-simulator"
+  signingKeyId?: string
 }
 
 export type Upload = {
@@ -193,11 +198,63 @@ export async function sessionForId(id: string): Promise<Session | null> {
   return getJson("session", id)
 }
 
+/** Only the verified token claim path calls this. No caller-supplied grant marker. */
+export async function createSignedSimulatorGrant(
+  session: Session,
+  input: { tokenId: string; expiresAt: number; signingKeyId: string },
+): Promise<Grant> {
+  const day = new Date().toISOString().slice(0, 10)
+  const signedSession: Session = {
+    ...session,
+    source: "signed-simulator",
+    signingKeyId: input.signingKeyId,
+  }
+  const grant: Grant = {
+    id: session.grantId,
+    installationId: input.tokenId,
+    day,
+    reference: `SIMULATOR-${session.grantId}`,
+    expiresAt: input.expiresAt,
+    sessionId: session.id,
+    sessionExpiresAt: session.expiresAt,
+    source: "signed-simulator",
+    signingKeyId: input.signingKeyId,
+  }
+  const result = await redis()
+    .multi()
+    .set(
+      key("grant", grant.id),
+      JSON.stringify(grant),
+      "EX",
+      RETENTION_SECONDS,
+      "NX",
+    )
+    .set(
+      key("session", session.id),
+      JSON.stringify(signedSession),
+      "EX",
+      RETENTION_SECONDS,
+      "NX",
+    )
+    .hsetnx(key("daily", `${input.tokenId}:${day}`), "issued", 0)
+    .expire(key("daily", `${input.tokenId}:${day}`), RETENTION_SECONDS)
+    .exec()
+  if (
+    !result ||
+    result.some(([error]) => error) ||
+    result[0][1] !== "OK" ||
+    result[1][1] !== "OK"
+  )
+    throw new Error("simulator_session_unavailable")
+  return grant
+}
+
 export async function activeGrantForSession(id: string): Promise<Grant | null> {
   const session = await sessionForId(id)
   if (!session || session.expiresAt <= Date.now()) return null
   const grant = await grantForId(session.grantId)
   return grant &&
+    signedSimulatorSessionAllowed(grant) &&
     grant.sessionId === id &&
     !grant.revoked &&
     !grant.reportId &&
@@ -248,7 +305,10 @@ export async function reserveUpload(
     5,
     key("session", sessionId),
     key("grant", grant.id),
-    key("daily", `${grant.installationId}:${grant.day}`),
+    key(
+      "daily",
+      `${grant.source === "signed-simulator" ? sessionId : grant.installationId}:${grant.day}`,
+    ),
     key("upload", uploadId),
     key("service-bytes", new Date().toISOString().slice(0, 10)),
     Date.now(),
@@ -310,6 +370,7 @@ export async function beginSubmission(
   if (!session) return { error: "grant_required" }
   const grant = await grantForId(session.grantId)
   if (!grant) return { error: "grant_required" }
+  if (!signedSimulatorSessionAllowed(grant)) return { error: "grant_required" }
   const reportId = idempotencyKey
   const submission: Submission = {
     reportId,
@@ -328,7 +389,7 @@ export async function beginSubmission(
      local now = tonumber(ARGV[1])
      if grant.sessionId ~= ARGV[2] or grant.revoked or grant.reportId or grant.expiresAt <= now or grant.sessionExpiresAt <= now then return 'grant_required' end
      local count = tonumber(redis.call('HGET', KEYS[3], 'delivered') or '0') + tonumber(redis.call('HGET', KEYS[3], 'pending') or '0')
-     if count >= tonumber(ARGV[3]) then return 'daily_limit' end
+     if grant.source ~= 'signed-simulator' and count >= tonumber(ARGV[3]) then return 'daily_limit' end
      for i=5,#KEYS do
        local raw = redis.call('GET', KEYS[i])
        if not raw then return 'files_not_ready' end

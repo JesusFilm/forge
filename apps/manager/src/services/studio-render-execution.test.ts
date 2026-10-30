@@ -99,7 +99,6 @@ const input = {
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   },
   media: {},
   code: {},

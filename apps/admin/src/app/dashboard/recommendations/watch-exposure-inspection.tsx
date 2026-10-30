@@ -1,3 +1,4 @@
+import { WATCH_SURFACE_EXPOSURE_RETENTION_DAYS } from "@/services/recommendations/watch-surface-exposure-retention"
 import { PageSection } from "@/components/admin-ui"
 import type {
   WatchExposureBreakdown,
@@ -123,6 +124,20 @@ export function WatchExposureInspection({
             Inspect exposure
           </button>
         </form>
+        <p>
+          New anonymous Watch exposure facts expire after{" "}
+          {WATCH_SURFACE_EXPOSURE_RETENTION_DAYS} days. Signed recommendation
+          delivery evidence uses the selected window.
+        </p>
+        {window === "29d" && (
+          <p role="status">
+            Partial anonymous history: the anonymous report is limited to the
+            latest {WATCH_SURFACE_EXPOSURE_RETENTION_DAYS} days and cannot
+            describe the complete 29-day window. Signed delivery rows, overview
+            and replay counts retain the selected 29-day window. Compare these
+            histories separately.
+          </p>
+        )}
         {selection.invalid && (
           <p role="status">
             Choose a registered entry, a compatible policy and a valid optional

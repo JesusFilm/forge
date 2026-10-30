@@ -1,6 +1,21 @@
 # Recommendation and analytics policy
 
-Product decision: September 10, 2026. This document supersedes consent
+## October 29, 2026: semantic and metadata recommendations
+
+The owner has retired co-watch, viewer interest profiles and behavioral background
+learning. Keep content semantics, metadata/editorial pools, video content summaries,
+ordinary playback and the current semantic/precomputed A/B measurement. Native
+installation identity remains necessary for playback and push; it is not a learned
+profile. Earlier instructions to create, refresh, personalize or restore co-watch
+are superseded by this decision. Retained historical receipts do not authorize
+reactivation. See [feat-902](roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+for the staged runtime retirement, authorized data deletion and release evidence.
+
+Removing these learners does not establish that all raw events are unnecessary:
+playback, measurement and expiry still consume evidence. Keep those consumer needs
+separate from the paused ClickHouse design and measure storage savings after cleanup.
+
+Historical product decision: September 10, 2026. This document superseded consent
 prerequisites in earlier recommendation and analytics plans, tickets, research
 recommendations, and runbooks.
 
@@ -64,6 +79,23 @@ access, publication/playback eligibility and delivery deadlines. Removing the
 global housekeeping prerequisite does not authorize using expired or erased
 personal data. Operational retention health may remain degraded while public
 recommendations are successfully serving.
+
+## Anonymous Watch exposure history
+
+Owner decision: October 23, 2026. New anonymous Watch served-manifest and
+rendered, eligible and selected exposure facts use a 14-day raw retention
+window. V2 facts inherit the exact expiry of their served binding. Existing
+exposure rows retain their recorded 29-day expiry and leave through normal
+bounded cleanup; the shorter steady-state window is therefore gradual, not an
+immediate disk reclamation. The shared 29-day recommendation request and trace
+policy, other per-record lifetimes, and configured GA and Datadog integrations
+are unchanged.
+
+Admin exposure reporting must state that anonymous facts are limited to the
+latest 14 days, including when the surrounding recommendation report selects
+29 days. The shorter exposure history must not be presented as a complete
+29-day measurement. Continue to report expiry backlog, genuine cleanup
+failures and filesystem capacity separately from public serving health.
 
 ## Roadmap scope after October 2 closeout
 

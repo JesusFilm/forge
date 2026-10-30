@@ -70,3 +70,11 @@ secure context. Found in the 2026-10-20 website audit follow-up, round 01.
   non-loopback origin in Chromium and Firefox: `isSecureContext` is false,
   `crypto.randomUUID` is undefined, the film renders and the viewer id is a
   v4 UUID.
+
+## October 29 current-main update
+
+Retain main's exposure retry timers, send serialization and in-flight accounting.
+Only the five exposure UUID calls use the existing CSPRNG fallback helper; do
+not replace the measurement implementation with the historical branch version.
+UUID, viewer identity, exposure and semantic lifecycle suites pass together:
+60 tests. Exact-head CI and combined runtime validation remain release gates.

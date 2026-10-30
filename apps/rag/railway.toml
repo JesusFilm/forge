@@ -3,9 +3,12 @@
 # PostgreSQL service and DATABASE_URL must be a reference to that service.
 
 [build]
-builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/rag db:generate"
+builder = "DOCKERFILE"
+dockerfilePath = "/apps/rag/Dockerfile"
 watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh",
   "/apps/rag/**",
   "/packages/rag-contracts/**",
   "/package.json",

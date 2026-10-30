@@ -1,0 +1,161 @@
+# Open the reader's passage, translation, and settings sheets from the Bible
+# tab. A partial Bible that lacks the current book shows a warning, which the
+# journey cancels once and then accepts (text from bible.helloao.org).
+appId: org.jesusfilm.forgewatch
+name: bible-sheets
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Bible
+    label: Open the Bible tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-bible
+    timeout: 20000
+    label: The Bible tab shows
+# The first open plays a swipe demonstration over the verse. A tap skips it.
+- extendedWaitUntil:
+    visible:
+      id: bible-swipe-demo
+    timeout: 15000
+    label: The swipe demonstration shows
+- tapOn:
+    id: bible-swipe-demo
+    label: Skip the swipe demonstration
+- extendedWaitUntil:
+    notVisible:
+      id: bible-swipe-demo
+    timeout: 10000
+    label: The swipe demonstration closes
+- tapOn:
+    text: ".+ Choose a passage"
+    label: Open the passage picker
+- extendedWaitUntil:
+    visible:
+      id: screen-reader-passage
+    timeout: 10000
+    label: The passage picker shows
+# The book list opens on the testament of the current book, John.
+- tapOn:
+    text: Old Testament
+    label: Show the Old Testament books
+- tapOn:
+    text: Genesis
+    label: Pick Genesis
+- tapOn:
+    text: Chapter 1
+    label: Pick chapter 1
+- tapOn:
+    text: Verse 1
+    label: Pick verse 1
+- extendedWaitUntil:
+    notVisible:
+      id: screen-reader-passage
+    timeout: 10000
+    label: The passage picker closes
+- extendedWaitUntil:
+    visible:
+      text: "Genesis 1:1. Choose a passage"
+    timeout: 10000
+    label: The reader shows Genesis 1:1
+- tapOn:
+    text: "Translation: .+"
+    label: Open the translation picker
+- extendedWaitUntil:
+    visible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker shows
+- tapOn:
+    text: Search translations
+    label: Open the translation search field
+- inputText:
+    text: Tyndale
+    label: Type the translation name
+# On a small phone the keyboard covers the first result, so the journey
+# closes the keyboard with the return key.
+- pressKey:
+    key: Enter
+    label: Close the keyboard
+# The Tyndale New Testament has no Genesis, so the pick shows a warning.
+- tapOn:
+    text: "Tyndale New Testament, .+"
+    label: Pick the Tyndale New Testament
+- extendedWaitUntil:
+    visible:
+      text: ".*is a partial Bible. If you switch, the reader goes to its start.*"
+    timeout: 10000
+    label: The partial Bible warning shows
+- tapOn:
+    text: Cancel
+    label: Cancel the switch
+- extendedWaitUntil:
+    notVisible:
+      text: ".*is a partial Bible. If you switch, the reader goes to its start.*"
+    timeout: 10000
+    label: The partial Bible warning closes
+- assertVisible:
+    id: screen-reader-translation
+    label: The translation picker stays open after the cancel
+- tapOn:
+    text: "Tyndale New Testament, .+"
+    label: Pick the Tyndale New Testament again
+- extendedWaitUntil:
+    visible:
+      text: ".*is a partial Bible. If you switch, the reader goes to its start.*"
+    timeout: 10000
+    label: The partial Bible warning shows again
+- tapOn:
+    text: Switch
+    label: Switch to the Tyndale New Testament
+- extendedWaitUntil:
+    notVisible:
+      id: screen-reader-translation
+    timeout: 10000
+    label: The translation picker closes
+- extendedWaitUntil:
+    visible:
+      text: "Translation: Tyndale New Testament.*"
+    timeout: 20000
+    label: The reader shows the Tyndale New Testament
+# The book name comes from the translation, so the check reads the verse only.
+- assertNotVisible:
+    text: "Genesis .+ Choose a passage"
+    label: The reader leaves Genesis
+- assertVisible:
+    text: ".+ 1:1. Choose a passage"
+    label: The reader goes to the start of the Tyndale New Testament
+- tapOn:
+    text: Reader settings
+    label: Open the reader settings
+- extendedWaitUntil:
+    visible:
+      id: screen-reader-settings
+    timeout: 10000
+    label: The reader settings show
+- tapOn:
+    text: Light
+    label: Pick the Light mode
+- assertVisible:
+    text: Light
+    selected: true
+    label: The Light mode is selected
+- tapOn:
+    text: Close
+    label: Close the reader settings
+- extendedWaitUntil:
+    notVisible:
+      id: screen-reader-settings
+    timeout: 10000
+    label: The reader settings close
+- assertVisible:
+    id: bible-verse
+    label: The reader shows a verse after the sheets

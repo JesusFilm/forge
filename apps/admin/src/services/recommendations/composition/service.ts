@@ -9,10 +9,7 @@ import { hasPermission } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { ForbiddenError } from "@/services/errors"
 import { RecommendationConflictError } from "../errors"
-import {
-  COWATCH_SHADOW_GENERATOR_KEY,
-  COWATCH_DURABLE_LINEAGE_VERSION,
-} from "../cowatch/graph"
+import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 import { validateCompositionGraph } from "./graph-binding"
 import {
   COWATCH_MMR_TRIAL_MANIFEST_ID,
@@ -66,12 +63,6 @@ function conflict(reason: string): never {
   throw new RecommendationConflictError(reason)
 }
 async function lockProtocol(tx: Database, id: string) {
-  // Match graph invalidators' graph -> protocol lock order.
-  await tx.$queryRaw(Prisma.sql`
-    SELECT graph.id FROM recommendation_cowatch_generation graph
-    JOIN recommendation_composition_protocol protocol ON graph.id = (protocol.config->>'cowatchGenerationId')::char(64)
-    WHERE protocol.id = ${id}::uuid FOR SHARE OF graph
-  `)
   await tx.$queryRaw(
     Prisma.sql`SELECT id FROM recommendation_composition_protocol WHERE id = ${id}::uuid FOR UPDATE`,
   )
@@ -222,8 +213,7 @@ export async function persistCompositionObservation(
     select: { requestId: true, projectionProfileId: true },
   })
   if (!roots) return
-  if (roots.projectionProfileId)
-    await tx.$queryRaw`SELECT id FROM recommendation_profile WHERE id = ${roots.projectionProfileId} FOR SHARE`
+  if (roots.projectionProfileId) return
   await tx.$queryRaw`SELECT id FROM recommendation_request WHERE id = ${roots.requestId} FOR SHARE`
   await tx.$queryRaw`SELECT id FROM recommendation_shadow_run WHERE id = ${input.runId} FOR SHARE`
   const run = await tx.recommendationShadowRun.findUnique({
@@ -231,9 +221,6 @@ export async function persistCompositionObservation(
     include: {
       evaluation: true,
       request: { select: { state: true, createdAt: true, expiresAt: true } },
-      projectionProfile: {
-        select: { state: true, privacyGeneration: true, expiresAt: true },
-      },
     },
   })
   if (
@@ -253,7 +240,6 @@ export async function persistCompositionObservation(
       run.expiresAt.getTime(),
       run.request.expiresAt.getTime(),
       run.request.createdAt.getTime() + 22 * 86_400_000,
-      run.projectionProfile?.expiresAt.getTime() ?? Infinity,
       graph.cowatchDependencyExpiresAt
         ? new Date(graph.cowatchDependencyExpiresAt).getTime()
         : Infinity,
@@ -272,9 +258,7 @@ export async function persistCompositionObservation(
     run.evaluation.cowatchGenerationId !== graph.cowatchGenerationId ||
     expiresAt <= input.now ||
     run.request.state !== "ISSUED" ||
-    (run.projectionProfileId &&
-      (run.projectionProfile?.state !== "ACTIVE" ||
-        run.projectionProfile.privacyGeneration !== run.privacyGeneration))
+    run.projectionProfileId != null
   )
     return
   await tx.recommendationCompositionObservation.create({
@@ -324,13 +308,6 @@ async function loadCurrentEvidence(
           run: {
             include: {
               request: { select: { state: true, expiresAt: true } },
-              projectionProfile: {
-                select: {
-                  state: true,
-                  privacyGeneration: true,
-                  expiresAt: true,
-                },
-              },
             },
           },
         },
@@ -373,11 +350,7 @@ async function loadCurrentEvidence(
         row.run.request.expiresAt <= now ||
         row.run.state !== "PUBLISHED" ||
         row.run.request.state !== "ISSUED" ||
-        (row.run.projectionProfileId &&
-          (row.run.projectionProfile?.state !== "ACTIVE" ||
-            row.run.projectionProfile.privacyGeneration !==
-              row.run.privacyGeneration ||
-            row.run.projectionProfile.expiresAt <= now)),
+        row.run.projectionProfileId != null,
     )
   )
     conflict("composition_inputs_expired_or_private")
@@ -545,7 +518,6 @@ export async function resolveCompositionQualification(
     JOIN recommendation_strategy_manifest manifest ON manifest.id = protocol.challenger_manifest_id AND manifest.enabled AND manifest.configuration->>'composer' = protocol.composer_version
     JOIN recommendation_composition_decision decision ON decision.protocol_id = protocol.id
     JOIN recommendation_composition_calibration review ON review.protocol_id = protocol.id
-    LEFT JOIN recommendation_cowatch_generation graph ON graph.id = ${binding.cowatchGenerationId ?? null}::char(64)
     WHERE protocol.id = ${binding.protocolId}::uuid
       AND protocol.challenger_manifest_id = ${binding.manifestId}
       AND protocol.composer_version = ${MMR_SLATE_POLICY_VERSION}
@@ -557,13 +529,9 @@ export async function resolveCompositionQualification(
         'contractVersion',manifest.contract_version,'surfaceVersion',manifest.surface_version,
         'generator',manifest.generator,'maxItems',manifest.max_items,
         'configuration',manifest.configuration,'enabled',manifest.enabled) = protocol.config->'challengerManifest'
-      AND ((protocol.config->>'cowatchGenerationId' IS NULL AND protocol.generator_version <> ${COWATCH_SHADOW_GENERATOR_KEY}) OR
-        (graph.id IS NOT NULL AND graph.invalidated_at IS NULL AND graph.expires_at > ${now}
-          AND graph.lineage_version = ${COWATCH_DURABLE_LINEAGE_VERSION}
-          AND protocol.generator_version = ${COWATCH_SHADOW_GENERATOR_KEY}
-          AND protocol.source_manifest_id = ${COWATCH_MMR_TRIAL_MANIFEST_ID}
-          AND protocol.challenger_manifest_id = ${COWATCH_MMR_TRIAL_MANIFEST_ID}
-          AND (protocol.config->>'cowatchDependencyExpiresAt')::timestamptz > ${now}))
+      AND ${binding.cowatchGenerationId ?? null}::text IS NULL
+      AND protocol.config->>'cowatchGenerationId' IS NULL
+      AND protocol.generator_version <> ${COWATCH_SHADOW_GENERATOR_KEY}
       AND protocol.config @> ${JSON.stringify(MMR_CONFIG)}::jsonb
       AND protocol.authority_revision = ${binding.authorityRevision}
       AND protocol.revoked_at IS NULL AND protocol.expires_at > ${now} AND protocol.created_at <= ${now}
@@ -731,11 +699,6 @@ export async function lockCompositionQualificationForIssuance(
   now = new Date(),
 ) {
   const startedAt = Date.now()
-  await tx.$queryRaw(Prisma.sql`
-    SELECT graph.id FROM recommendation_cowatch_generation graph
-    JOIN recommendation_composition_protocol protocol ON graph.id = (protocol.config->>'cowatchGenerationId')::char(64)
-    WHERE protocol.id = ${binding.protocolId}::uuid FOR SHARE OF graph
-  `)
   await tx.$queryRaw(Prisma.sql`
     SELECT protocol.id
     FROM recommendation_composition_protocol protocol

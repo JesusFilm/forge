@@ -69,3 +69,13 @@ ffmpeg -i .tmp/studio-feedback/artifacts/feedback.mp4 \
 
 A crossfade/hard-cut sample must report no full-frame black interval. A deliberately
 authored fade-through-black is a different test and is expected to reach black.
+
+## Pause stability
+
+Click **Run pause probe** to play and pause the actual Preview three times. The
+`pause-probe` output reports source time immediately before/after pause and
+frame drift. Passing requires less than one frame of movement per pause (the
+browser's fractional playback time settles to the current timeline frame).
+This caught 1.8–3.0-frame correction seeks before the immediate pause handle.
+Each playback sample has an eight-second deadline. This fixture uses the same
+imperative pause handle as the real editor, including Space and the transport.

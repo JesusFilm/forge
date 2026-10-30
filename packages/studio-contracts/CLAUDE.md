@@ -25,7 +25,7 @@ approvals and command envelopes. Consumers import `@forge/studio-contracts`.
 
 The runtime proof's one-source/300-frame bounds are not product limits. This
 contract bounds one document to 256 KiB, 1,000 items, 64 tracks and 128 components.
-For shared asset, pack, source and experiment changes, read
+For shared asset, source and experiment changes, read
 `docs/solutions/database-issues/studio-shared-assets-and-source-retention.md`
 from the repository root. Preview/render execution remains feat-456; full
 publication orchestration remains feat-460.

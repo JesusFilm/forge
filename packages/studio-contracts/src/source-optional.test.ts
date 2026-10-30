@@ -40,7 +40,6 @@ it("authors and trims subtitle-free footage with a bounded source focus", () => 
     fps: 30,
     durationInFrames: 30,
     components: [],
-    packRevisionIds: [],
     tracks: [{ id: "video", kind: "visual" }],
     items: [
       {

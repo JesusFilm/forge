@@ -35,6 +35,10 @@ import {
   RECOMMENDATION_TAB_CORRELATION_KEY,
   parseRecommendationEvidenceReceipts,
 } from "@/lib/recommendation-contracts"
+import {
+  RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
+} from "@/lib/recommendation-timeouts"
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
 
@@ -87,7 +91,7 @@ export function WatchForYouRecommendations({
   sectionKey?: string | null
   navigate?: (href: string) => void
 }) {
-  const t = useTranslations("WatchHome")
+  const t = useTranslations("Recommendations")
   const root = useRef<HTMLElement>(null)
   const [near, setNear] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -134,7 +138,7 @@ export function WatchForYouRecommendations({
     return () => {
       alive.current = false
       observer.disconnect()
-      selection.current?.abort()
+      if (!navigating.current) selection.current?.abort()
     }
   }, [])
   useEffect(() => {
@@ -147,7 +151,9 @@ export function WatchForYouRecommendations({
     const restore = (event: PageTransitionEvent) => {
       if (event.persisted) refresh()
     }
-    const leave = () => selection.current?.abort()
+    const leave = () => {
+      if (!navigating.current) selection.current?.abort()
+    }
     window.addEventListener("pagehide", leave)
     window.addEventListener("pageshow", restore)
     window.addEventListener("forge:recommendation-profile-changed", refresh)
@@ -379,6 +385,21 @@ export function WatchForYouRecommendations({
     } catch {
       /* Playback still opens without tab storage. */
     }
+    const finishNavigation = () => {
+      if (
+        !alive.current ||
+        controller.signal.aborted ||
+        selection.current !== controller ||
+        navigating.current
+      )
+        return
+      navigating.current = true
+      navigate(item.canonicalHref)
+    }
+    const navigationTimer = window.setTimeout(
+      finishNavigation,
+      RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+    )
     void recommendationJsonWithRetry(
       watchPath("/api/recommendations/select"),
       {
@@ -399,19 +420,12 @@ export function WatchForYouRecommendations({
           claimNonce,
         }),
       },
-      800,
+      RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
     )
       .catch(() => undefined)
       .then(() => {
-        if (
-          !alive.current ||
-          controller.signal.aborted ||
-          selection.current !== controller ||
-          navigating.current
-        )
-          return
-        navigating.current = true
-        navigate(item.canonicalHref)
+        window.clearTimeout(navigationTimer)
+        finishNavigation()
       })
   }
   if (current.disabled) return null
@@ -440,7 +454,7 @@ export function WatchForYouRecommendations({
         id="watch-for-you-heading"
         className="mb-6 text-2xl font-bold tracking-tight md:text-3xl"
       >
-        {title?.trim() || t("forYou")}
+        {title?.trim() || t("heading")}
       </h2>
       <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 xl:grid-cols-6">
         {delivery
