@@ -196,6 +196,7 @@ alternating (see the shorts playbook, section 0). The calendar plans only that o
 | Transfiguration    | verse                                    |
 | Boy with a Spirit  | reflection                               |
 | Follow Me          | verse                                    |
+| Teach Us to Pray   | reflection                               |
 
 Add the next stories here when they are planned, continuing the alternation. From Oct 27 the stories follow Luke in order (Centurion dropped, Lost Sheep later).
 
