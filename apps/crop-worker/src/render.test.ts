@@ -245,8 +245,10 @@ describe("runRender", () => {
     // Segment 1: animated pan, source protocol whitelist, input-seek args in
     // the documented order.
     const firstSegmentArgs = ffmpegCalls[0]!
-    expect(firstSegmentArgs.slice(0, 11)).toEqual([
+    expect(firstSegmentArgs.slice(0, 13)).toEqual([
       "-y",
+      "-tls_verify",
+      "1",
       "-protocol_whitelist",
       whitelist,
       "-ss",
@@ -258,7 +260,7 @@ describe("runRender", () => {
       "-vf",
       "crop=606:1080:'520+40*min(t/10,1)':0,scale=1080:1920:flags=lanczos,setsar=1,setpts=PTS-STARTPTS",
     ])
-    expect(firstSegmentArgs.slice(11, -1)).toEqual([
+    expect(firstSegmentArgs.slice(13, -1)).toEqual([
       "-af",
       "asetpts=PTS-STARTPTS",
       "-c:v",
@@ -508,8 +510,10 @@ describe("runRender", () => {
     })
 
     // Localized timing drives the segment seek.
-    expect(ffmpegCalls[0]!.slice(0, 7)).toEqual([
+    expect(ffmpegCalls[0]!.slice(0, 9)).toEqual([
       "-y",
+      "-tls_verify",
+      "1",
       "-protocol_whitelist",
       whitelist,
       "-ss",

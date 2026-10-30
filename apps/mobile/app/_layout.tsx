@@ -152,6 +152,13 @@ try {
   } catch (error: unknown) {
     reportDatadogError?.(error, { "layout_direction.fault": "start_failed" })
   }
+  // Mux KTD8: the read starts at launch, so the first attach waits on one
+  // promise. The function checks the Mux gate itself.
+  try {
+    require("../src/lib/muxData/viewerId").startMuxViewerIdRead()
+  } catch {
+    // Mux is best-effort; a fault here must not stop startup.
+  }
   useLocaleResolutionLog =
     require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
   useT = require("../src/i18n/useT").useT

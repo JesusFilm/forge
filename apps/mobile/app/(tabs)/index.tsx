@@ -4,5 +4,5 @@ import { HomeScreen } from "../../src/components/home/HomeScreen"
 // from the ported curation config via useWatchHome (inside HomeScreen) — not
 // from the Experience context. Experience SDUI lives at /experience/[slug].
 export default function HomeTab() {
-  return <HomeScreen />
+  return <HomeScreen testID="screen-tab-home" />
 }

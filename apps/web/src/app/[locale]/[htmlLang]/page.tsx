@@ -1,4 +1,5 @@
 import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+import { resolveWatchAudience } from "@/lib/watch-audience-content"
 import type { ReactNode } from "react"
 import type { Metadata } from "next"
 import { NextIntlClientProvider } from "next-intl"
@@ -131,11 +132,18 @@ export default async function HomePage({ params }: PageProps) {
     description: WATCH_HOME_DESCRIPTION,
   })
 
+  const audienceEnabled = await isWatchAudienceEnabled()
+  // One published definition for home and video; omitted when the rollout is off.
+  const audience = audienceEnabled
+    ? await resolveWatchAudience(locale)
+    : undefined
+
   return withMessages(
     <>
       <WatchStructuredData json={structuredData} />
       <WatchHomeExperiencePage
-        audienceEnabled={await isWatchAudienceEnabled()}
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         heroModel={heroResult.data}
         blocks={visibleContent.blocks}
         locale={locale}

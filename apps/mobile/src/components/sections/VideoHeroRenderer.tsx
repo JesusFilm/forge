@@ -172,6 +172,7 @@ export function VideoHeroRenderer({
 
   return (
     <View
+      testID="sdui-video-hero"
       ref={containerRef}
       style={[styles.container, { height: computedHeight }]}
     >

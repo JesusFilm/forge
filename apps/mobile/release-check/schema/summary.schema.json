@@ -1,0 +1,498 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mobile release check summary",
+  "description": "The summary.json of one release check run, and the only source of report.html and summary.md (KTD16). A release result is scope release with result pass, never an exit code alone. A $defs entry has no type; each use site gives the type, so a use site can also allow null.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scope",
+    "result",
+    "exitCode",
+    "stopReason",
+    "completedPhases",
+    "commit",
+    "startedAt",
+    "endedAt",
+    "inputDigests",
+    "listDigests",
+    "toolVersions",
+    "devicePins",
+    "macTimeZone",
+    "counts",
+    "journeys",
+    "checks",
+    "server",
+    "notTested",
+    "staleKnownBugs",
+    "restarts",
+    "speed",
+    "proposedActions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "enum": [1] },
+    "runId": { "type": "string", "minLength": 1 },
+    "scope": { "enum": ["release", "partial"] },
+    "result": { "enum": ["pass", "fail"] },
+    "exitCode": { "enum": [0, 1] },
+    "stopReason": {
+      "enum": [
+        "completed",
+        "aborted",
+        "timeout",
+        "upstream_unavailable",
+        "host_overload",
+        "build_failed",
+        "build_check_failed",
+        "probe_failed",
+        "runner_error",
+        "runner_killed",
+        "setup_failed"
+      ]
+    },
+    "completedPhases": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "startedAt": { "type": "string", "$ref": "#/$defs/timestamp" },
+    "endedAt": { "type": "string", "$ref": "#/$defs/timestamp" },
+    "inputDigests": { "type": "object", "$ref": "#/$defs/digests" },
+    "listDigests": { "type": "object", "$ref": "#/$defs/digests" },
+    "toolVersions": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "devicePins": {
+      "description": "Each test device's pins (KTD15), keyed by device id.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": ["string", "number", "boolean", "null"]
+        }
+      }
+    },
+    "macTimeZone": { "type": "string", "minLength": 1 },
+    "counts": {
+      "description": "The journeys on devices for each label, counted once here. The renderers print these numbers and never count again.",
+      "type": "object",
+      "required": ["new", "flaky", "known", "not_run", "pass"],
+      "additionalProperties": false,
+      "properties": {
+        "new": { "type": "integer" },
+        "flaky": { "type": "integer" },
+        "known": { "type": "integer" },
+        "not_run": { "type": "integer" },
+        "pass": { "type": "integer" }
+      }
+    },
+    "journeys": {
+      "description": "One entry for each journey on each device, in report order: new, flaky, known, not_run, pass (R29).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["journey", "deviceId", "label", "attempts"],
+        "additionalProperties": false,
+        "properties": {
+          "journey": { "type": "string", "minLength": 1 },
+          "deviceId": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "$ref": "#/$defs/label" },
+          "attempts": {
+            "type": "array",
+            "items": { "type": "object", "$ref": "#/$defs/attempt" }
+          }
+        }
+      }
+    },
+    "checks": {
+      "description": "A check that did not run is null.",
+      "type": "object",
+      "required": ["build", "log", "screens", "settingsProbe"],
+      "additionalProperties": false,
+      "properties": {
+        "build": { "type": ["object", "null"], "$ref": "#/$defs/check" },
+        "log": {
+          "type": ["object", "null"],
+          "required": ["passed", "findings", "perDevice", "routes"],
+          "additionalProperties": false,
+          "properties": {
+            "passed": { "type": "boolean" },
+            "findings": {
+              "type": "array",
+              "items": { "type": "object", "$ref": "#/$defs/finding" }
+            },
+            "perDevice": {
+              "description": "The requests that each test device sent through the server, keyed by device id.",
+              "type": "object",
+              "additionalProperties": { "type": "integer" }
+            },
+            "routes": { "type": "object", "$ref": "#/$defs/routeCounts" }
+          }
+        },
+        "screens": {
+          "type": ["object", "null"],
+          "required": ["gaps", "notReached", "skippedPlatforms"],
+          "additionalProperties": false,
+          "properties": {
+            "gaps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["screen", "platform"],
+                "additionalProperties": false,
+                "properties": {
+                  "screen": { "type": "string", "minLength": 1 },
+                  "platform": { "type": "string", "$ref": "#/$defs/platform" }
+                }
+              }
+            },
+            "notReached": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["screen", "deviceId"],
+                "additionalProperties": false,
+                "properties": {
+                  "screen": { "type": "string", "minLength": 1 },
+                  "deviceId": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "skippedPlatforms": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["screen", "platform", "setting"],
+                "additionalProperties": false,
+                "properties": {
+                  "screen": { "type": "string", "minLength": 1 },
+                  "platform": { "type": "string", "$ref": "#/$defs/platform" },
+                  "setting": { "type": ["string", "null"], "minLength": 1 }
+                }
+              }
+            }
+          }
+        },
+        "settingsProbe": {
+          "type": ["object", "null"],
+          "$ref": "#/$defs/check"
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["routes", "rateLimitRefusals"],
+      "additionalProperties": false,
+      "properties": {
+        "routes": { "type": "object", "$ref": "#/$defs/routeCounts" },
+        "rateLimitRefusals": {
+          "description": "Each admin rate-limit refusal, with the failure it caused, or null when its attempt did not fail (R36).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "ts",
+              "field",
+              "deviceId",
+              "journey",
+              "attempt",
+              "causedFailure"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "ts": { "type": "string", "$ref": "#/$defs/timestamp" },
+              "field": { "type": "string", "minLength": 1 },
+              "deviceId": { "type": ["string", "null"], "minLength": 1 },
+              "journey": { "type": ["string", "null"], "minLength": 1 },
+              "attempt": { "enum": [1, 2, null] },
+              "causedFailure": {
+                "type": ["object", "null"],
+                "required": ["label", "class", "failedStep"],
+                "additionalProperties": false,
+                "properties": {
+                  "label": { "type": "string", "$ref": "#/$defs/label" },
+                  "class": { "$ref": "#/$defs/failureClass" },
+                  "failedStep": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notTested": {
+      "description": "The Not-Tested List entries that this run used (R23).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "target", "platforms", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "enum": ["screen", "step"] },
+          "target": { "type": "string", "minLength": 1 },
+          "platforms": {
+            "type": "array",
+            "items": { "type": "string", "$ref": "#/$defs/platform" }
+          },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "staleKnownBugs": {
+      "description": "Known-Bug entries whose journey now passes. The report tells the reader to remove them (R28).",
+      "type": "array",
+      "items": { "type": "object", "$ref": "#/$defs/knownBug" }
+    },
+    "restarts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["deviceId", "ts", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "deviceId": { "type": "string", "minLength": 1 },
+          "ts": { "type": "string", "$ref": "#/$defs/timestamp" },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "speed": {
+      "description": "The speed pass, or null when it did not run. Information only: it never decides pass or fail (R31).",
+      "type": ["object", "null"],
+      "required": ["informationOnly", "devices"],
+      "additionalProperties": false,
+      "properties": {
+        "informationOnly": { "enum": [true] },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "deviceId",
+              "coldLaunchMs",
+              "homeContentMs",
+              "firstFrameMs",
+              "peakMemoryMb",
+              "failures"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "deviceId": { "type": "string", "minLength": 1 },
+              "coldLaunchMs": {
+                "type": ["object", "null"],
+                "$ref": "#/$defs/stat"
+              },
+              "homeContentMs": {
+                "type": ["object", "null"],
+                "$ref": "#/$defs/stat"
+              },
+              "firstFrameMs": {
+                "type": ["object", "null"],
+                "$ref": "#/$defs/stat"
+              },
+              "peakMemoryMb": { "type": ["number", "null"] },
+              "failures": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "proposedActions": {
+      "description": "List changes that the runner proposes and never applies. The mobile owner approves each one through a commit (KTD16).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "write_journey",
+              "record_search_answer",
+              "remove_known_bug",
+              "add_known_bug"
+            ]
+          },
+          "reason": { "type": "string", "minLength": 1 },
+          "journey": { "type": ["string", "null"], "minLength": 1 },
+          "devices": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "step": { "type": ["string", "null"], "minLength": 1 },
+          "check": { "$ref": "#/$defs/failureClass" },
+          "ticket": { "type": ["string", "null"], "minLength": 1 },
+          "screen": { "type": ["string", "null"], "minLength": 1 },
+          "platform": { "enum": ["ios", "android", null] },
+          "search": {
+            "type": ["object", "null"],
+            "required": ["query", "limit", "offset", "language"],
+            "additionalProperties": false,
+            "properties": {
+              "query": { "type": "string" },
+              "limit": { "type": "integer" },
+              "offset": { "type": "integer" },
+              "language": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
+    "digests": {
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "platform": { "enum": ["ios", "android"] },
+    "label": { "enum": ["new", "flaky", "known", "not_run", "pass"] },
+    "failureClass": {
+      "enum": [
+        "assertion_failed",
+        "selector_not_found",
+        "app_crashed",
+        "app_unresponsive",
+        "device_unresponsive",
+        "driver_failed",
+        "rate_limited",
+        "upstream_error",
+        "request_blocked",
+        "missing_search_answer",
+        "memory_pressure_kill",
+        null
+      ]
+    },
+    "relativePath": {
+      "description": "A path inside the run folder: no leading / or ~, no backslash or control character, and no empty, . or .. segment.",
+      "pattern": "^(?![/~])(?!.*//)(?!(?:.*/)?\\.{1,2}(?:/|$))[^\\\\\\u0000-\\u001f]+(?<!/)$"
+    },
+    "finding": {
+      "required": ["code", "message", "setting", "file", "deviceId"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1 },
+        "setting": { "type": ["string", "null"], "minLength": 1 },
+        "file": { "type": ["string", "null"], "$ref": "#/$defs/relativePath" },
+        "deviceId": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "check": {
+      "required": ["passed", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "object", "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "routeCounts": {
+      "description": "Requests for each server route (the route field of server-log.jsonl).",
+      "additionalProperties": false,
+      "properties": {
+        "forwarded": { "type": "integer" },
+        "reused": { "type": "integer" },
+        "saved-answer": { "type": "integer" },
+        "prefix-answer": { "type": "integer" },
+        "missing-search-answer": { "type": "integer" },
+        "success-reply": { "type": "integer" },
+        "blocked": { "type": "integer" },
+        "rate-limited": { "type": "integer" },
+        "upstream-error": { "type": "integer" },
+        "non-graphql": { "type": "integer" }
+      }
+    },
+    "stat": {
+      "required": ["median", "min", "max", "samples"],
+      "additionalProperties": false,
+      "properties": {
+        "median": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "samples": { "type": "array", "items": { "type": "number" } }
+      }
+    },
+    "knownBug": {
+      "required": ["journey", "devices", "step", "check", "ticket"],
+      "additionalProperties": false,
+      "properties": {
+        "journey": { "type": "string", "minLength": 1 },
+        "devices": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "step": { "type": "string", "minLength": 1 },
+        "check": { "type": "string", "$ref": "#/$defs/failureClass" },
+        "ticket": { "type": "string", "minLength": 1 }
+      }
+    },
+    "attempt": {
+      "description": "One attempt of one journey on one device. The journey runner (U7) produces it.",
+      "required": [
+        "journey",
+        "deviceId",
+        "attempt",
+        "status",
+        "label",
+        "class",
+        "failedStep",
+        "error",
+        "screenshot",
+        "stepTimes",
+        "restart",
+        "notRunSteps",
+        "knownBugTicket",
+        "screensReached"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "journey": { "type": "string", "minLength": 1 },
+        "deviceId": { "type": "string", "minLength": 1 },
+        "attempt": { "enum": [1, 2] },
+        "status": { "enum": ["passed", "failed", "not_run"] },
+        "label": { "type": "string", "$ref": "#/$defs/label" },
+        "class": { "$ref": "#/$defs/failureClass" },
+        "failedStep": { "type": ["string", "null"], "minLength": 1 },
+        "error": { "type": ["string", "null"] },
+        "screenshot": {
+          "type": ["string", "null"],
+          "$ref": "#/$defs/relativePath"
+        },
+        "stepTimes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "ms"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "ms": { "type": "number" }
+            }
+          }
+        },
+        "restart": { "type": "boolean" },
+        "notRunSteps": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "knownBugTicket": { "type": ["string", "null"], "minLength": 1 },
+        "screensReached": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -6,6 +6,14 @@ vi.mock("@/lib/feature-flags", () => ({
   isWatchAudienceEnabled: vi.fn(async () => false),
 }))
 
+const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/watch-audience-content", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
+    "@/lib/watch-audience-content",
+  )),
+  resolveWatchAudience: resolveWatchAudienceMock,
+}))
+
 const {
   resolveWatchHomeMock,
   resolveWatchPageMock,
@@ -67,6 +75,8 @@ const heroModel = {
 
 beforeEach(() => {
   vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  resolveWatchAudienceMock.mockReset()
+  resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchHomeMock.mockReset()
   resolveWatchPageMock.mockReset()
   watchHomeExperiencePageMock.mockClear()
@@ -91,6 +101,41 @@ describe("Watch root homepage", () => {
     expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
       expect.objectContaining({ audienceEnabled: true }),
       undefined,
+    )
+  })
+
+  it("hands the published audience configuration for the locale to the home frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    const authored = {
+      kind: "authored",
+      sourceLocale: "en",
+      config: { roles: [] },
+      identity: "en:watch-audience:abc",
+    }
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+      undefined,
+    )
+  })
+
+  it("does not load the configuration while the rollout is off", async () => {
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
+    expect(
+      (watchHomeExperiencePageMock.mock.calls as unknown[][])[0]?.[0],
+    ).toEqual(
+      expect.objectContaining({ audienceEnabled: false, audience: undefined }),
     )
   })
 

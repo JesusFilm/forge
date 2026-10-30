@@ -55,6 +55,7 @@ import {
   offlineSwapClaim,
 } from "../../lib/playerSource"
 import { validateLocalMediaUrl } from "../../lib/validateLocalMediaUrl"
+import type { MuxDataOption } from "../../lib/muxData/monitorSession"
 import {
   TAB_BAR_OCCUPIED_HEIGHT,
   TAB_BAR_SCREEN_EXTENT_IOS,
@@ -500,6 +501,20 @@ function ActivePlaybackHost({
   const sessionTitle = request.session?.titleFromRecord
     ? request.session.title || null
     : null
+  // Only a request with a session is monitored: the series trailer has none.
+  // A remount's first render names no record title; the view rules keep the
+  // known one for the same video (KTD6).
+  const muxData: MuxDataOption | null =
+    request.session == null
+      ? null
+      : {
+          surface: "watch",
+          identity: {
+            videoId: progressIdentity?.videoId ?? null,
+            videoSlug: request.session.videoSlug,
+            title: sessionTitle,
+          },
+        }
   const sessionSlug = request.session?.videoSlug ?? null
   const sessionLanguageSlug = request.session?.languageSlug ?? null
   const feedbackContext = useMemo<PlayerFeedbackVideo | null>(
@@ -558,7 +573,7 @@ function ActivePlaybackHost({
   // start inside the swap window the resume latch spans (KTD4).
   const castActiveRef = useRef(castActive)
   castActiveRef.current = castActive
-  const { player, isPlaying, progressFeed, getHealthyPosition } =
+  const { player, isPlaying, progressFeed, getHealthyPosition, muxMonitor } =
     useManagedVideoPlayer(
       constrainedSourceUrl,
       (p) => {
@@ -579,6 +594,7 @@ function ActivePlaybackHost({
         // The recommendation recorder's discovery key (feat-516): a search
         // result marks its slug before navigating; the id alone never matches.
         mediaSlug: request.session?.videoSlug ?? request.progressVideoSlug,
+        muxData,
         castActive,
         // Only this surface arms automatic entry into the operating system's
         // window, so only here may the background pause be undone when it opens.
@@ -1789,6 +1805,15 @@ function ActivePlaybackHost({
     windowFrame,
   })
 
+  // KTD1: the size of the frame the video settles in, the slot or the
+  // window. Sent from here because the frame is known only after the hook.
+  const settledWidth = rect?.width ?? (hasSession ? windowFrame.width : null)
+  const settledHeight = rect?.height ?? (hasSession ? windowFrame.height : null)
+  useEffect(() => {
+    if (settledWidth == null || settledHeight == null) return
+    muxMonitor.setPlayerSize({ width: settledWidth, height: settledHeight })
+  }, [muxMonitor, settledWidth, settledHeight])
+
   // A surface can own the player before its stream resolves (an Up Next
   // replace, a seed with no playbackId). The player still holds ANOTHER route's
   // video then, so drawing it into this rect would paint the wrong one.
@@ -1980,6 +2005,7 @@ function ActivePlaybackHost({
                 loadFailed={snapshot.loadFailed}
                 streamingUrl={request.streamingUrl}
                 getHealthyPosition={getHealthyPosition}
+                onSourceReload={muxMonitor.beginReload}
                 // What the player verifiably HOLDS. The chrome renders on
                 // `adoptable` alone, so the requested url can still be null
                 // while a real source is loaded — recovery must use this.

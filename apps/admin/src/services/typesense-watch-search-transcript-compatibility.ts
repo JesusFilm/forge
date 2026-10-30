@@ -33,22 +33,34 @@ export async function resolveCurrentWatchSearchTranscriptCompatibility(
   prisma: Pick<PrismaClient, "$queryRaw">,
 ): Promise<WatchSearchTranscriptCompatibilityIdentity> {
   const contract = await resolveActiveContentEmbeddingContract(prisma)
+  // Compatibility needs one matching chunk per version, not every chunk from
+  // every transcript. Keep this live check without the corpus-sized join.
   const rows = await prisma.$queryRaw<TranscriptChunkingVersionRow[]>(
     Prisma.sql`
-      SELECT DISTINCT vt.chunking_version AS "chunkingVersion"
-      FROM video_transcript vt
-      JOIN video_transcript_chunk vtc
-        ON vtc.transcript_id = vt.id
-      WHERE vtc.embedding IS NOT NULL
-        AND vt.embedding_provider = ${contract.storage.provider}
-        AND vt.model = ${contract.storage.model}
-        AND vt.dimensions = ${contract.storage.dimensions}
-        AND vt.embedding_native_dimensions = ${contract.storage.nativeDimensions}
-        AND vt.embedding_transform_version IS NOT DISTINCT FROM
-          ${contract.storage.transformVersion}::text
-        AND vtc.model = ${contract.storage.model}
-        AND vtc.dimensions = ${contract.storage.dimensions}
-      ORDER BY vt.chunking_version ASC NULLS FIRST
+      WITH compatible_transcripts AS NOT MATERIALIZED (
+        SELECT id, chunking_version
+        FROM video_transcript
+        WHERE embedding_provider = ${contract.storage.provider}
+          AND model = ${contract.storage.model}
+          AND dimensions = ${contract.storage.dimensions}
+          AND embedding_native_dimensions = ${contract.storage.nativeDimensions}
+          AND embedding_transform_version IS NOT DISTINCT FROM
+            ${contract.storage.transformVersion}::text
+      )
+      SELECT versions.chunking_version AS "chunkingVersion"
+      FROM (
+        SELECT DISTINCT chunking_version FROM compatible_transcripts
+      ) versions
+      WHERE EXISTS (
+        SELECT 1
+        FROM compatible_transcripts vt
+        JOIN video_transcript_chunk vtc ON vtc.transcript_id = vt.id
+        WHERE vt.chunking_version IS NOT DISTINCT FROM versions.chunking_version
+          AND vtc.embedding IS NOT NULL
+          AND vtc.model = ${contract.storage.model}
+          AND vtc.dimensions = ${contract.storage.dimensions}
+      )
+      ORDER BY versions.chunking_version ASC NULLS FIRST
     `,
   )
 

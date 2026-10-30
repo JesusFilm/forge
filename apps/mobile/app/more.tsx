@@ -43,7 +43,7 @@ export default function MoreScreen() {
   const paddingBottom = useMiniPlayerBottomClearance() + WINDOW_EDGE_MARGIN
 
   return (
-    <View style={styles.screen}>
+    <View testID="screen-more" style={styles.screen}>
       <ScreenTopBar title={tMyWatch("moreTitle")} showBack />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom }]}

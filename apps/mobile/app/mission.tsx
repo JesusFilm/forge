@@ -106,7 +106,7 @@ export default function MissionScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View testID="screen-mission" style={styles.screen}>
       <LinearGradient
         colors={[
           hexToRgba(MISSION_WASH.burgundy, 0.45),

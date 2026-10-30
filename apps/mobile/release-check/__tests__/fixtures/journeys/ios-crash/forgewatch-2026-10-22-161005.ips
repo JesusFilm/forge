@@ -1,0 +1,15 @@
+{"app_name": "forgewatch", "timestamp": "2026-10-22 16:10:05.00 +1300", "app_version": "1.0.0", "bug_type": "309", "bundleID": "org.jesusfilm.forgewatch", "name": "forgewatch", "fixture_note": "SYNTHETIC: shaped after a real simulator SpringBoard report of 2026-10-22"}
+{
+  "procName": "forgewatch",
+  "procPath": "/Users/example/Library/Developer/CoreSimulator/Devices/685DFF5A-547F-4085-816E-100CD6D7492A/data/Containers/Bundle/Application/0000/forgewatch.app/forgewatch",
+  "captureTime": "2026-10-22 16:10:04.5123 +1300",
+  "coalitionName": "com.apple.CoreSimulator.SimDevice.685DFF5A-547F-4085-816E-100CD6D7492A",
+  "parentProc": "launchd_sim",
+  "bundleInfo": {
+    "CFBundleIdentifier": "org.jesusfilm.forgewatch"
+  },
+  "exception": {
+    "type": "EXC_CRASH",
+    "signal": "SIGABRT"
+  }
+}

@@ -1,3 +1,4 @@
+import { refuseBehavioralRecommendations } from "../behavioral-retirement"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -47,6 +48,7 @@ export class RecommendationOwnerReleaseOperator {
   async prepare(input: OwnerReleaseOperatorInput) {
     const startedAt = Date.now()
     const now = this.authorize(input)
+    refuseBehavioralRecommendations()
     const operationNow = () =>
       new Date(now.getTime() + Math.max(0, Date.now() - startedAt))
     validateInput(input)
@@ -84,6 +86,7 @@ export class RecommendationOwnerReleaseOperator {
   async activate(input: OwnerReleaseOperatorInput & { bindingDigest: string }) {
     const startedAt = Date.now()
     const now = this.authorize(input)
+    refuseBehavioralRecommendations()
     const operationNow = () =>
       new Date(now.getTime() + Math.max(0, Date.now() - startedAt))
     validateInput(input)

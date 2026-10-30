@@ -56,7 +56,6 @@ class PublicationHookHarnessError extends Error {}
           tracks: [],
           items: [],
           components: [],
-          packRevisionIds: [],
         },
       })
       const requested = await commands.request(user, {

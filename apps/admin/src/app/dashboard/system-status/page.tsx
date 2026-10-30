@@ -11,6 +11,7 @@ import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { CoreSyncTriggerButton } from "../workflows/core-sync-trigger-button"
+import { RecommendationRetentionTriggerButton } from "../workflows/recommendation-retention-trigger-button"
 
 function metricValue(
   metrics: Awaited<ReturnType<typeof loadSystemStatusData>>["metrics"],
@@ -68,6 +69,15 @@ export default async function SystemStatusPage() {
           )
         }
       />
+
+      {canTriggerSync ? (
+        <section className="app-card p-4" aria-label="Recommendation retention">
+          <h2 className="mb-2 text-[14px] font-semibold">
+            Recommendation retention
+          </h2>
+          <RecommendationRetentionTriggerButton />
+        </section>
+      ) : null}
 
       <section className="app-card p-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

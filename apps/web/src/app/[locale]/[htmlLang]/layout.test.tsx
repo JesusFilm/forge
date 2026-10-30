@@ -15,7 +15,6 @@ import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
-import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 
 function findElement(
@@ -161,13 +160,6 @@ describe("Watch root layout", () => {
   })
 
   it("preserves recommendation and search providers without beta signup", async () => {
-    const layout = await RootLayout({
-      children: <main>Watch page</main>,
-      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
-    })
-
-    expect(findElement(layout, RecommendationConsentShell)).not.toBeNull()
-
     const routeShell = WatchChromeShell({
       children: <main>Watch page</main>,
       locale: "en",

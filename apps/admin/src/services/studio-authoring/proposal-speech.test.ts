@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs"
 import { expect, it } from "vitest"
-import { studioApplySchema, studioProjectSchema } from "@forge/studio-contracts"
+import {
+  studioApplySchema,
+  studioProjectSchema,
+  studioDocumentSchema,
+} from "@forge/studio-contracts"
 import { applyOperations } from "./operations"
 import { scriptHash } from "./state"
 import { proposalSpeech } from "./proposal-speech"
@@ -38,7 +42,7 @@ it("reports the actual final slot0 speech after ordered set-speech and set-text 
     project.document,
     structuredClone(command.operations),
   )
-  expect(document).toEqual(saved.document)
+  expect(document).toEqual(studioDocumentSchema.parse(saved.document))
   const result = proposalSpeech(document, command)
   expect(result.view).toBe("inline")
   if (result.view !== "inline") throw new Error("Expected complete transcript")

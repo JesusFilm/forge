@@ -198,7 +198,10 @@ export function RelatedQuestionsRenderer({
   }, [ctaLink])
 
   return (
-    <View style={[layout.sectionOuter, styles.localContainer]}>
+    <View
+      testID="sdui-related-questions"
+      style={[layout.sectionOuter, styles.localContainer]}
+    >
       <View style={[layout.headerRow, styles.localHeaderRow]}>
         {heading != null && (
           <Text

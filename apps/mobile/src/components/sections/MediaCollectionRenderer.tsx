@@ -150,7 +150,10 @@ export function MediaCollectionRenderer({
   }
 
   return (
-    <View style={[layout.sectionOuter, styles.localContainer]}>
+    <View
+      testID="sdui-media-collection"
+      style={[layout.sectionOuter, styles.localContainer]}
+    >
       {categoryLabel != null && (
         <Text style={[text.eyebrow, styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}

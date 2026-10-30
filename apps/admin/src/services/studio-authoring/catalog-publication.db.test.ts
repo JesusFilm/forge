@@ -126,7 +126,6 @@ class PublicationFixtureError extends Error {}
         tracks: [],
         components: [],
         items: [],
-        packRevisionIds: [],
       }
       await commands.create(user, {
         projectId: id,
