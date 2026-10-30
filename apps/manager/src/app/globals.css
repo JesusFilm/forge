@@ -8600,8 +8600,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .design-system-shell:has(.design-system-sidebar-checkbox:checked) {
-  grid-template-columns: 88px minmax(0, 1fr);
-  --studio-sidebar-offset: 88px;
+  grid-template-columns: 56px minmax(0, 1fr);
+  --studio-sidebar-offset: 56px;
 }
 
 .design-system-shell-sidebar {
@@ -8683,8 +8683,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked) {
   justify-items: center;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -8754,81 +8754,19 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   background: color-mix(in srgb, var(--ds-black) 10%, var(--ds-panel));
 }
 
-.design-system-report-switch {
-  position: relative;
-  width: 100%;
-}
-
-.design-system-report-switch.is-open .design-system-workspace-button {
-  background: var(--ds-hover);
-  border-color: var(--ds-line-strong);
-}
-
-.design-system-report-switch-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 30;
-  display: grid;
-  gap: 2px;
-  padding: 4px;
-  background: var(--ds-panel);
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius);
-  box-shadow: 0 10px 24px rgba(17, 17, 17, 0.12);
-  transform-origin: top center;
-  animation: design-system-menu-enter 180ms ease both;
-}
-
-.design-system-report-switch-option {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  width: 100%;
-  min-height: 64px;
-  padding: 10px;
-  color: var(--ds-ink);
-  font: inherit;
-  font-weight: 450;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  border-radius: var(--ds-radius-sm);
-}
-
-.design-system-report-switch-option:hover,
-.design-system-report-switch-option:focus-visible {
-  background: var(--ds-hover);
-  outline: none;
-}
-
-.design-system-report-switch-option:active {
-  background: color-mix(in srgb, var(--ds-black) 10%, var(--ds-panel));
-}
-
-.design-system-report-switch-option.is-selected {
-  font-weight: 500;
-  background: var(--ds-panel-muted);
-}
-
-.design-system-workspace-copy,
-.design-system-report-switch-copy {
+.design-system-workspace-copy {
   display: grid;
   gap: 1px;
   min-width: 0;
 }
 
-.design-system-workspace-copy strong,
-.design-system-report-switch-copy strong {
+.design-system-workspace-copy strong {
   font-size: 0.86rem;
   font-weight: 550;
   line-height: 1.15;
 }
 
-.design-system-workspace-copy small,
-.design-system-report-switch-copy small {
+.design-system-workspace-copy small {
   display: block;
   overflow: hidden;
   color: var(--ds-muted);
@@ -8843,36 +8781,6 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   width: auto;
   height: auto;
   background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-.design-system-report-icon {
-  display: inline-grid;
-  width: auto;
-  height: auto;
-  place-items: center;
-}
-
-.design-system-report-icon.is-subtitles {
-  color: var(--ds-ink);
-}
-
-.design-system-report-icon.is-audio {
-  color: #ef3340;
-}
-
-.design-system-report-icon.is-meta {
-  color: var(--ds-ink);
-}
-
-.design-system-report-icon.is-experiences {
-  color: #8b6a24;
-}
-
-.design-system-report-switch-option > .design-system-report-icon {
-  width: auto;
-  height: auto;
   border: 0;
   box-shadow: none;
 }
@@ -8982,17 +8890,17 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-sidebar-content {
   justify-items: center;
-  gap: 18px;
+  gap: 10px;
   width: 100%;
-  margin-top: 28px;
+  margin-top: 16px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-workspace-button {
   display: grid;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
   grid-template-columns: 1fr;
   place-items: center;
   padding: 0;
@@ -9002,11 +8910,9 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-  .design-system-report-switch,
-.design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-shell-nav {
   justify-self: center;
-  width: 44px;
+  width: 36px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -9016,12 +8922,30 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   justify-items: center;
 }
 
-.design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-  .design-system-report-switch-menu {
-  top: 0;
-  left: calc(100% + 8px);
-  right: auto;
-  min-width: 168px;
+/* Collapsed desktop sidebar: the product switcher becomes an icon button and
+   its command palette opens beside the rail. */
+@media (min-width: 901px) {
+  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
+    .studio-product-switch {
+    justify-self: center;
+    width: 36px;
+  }
+
+  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
+    .studio-product-switch-trigger {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
+    .studio-product-switch-label,
+  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
+    .studio-product-switch-chevron {
+    display: none;
+  }
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -9049,18 +8973,6 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-  .design-system-report-switch-option {
-  min-height: 56px;
-}
-
-.design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-  .design-system-report-switch-option
-  > .design-system-report-icon {
-  width: 36px;
-  height: 36px;
-}
-
-.design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-shell-nav,
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-sidebar-group {
@@ -9070,7 +8982,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-shell-nav {
-  gap: 10px;
+  gap: 4px;
 }
 
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -9079,9 +8991,9 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
   .design-system-sidebar-footer-link {
   display: grid;
-  width: 42px;
-  height: 42px;
-  min-height: 42px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
   place-items: center;
   padding: 0;
 }
@@ -11955,7 +11867,7 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "brand nav"
-      "switcher switcher";
+      "product product";
     align-items: center;
     row-gap: 14px;
     min-height: auto;
@@ -12007,9 +11919,8 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
     display: contents;
   }
 
-  .design-system-report-switch {
-    grid-area: switcher;
-    width: 100%;
+  .studio-product-switch {
+    grid-area: product;
   }
 
   .design-system-shell-nav {
@@ -12054,13 +11965,6 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
   .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
     .design-system-sidebar-content {
     display: contents;
-  }
-
-  .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
-    .design-system-report-switch {
-    grid-area: switcher;
-    justify-self: stretch;
-    width: 100%;
   }
 
   .design-system-shell-sidebar:has(.design-system-sidebar-checkbox:checked)
@@ -12210,10 +12114,11 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
   .design-system-shell-sidebar {
     grid-template-columns: 1fr;
+    /* The product switcher sits directly above the submenu it controls. */
     grid-template-areas:
       "brand"
-      "nav"
-      "switcher";
+      "product"
+      "nav";
     padding-top: 14px;
     padding-bottom: 14px;
   }

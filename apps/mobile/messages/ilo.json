@@ -138,6 +138,7 @@
     "versesAriaValue": "Bersikulo {first} agingga iti {last} iti {total}, {chapter}",
     "demoVerse": "I-swipe nga agpangato para iti sumaruno a bersikulo",
     "demoChapter": "I-swipe nga agpakannigid para iti sumaruno a kapitulo",
+    "demoChapterRtl": "I-swipe nga agpakannawan para iti sumaruno a kapitulo",
     "demoSkip": "I-tap tapno labsan",
     "demoSkipAriaLabel": "Labsan ti pannakaipakita ti panag-swipe",
     "selectVerseAriaHint": "Mamindua nga i-tap tapno mapili daytoy a bersikulo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pumili iti libro",
+    "chooseChapter": "Pumili iti kapitulo",
+    "chooseVerse": "Pumili iti bersikulo",
     "oldTestament": "Daan a Tulag",
     "newTestament": "Baro a Tulag",
     "books": "Dagiti libro",
@@ -193,7 +196,7 @@
     "someBooks": "{count} iti {total, plural, one {# a libro} other {# a libro}}",
     "twoNames": "{first} ken {second}",
     "threeNames": "{first}, {second}, ken {third}",
-    "onDevice": "Adda iti daytoy nga aparato",
+    "downloaded": "Na-download",
     "downloading": "Download: {percent}%",
     "downloadStopped": "Simmardeng ti download",
     "updateAvailable": "Adda baro a bersion",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster ti serye",
     "videosHeading": "Dagiti bidio",
     "detailsLoadError": "Saan a naikarga ti kompleto a detalye.",
+    "languagesTitle": "Pagsasao ti bidio",
     "searchLanguagesPlaceholder": "Sapulen dagiti pagsasao…",
     "searchLanguagesAriaLabel": "Sapulen dagiti pagsasao",
     "noLanguagesFound": "Awan ti nasarakan a pagsasao",
@@ -502,6 +506,7 @@
     "resumeAt": "Ituloy iti {time}",
     "unknownLanguage": "Di ammo",
     "downloadedStatus": "Na-download",
+    "languagesTitle": "Pagsasao ti bidio",
     "searchLanguagesPlaceholder": "Sapulen dagiti pagsasao…",
     "searchLanguagesAriaLabel": "Sapulen dagiti pagsasao",
     "noLanguagesFound": "Awan ti nasarakan a pagsasao",
@@ -773,5 +778,8 @@
     "send": "Ipatulod",
     "sending": "Ip-ipatulod…",
     "sendAriaLabel": "Ipatulod ti komento"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Us-usaren ti app ti lokal a networkmo tapno mabirokan dagiti Cast nga aparato, ket iti kasta maipabuyam dagiti bidio iti TV-mo."
   }
 }

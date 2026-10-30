@@ -1167,6 +1167,95 @@ describe("the reader cover", () => {
   })
 })
 
+// 2026-10-20: a screen pushed over the watch page keeps it mounted. The slot
+// publishes that fact, and the cover it starts remembers its source.
+describe("a screen over the slot's screen", () => {
+  it("publishes the current slot's fact, keeps it across updates, and skips an equal one", () => {
+    const { store } = makeStores()
+    const id = store.attachSlot(makeRequest())
+    expect(store.getSnapshot().underScreen).toBe(false)
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.setSlotUnderScreen(id, true)
+    store.setSlotUnderScreen(id, true)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(store.getSnapshot().underScreen).toBe(true)
+
+    // A re-render and a re-measure carry the fact over.
+    store.updateSlot(
+      id,
+      makeRequest({ posterUrl: "https://images.example/b.jpg" }),
+    )
+    store.setSlotRect(id, RECT)
+    expect(store.getSnapshot().underScreen).toBe(true)
+
+    store.setSlotUnderScreen(id, false)
+    expect(store.getSnapshot().underScreen).toBe(false)
+  })
+
+  it("reads the fact of the current slot only", () => {
+    const { store } = makeStores()
+    const lower = store.attachSlot(makeRequest())
+    store.setSlotUnderScreen(lower, true)
+    store.attachSlot(makeRequest({ session: SESSION_B }))
+
+    expect(store.getSnapshot().underScreen).toBe(false)
+  })
+
+  it("names the source of the cover, and the reader by default", () => {
+    const { store } = makeStores({ started: true, position: 1, duration: 600 })
+    const id = store.attachSlot(makeRequest())
+
+    expect(store.coverSlot(id, "screen")).toBe(true)
+    expect(store.getSnapshot()).toMatchObject({
+      cover: "admitted",
+      coverSource: "screen",
+    })
+    // The source of a live cover never changes; only a return ends it.
+    store.coverSlot(id, "reader")
+    expect(store.getSnapshot().coverSource).toBe("screen")
+
+    store.uncoverSlot(id)
+    expect(store.getSnapshot().coverSource).toBeNull()
+    store.coverSlot(id)
+    expect(store.getSnapshot().coverSource).toBe("reader")
+  })
+
+  // A tap on the window pushes a second watch screen for the same video. That
+  // screen adopts the session, so the end of the old cover must not clear it.
+  // The production first render names the video by slug alone: the record
+  // lands a commit later. The tolerant predicate still reads one video.
+  it.each([
+    ["a resolved id", SESSION_A],
+    ["the slug alone", { ...SESSION_A, videoId: null }],
+  ])(
+    "keeps the session the cover started when a newer slot for the same video takes the player (%s)",
+    (_label, upperSession) => {
+      const { store, sessionStore } = makeStores({
+        started: true,
+        position: 42,
+        duration: 600,
+      })
+      const endings: MiniPlayerEndEvent[] = []
+      sessionStore.onEnd((event) => endings.push(event))
+      const lower = store.attachSlot(makeRequest())
+      store.coverSlot(lower, "screen")
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+      const upper = store.attachSlot(makeRequest({ session: upperSession }))
+      store.uncoverSlot(lower)
+
+      expect(store.getSnapshot().slotId).toBe(upper)
+      expect(sessionStore.getSnapshot().session).toMatchObject({
+        videoId: "video-a",
+        positionSeconds: 42,
+      })
+      expect(endings).toHaveLength(0)
+    },
+  )
+})
+
 // feat-553 R10: the host publishes the resting window so the reader's verse
 // box can stay clear of it.
 describe("the window frame channel", () => {

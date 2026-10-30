@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पदमे सँ पद {first} सँ {last} धरि, {chapter}",
     "demoVerse": "अगिला पदक लेल ऊपर स्वाइप करू",
     "demoChapter": "अगिला अध्यायक लेल बामा स्वाइप करू",
+    "demoChapterRtl": "अगिला अध्यायक लेल दाहिना स्वाइप करू",
     "demoSkip": "छोड़बाक लेल टैप करू",
     "demoSkipAriaLabel": "स्वाइपक प्रदर्शन छोड़ू",
     "selectVerseAriaHint": "ई पद चुनबाक लेल दू बेर टैप करू",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "पुस्तक चुनू",
+    "chooseChapter": "अध्याय चुनू",
+    "chooseVerse": "पद चुनू",
     "oldTestament": "पुरान नियम",
     "newTestament": "नव नियम",
     "books": "पुस्तक सभ",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# पुस्तकमे सँ} other {# पुस्तकमे सँ}} {count}",
     "twoNames": "{first} आ {second}",
     "threeNames": "{first}, {second} आ {third}",
-    "onDevice": "एहि डिवाइस पर अछि",
+    "downloaded": "डाउनलोड भेल",
     "downloading": "डाउनलोड भ रहल अछि {percent}%",
     "downloadStopped": "डाउनलोड रुकि गेल",
     "updateAvailable": "अपडेट उपलब्ध अछि",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "श्रृंखलाक पोस्टर",
     "videosHeading": "वीडियो सभ",
     "detailsLoadError": "पूरा विवरण लोड नहि भ सकल।",
+    "languagesTitle": "वीडियोक भाषा",
     "searchLanguagesPlaceholder": "भाषा खोजू…",
     "searchLanguagesAriaLabel": "भाषा खोजू",
     "noLanguagesFound": "कोनो भाषा नहि भेटल",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} सँ जारी राखू",
     "unknownLanguage": "अज्ञात",
     "downloadedStatus": "डाउनलोड भेल",
+    "languagesTitle": "वीडियोक भाषा",
     "searchLanguagesPlaceholder": "भाषा खोजू…",
     "searchLanguagesAriaLabel": "भाषा खोजू",
     "noLanguagesFound": "कोनो भाषा नहि भेटल",
@@ -773,5 +778,8 @@
     "send": "पठाउ",
     "sending": "पठाओल जा रहल अछि…",
     "sendAriaLabel": "प्रतिपुष्टि पठाउ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ऐप कास्ट डिवाइस ताकबाक लेल अहाँक स्थानीय नेटवर्कक उपयोग करैत अछि, जाहिसँ अहाँ अपन टीवी पर वीडियो चला सकी।"
   }
 }

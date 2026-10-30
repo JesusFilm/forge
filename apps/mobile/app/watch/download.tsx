@@ -175,6 +175,7 @@ export default function DownloadSheetRoute() {
 
   return (
     <DownloadSheetContent
+      testID="screen-watch-download"
       videoTitle={video.title}
       duration={video.duration}
       languageName={activeVariant?.languageName ?? null}

@@ -9,6 +9,9 @@ import {
   createStudioInteractiveClient,
   StudioTransportError,
 } from "@/backend/studio-interactive"
+import { libraryArtwork } from "@/services/studio-library-artwork"
+import { getCmsGateway } from "@/cms/gateway"
+import { getMux } from "@/services/mux"
 
 export async function POST(request: Request) {
   const actor = await authenticateStudioRequest(request)
@@ -16,7 +19,23 @@ export async function POST(request: Request) {
   try {
     const raw = new TextDecoder().decode(await readStudioBody(request, 524288))
     const { action, input } = studioRpcSchema.parse(JSON.parse(raw))
-    const result = await createStudioInteractiveClient(actor)(action, input)
+    let result = await createStudioInteractiveClient(actor)(action, input)
+    if (action === "search" && Array.isArray(result) && result.length) {
+      const artwork = await libraryArtwork(
+        result,
+        (ids) => getCmsGateway().getVideosForEnrichment(ids, true),
+        (id) =>
+          getMux().jwt.signPlaybackId(id, {
+            type: "thumbnail",
+            expiration: "2h",
+            params: { width: "320", time: "0" },
+          }),
+      )
+      result = result.map((row) => ({
+        ...row,
+        thumbnailUrl: artwork[row.videoId],
+      }))
+    }
     return Response.json(
       { result },
       { headers: { "cache-control": "no-store" } },

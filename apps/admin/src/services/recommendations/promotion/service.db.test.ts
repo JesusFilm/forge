@@ -119,7 +119,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.end()
     })
 
-    it("retains exact approval audit but rejects legacy hybrid activation and advancement", async () => {
+    it("refuses new behavioral approval, activation and advancement without mutating historical audit", async () => {
       const service = new RecommendationPromotionService({
         prisma,
         now: () => now,
@@ -133,19 +133,16 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           manifestId: "multi-interest-profile-pilot-v1",
           maxExposureBps: 1250,
         }),
-      ).rejects.toThrow(/required evidence/i)
+      ).rejects.toThrow("behavioral_recommendations_retired")
 
-      const firstApproval = await service.approveBoundedStage({
-        actor,
-        manifestId: "semantic-profile-hybrid-v1",
-        maxExposureBps: 1250,
-      })
-      const replayedApproval = await service.approveBoundedStage({
-        actor,
-        manifestId: "semantic-profile-hybrid-v1",
-        maxExposureBps: 1250,
-      })
-      expect(replayedApproval.id).toBe(firstApproval.id)
+      for (let attempt = 0; attempt < 2; attempt++)
+        await expect(
+          service.approveBoundedStage({
+            actor,
+            manifestId: "semantic-profile-hybrid-v1",
+            maxExposureBps: 1250,
+          }),
+        ).rejects.toThrow("behavioral_recommendations_retired")
 
       for (const action of ["activate_bounded", "confirm_permanent"] as const)
         await expect(
@@ -154,12 +151,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             action,
             expectedPointerGeneration: 1,
             targetManifestId: "semantic-profile-hybrid-v1",
-            approvalId: firstApproval.id,
+            approvalId: null,
             evaluationId: null,
             exposureCeilingBps: action === "confirm_permanent" ? 10000 : 1250,
             recentAuthentication: true,
           }),
-        ).rejects.toThrow("governed study")
+        ).rejects.toThrow("behavioral_recommendations_retired")
       expect(await prisma.recommendationPromotionRun.count()).toBe(0)
       expect(
         await prisma.recommendationPromotionPointer.findUnique({
@@ -180,7 +177,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await prisma.recommendationPromotionEvent.count({
           where: { eventType: "APPROVAL_RECORDED" },
         }),
-      ).toBe(1)
+      ).toBe(0)
       expect(
         await prisma.recommendationPromotionEvent.count({
           where: { eventType: "ACTIVATION_EFFECTIVE" },

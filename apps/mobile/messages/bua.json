@@ -138,6 +138,7 @@
     "versesAriaValue": "Шүлэгүүд {first} — {last}, бүгэдэ {total}, {chapter}",
     "demoVerse": "Удаадахи шүлэгтэ дээшээ гүйлгэгты",
     "demoChapter": "Удаадахи бүлэгтэ зүүн тээшэ гүйлгэгты",
+    "demoChapterRtl": "Удаадахи бүлэгтэ баруун тээшэ гүйлгэгты",
     "demoSkip": "Алгасахын тула дарагты",
     "demoSkipAriaLabel": "Гүйлгэлгын харуулга алгасаха",
     "selectVerseAriaHint": "Энэ шүлэг шэлэхын тула хоёр дахин дарагты",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Ном шэлэхэ",
+    "chooseChapter": "Бүлэг шэлэхэ",
+    "chooseVerse": "Шүлэг шэлэхэ",
     "oldTestament": "Хуушан Хэлсээн",
     "newTestament": "Шэнэ Хэлсээн",
     "books": "Номууд",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# номһоо {count}} other {# номһоо {count}}}",
     "twoNames": "{first} болон {second}",
     "threeNames": "{first}, {second} болон {third}",
-    "onDevice": "Энэ түхеэрэмжэ дээрэ",
+    "downloaded": "Татагдаһан",
     "downloading": "Татажа байна: {percent}%",
     "downloadStopped": "Таталга зогсобо",
     "updateAvailable": "Шэнэлэлгэ бии",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалай постер",
     "videosHeading": "Видеонууд",
     "detailsLoadError": "Дэлгэрэнгы мэдээсэл ачаалагдаагүй.",
+    "languagesTitle": "Видеоной хэлэн",
     "searchLanguagesPlaceholder": "Хэлэнүүд бэдэрхэ…",
     "searchLanguagesAriaLabel": "Хэлэнүүд бэдэрхэ",
     "noLanguagesFound": "Хэлэн олдоогүй",
@@ -502,6 +506,7 @@
     "resumeAt": "Үргэлжэлүүлхэ: {time}",
     "unknownLanguage": "Мэдэгдэхэгүй хэлэн",
     "downloadedStatus": "Татагдаһан",
+    "languagesTitle": "Видеоной хэлэн",
     "searchLanguagesPlaceholder": "Хэлэнүүд бэдэрхэ…",
     "searchLanguagesAriaLabel": "Хэлэнүүд бэдэрхэ",
     "noLanguagesFound": "Хэлэн олдоогүй",
@@ -773,5 +778,8 @@
     "send": "Эльгээхэ",
     "sending": "Эльгээжэ байна…",
     "sendAriaLabel": "Һанал эльгээхэ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Программа дамжуулгын түхеэрэмжэнүүдые олохын тула таны дотоодо һүлжээе хэрэглэнэ, тиигэжэ та видеонуудые телевизор дээрээ наадуулжа болохот."
   }
 }

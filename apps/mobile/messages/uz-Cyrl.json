@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-оятдан {last}-оятгача, жами {total} та, {chapter}",
     "demoVerse": "Кейинги оят учун юқорига суринг",
     "demoChapter": "Кейинги боб учун чапга суринг",
+    "demoChapterRtl": "Кейинги боб учун ўнгга суринг",
     "demoSkip": "Ўтказиб юбориш учун босинг",
     "demoSkipAriaLabel": "Суриш намойишини ўтказиб юбориш",
     "selectVerseAriaHint": "Бу оятни танлаш учун икки марта босинг",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китобни танланг",
+    "chooseChapter": "Бобни танланг",
+    "chooseVerse": "Оятни танланг",
     "oldTestament": "Эски Аҳд",
     "newTestament": "Янги Аҳд",
     "books": "Китоблар",
@@ -193,7 +196,7 @@
     "someBooks": "Жами {total, plural, other {#}} та китобдан {count} таси",
     "twoNames": "{first} ва {second}",
     "threeNames": "{first}, {second} ва {third}",
-    "onDevice": "Шу қурилмада",
+    "downloaded": "Юклаб олинган",
     "downloading": "Юкланмоқда: {percent}%",
     "downloadStopped": "Юклаб олиш тўхтади",
     "updateAvailable": "Янгиланиш мавжуд",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Серия постери",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Тўлиқ маълумотни юклаб бўлмади.",
+    "languagesTitle": "Видео тили",
     "searchLanguagesPlaceholder": "Тилларни қидириш…",
     "searchLanguagesAriaLabel": "Тилларни қидириш",
     "noLanguagesFound": "Тил топилмади",
@@ -502,6 +506,7 @@
     "resumeAt": "Давом эттириш: {time}",
     "unknownLanguage": "Номаълум тил",
     "downloadedStatus": "Юклаб олинган",
+    "languagesTitle": "Видео тили",
     "searchLanguagesPlaceholder": "Тилларни қидириш…",
     "searchLanguagesAriaLabel": "Тилларни қидириш",
     "noLanguagesFound": "Тил топилмади",
@@ -773,5 +778,8 @@
     "send": "Юбориш",
     "sending": "Юборилмоқда…",
     "sendAriaLabel": "Фикр-мулоҳаза юбориш"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Илова узатиш қурилмаларини топиш учун маҳаллий тармоғингиздан фойдаланади, шунда видеоларни телевизорингизда ижро эта оласиз."
   }
 }

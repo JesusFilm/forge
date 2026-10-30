@@ -64,7 +64,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "600",
     letterSpacing: 2,
     marginBottom: 4,

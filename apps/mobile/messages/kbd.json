@@ -138,6 +138,7 @@
     "versesAriaValue": "Стиххэр {first} щегъэжьауэ {last} пщӀондэ, псори {total}, {chapter}",
     "demoVerse": "КъыкӀэлъыкӀуэ стихыр плъагъуну, ищхьэкӀэ гъэкӀуэ",
     "demoChapter": "КъыкӀэлъыкӀуэ едзыгъуэр плъагъуну, сэмэгумкӀэ гъэкӀуэ",
+    "demoChapterRtl": "КъыкӀэлъыкӀуэ едзыгъуэр плъагъуну, ижьымкӀэ гъэкӀуэ",
     "demoSkip": "БлэкӀыну, теӀэ",
     "demoSkipAriaLabel": "ГъэкӀуэныр зэрыщӀыр къэзыгъэлъагъуэр блэкӀын",
     "selectVerseAriaHint": "Мы стихыр къыхэхыну, тӀэу теӀэ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Тхылъ къыхэхын",
+    "chooseChapter": "Едзыгъуэ къыхэхын",
+    "chooseVerse": "Стих къыхэхын",
     "oldTestament": "Уэсят Жьы",
     "newTestament": "Уэсят ЩӀэ",
     "books": "Тхылъхэр",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {тхылъ #-м щыщу {count}} other {тхылъ #-м щыщу {count}}}",
     "twoNames": "{first} икӀи {second}",
     "threeNames": "{first}, {second} икӀи {third}",
-    "onDevice": "Мы Ӏэмэпсымэм итщ",
+    "downloaded": "КъыдэкӀащ",
     "downloading": "КъыдокӀ {percent}%",
     "downloadStopped": "КъыдэкӀыныгъэр увыӀащ",
     "updateAvailable": "Версие щӀэ щыӀэщ",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалым и постер",
     "videosHeading": "Видеохэр",
     "detailsLoadError": "Хъыбар псор къызэӀухын хъуакъым.",
+    "languagesTitle": "Видеом и бзэр",
     "searchLanguagesPlaceholder": "Бзэхэм лъыхъуэн…",
     "searchLanguagesAriaLabel": "Бзэхэм лъыхъуэн",
     "noLanguagesFound": "Бзэ къэгъуэтакъым",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} щегъэжьауэ пыщэн",
     "unknownLanguage": "Бзэ ямыщӀэ",
     "downloadedStatus": "КъыдэкӀащ",
+    "languagesTitle": "Видеом и бзэр",
     "searchLanguagesPlaceholder": "Бзэхэм лъыхъуэн…",
     "searchLanguagesAriaLabel": "Бзэхэм лъыхъуэн",
     "noLanguagesFound": "Бзэ къэгъуэтакъым",
@@ -773,5 +778,8 @@
     "send": "Гъэхьын",
     "sending": "Догъэхь…",
     "sendAriaLabel": "Уи еплъыкӀэр гъэхьын"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Телевизорым къыщыгъэлъэгъуэн Ӏэмэпсымэхэм лъыхъуэн папщӀэ программэм уи локальнэ сетыр къегъэсэбэп, абы къыхэкӀыу видеохэр уи телевизорым къыщыбгъэлъагъуэ хъунущ."
   }
 }

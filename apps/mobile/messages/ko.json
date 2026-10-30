@@ -138,6 +138,7 @@
     "versesAriaValue": "전체 {total}절 중 {first}절부터 {last}절까지, {chapter}",
     "demoVerse": "위로 스와이프하면 다음 절로 넘어갑니다",
     "demoChapter": "왼쪽으로 스와이프하면 다음 장으로 넘어갑니다",
+    "demoChapterRtl": "오른쪽으로 스와이프하면 다음 장으로 넘어갑니다",
     "demoSkip": "탭하여 건너뛰기",
     "demoSkipAriaLabel": "스와이프 안내 건너뛰기",
     "selectVerseAriaHint": "이 절을 선택하려면 두 번 탭하세요",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "책 선택",
+    "chooseChapter": "장 선택",
+    "chooseVerse": "절 선택",
     "oldTestament": "구약",
     "newTestament": "신약",
     "books": "책",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, other {#권}} 중 {count}권",
     "twoNames": "{first} 및 {second}",
     "threeNames": "{first}, {second} 및 {third}",
-    "onDevice": "이 기기에 저장됨",
+    "downloaded": "다운로드됨",
     "downloading": "다운로드 중 {percent}%",
     "downloadStopped": "다운로드 중단됨",
     "updateAvailable": "업데이트 가능",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "시리즈 포스터",
     "videosHeading": "동영상",
     "detailsLoadError": "상세 정보를 모두 불러오지 못했습니다.",
+    "languagesTitle": "동영상 언어",
     "searchLanguagesPlaceholder": "언어 검색…",
     "searchLanguagesAriaLabel": "언어 검색",
     "noLanguagesFound": "언어를 찾을 수 없습니다",
@@ -502,6 +506,7 @@
     "resumeAt": "{time}부터 이어서 보기",
     "unknownLanguage": "알 수 없음",
     "downloadedStatus": "다운로드됨",
+    "languagesTitle": "동영상 언어",
     "searchLanguagesPlaceholder": "언어 검색…",
     "searchLanguagesAriaLabel": "언어 검색",
     "noLanguagesFound": "언어를 찾을 수 없습니다",
@@ -773,5 +778,8 @@
     "send": "보내기",
     "sending": "보내는 중…",
     "sendAriaLabel": "의견 보내기"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "앱에서 로컬 네트워크를 사용해 전송 가능한 기기를 찾아 TV에서 동영상을 재생할 수 있게 합니다."
   }
 }

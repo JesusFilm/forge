@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} އާޔަތުގެ ތެރެއިން {first} އިން {last} އަށް، {chapter}",
     "demoVerse": "ދެން އޮތް އާޔަތަށް މައްޗަށް ސްވައިޕް ކުރޭ",
     "demoChapter": "ދެން އޮތް ބާބަށް ވާތްފަރާތަށް ސްވައިޕް ކުރޭ",
+    "demoChapterRtl": "ދެން އޮތް ބާބަށް ކަނާތްފަރާތަށް ސްވައިޕް ކުރޭ",
     "demoSkip": "ދޫކޮށްލުމަށް ޓެޕް ކުރޭ",
     "demoSkipAriaLabel": "ސްވައިޕް ދައްކާލުން ދޫކޮށްލާ",
     "selectVerseAriaHint": "މި އާޔަތް ހޮވުމަށް ދެ ފަހަރު ޓެޕް ކުރޭ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ފޮތެއް ހޮވާ",
+    "chooseChapter": "ބާބެއް ހޮވާ",
+    "chooseVerse": "އާޔަތެއް ހޮވާ",
     "oldTestament": "ބާ ޢަހުދު",
     "newTestament": "އާ ޢަހުދު",
     "books": "ފޮތްތައް",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# ފޮތުގެ ތެރެއިން {count}} other {# ފޮތުގެ ތެރެއިން {count}}}",
     "twoNames": "{first} އާއި {second}",
     "threeNames": "{first}، {second} އަދި {third}",
-    "onDevice": "މި ޑިވައިސްގައި",
+    "downloaded": "ޑައުންލޯޑް ކުރެވިއްޖެ",
     "downloading": "ޑައުންލޯޑް ކުރަނީ {percent}%",
     "downloadStopped": "ޑައުންލޯޑް ހުއްޓިއްޖެ",
     "updateAvailable": "އަޕްޑޭޓެއް ލިބެން އެބައޮތް",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ސީރީޒްގެ ޕޯސްޓަރު",
     "videosHeading": "ވީޑިއޯތައް",
     "detailsLoadError": "ފުރިހަމަ ތަފްސީލު ލޯޑް ނުކުރެވުނު.",
+    "languagesTitle": "ވީޑިއޯގެ ބަސް",
     "searchLanguagesPlaceholder": "ބަސްތައް ހޯދާ…",
     "searchLanguagesAriaLabel": "ބަސްތައް ހޯދާ",
     "noLanguagesFound": "އެއްވެސް ބަހެއް ނުފެނުނު",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} އިން ކުރިއަށް ގެންދޭ",
     "unknownLanguage": "ނޭނގޭ",
     "downloadedStatus": "ޑައުންލޯޑް ކުރެވިއްޖެ",
+    "languagesTitle": "ވީޑިއޯގެ ބަސް",
     "searchLanguagesPlaceholder": "ބަސްތައް ހޯދާ…",
     "searchLanguagesAriaLabel": "ބަސްތައް ހޯދާ",
     "noLanguagesFound": "އެއްވެސް ބަހެއް ނުފެނުނު",
@@ -773,5 +778,8 @@
     "send": "ފޮނުވާ",
     "sending": "ފޮނުވަނީ…",
     "sendAriaLabel": "ފީޑްބެކް ފޮނުވާ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "އެޕުން ތިބާގެ ލޯކަލް ނެޓްވޯކް ބޭނުން ކުރަނީ ކާސްޓް ޑިވައިސްތައް ހޯދުމަށް، ތިބާގެ ޓީވީގައި ވީޑިއޯތައް ޕްލޭ ކުރެވޭނެ ގޮތަށް."
   }
 }

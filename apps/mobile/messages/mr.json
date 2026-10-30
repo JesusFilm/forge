@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पैकी वचने {first} ते {last}, {chapter}",
     "demoVerse": "पुढील वचनासाठी वर स्वाइप करा",
     "demoChapter": "पुढील अध्यायासाठी डावीकडे स्वाइप करा",
+    "demoChapterRtl": "पुढील अध्यायासाठी उजवीकडे स्वाइप करा",
     "demoSkip": "वगळण्यासाठी टॅप करा",
     "demoSkipAriaLabel": "स्वाइपचे प्रात्यक्षिक वगळा",
     "selectVerseAriaHint": "हे वचन निवडण्यासाठी दोनदा टॅप करा",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "पुस्तक निवडा",
+    "chooseChapter": "अध्याय निवडा",
+    "chooseVerse": "वचन निवडा",
     "oldTestament": "जुना करार",
     "newTestament": "नवा करार",
     "books": "पुस्तके",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# पुस्तकापैकी} other {# पुस्तकांपैकी}} {count}",
     "twoNames": "{first} आणि {second}",
     "threeNames": "{first}, {second} आणि {third}",
-    "onDevice": "या डिव्हाइसवर आहे",
+    "downloaded": "डाउनलोड झाले",
     "downloading": "डाउनलोड होत आहे {percent}%",
     "downloadStopped": "डाउनलोड थांबले",
     "updateAvailable": "अपडेट उपलब्ध",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "मालिकेचे पोस्टर",
     "videosHeading": "व्हिडिओ",
     "detailsLoadError": "संपूर्ण तपशील लोड करता आले नाहीत.",
+    "languagesTitle": "व्हिडिओची भाषा",
     "searchLanguagesPlaceholder": "भाषा शोधा…",
     "searchLanguagesAriaLabel": "भाषा शोधा",
     "noLanguagesFound": "कोणतीही भाषा सापडली नाही",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} पासून पुन्हा सुरू करा",
     "unknownLanguage": "अज्ञात",
     "downloadedStatus": "डाउनलोड झाले",
+    "languagesTitle": "व्हिडिओची भाषा",
     "searchLanguagesPlaceholder": "भाषा शोधा…",
     "searchLanguagesAriaLabel": "भाषा शोधा",
     "noLanguagesFound": "कोणतीही भाषा सापडली नाही",
@@ -773,5 +778,8 @@
     "send": "पाठवा",
     "sending": "पाठवत आहे…",
     "sendAriaLabel": "अभिप्राय पाठवा"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ॲप कास्ट डिव्हाइस शोधण्यासाठी तुमचे स्थानिक नेटवर्क वापरते, जेणेकरून तुम्ही तुमच्या टीव्हीवर व्हिडिओ प्ले करू शकाल."
   }
 }

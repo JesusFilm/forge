@@ -138,6 +138,7 @@
     "versesAriaValue": "Versíkulonan {first} te {last} di {total}, {chapter}",
     "demoVerse": "Lastra pa ariba pa e próksimo versíkulo",
     "demoChapter": "Lastra pa man robes pa e próksimo kapítulo",
+    "demoChapterRtl": "Lastra pa man drechi pa e próksimo kapítulo",
     "demoSkip": "Toka pa salta",
     "demoSkipAriaLabel": "Salta e demonstrashon di lastra",
     "selectVerseAriaHint": "Toka dos biaha pa selektá e versíkulo aki",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Skohe un buki",
+    "chooseChapter": "Skohe un kapítulo",
+    "chooseVerse": "Skohe un versíkulo",
     "oldTestament": "Testamento Bieu",
     "newTestament": "Testamento Nobo",
     "books": "Bukinan",
@@ -193,7 +196,7 @@
     "someBooks": "{count} di {total, plural, one {# buki} other {# buki}}",
     "twoNames": "{first} i {second}",
     "threeNames": "{first}, {second} i {third}",
-    "onDevice": "Riba e aparato aki",
+    "downloaded": "Bahá",
     "downloading": "Ta baha {percent}%",
     "downloadStopped": "Download a para",
     "updateAvailable": "Aktualisashon disponibel",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Afiche di serie",
     "videosHeading": "Videonan",
     "detailsLoadError": "No por a karga tur detaye.",
+    "languagesTitle": "Idioma di e video",
     "searchLanguagesPlaceholder": "Buska idioma…",
     "searchLanguagesAriaLabel": "Buska idioma",
     "noLanguagesFound": "No a haña ningun idioma",
@@ -502,6 +506,7 @@
     "resumeAt": "Sigui na {time}",
     "unknownLanguage": "Deskonosí",
     "downloadedStatus": "Bahá",
+    "languagesTitle": "Idioma di e video",
     "searchLanguagesPlaceholder": "Buska idioma…",
     "searchLanguagesAriaLabel": "Buska idioma",
     "noLanguagesFound": "No a haña ningun idioma",
@@ -773,5 +778,8 @@
     "send": "Manda",
     "sending": "Ta manda…",
     "sendAriaLabel": "Manda komentario"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "E app ta usa bo red lokal pa haña aparatonan pa manda na TV, asina bo por mira video riba bo TV."
   }
 }

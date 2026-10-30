@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Az alkalmazás a helyi hálózatodat használja az átküldésre alkalmas eszközök megtalálásához, hogy videókat játszhass le a tévéden."
+  }
+}

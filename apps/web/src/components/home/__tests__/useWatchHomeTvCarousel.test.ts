@@ -195,4 +195,15 @@ describe("watch home TV carousel advance duration", () => {
       WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
     )
   })
+
+  // A refused autoplay leaves the poster on screen, so the turn is an image
+  // slide's turn. No ended-grace: there is no `ended` to wait for.
+  it("gives a refused video slide the image-slide turn with no grace", () => {
+    expect(watchHomeTvSlideDurationSeconds(videoSlide(120), 480, true)).toBe(
+      WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+    )
+    expect(watchHomeTvAdvanceBackstopSeconds(videoSlide(120), 480, true)).toBe(
+      WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+    )
+  })
 })

@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Uygulama, yayın yapılabilecek cihazları bulmak için yerel ağınızı kullanır; böylece televizyonunuzda video oynatabilirsiniz."
+  }
+}

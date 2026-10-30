@@ -138,6 +138,7 @@
     "versesAriaValue": "Mavesi {first} mpaka {last} mwa {total}, {chapter}",
     "demoVerse": "Sunthani mmwamba kuti mupite ku vesi lotsatira",
     "demoChapter": "Sunthani kumanzere kuti mupite ku mutu wotsatira",
+    "demoChapterRtl": "Sunthani kumanja kuti mupite ku mutu wotsatira",
     "demoSkip": "Dinani kuti mudumphe",
     "demoSkipAriaLabel": "Dumphani chionetsero cha kusuntha",
     "selectVerseAriaHint": "Dinani kawiri kuti musankhe vesili",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Sankhani buku",
+    "chooseChapter": "Sankhani mutu",
+    "chooseVerse": "Sankhani vesi",
     "oldTestament": "Chipangano Chakale",
     "newTestament": "Chipangano Chatsopano",
     "books": "Mabuku",
@@ -193,7 +196,7 @@
     "someBooks": "{count} mwa {total, plural, one {buku #} other {mabuku #}}",
     "twoNames": "{first} ndi {second}",
     "threeNames": "{first}, {second} ndi {third}",
-    "onDevice": "Pa chipangizochi",
+    "downloaded": "Yatsitsidwa",
     "downloading": "Kutsitsa {percent}%",
     "downloadStopped": "Kutsitsa kwayima",
     "updateAvailable": "Zosintha zilipo",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Chithunzi cha mndandanda",
     "videosHeading": "Mavidiyo",
     "detailsLoadError": "Sitinathe kutsegula zambiri zonse.",
+    "languagesTitle": "Chinenero cha vidiyo",
     "searchLanguagesPlaceholder": "Sakani zinenero...",
     "searchLanguagesAriaLabel": "Sakani zinenero",
     "noLanguagesFound": "Palibe zinenero zopezeka",
@@ -502,6 +506,7 @@
     "resumeAt": "Pitirizani pa {time}",
     "unknownLanguage": "Chosadziwika",
     "downloadedStatus": "Yatsitsidwa",
+    "languagesTitle": "Chinenero cha vidiyo",
     "searchLanguagesPlaceholder": "Sakani zinenero...",
     "searchLanguagesAriaLabel": "Sakani zinenero",
     "noLanguagesFound": "Palibe zinenero zopezeka",
@@ -773,5 +778,8 @@
     "send": "Tumizani",
     "sending": "Kutumiza…",
     "sendAriaLabel": "Tumizani maganizo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Pulogalamuyi imagwiritsa ntchito netiweki ya pafupi panu kufufuza zipangizo zomwe mungatumizeko mavidiyo, kuti muthe kusewera mavidiyo pa TV yanu."
   }
 }

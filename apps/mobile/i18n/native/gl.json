@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "A app usa a túa rede local para atopar dispositivos nos que emitir, de xeito que poidas reproducir vídeos no teu televisor."
+  }
+}

@@ -1,6 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { Check, ChevronDown, SlidersHorizontal, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -59,6 +66,80 @@ const ADDED_ORDER: readonly InventoryAddedWindow[] = ["60d", "6m", "12m"]
 
 const EMPTY_STATE: FilterState = { length: null, type: null, added: null }
 
+// URL query keys. Filters live in the query string so a filtered view survives
+// reload, sharing and back/forward. The route stays statically cached: the
+// query is read through `useSyncExternalStore` (client snapshot is
+// `window.location.search`, server snapshot is empty), never the server
+// `searchParams` prop, so the static HTML is identical for every query. Writes
+// use `history.replaceState` so no RSC refetch of the ~7 MB page runs. Passing
+// `window.history.state` back keeps Next's `__NA` marker, so Next's patched
+// `replaceState` skips its router sync (same idiom as WatchPageClient): no
+// router transition, no per-filter page_view from `useSearchParams` consumers.
+// Nothing on this static page commits router state while it is open, so the
+// router's canonical URL is not re-applied over the filtered one.
+const PARAM_LENGTH = "length"
+const PARAM_TYPE = "type"
+const PARAM_ADDED = "added"
+
+function pick<T extends string>(
+  params: URLSearchParams,
+  key: string,
+  allowed: readonly T[],
+): T | null {
+  const raw = params.get(key)
+  return allowed.find((value) => value === raw) ?? null
+}
+
+function readState(search: string): FilterState {
+  const params = new URLSearchParams(search)
+  return {
+    length: pick(params, PARAM_LENGTH, LENGTH_ORDER),
+    type: pick(params, PARAM_TYPE, TYPE_ORDER),
+    added: pick(params, PARAM_ADDED, ADDED_ORDER),
+  }
+}
+
+function sameState(a: FilterState, b: FilterState): boolean {
+  return a.length === b.length && a.type === b.type && a.added === b.added
+}
+
+function writeState(state: FilterState) {
+  // Only write when the URL would actually change, so mounting never adds a
+  // history operation. Unrelated params and the hash are preserved.
+  if (sameState(readState(window.location.search), state)) return
+  const params = new URLSearchParams(window.location.search)
+  for (const [key, value] of [
+    [PARAM_LENGTH, state.length],
+    [PARAM_TYPE, state.type],
+    [PARAM_ADDED, state.added],
+  ] as const) {
+    if (value) params.set(key, value)
+    else params.delete(key)
+  }
+  const query = params.toString()
+  const url = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+  window.history.replaceState(window.history.state, "", url)
+  window.dispatchEvent(new Event(FILTER_URL_EVENT))
+}
+
+// The URL is the single source of truth, read through a sync external store:
+// the server snapshot is "" (no filters, matching the static HTML), and the
+// client snapshot is `location.search` after hydration. `replaceState` does not
+// fire `popstate`, so our own writes announce themselves on FILTER_URL_EVENT.
+const FILTER_URL_EVENT = "watch-inventory-filters-url"
+
+function subscribeToUrl(onChange: () => void) {
+  window.addEventListener("popstate", onChange)
+  window.addEventListener(FILTER_URL_EVENT, onChange)
+  return () => {
+    window.removeEventListener("popstate", onChange)
+    window.removeEventListener(FILTER_URL_EVENT, onChange)
+  }
+}
+
+const getSearch = () => window.location.search
+const getServerSearch = () => ""
+
 function matches(element: HTMLElement, state: FilterState): boolean {
   if (state.length && element.dataset.invLength !== state.length) return false
   if (state.type && element.dataset.invType !== state.type) return false
@@ -80,7 +161,19 @@ export function InventoryFilterShell({
   const t = useTranslations("LanguageInventory")
   const videoLabels = useTranslations("VideoLabels")
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [state, setState] = useState<FilterState>(EMPTY_STATE)
+  const search = useSyncExternalStore(
+    subscribeToUrl,
+    getSearch,
+    getServerSearch,
+  )
+  const state = useMemo(() => readState(search), [search])
+  const setState = useCallback(
+    (update: FilterState | ((current: FilterState) => FilterState)) => {
+      const current = readState(window.location.search)
+      writeState(typeof update === "function" ? update(current) : update)
+    },
+    [],
+  )
   const [counts, setCounts] = useState<{
     visible: number
     total: number

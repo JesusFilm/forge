@@ -22,7 +22,6 @@ import {
 } from "@/services/scene-recommendations.service"
 import {
   DELIVERY_RETRIEVAL_BUDGET_MS,
-  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   MAX_DELIVERY_ITEMS,
   MAX_DELIVERY_RESPONSE_BYTES,
   RECOMMENDATION_CONTRACTS,
@@ -31,21 +30,16 @@ import {
 import { DELIVERY_CAPABILITY_LIFETIME_SECONDS } from "./token.service"
 import type { RecommendationAdmissionResult } from "./admission"
 import { assertWebRecommendationCaller } from "./caller"
-import { RecommendationInternalStateError } from "./errors"
 import {
   type SemanticCandidatePoolItem,
   CANDIDATE_ELIGIBILITY_VERSION,
-  HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
   SEMANTIC_CANDIDATE_GENERATOR_VERSION,
-  adaptSemanticCandidates,
 } from "./candidate"
 import {
   runCandidatePlatform,
   runSemanticCandidatePlatform,
   type CandidatePlatformResult,
 } from "./orchestration"
-import type { ExperimentAssignmentResolution } from "./experiment/assignment"
-import type { RecommendationRecentContext } from "./recent-context.service"
 
 import type {
   DeliveryDependencies,
@@ -65,11 +59,9 @@ import {
   withinDeadline,
 } from "./delivery-runtime"
 import {
-  annotateComposedEvidence,
   appendSourceFailureEvidence,
   failedCandidatePlatform,
   lastKnownGoodSemanticCandidates,
-  mergeBoundedHybridNominations,
   nullableDigest,
   preparedCandidatesFromPlatform,
   recommendationShortfallReason,
@@ -78,24 +70,6 @@ import {
 } from "./delivery-candidate-mapping"
 import { issueRecommendationDelivery } from "./delivery-issuance"
 import { SEEDED_CURATED_FALLBACK_VERSION } from "./curated-fallback"
-import type { ViewingModeAffinity } from "./viewing-mode"
-import { lockViewingModeAuthority } from "./viewing-mode.service"
-import { lockProfileUsefulnessAssignment } from "./experiment/usefulness-routing"
-import {
-  HYBRID_PERSONALIZED_MANIFEST_ID,
-  INCUMBENT_HYBRID_MANIFEST_ID,
-  INCUMBENT_HYBRID_AA_MANIFEST_ID,
-  COWATCH_MMR_TRIAL_MANIFEST_ID,
-} from "./promotion/manifest"
-import {
-  lockActiveStudyAuthorityForIssuance,
-  type ActiveStudyAuthority,
-} from "./experiment/active-study-authority"
-import type { OwnerDeliveryAuthority } from "./delivery-owner.service"
-import {
-  lockOwnerProfileForIssuance,
-  lockOwnerReleaseForIssuance,
-} from "./promotion/owner-authority"
 import { nominationEligibilityReasons } from "./eligibility"
 import { servedSnapshotCreate } from "./served-item-payload"
 import {
@@ -225,7 +199,10 @@ export class RecommendationDeliveryService {
   ): Promise<SemanticRecommendationDelivery> {
     const nowMilliseconds = this.deps.nowMilliseconds ?? Date.now
     const deliveryStartedAt = nowMilliseconds()
-    const serviceDeadlineAt = deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS
+    const serviceDeadlineAt = Math.min(
+      deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS,
+      input.deadlineAt ?? Number.POSITIVE_INFINITY,
+    )
     const candidateDeadlineAt = serviceDeadlineAt - DELIVERY_ISSUANCE_RESERVE_MS
     const issuanceDeadlineAt = serviceDeadlineAt - DELIVERY_RESPONSE_RESERVE_MS
     assertWebRecommendationCaller(input.caller)
@@ -306,133 +283,6 @@ export class RecommendationDeliveryService {
         "unavailable"
       const retrievalStartedAt = nowMilliseconds()
       const now = this.deps.now?.() ?? new Date()
-      const profileTokenDigestPromise = (async (): Promise<string | null> => {
-        if (
-          !input.consentReceiptDigest ||
-          !input.profileTokenDigest ||
-          !/^[a-f0-9]{64}$/.test(input.consentReceiptDigest) ||
-          !/^[a-f0-9]{64}$/.test(input.profileTokenDigest) ||
-          !this.deps.authorizeProfile
-        ) {
-          return null
-        }
-        try {
-          const authorizationDeadlineAt = Math.min(
-            candidateDeadlineAt,
-            deliveryStartedAt + 450,
-          )
-          return (await withinDeadline(
-            () =>
-              this.deps.authorizeProfile!({
-                sessionDigest: input.sessionDigest,
-                consentReceiptDigest: input.consentReceiptDigest!,
-                profileTokenDigest: input.profileTokenDigest!,
-                now,
-                deadlineAt: authorizationDeadlineAt,
-              }),
-            authorizationDeadlineAt,
-            nowMilliseconds,
-          ))
-            ? input.profileTokenDigest
-            : null
-        } catch {
-          return null
-        }
-      })()
-      // Required history runs alongside optional personalization. Settle failures
-      // immediately so delayed profile work cannot create unhandled rejections.
-      const recentContextPromise = profileTokenDigestPromise.then(
-        async (profileTokenDigest) => {
-          try {
-            const context: RecommendationRecentContext = this.deps
-              .resolveRecentContext
-              ? await withinDeadline(
-                  () =>
-                    this.deps.resolveRecentContext!({
-                      sessionDigest: input.sessionDigest,
-                      profileTokenDigest,
-                      allowDurableProfileLinks: profileTokenDigest != null,
-                      locale,
-                      now,
-                      deadlineAt: candidateDeadlineAt,
-                    }),
-                  candidateDeadlineAt,
-                  nowMilliseconds,
-                )
-              : { videos: [] }
-            return { context, failureReason: null }
-          } catch (error) {
-            return {
-              context: { videos: [] },
-              failureReason:
-                error instanceof RecommendationRetrievalTimeoutError
-                  ? "recent_context_timeout"
-                  : "recent_context_unavailable",
-            }
-          }
-        },
-      )
-      const experimentPromise = profileTokenDigestPromise.then(
-        (profileTokenDigest) => {
-          if (profileTokenDigest != null) {
-            return { assignment: null, bypassReason: null }
-          }
-          return this.resolveExperiment(
-            {
-              ...input,
-              profileTokenDigest,
-              eligibleHuman: input.eligibleHuman !== false,
-            },
-            now,
-            candidateDeadlineAt,
-            nowMilliseconds,
-          )
-        },
-      )
-      const profilePromise = profileTokenDigestPromise.then(
-        async (profileTokenDigest) => {
-          if (profileTokenDigest == null) {
-            return { profile: null, failureReason: null, latencyMs: null }
-          }
-          const profileStartedAt = nowMilliseconds()
-          try {
-            const profile = this.deps.retrieveProfile
-              ? await withinDeadline(
-                  () =>
-                    this.deps.retrieveProfile!({
-                      sessionDigest: input.sessionDigest,
-                      profileTokenDigest,
-                      seedMediaId,
-                      locale,
-                      audioLanguageSlug,
-                      manifestId: manifest.id,
-                      deadlineAt: candidateDeadlineAt,
-                      now,
-                    }),
-                  candidateDeadlineAt,
-                  nowMilliseconds,
-                )
-              : null
-            return {
-              profile,
-              failureReason: profile ? null : ("profile_cold_start" as const),
-              latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
-            }
-          } catch (error) {
-            return {
-              profile: null,
-              failureReason:
-                error instanceof RecommendationRetrievalTimeoutError
-                  ? ("profile_retrieval_timeout" as const)
-                  : error instanceof RecommendationInternalStateError &&
-                      error.code === "profile_lineage_ineligible"
-                    ? ("profile_lineage_ineligible" as const)
-                    : ("profile_projection_unavailable" as const),
-              latencyMs: Math.max(0, nowMilliseconds() - profileStartedAt),
-            }
-          }
-        },
-      )
       const cached = readCandidatePool(poolKey)
       const hasLiveCachedPool =
         cached !== undefined && cached.expiresAt > nowMilliseconds()
@@ -520,159 +370,15 @@ export class RecommendationDeliveryService {
         }
       }
 
-      const [legacyExperiment, profileResolution, profileTokenDigest] =
-        await Promise.all([
-          experimentPromise,
-          profilePromise,
-          profileTokenDigestPromise,
-        ])
       const context = {
         surface: RECOMMENDATION_CONTRACTS.surface,
         purpose: "watch" as const,
         locale,
         audioLanguageSlug,
       }
-      let experiment = legacyExperiment
-      let profileComparison = false
-      let ownerAuthority: OwnerDeliveryAuthority | null = null
-      let ownerInfluence = false
-      if (
-        profileTokenDigest &&
-        input.eligibleHuman !== false &&
-        locale === "en" &&
-        audioLanguageSlug === "english"
-      ) {
-        const semanticNominations = adaptSemanticCandidates(
-          candidates,
-          context,
-        ).nominations
-        const eligible = (nomination: (typeof semanticNominations)[number]) =>
-          nomination.targetMediaId !== seedMediaId &&
-          nominationEligibilityReasons(nomination, context).length === 0
-        const eligibleForEnrollment =
-          profileResolution.profile?.projection.scope === "durable" &&
-          profileResolution.profile.projection.interestCount > 0 &&
-          semanticNominations.some(eligible) &&
-          profileResolution.profile.nominations.some(eligible)
-        if (
-          eligibleForEnrollment &&
-          input.clientDeliveryContract ===
-            COWATCH_MMR_CLIENT_DELIVERY_CONTRACT &&
-          input.consentReceiptDigest &&
-          this.deps.resolveOwnerAuthority
-        ) {
-          ownerAuthority = await withinDeadline(
-            () =>
-              this.deps.resolveOwnerAuthority!({
-                profileTokenDigest,
-                consentReceiptDigest: input.consentReceiptDigest!,
-                profileProjectionId: profileResolution.profile!.projection.id,
-                now: this.deps.now?.() ?? new Date(),
-                deadlineAt: candidateDeadlineAt,
-              }),
-            candidateDeadlineAt,
-            nowMilliseconds,
-          ).catch(() => null)
-        }
-        // Owner releases never create an assignment. Activation serializes with
-        // study activation and refuses overlapping authority for this cohort.
-        if (!ownerAuthority && this.deps.assignProfileExperiment) {
-          try {
-            experiment = await withinDeadline(
-              () =>
-                this.deps.assignProfileExperiment!({
-                  sessionDigest: input.sessionDigest,
-                  profileTokenDigest,
-                  eligibleForEnrollment,
-                  clientDeliveryContract: input.clientDeliveryContract,
-                  now,
-                  deadlineAt: candidateDeadlineAt,
-                }),
-              candidateDeadlineAt,
-              nowMilliseconds,
-            )
-          } catch {
-            experiment = {
-              assignment: null,
-              bypassReason: "assignment_unavailable",
-            }
-          }
-        }
-        profileComparison = experiment.assignment != null
-        if (profileComparison || ownerAuthority) {
-          // Both arms share the same history and measurement policies. Do not
-          // add sound-mode re-ranking to these exact semantic/hybrid manifests.
-          if (!this.deps.resolveRecentContext)
-            return unavailable("recent_context_unavailable")
-        }
-      }
-      let studyAuthority: ActiveStudyAuthority | null = null
-      if (profileComparison && experiment.assignment) {
-        if (this.deps.resolveStudyAuthority) {
-          studyAuthority = await withinDeadline(
-            () =>
-              this.deps.resolveStudyAuthority!({
-                assignment: experiment.assignment!,
-                deadlineAt: candidateDeadlineAt,
-                now: this.deps.now?.() ?? new Date(),
-              }),
-            candidateDeadlineAt,
-            nowMilliseconds,
-          )
-          if (!studyAuthority) return unavailable("study_authority_unavailable")
-        } else if (
-          [
-            INCUMBENT_HYBRID_MANIFEST_ID,
-            INCUMBENT_HYBRID_AA_MANIFEST_ID,
-            COWATCH_MMR_TRIAL_MANIFEST_ID,
-          ].includes(experiment.assignment.effectiveManifestId)
-        ) {
-          return unavailable("study_authority_unavailable")
-        }
-      }
-      const incumbentComparison =
-        ownerAuthority != null ||
-        studyAuthority?.execution === "incumbent" ||
-        studyAuthority?.execution === "cowatch_mmr"
-      const recentResolution = await recentContextPromise
-      if (recentResolution.failureReason)
-        return unavailable(recentResolution.failureReason)
-      const recentContext = recentResolution.context
-      let viewingMode: ViewingModeAffinity | null = null
-      if (
-        profileTokenDigest &&
-        (!profileComparison || incumbentComparison) &&
-        this.deps.loadViewingModeAffinity
-      ) {
-        try {
-          const modeDeadlineAt = Math.min(
-            candidateDeadlineAt,
-            nowMilliseconds() + 150,
-          )
-          viewingMode = await withinDeadline(
-            () =>
-              this.deps.loadViewingModeAffinity!({
-                profileTokenDigest,
-                mediaIds: mergeBoundedHybridNominations(
-                  adaptSemanticCandidates(candidates, {
-                    surface: RECOMMENDATION_CONTRACTS.surface,
-                    purpose: "watch",
-                    locale,
-                    audioLanguageSlug,
-                  }).nominations,
-                  profileResolution.profile?.nominations ?? [],
-                ).map((candidate) => candidate.targetMediaId),
-                now,
-                deadlineAt: modeDeadlineAt,
-              }),
-            modeDeadlineAt,
-            nowMilliseconds,
-          )
-        } catch {
-          // Sparse or unavailable mode evidence preserves ordinary relevance.
-          viewingMode = null
-        }
-      }
+      // Recommendations now depend only on the current video and catalog.
+      // Old credentials and behavioral authority cannot affect this slate.
+      const recentContext = { videos: [] }
       const orchestrate = this.deps.orchestrate ?? runSemanticCandidatePlatform
       let platform: CandidatePlatformResult
       let selected: PreparedCandidate[]
@@ -680,7 +386,6 @@ export class RecommendationDeliveryService {
       let candidateRunFallbackReason = reason
       try {
         platform = orchestrate({
-          viewingMode,
           candidates,
           context,
           limit: manifest.maxItems,
@@ -771,281 +476,15 @@ export class RecommendationDeliveryService {
         contractVersion: "anonymous-profile-personalization-v1",
         lane: "semantic_control",
         executionMode: "semantic_contextual",
-        effectiveManifestId:
-          experiment.assignment?.effectiveManifestId ?? manifest.id,
+        effectiveManifestId: manifest.id,
         profileState: null,
         projectionVersion: null,
         projectionGeneration: null,
         interestCount: 0,
         sessionIntentPresent: false,
-        reason: experiment.bypassReason,
+        reason: null,
       }
-      let profileProjectionId: string | null = null
-      let profileRetrievalLatencyMs: number | null = null
-      const profileColdStart =
-        profileTokenDigest != null &&
-        !profileResolution.profile &&
-        profileResolution.failureReason === "profile_cold_start"
-      if (profileTokenDigest != null) {
-        profileRetrievalLatencyMs = profileResolution.latencyMs
-      }
-      if (profileColdStart) {
-        personalization = {
-          ...personalization,
-          reason: "profile_cold_start",
-        }
-      }
-      const useProfileRanking =
-        !profileComparison ||
-        incumbentComparison ||
-        experiment.assignment?.effectiveManifestId ===
-          HYBRID_PERSONALIZED_MANIFEST_ID
-      if (
-        profileTokenDigest != null &&
-        (!profileColdStart || incumbentComparison) &&
-        useProfileRanking
-      ) {
-        try {
-          if (!profileResolution.profile) {
-            throw new RecommendationInternalStateError(
-              profileResolution.failureReason ??
-                "profile_projection_unavailable",
-            )
-          }
-          const profile = profileResolution.profile
-          if (profile.nominations.length === 0) {
-            throw new RecommendationInternalStateError(
-              "profile_candidates_sparse",
-            )
-          }
-          if (selected.length === 0) {
-            throw new RecommendationInternalStateError(
-              "semantic_candidates_unavailable",
-            )
-          }
-          const semanticNominations = adaptSemanticCandidates(
-            candidates,
-            context,
-          ).nominations
-          const orchestrateHybrid =
-            this.deps.orchestrateHybrid ?? runCandidatePlatform
-          let hybridPlatform: CandidatePlatformResult
-          try {
-            hybridPlatform = orchestrateHybrid({
-              viewingMode,
-              nominations: mergeBoundedHybridNominations(
-                semanticNominations,
-                profile.nominations,
-              ),
-              context,
-              limit: manifest.maxItems,
-              generatorVersion: HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
-              composition: {
-                currentVideoId: seedMediaId,
-                recentVideos: recentContext.videos,
-              },
-            })
-          } catch {
-            throw new RecommendationInternalStateError(
-              "hybrid_candidate_platform_unavailable",
-            )
-          }
-          const hasEligibleProfileCandidate = hybridPlatform.ordered.some(
-            (candidate) =>
-              candidate.sources.some(
-                (source) =>
-                  source.generator === "multi-interest-profile" &&
-                  source.rejectionReason == null,
-              ),
-          )
-          if (!hasEligibleProfileCandidate) {
-            throw new RecommendationInternalStateError(
-              "profile_candidates_sparse",
-            )
-          }
-          if (hybridPlatform.composition.suppressions.length > 0) {
-            hybridPlatform = annotateComposedEvidence(
-              hybridPlatform,
-              "bounded_reserve_refill",
-            )
-          }
-          platform = hybridPlatform
-          const hybridSelected = preparedCandidatesFromPlatform(hybridPlatform)
-          if (hybridSelected.length === 0) {
-            throw new RecommendationInternalStateError("hybrid_slate_empty")
-          }
-          selected = hybridSelected
-          profileProjectionId = profile.projection.id
-          personalization = {
-            contractVersion: "anonymous-profile-personalization-v1",
-            lane: "profile_challenger",
-            executionMode: "hybrid_personalized",
-            effectiveManifestId:
-              experiment.assignment?.effectiveManifestId ?? manifest.id,
-            profileState: profile.projection.scope ?? "session",
-            projectionVersion: profile.projection.projectionVersion,
-            projectionGeneration: profile.projection.generation ?? null,
-            interestCount: profile.projection.interestCount,
-            sessionIntentPresent:
-              profile.projection.sessionIntentPresent ?? false,
-            reason: null,
-          }
-          if (result === "served") {
-            reason = null
-            candidateRunFallbackReason = null
-          }
-          if (ownerAuthority) {
-            const owner =
-              this.deps.composeOwnerCowatch &&
-              evidenceComplete &&
-              result === "served"
-                ? await withinDeadline(
-                    () =>
-                      this.deps.composeOwnerCowatch!({
-                        authority: ownerAuthority!,
-                        context,
-                        seedMediaId,
-                        profileProjectionId: profile.projection.id,
-                        profileTokenDigest,
-                        consentReceiptDigest: input.consentReceiptDigest!,
-                        semanticNominations,
-                        profileNominations: profile.nominations,
-                        recentContext,
-                        limit: manifest.maxItems,
-                        deadlineAt: candidateDeadlineAt,
-                        now: this.deps.now?.() ?? new Date(),
-                      }),
-                    candidateDeadlineAt,
-                    nowMilliseconds,
-                  ).catch(() => ({
-                    status: "fallback" as const,
-                    reason: "owner_source_unavailable",
-                  }))
-                : {
-                    status: "fallback" as const,
-                    reason: "owner_source_unavailable",
-                  }
-            if (owner.status === "composed") {
-              platform = owner.platform
-              selected = preparedCandidatesFromPlatform(platform)
-              viewingMode = owner.viewingMode
-              ownerInfluence = true
-              personalization = {
-                ...personalization,
-                executionMode: "cowatch_mmr_personalized",
-                effectiveManifestId: ownerAuthority.release.manifestId,
-              }
-            } else {
-              platform = appendSourceFailureEvidence(
-                platform,
-                owner.reason,
-                "directional-cowatch",
-                "compositionInputDiagnostic" in owner
-                  ? owner.compositionInputDiagnostic
-                  : undefined,
-              )
-              evidenceComplete = false
-              candidateRunFallbackReason = owner.reason
-              result = "fallback"
-              reason = owner.reason
-              personalization = {
-                ...personalization,
-                effectiveManifestId: INCUMBENT_HYBRID_MANIFEST_ID,
-                reason: "cowatch_mmr_incumbent_fallback",
-              }
-            }
-          } else if (
-            studyAuthority?.execution === "cowatch_mmr" &&
-            experiment.assignment
-          ) {
-            const trial =
-              input.clientDeliveryContract !==
-              COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
-                ? {
-                    status: "fallback" as const,
-                    reason: "client_contract_unsupported",
-                  }
-                : this.deps.composeCowatchTrial &&
-                    evidenceComplete &&
-                    result === "served"
-                  ? await withinDeadline(
-                      () =>
-                        this.deps.composeCowatchTrial!({
-                          assignment: experiment.assignment!,
-                          authority: studyAuthority!,
-                          context,
-                          seedMediaId,
-                          profileProjectionId: profile.projection.id,
-                          profileTokenDigest,
-                          semanticNominations,
-                          profileNominations: profile.nominations,
-                          recentContext,
-                          limit: manifest.maxItems,
-                          deadlineAt: candidateDeadlineAt,
-                          now: this.deps.now?.() ?? new Date(),
-                        }),
-                      candidateDeadlineAt,
-                      nowMilliseconds,
-                    ).catch(() => ({
-                      status: "fallback" as const,
-                      reason: "trial_source_unavailable",
-                    }))
-                  : {
-                      status: "fallback" as const,
-                      reason: "trial_source_unavailable",
-                    }
-            if (trial.status === "composed") {
-              platform = trial.platform
-              selected = preparedCandidatesFromPlatform(platform)
-              viewingMode = trial.viewingMode
-              personalization = {
-                ...personalization,
-                executionMode: "cowatch_mmr_personalized",
-              }
-            } else {
-              platform = appendSourceFailureEvidence(
-                platform,
-                trial.reason,
-                "directional-cowatch",
-              )
-              evidenceComplete = false
-              candidateRunFallbackReason = trial.reason
-              result = "fallback"
-              reason = trial.reason
-              personalization = {
-                ...personalization,
-                effectiveManifestId: INCUMBENT_HYBRID_MANIFEST_ID,
-                reason: "cowatch_mmr_incumbent_fallback",
-              }
-            }
-          }
-        } catch (error) {
-          const fallbackReason = hybridFallbackReason(error)
-          platform = appendSourceFailureEvidence(
-            platform,
-            fallbackReason,
-            error instanceof Error &&
-              error.message === "semantic_candidates_unavailable"
-              ? "semantic"
-              : "multi-interest-profile",
-          )
-          evidenceComplete = false
-          candidateRunFallbackReason ??= fallbackReason
-          result = selected.length > 0 ? "fallback" : result
-          reason ??= fallbackReason
-          personalization = {
-            ...personalization,
-            lane: "semantic_fallback",
-            executionMode: "semantic_fallback",
-            reason: fallbackReason,
-          }
-        }
-      }
-      if (
-        selected.length === 0 &&
-        this.deps.retrieveCuratedFallback &&
-        this.deps.resolveRecentContext
-      ) {
+      if (selected.length === 0 && this.deps.retrieveCuratedFallback) {
         const emptyReason = reason ?? "no_candidates"
         try {
           const nominations = await withinDeadline(
@@ -1107,20 +546,6 @@ export class RecommendationDeliveryService {
           )
         }
       }
-      const declaredOperationalFallback =
-        incumbentComparison &&
-        personalization.executionMode !== "cowatch_mmr_personalized" &&
-        (result !== "served" || personalization.lane === "semantic_fallback")
-      if (declaredOperationalFallback) {
-        personalization = {
-          ...personalization,
-          effectiveManifestId: INCUMBENT_HYBRID_MANIFEST_ID,
-          reason:
-            ownerAuthority || studyAuthority?.execution === "cowatch_mmr"
-              ? "cowatch_mmr_incumbent_fallback"
-              : "incumbent_operational_fallback",
-        }
-      }
       const newId = this.deps.newId ?? randomUUID
       const requestId = newId()
       const candidateRunId = newId()
@@ -1131,22 +556,6 @@ export class RecommendationDeliveryService {
       const deliveryExpiresAt = new Date(
         now.getTime() + DELIVERY_CAPABILITY_LIFETIME_SECONDS * 1_000,
       )
-      if (
-        viewingMode &&
-        platform.versions.ranker === "viewing-mode-affinity-v1" &&
-        personalization.executionMode !== "cowatch_mmr_personalized" &&
-        selected.length > 0
-      ) {
-        personalization = {
-          ...personalization,
-          lane: "profile_challenger",
-          executionMode: "viewing_mode_personalized",
-          profileState: "durable",
-          reason: declaredOperationalFallback
-            ? personalization.reason
-            : "viewing_mode_preference",
-        }
-      }
       const prepared = selected.map((selectedCandidate, position) => ({
         ...selectedCandidate,
         id: newId(),
@@ -1183,60 +592,6 @@ export class RecommendationDeliveryService {
           this.deps.prisma,
           issuanceDeadlineAt,
           async (tx) => {
-            if (
-              ownerAuthority &&
-              profileTokenDigest &&
-              profileProjectionId &&
-              input.consentReceiptDigest
-            ) {
-              const profileFence = {
-                profileTokenDigest,
-                profileProjectionId,
-                consentReceiptDigest: input.consentReceiptDigest,
-                privacyGeneration: ownerAuthority.privacyGeneration,
-                now: this.deps.now?.() ?? new Date(),
-              }
-              if (ownerInfluence) {
-                await lockOwnerReleaseForIssuance(tx, {
-                  ...profileFence,
-                  expected: ownerAuthority.release,
-                })
-              } else {
-                // The prepared incumbent still uses this profile if graph/MMR
-                // fails. Its source/consent fence survives that fallback, while
-                // graph expiry alone must not prevent valid incumbent serving.
-                await lockOwnerProfileForIssuance(tx, profileFence)
-              }
-            }
-            if (
-              profileComparison &&
-              experiment.assignment &&
-              profileTokenDigest
-            ) {
-              await lockProfileUsefulnessAssignment(tx, {
-                assignment: experiment.assignment,
-                profileTokenDigest,
-                now: this.deps.now?.() ?? new Date(),
-              })
-            }
-            if (studyAuthority && experiment.assignment) {
-              await lockActiveStudyAuthorityForIssuance(tx, {
-                assignment: experiment.assignment,
-                expected: studyAuthority,
-                now: this.deps.now?.() ?? new Date(),
-              })
-            }
-            if (
-              viewingMode &&
-              profileTokenDigest &&
-              platform.versions.ranker === "viewing-mode-affinity-v1"
-            ) {
-              await lockViewingModeAuthority(tx, {
-                affinity: viewingMode,
-                profileTokenDigest,
-                now: this.deps.now?.() ?? new Date(),
-              })
-            }
             await tx.recommendationRequest.create({
               data: {
                 id: requestId,
@@ -1276,15 +631,6 @@ export class RecommendationDeliveryService {
                     ? now
                     : null,
                 expiresAt,
-                ownerReleaseId: ownerInfluence
-                  ? ownerAuthority!.release.releaseId
-                  : null,
-                ownerReleaseGeneration: ownerInfluence
-                  ? ownerAuthority!.release.pointerGeneration
-                  : null,
-                experimentAssignmentId:
-                  experiment.assignment?.assignmentId ?? null,
-                experimentBypassReason: experiment.bypassReason,
                 ...servedSnapshotCreate(
                   prepared.map(
                     ({
@@ -1321,23 +667,6 @@ export class RecommendationDeliveryService {
                         rrfBenchmark,
                         deterministicScore,
                         deterministicRankerVersion: platform.versions.ranker,
-                        viewingMode:
-                          platform.versions.ranker ===
-                          "viewing-mode-affinity-v1"
-                            ? {
-                                version: viewingMode?.version ?? null,
-                                soundOffPreference:
-                                  viewingMode?.soundOffPreference ?? null,
-                                confidence: viewingMode?.confidence ?? null,
-                                qualifiedVideos:
-                                  viewingMode?.qualifiedVideos ?? 0,
-                                candidate:
-                                  viewingMode?.candidates.find(
-                                    (value) =>
-                                      value.mediaId === candidate.videoId,
-                                  ) ?? null,
-                              }
-                            : null,
                         eligibilityVersion: CANDIDATE_ELIGIBILITY_VERSION,
                         composerVersion: platform.versions.composer,
                       },
@@ -1451,24 +780,6 @@ export class RecommendationDeliveryService {
             } else {
               await createCandidateRun()
             }
-            await tx.recommendationPersonalizationDecision.create({
-              data: {
-                requestId,
-                effectiveManifestId: personalization.effectiveManifestId,
-                lane: personalization.lane,
-                executionMode: personalization.executionMode,
-                reasonCode: personalization.reason,
-                projectionGenerationId: profileProjectionId,
-                projectionScope: personalization.profileState,
-                projectionVersion: personalization.projectionVersion,
-                projectionGenerationNumber:
-                  personalization.projectionGeneration,
-                interestCount: personalization.interestCount,
-                sessionIntentPresent: personalization.sessionIntentPresent,
-                profileRetrievalLatencyMs,
-                expiresAt,
-              },
-            })
             if (!compactTrace && evidenceRows.length > 0) {
               await persistCandidateStageEvidence(tx, evidenceRows)
             }
@@ -1502,7 +813,7 @@ export class RecommendationDeliveryService {
           tokenService: this.deps.tokenService,
           sessionDigest: input.sessionDigest,
           manifestId: manifest.id,
-          assignment: experiment.assignment,
+          assignment: null,
           requestId,
           result,
           reason,
@@ -1574,56 +885,6 @@ export class RecommendationDeliveryService {
           input.audioLanguageSlug,
         )}`)
     return builder({ videoSlug: item.videoSlug, audioLanguageSlug })
-  }
-
-  private async resolveExperiment(
-    input: {
-      sessionDigest: string
-      profileTokenDigest?: string | null
-      eligibleHuman?: boolean
-    },
-    now: Date,
-    deadlineAt: number,
-    nowMilliseconds: () => number,
-  ): Promise<ExperimentAssignmentResolution> {
-    if (!this.deps.assignExperiment) {
-      return { assignment: null, bypassReason: null }
-    }
-    try {
-      return await withinDeadline(
-        () =>
-          this.deps.assignExperiment!({
-            surfaceVersion: RECOMMENDATION_CONTRACTS.surface,
-            sessionDigest: input.sessionDigest,
-            profileTokenDigest: input.profileTokenDigest ?? null,
-            eligibleHuman: input.eligibleHuman !== false,
-            now,
-            deadlineAt,
-          }),
-        deadlineAt,
-        nowMilliseconds,
-      )
-    } catch {
-      return { assignment: null, bypassReason: "assignment_unavailable" }
-    }
-  }
-}
-
-function hybridFallbackReason(error: unknown) {
-  if (!(error instanceof RecommendationInternalStateError)) {
-    return "profile_projection_unavailable" as const
-  }
-  switch (error.code) {
-    case "profile_cold_start":
-    case "profile_retrieval_timeout":
-    case "profile_candidates_sparse":
-    case "profile_lineage_ineligible":
-    case "semantic_candidates_unavailable":
-    case "hybrid_candidate_platform_unavailable":
-    case "hybrid_slate_empty":
-      return error.code
-    default:
-      return "profile_projection_unavailable" as const
   }
 }
 export { createRecommendationDeliveryService } from "./delivery.factory"

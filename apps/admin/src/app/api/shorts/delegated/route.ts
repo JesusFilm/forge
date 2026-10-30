@@ -7,7 +7,7 @@ import {
   executeStudioProduction,
   studioProductionRpcSchema,
 } from "@/services/studio-authoring/production-rpc"
-import { prisma } from "@/db/client"
+import { prisma, studioRenderPrisma } from "@/db/client"
 import { env } from "@/config/env"
 import {
   verifyStudioRequest,
@@ -53,7 +53,12 @@ export async function POST(request: Request) {
             finish.data.input,
           )
     } else if (studioRenderRpcSchema.safeParse(raw).success)
-      result = await executeStudioRender(prisma, caller, raw)
+      result = await executeStudioRender(
+        studioRenderPrisma,
+        caller,
+        raw,
+        request.signal,
+      )
     else if (studioProductionRpcSchema.safeParse(raw).success)
       result = await executeStudioProduction(prisma, caller, raw)
     else result = await executeStudioDelegated(prisma, caller, raw)

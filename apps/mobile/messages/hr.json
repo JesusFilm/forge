@@ -138,6 +138,7 @@
     "versesAriaValue": "Retci od {first} do {last}, od ukupno {total}, {chapter}",
     "demoVerse": "Povucite prema gore za sljedeći redak",
     "demoChapter": "Povucite ulijevo za sljedeće poglavlje",
+    "demoChapterRtl": "Povucite udesno za sljedeće poglavlje",
     "demoSkip": "Dodirnite za preskakanje",
     "demoSkipAriaLabel": "Preskoči prikaz povlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite za odabir ovog retka",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Odaberite knjigu",
+    "chooseChapter": "Odaberite poglavlje",
+    "chooseVerse": "Odaberite redak",
     "oldTestament": "Stari zavjet",
     "newTestament": "Novi zavjet",
     "books": "Knjige",
@@ -193,7 +196,7 @@
     "someBooks": "{count} od {total, plural, one {# knjige} few {# knjige} other {# knjiga}}",
     "twoNames": "{first} i {second}",
     "threeNames": "{first}, {second} i {third}",
-    "onDevice": "Na ovom uređaju",
+    "downloaded": "Preuzeto",
     "downloading": "Preuzimanje {percent} %",
     "downloadStopped": "Preuzimanje prekinuto",
     "updateAvailable": "Dostupno ažuriranje",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakat serije",
     "videosHeading": "Videozapisi",
     "detailsLoadError": "Nije moguće učitati sve pojedinosti.",
+    "languagesTitle": "Jezik videozapisa",
     "searchLanguagesPlaceholder": "Pretraži jezike…",
     "searchLanguagesAriaLabel": "Pretraži jezike",
     "noLanguagesFound": "Nije pronađen nijedan jezik",
@@ -502,6 +506,7 @@
     "resumeAt": "Nastavi od {time}",
     "unknownLanguage": "Nepoznat jezik",
     "downloadedStatus": "Preuzeto",
+    "languagesTitle": "Jezik videozapisa",
     "searchLanguagesPlaceholder": "Pretraži jezike…",
     "searchLanguagesAriaLabel": "Pretraži jezike",
     "noLanguagesFound": "Nije pronađen nijedan jezik",
@@ -773,5 +778,8 @@
     "send": "Pošalji",
     "sending": "Slanje…",
     "sendAriaLabel": "Pošalji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija upotrebljava vašu lokalnu mrežu za pronalaženje uređaja za emitiranje kako biste mogli reproducirati videozapise na svojem televizoru."
   }
 }

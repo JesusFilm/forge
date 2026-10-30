@@ -18,6 +18,7 @@ Let beta viewers independently choose and preview all ten approved Watch motion 
 ## Entry Points — Read These First
 
 - `docs/plans/2026-10-07-tv-animation-settings.md`
+- `apps/tv/README.md` — configuration switches, saved defaults and restart checks
 - `apps/tv/src/contexts/StartupIntroProvider.tsx`
 - `apps/tv/src/components/BrandedLoading.tsx`
 - `apps/tv/src/components/settings/SettingsScreen.tsx`
@@ -30,7 +31,7 @@ Let beta viewers independently choose and preview all ten approved Watch motion 
 
 ## What To Build
 
-Shared bundled animation component and native remote-focus Settings page. Defaults: startup 09, loading 03. Persist both IDs in existing preferences; all ten remain available for both uses. Six-second silent previews; loading runs only for pending work.
+Shared bundled animation component and native remote-focus Settings page. Current defaults: startup disabled (09 remains the selected effect when enabled), loading logo plus three dots. The Animations menu is controlled by a code boolean and defaults off. Persist both IDs in existing preferences; all ten remain available for both uses. Six-second silent previews; loading runs only for pending work.
 
 ## Constraints
 
@@ -51,3 +52,8 @@ October 8 user-approved follow-up completed locally: extra static Android startu
 October 8 restart follow-up in progress: Chromecast code 4 remains on "Restarting…" after Expo's legacy-architecture JS reload. Device logs show the old React root being reused with an existing ID. Replace only Android's preview restart with Activity recreation and a fresh React host after the old Activity/root has detached; preserve preferences, Apple TV's existing reload and ordinary startup/audio behavior. Verify repeated remote-button restarts on the same Chromecast QA package.
 
 October 8 restart follow-up completed locally: QA code 5 installed preserving data. Two Chromecast remote-button restarts replayed the saved 09 effect and returned to usable Home; Loading 03, warm resume without replay, and Animations → Settings → Home Back paths verified. 152 suites / 2,022 tests and static checks passed; ARM32 release build passed. Evidence and legacy-architecture constraint are in the linked Android plan. Broader QA/performance gates keep this ticket in progress; this QA run did not upload a store build.
+
+October 14 owner-requested defaults follow-up implemented locally: add code switches for
+the Animations menu and startup intro (both off by default), with the existing
+three-dot loader as the default. Preserve stored choices and all previews.
+Scope and current evidence: `docs/plans/2026-10-14-tv-animation-defaults.md`.

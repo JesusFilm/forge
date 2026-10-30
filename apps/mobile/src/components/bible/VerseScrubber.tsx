@@ -7,6 +7,7 @@ import {
   type LayoutChangeEvent,
 } from "react-native"
 
+import { layoutSign } from "../../i18n/layoutRtl"
 import { mayStartScrub } from "../../lib/scrubber"
 import {
   READER_CHROME_MAX_FONT_SCALE,
@@ -41,7 +42,7 @@ const LABEL_WIDTH = 96
 
 // R18's scrubber, after Still's design (KD7): a drag that starts on the thumb
 // moves by whole verses, and the thumb moves from where it is, never to where
-// the press lands. A tap on the track does nothing.
+// the press lands. A tap on the track does nothing. Verse order mirrors (R11).
 export function VerseScrubber(props: VerseScrubberProps) {
   const { tokens, lastVerse, progress, labelFor } = props
   const [width, setWidth] = useState(0)
@@ -53,6 +54,8 @@ export function VerseScrubber(props: VerseScrubberProps) {
   const drag = useRef<{ start: number; verse: number | null } | null>(null)
 
   const [responder] = useState(() => {
+    // The styles mirror on their own, but touch x stays physical (KTD8).
+    const sign = layoutSign()
     const end = () => {
       const verse = drag.current?.verse ?? null
       drag.current = null
@@ -78,7 +81,7 @@ export function VerseScrubber(props: VerseScrubberProps) {
         const active = drag.current
         if (!active || current.lastVerse === null || current.width <= 0) return
         const verse = verseAtProgress(
-          active.start + gesture.dx / current.width,
+          active.start + (sign * gesture.dx) / current.width,
           current.lastVerse,
         )
         if (verse === active.verse) return
@@ -223,7 +226,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "600",
-    fontFamily: "System",
     fontVariant: ["tabular-nums"],
   },
 })

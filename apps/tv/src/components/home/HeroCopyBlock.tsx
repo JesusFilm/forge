@@ -5,12 +5,11 @@
 import { memo } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 
-/** Description line height: fontSize 25 × 1.45. */
-const DESCRIPTION_LINE_HEIGHT = Math.round(scale(36))
+const DESCRIPTION_LINE_HEIGHT = Math.round(scale(42))
 
 export const HeroCopyBlock = memo(function HeroCopyBlock({
   card,
@@ -41,7 +40,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: "System",
-    fontSize: Math.round(scale(19)),
+    fontSize: readableFontSize(19),
     fontWeight: "700",
     // .18em of the 19px eyebrow.
     letterSpacing: scale(3.4),
@@ -63,7 +62,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontFamily: "System",
-    fontSize: Math.round(scale(25)),
+    fontSize: readableFontSize(25),
     lineHeight: DESCRIPTION_LINE_HEIGHT,
     fontWeight: "400",
     color: WATCH_THEME.text74,
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontFamily: "System",
-    fontSize: Math.round(scale(21)),
+    fontSize: readableFontSize(21),
     fontWeight: "600",
     color: "rgba(255,255,255,0.55)",
     marginTop: scale(12),

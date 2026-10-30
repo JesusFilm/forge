@@ -138,6 +138,7 @@
     "versesAriaValue": "Betsu {first} asta {last} ginen {total}, {chapter}",
     "demoVerse": "Na’kalamten pa’ hilo’ para i sigiente na betsu",
     "demoChapter": "Na’kalamten pa’ akague para i sigiente na kapitulo",
+    "demoChapterRtl": "Na’kalamten pa’ agapa’ para i sigiente na kapitulo",
     "demoSkip": "Pacha para un na’lofan",
     "demoSkipAriaLabel": "Na’lofan i demonstrasion",
     "selectVerseAriaHint": "Pacha dos biåhi para un ayek este na betsu",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Ayek un lepblo",
+    "chooseChapter": "Ayek un kapitulo",
+    "chooseVerse": "Ayek un betsu",
     "oldTestament": "Antigo na Testamento",
     "newTestament": "Nuebo na Testamento",
     "books": "Lepblo siha",
@@ -193,7 +196,7 @@
     "someBooks": "{count} ginen {total, plural, one {# na lepblo} other {# na lepblo}}",
     "twoNames": "{first} yan {second}",
     "threeNames": "{first}, {second}, yan {third}",
-    "onDevice": "Gaige gi este na aparatu",
+    "downloaded": "Ma na’tunok",
     "downloading": "Ma na’tutunok {percent}%",
     "downloadStopped": "Pumara i na’tunok",
     "updateAvailable": "Guaha nuebu na bersion",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster i seri",
     "videosHeading": "Bidio siha",
     "detailsLoadError": "Ti siña ma chule’ todu i detåye.",
+    "languagesTitle": "Lenguahen i bidio",
     "searchLanguagesPlaceholder": "Aligao lenguahe siha...",
     "searchLanguagesAriaLabel": "Aligao lenguahe siha",
     "noLanguagesFound": "Taya’ lenguahe ni ma sodda’",
@@ -502,6 +506,7 @@
     "resumeAt": "Kontinua gi {time}",
     "unknownLanguage": "Ti tungo’",
     "downloadedStatus": "Ma na’tunok",
+    "languagesTitle": "Lenguahen i bidio",
     "searchLanguagesPlaceholder": "Aligao lenguahe siha...",
     "searchLanguagesAriaLabel": "Aligao lenguahe siha",
     "noLanguagesFound": "Taya’ lenguahe ni ma sodda’",
@@ -773,5 +778,8 @@
     "send": "Na’hånao",
     "sending": "Ma na’hahånao…",
     "sendAriaLabel": "Na’hånao i hinasso-mu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I app ha usa i lokat na network-mu para u sodda’ i aparatu siha para na’hånao gi TV, para siña un egga’ i bidio siha gi TV-mu."
   }
 }

@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
+import {
+  SERIES_SHAPED_LABELS,
+  notRestrictedFromWatchSql,
+} from "./search-watchability"
 
 const LanguageAlternateSchema = z.object({
   hreflang: z.string().min(2),
@@ -141,7 +145,15 @@ export class WatchSeoManifestService {
           AND lang.slug <> ''
         WHERE v."deleted_at" IS NULL
           AND v.slug <> ''
+          AND ${notRestrictedFromWatchSql("v")}
       ),
+      -- A parent inherits its children's audio languages only when Watch
+      -- renders it as a series page (label-only per CONCEPTS.md; web's
+      -- isSeriesRecord also treats an unlabeled parent with children as a
+      -- series). A feature film with chapters renders as one video and plays
+      -- only its OWN dubs: a language only its chapters carry resyncs the
+      -- page to another language (N58: pilgrims-progress has a
+      -- spanish-latin-american Dub with no HLS while its chapters play it).
       parent_video_audio AS (
         SELECT DISTINCT
           parent.slug AS "contentSlug",
@@ -158,6 +170,7 @@ export class WatchSeoManifestService {
           ON child.id = relation."child_id"
           AND child."deleted_at" IS NULL
           AND child.slug <> ''
+          AND ${notRestrictedFromWatchSql("child")}
         JOIN "video_locale" child_locale
           ON child_locale."video_id" = child.id
           AND child_locale.status = 'published'::"LocaleStatus"
@@ -175,6 +188,11 @@ export class WatchSeoManifestService {
           AND child_lang.slug <> ''
         WHERE parent."deleted_at" IS NULL
           AND parent.slug <> ''
+          AND ${notRestrictedFromWatchSql("parent")}
+          AND (
+            parent.label IS NULL
+            OR parent.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
+          )
       )
       SELECT "contentSlug", "languageSlug", "bcp47" FROM playable_video_audio
       UNION
@@ -197,6 +215,7 @@ export class WatchSeoManifestService {
         ON parent.id = relation."parent_id"
         AND parent."deleted_at" IS NULL
         AND parent.slug <> ''
+        AND ${notRestrictedFromWatchSql("parent")}
       JOIN "video_locale" parent_locale
         ON parent_locale."video_id" = parent.id
         AND parent_locale.status = 'published'::"LocaleStatus"
@@ -205,6 +224,7 @@ export class WatchSeoManifestService {
         ON child.id = relation."child_id"
         AND child."deleted_at" IS NULL
         AND child.slug <> ''
+        AND ${notRestrictedFromWatchSql("child")}
       JOIN "video_locale" child_locale
         ON child_locale."video_id" = child.id
         AND child_locale.status = 'published'::"LocaleStatus"

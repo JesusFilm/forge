@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Aplikacja korzysta z Twojej sieci lokalnej, aby znaleźć urządzenia do przesyłania, dzięki czemu możesz odtwarzać filmy na swoim telewizorze."
+  }
+}

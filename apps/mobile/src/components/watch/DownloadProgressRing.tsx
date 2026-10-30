@@ -74,61 +74,66 @@ export function DownloadProgressRing({
 
   return (
     <View style={[styles.root, { width: size, height: size }]}>
-      <View
-        style={[
-          styles.track,
-          {
-            width: size,
-            height: size,
-            borderRadius: radius,
-            borderWidth: strokeWidth,
-            borderColor: trackColor,
-          },
-        ]}
-      />
+      {/* A ring fills clockwise in every layout (Material bidirectionality), but
+          React Native swaps the halves' `left` in a right-to-left layout. So
+          the drawing is left-to-right; the center keeps the app's direction. */}
+      <View style={styles.drawing} testID="download-progress-ring-drawing">
+        <View
+          style={[
+            styles.track,
+            {
+              width: size,
+              height: size,
+              borderRadius: radius,
+              borderWidth: strokeWidth,
+              borderColor: trackColor,
+            },
+          ]}
+        />
 
-      {/* Right half — fills 0–50% clockwise from the top. */}
-      <View
-        style={[styles.clip, { left: radius, width: radius, height: size }]}
-      >
-        <Animated.View
+        {/* Right half — fills 0–50% clockwise from the top. */}
+        <View
+          style={[styles.clip, { left: radius, width: radius, height: size }]}
+        >
+          <Animated.View
+            style={{
+              width: radius,
+              height: size,
+              borderTopRightRadius: radius,
+              borderBottomRightRadius: radius,
+              backgroundColor: color,
+              transformOrigin: "0% 50%",
+              transform: [{ rotate: rightRotate }],
+            }}
+          />
+        </View>
+
+        {/* Left half — fills 50–100% clockwise to the top. */}
+        <View style={[styles.clip, { left: 0, width: radius, height: size }]}>
+          <Animated.View
+            style={{
+              width: radius,
+              height: size,
+              borderTopLeftRadius: radius,
+              borderBottomLeftRadius: radius,
+              backgroundColor: color,
+              transformOrigin: "100% 50%",
+              transform: [{ rotate: leftRotate }],
+            }}
+          />
+        </View>
+
+        {/* Punch the centre to leave a stroke-width ring. */}
+        <View
           style={{
-            width: radius,
-            height: size,
-            borderTopRightRadius: radius,
-            borderBottomRightRadius: radius,
-            backgroundColor: color,
-            transformOrigin: "0% 50%",
-            transform: [{ rotate: rightRotate }],
+            position: "absolute",
+            width: inner,
+            height: inner,
+            borderRadius: inner / 2,
+            backgroundColor: cutoutColor,
           }}
         />
       </View>
-
-      {/* Left half — fills 50–100% clockwise to the top. */}
-      <View style={[styles.clip, { left: 0, width: radius, height: size }]}>
-        <Animated.View
-          style={{
-            width: radius,
-            height: size,
-            borderTopLeftRadius: radius,
-            borderBottomLeftRadius: radius,
-            backgroundColor: color,
-            transformOrigin: "100% 50%",
-            transform: [{ rotate: leftRotate }],
-          }}
-        />
-      </View>
-
-      {/* Punch the centre to leave a stroke-width ring. */}
-      <View
-        style={{
-          position: "absolute",
-          width: inner,
-          height: inner,
-          borderRadius: inner / 2,
-          backgroundColor: cutoutColor,
-        }}
-      />
 
       {children != null && <View style={styles.center}>{children}</View>}
     </View>
@@ -137,6 +142,12 @@ export function DownloadProgressRing({
 
 const styles = StyleSheet.create({
   root: { alignItems: "center", justifyContent: "center" },
+  drawing: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    direction: "ltr",
+  },
   track: { position: "absolute" },
   clip: { position: "absolute", top: 0, overflow: "hidden" },
   center: {

@@ -13,7 +13,6 @@ export type RecommendationServingBlockReason =
   | "ready"
   | "environment_disabled"
   | "keyring_unavailable"
-  | "retention_overdue"
   | "control_disabled"
   | "manifest_missing"
   | "manifest_incompatible"
@@ -38,14 +37,12 @@ type ServingStateInput = Readonly<{
   prisma: PrismaClient
   environmentEnabled: boolean
   hasActiveSigner: boolean
-  retentionHealthy: boolean
 }>
 
 export async function getRecommendationServingState({
   prisma,
   environmentEnabled,
   hasActiveSigner,
-  retentionHealthy,
 }: ServingStateInput): Promise<RecommendationServingState> {
   const control = await prisma.recommendationServingControl.findUnique({
     where: { id: RECOMMENDATION_SERVING_CONTROL_ID },
@@ -69,9 +66,6 @@ export async function getRecommendationServingState({
   }
   if (!hasActiveSigner) {
     return { ...base, canIssue: false, reason: "keyring_unavailable" }
-  }
-  if (!retentionHealthy) {
-    return { ...base, canIssue: false, reason: "retention_overdue" }
   }
   if (!control || !manifest) {
     return { ...base, canIssue: false, reason: "manifest_missing" }

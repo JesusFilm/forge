@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} تا آیتدن {first}–{last}-آیتلر، {chapter}",
     "demoVerse": "کیینگی آیت اوچون یوقاری‌گه سورینگ",
     "demoChapter": "کیینگی باب اوچون چپگه سورینگ",
+    "demoChapterRtl": "کیینگی باب اوچون اونگگه سورینگ",
     "demoSkip": "اوتکزیب یوباریش اوچون باسینگ",
     "demoSkipAriaLabel": "سوریش نمایشینی اوتکزیب یوباریش",
     "selectVerseAriaHint": "بو آیتنی تنلش اوچون ایککی مرته باسینگ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "کتاب تنلش",
+    "chooseChapter": "باب تنلش",
+    "chooseVerse": "آیت تنلش",
     "oldTestament": "ایسکی عهد",
     "newTestament": "ینگی عهد",
     "books": "کتابلر",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# تا کتابدن {count} تاسی} other {# تا کتابدن {count} تاسی}}",
     "twoNames": "{first} و {second}",
     "threeNames": "{first}، {second} و {third}",
-    "onDevice": "بو قوریلمه‌ده",
+    "downloaded": "یوکلب آلینگن",
     "downloading": "یوکلب آلینماقده {percent}%",
     "downloadStopped": "یوکلب آلیش توختدی",
     "updateAvailable": "ینگیلنیش موجود",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "سریال پوستری",
     "videosHeading": "ویدیولر",
     "detailsLoadError": "تولیق معلوماتنی یوکلب بولمه‌دی.",
+    "languagesTitle": "ویدیو تیلی",
     "searchLanguagesPlaceholder": "تیللرنی قیدیرینگ…",
     "searchLanguagesAriaLabel": "تیللرنی قیدیریش",
     "noLanguagesFound": "تیللر تاپیلمه‌دی",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} دن دوام ایتتیریش",
     "unknownLanguage": "نامعلوم",
     "downloadedStatus": "یوکلب آلینگن",
+    "languagesTitle": "ویدیو تیلی",
     "searchLanguagesPlaceholder": "تیللرنی قیدیرینگ…",
     "searchLanguagesAriaLabel": "تیللرنی قیدیریش",
     "noLanguagesFound": "تیللر تاپیلمه‌دی",
@@ -773,5 +778,8 @@
     "send": "یوباریش",
     "sending": "یوباریلماقده…",
     "sendAriaLabel": "فکر-ملاحظه یوباریش"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اپلیکیشن اوزتیش قوریلمه‌لرینی تاپیش اوچون محلی شبکه‌نگیزدن فایده‌لنه‌دی، شونده ویدیولرنی تیلیویزیونینگیزده ایجرا ایته آله‌سیز."
   }
 }

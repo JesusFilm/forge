@@ -40,88 +40,18 @@ function harness(manifestId: string, arm: "control" | "challenger") {
 }
 
 describe("profile usefulness delivery routing", () => {
-  it.each([
-    ["semantic-transcript-pgvector-v1", "control"],
-    ["semantic-experiment-aa-v1", "challenger"],
-  ] as const)(
-    "bypasses profile ranking for %s while retaining the same history policy",
-    async (manifestId, arm) => {
-      const h = harness(manifestId, arm)
-      const delivery = await h.service.deliver(
-        personalizedInput(`comparison-${arm}`),
+  it.each(["control", "challenger"] as const)(
+    "ignores an old %s assignment and serves content-only recommendations",
+    async (arm) => {
+      const h = harness(HYBRID_PERSONALIZED_MANIFEST_ID, arm)
+      const receipt = await h.service.deliver(
+        personalizedInput(`retired-${arm}`),
       )
-      expect(delivery.result).toBe("served")
-      expect(delivery.personalization).toMatchObject({
-        executionMode: "semantic_contextual",
-        effectiveManifestId: manifestId,
-      })
-      expect(h.assignProfileExperiment).toHaveBeenCalledWith(
-        expect.objectContaining({ eligibleForEnrollment: true }),
-      )
-      expect(h.orchestrateHybrid).not.toHaveBeenCalled()
-      expect(h.loadViewingModeAffinity).not.toHaveBeenCalled()
-      expect(h.orchestrate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          composition: expect.objectContaining({
-            recentVideos: [
-              {
-                targetMediaId: "semantic-video-1",
-                reasonCodes: ["recent_playback_start"],
-              },
-            ],
-          }),
-        }),
-      )
-      expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            experimentAssignmentId: "comparison-1",
-          }),
-        }),
-      )
+      expect(receipt.result).toBe("served")
+      expect(receipt.personalization?.lane).toBe("semantic_control")
+      expect(h.assignProfileExperiment).not.toHaveBeenCalled()
+      expect(h.retrieveProfile).not.toHaveBeenCalled()
+      expect(h.resolveRecentContext).not.toHaveBeenCalled()
     },
   )
-
-  it("routes the exact hybrid challenger with no mode-ranking contamination", async () => {
-    const h = harness(HYBRID_PERSONALIZED_MANIFEST_ID, "challenger")
-    const delivery = await h.service.deliver(
-      personalizedInput("comparison-hybrid"),
-    )
-    expect(delivery.personalization).toMatchObject({
-      executionMode: "hybrid_personalized",
-      effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-    })
-    expect(h.orchestrateHybrid).toHaveBeenCalledOnce()
-    expect(h.resolveRecentContext).toHaveBeenCalledOnce()
-    expect(h.loadViewingModeAffinity).not.toHaveBeenCalled()
-  })
-
-  it("keeps a previously assigned viewer in their arm when their projection is unavailable", async () => {
-    const h = harness("semantic-transcript-pgvector-v1", "control")
-    h.retrieveProfile.mockResolvedValue(null)
-    const delivery = await h.service.deliver(
-      personalizedInput("comparison-cold"),
-    )
-    expect(h.assignProfileExperiment).toHaveBeenCalledWith(
-      expect.objectContaining({ eligibleForEnrollment: false }),
-    )
-    expect(delivery.personalization?.executionMode).toBe("semantic_contextual")
-    expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          experimentAssignmentId: "comparison-1",
-        }),
-      }),
-    )
-  })
-
-  it("fences issuance after privacy reset while preserving the enrolled denominator", async () => {
-    const h = harness("semantic-transcript-pgvector-v1", "control")
-    h.tx.$queryRaw.mockResolvedValue([])
-    expect(
-      await h.service.deliver(personalizedInput("comparison-reset")),
-    ).toMatchObject({ result: "unavailable" })
-    expect(h.assignProfileExperiment).toHaveBeenCalledOnce()
-    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
-  })
 })

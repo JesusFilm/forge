@@ -28,6 +28,7 @@ import {
 import { formatCitationReference } from "./watch/detailsAdapters"
 import { deriveSubtitlePanelState } from "./watch/panelState"
 import { nativeAndroidSessionOwnsPlayback } from "./watch/nativeAndroidSession"
+import { audioSwitchConfirmation } from "./watch/dubEditionSwitch"
 import { useFeedbackQr } from "./feedback/useFeedbackQr"
 
 type NativeViewComponent = React.ComponentType<NativeAndroidPlayerViewProps>
@@ -40,6 +41,10 @@ if (Platform.OS === "android") {
 }
 
 type NativeAndroidPlayerProps = {
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   streamingUrl: string
   videoId?: string | null
   title?: string
@@ -64,6 +69,8 @@ function formatClock(seconds: number): string {
 }
 
 export function NativeAndroidPlayer({
+  sourceGeneration = 0,
+  onPlaybackState,
   streamingUrl,
   videoId,
   title,
@@ -183,9 +190,17 @@ export function NativeAndroidPlayer({
             url: validateStreamingUrl(variant.hls) ? variant.hls! : "",
             disabled: !validateStreamingUrl(variant.hls),
             searchText: `${variant.languageSlug ?? ""} ${variant.languageBcp47 ?? ""}`,
+            confirmationMessage: audioSwitchConfirmation(
+              { editionId: session.activeVariant?.editionId },
+              variant,
+            ),
           })) ?? [])
         : [],
-    [sessionOwnsPlayback, session.video?.variants],
+    [
+      sessionOwnsPlayback,
+      session.video?.variants,
+      session.activeVariant?.editionId,
+    ],
   )
   const subtitleState = deriveSubtitlePanelState(
     session.activeVariantMediaState,
@@ -325,6 +340,8 @@ export function NativeAndroidPlayer({
         row.map((cell) => (cell ? "1" : "0")).join(""),
       )}
       feedbackReference={feedback.verified?.referenceCode}
+      feedbackSimulator={feedback.mode !== "verified"}
+      feedbackHostedSimulator={feedback.mode === "signed-simulator"}
       feedbackLoading={feedback.loading}
       feedbackError={feedback.error}
       onFeedbackOpen={() => {
@@ -412,6 +429,8 @@ export function NativeAndroidPlayer({
         meaningfulStateRef.current = result.state
         if (result.record) onMeaningfulPlaybackRef.current?.(normalized)
       }}
+      sourceGeneration={sourceGeneration}
+      onPlaybackState={(event) => onPlaybackState?.(event.nativeEvent)}
       onError={(event) => {
         qoe.onError(event.nativeEvent.message)
         reportDatadogError(new Error(event.nativeEvent.message), {

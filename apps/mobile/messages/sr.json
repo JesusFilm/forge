@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихови од {first} до {last}, од укупно {total}, {chapter}",
     "demoVerse": "Превуците нагоре за следећи стих",
     "demoChapter": "Превуците улево за следеће поглавље",
+    "demoChapterRtl": "Превуците удесно за следеће поглавље",
     "demoSkip": "Додирните да прескочите",
     "demoSkipAriaLabel": "Прескочи демонстрацију превлачења",
     "selectVerseAriaHint": "Двапут додирните да изаберете овај стих",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Изаберите књигу",
+    "chooseChapter": "Изаберите поглавље",
+    "chooseVerse": "Изаберите стих",
     "oldTestament": "Стари завет",
     "newTestament": "Нови завет",
     "books": "Књиге",
@@ -193,7 +196,7 @@
     "someBooks": "{count} од {total, plural, one {# књиге} few {# књиге} other {# књига}}",
     "twoNames": "{first} и {second}",
     "threeNames": "{first}, {second} и {third}",
-    "onDevice": "На овом уређају",
+    "downloaded": "Преузето",
     "downloading": "Преузимање {percent}%",
     "downloadStopped": "Преузимање заустављено",
     "updateAvailable": "Доступно ажурирање",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Постер серије",
     "videosHeading": "Видео-снимци",
     "detailsLoadError": "Нисмо могли да учитамо све детаље.",
+    "languagesTitle": "Језик видеа",
     "searchLanguagesPlaceholder": "Претражите језике…",
     "searchLanguagesAriaLabel": "Претражи језике",
     "noLanguagesFound": "Нема пронађених језика",
@@ -502,6 +506,7 @@
     "resumeAt": "Настави од {time}",
     "unknownLanguage": "Непознат језик",
     "downloadedStatus": "Преузето",
+    "languagesTitle": "Језик видеа",
     "searchLanguagesPlaceholder": "Претражите језике…",
     "searchLanguagesAriaLabel": "Претражи језике",
     "noLanguagesFound": "Нема пронађених језика",
@@ -773,5 +778,8 @@
     "send": "Пошаљи",
     "sending": "Слање…",
     "sendAriaLabel": "Пошаљи повратне информације"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Апликација користи вашу локалну мрежу да пронађе уређаје за емитовање како бисте могли да пуштате видео-снимке на свом телевизору."
   }
 }

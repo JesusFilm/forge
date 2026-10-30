@@ -413,6 +413,11 @@ PassageRef.implement({
   description:
     "Cached Bible passage text for a video citation, fetched server-side from an approved provider.",
   fields: (t) => ({
+    languageSlug: t.exposeString("languageSlug", {
+      nullable: true,
+      description:
+        "Content language of the selected Bible version, including English fallback; absent in older snapshots.",
+    }),
     content: t.exposeString("content"),
     copyright: t.exposeString("copyright"),
     humanReference: t.exposeString("humanReference"),
@@ -1585,6 +1590,13 @@ WatchRouteSnapshotRef.implement({
     }),
     playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
       nullable: false,
+    }),
+    requestedLanguage: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      description:
+        "Active catalog language whose slug exactly matches the requested languageSlug, independent of whether this video has a playable dub in it. Null when no languageSlug was requested or no active language has that slug. Never taken from preferredVariant, which may be a fallback dub.",
+      resolve: (row) => row.requestedLanguage ?? null,
     }),
     preferredVariant: t.field({
       type: WatchRouteSnapshotPreferredVariantRef,
