@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 
 import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
+import { useWatchErrorRetry } from "@/components/useWatchErrorRetry"
 import { watchMainContentTargetProps } from "@/lib/watch-main-content"
 
 // Segment-level fallback for unexpected root/home/languages render errors.
@@ -17,6 +18,7 @@ export default function WatchLocaleError({
   reset: () => void
 }) {
   const t = useTranslations("ExperienceError")
+  const retry = useWatchErrorRetry(reset, error)
   useEffect(() => {
     reportDatadogRumError(error, { boundary: "watch-locale" })
     if (process.env.NODE_ENV !== "production") {
@@ -35,7 +37,8 @@ export default function WatchLocaleError({
         <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-8">
           <button
             type="button"
-            onClick={reset}
+            onClick={retry}
+            data-watch-error-retry=""
             className="min-h-11 rounded-full border border-amber-400 px-4 py-2 text-base sm:text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
             {t("tryAgain")}

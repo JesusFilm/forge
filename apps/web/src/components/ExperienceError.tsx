@@ -48,7 +48,9 @@ export function ExperienceError({
       : t("failedToLoad", { message: t(key) })
   return (
     <main {...mainProps} className="flex flex-col items-center outline-none">
-      <div className="flex min-h-[40vh] w-full flex-col items-center justify-center p-8">
+      {/* Top padding mirrors the chrome's rem-sized header band, so the
+          message starts below the fixed header even at 200% text (feat-774). */}
+      <div className="flex min-h-[40vh] w-full flex-col items-center justify-center p-8 pt-[calc(5.5rem+env(safe-area-inset-top,0px))] md:pt-[calc(9rem+env(safe-area-inset-top,0px))]">
         {/* role="alert" announces the failure when a boundary swaps it in.
             red-400 keeps 4.5:1 on the black page and stone-900 boundary
             backgrounds (red-600 measured 4.40 and 3.67). */}
