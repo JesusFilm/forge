@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation"
+import { verifyAuthSession } from "@/lib/auth-session"
 /**
  * @vitest-environment jsdom
  */
@@ -35,10 +37,7 @@ vi.mock("@/i18n/client-messages", async (importOriginal) => {
   }
 })
 
-import { redirect } from "next/navigation"
-
 import WatchHistoryPage from "@/app/[locale]/[htmlLang]/history/page"
-import { verifyAuthSession } from "@/lib/auth-session"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 describe("/history route", () => {
