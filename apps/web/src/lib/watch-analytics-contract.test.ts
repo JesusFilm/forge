@@ -96,6 +96,8 @@ describe("wire names (R25)", () => {
       player_completed: "videocomplete",
       search_completed: "search_completed",
       search_result_clicked: "search_result_clicked",
+      rail_impression: "rail_impression",
+      rail_item_clicked: "rail_item_clicked",
       language_picker_opened: "language_picker_opened",
       language_applied: "language_applied",
       subtitle_applied: "subtitle_applied",
@@ -127,6 +129,20 @@ describe("wire names (R25)", () => {
         requestType: "search",
       },
       { type: "search_result_clicked" },
+      {
+        type: "rail_impression",
+        railSurface: "watch-home",
+        railBlock: "collections",
+        railPresentation: "carousel",
+        itemPosition: "2-3",
+      },
+      {
+        type: "rail_item_clicked",
+        railSurface: "watch-video",
+        railBlock: "episodes",
+        railPresentation: "episode-grid",
+        itemPosition: "1",
+      },
       { type: "language_picker_opened" },
       {
         type: "language_applied",
@@ -163,6 +179,8 @@ describe("wire names (R25)", () => {
       "videocomplete",
       "search_completed",
       "search_result_clicked",
+      "rail_impression",
+      "rail_item_clicked",
       "language_picker_opened",
       "language_applied",
       "subtitle_applied",
@@ -176,6 +194,30 @@ describe("wire names (R25)", () => {
 })
 
 describe("route context on every event (R10)", () => {
+  it("sends bounded rail dimensions without identifiers or content values", () => {
+    dispatchWatchAnalyticsEvent(
+      {
+        type: "rail_item_clicked",
+        railSurface: "watch-search",
+        railBlock: "results",
+        railPresentation: "result-list",
+        itemPosition: "4-10",
+      },
+      { mode: "immediate" },
+    )
+
+    expect(gaEvents().at(-1)?.[0]).toBe("rail_item_clicked")
+    expect(lastParams()).toMatchObject({
+      watch_rail_surface: "watch-search",
+      watch_rail_block: "results",
+      watch_rail_presentation: "result-list",
+      watch_rail_position: "4-10",
+    })
+    expect(lastParams()).not.toHaveProperty("item_id")
+    expect(lastParams()).not.toHaveProperty("item_title")
+    expect(lastParams()).not.toHaveProperty("item_url")
+  })
+
   it("attaches canonical route context without the call site rebuilding path logic", () => {
     dispatchWatchAnalyticsEvent({ type: "share_opened" }, { mode: "immediate" })
 

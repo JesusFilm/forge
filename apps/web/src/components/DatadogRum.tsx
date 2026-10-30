@@ -1,6 +1,10 @@
 "use client"
 
-import { datadogRum, type RumInitConfiguration } from "@datadog/browser-rum"
+import {
+  datadogRum,
+  type RumEvent,
+  type RumInitConfiguration,
+} from "@datadog/browser-rum"
 import { reactPlugin } from "@datadog/browser-rum-react"
 import { useEffect, useRef } from "react"
 
@@ -12,6 +16,7 @@ import {
   isWatchAnalyticsContractV2Enabled,
 } from "@/lib/watch-analytics-contract"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import { WATCH_BASE_PATH, WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
 
 const DATADOG_SERVICE = "forge-web"
 
@@ -28,7 +33,74 @@ const DATADOG_ALLOWED_TRACING_URLS = [
     match: "https://admin.jesusfilm.org/api/graphql",
     propagatorTypes: ["tracecontext"],
   },
+  {
+    match: `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/api/`,
+    propagatorTypes: ["tracecontext"],
+  },
 ] satisfies NonNullable<RumInitConfiguration["allowedTracingUrls"]>
+
+function removeUrlSearchAndHash(value: string): string {
+  if (value.length === 0) return value
+  try {
+    const url = new URL(value, WATCH_CANONICAL_ORIGIN)
+    url.search = ""
+    url.hash = ""
+    url.username = ""
+    url.password = ""
+    return url.toString()
+  } catch {
+    return value.split(/[?#]/, 1)[0]
+  }
+}
+
+function removeEmbeddedUrlSearchAndHash(value: string): string {
+  return value.replace(/https?:\/\/[^\s"'<>]+/g, (rawUrl) => {
+    const trailingPunctuation = rawUrl.match(/[),.;!?]+$/)?.[0] ?? ""
+    const url = rawUrl.slice(0, rawUrl.length - trailingPunctuation.length)
+    return removeUrlSearchAndHash(url) + trailingPunctuation
+  })
+}
+
+export function sanitizeDatadogRumEvent(event: RumEvent): boolean {
+  // `view` is attached to actions, errors, resources and long tasks too. Its
+  // query fields are indexed from this URL by Datadog for every event.
+  if ("view" in event && event.view) {
+    event.view.url = removeUrlSearchAndHash(event.view.url)
+    if (event.view.referrer)
+      event.view.referrer = removeUrlSearchAndHash(event.view.referrer)
+  }
+  if (event.type === "view" && event.view.performance?.lcp?.resource_url) {
+    event.view.performance.lcp.resource_url = removeUrlSearchAndHash(
+      event.view.performance.lcp.resource_url,
+    )
+  }
+  if (event.type === "resource" && event.resource) {
+    event.resource.url = removeUrlSearchAndHash(event.resource.url)
+  }
+  if (
+    event.type === "error" &&
+    event.error.resource?.url &&
+    typeof event.error.resource.url === "string"
+  ) {
+    event.error.resource.url = removeUrlSearchAndHash(event.error.resource.url)
+  }
+  if (event.type === "error") {
+    event.error.message = removeEmbeddedUrlSearchAndHash(event.error.message)
+    if (event.error.stack)
+      event.error.stack = removeEmbeddedUrlSearchAndHash(event.error.stack)
+    if (event.error.handling_stack)
+      event.error.handling_stack = removeEmbeddedUrlSearchAndHash(
+        event.error.handling_stack,
+      )
+  }
+  if (event.type === "long_task") {
+    for (const script of event.long_task.scripts ?? []) {
+      if (script.source_url)
+        script.source_url = removeUrlSearchAndHash(script.source_url)
+    }
+  }
+  return true
+}
 
 export function getDatadogRumInitConfig(): RumInitConfiguration | null {
   const applicationId = env.NEXT_PUBLIC_DATADOG_APPLICATION_ID
@@ -44,11 +116,15 @@ export function getDatadogRumInitConfig(): RumInitConfiguration | null {
     env: env.NEXT_PUBLIC_DATADOG_ENV,
     version: env.NEXT_PUBLIC_DATADOG_VERSION,
     sessionSampleRate: 50,
-    sessionReplaySampleRate: 10,
+    // The recorder writes window.location.href into replay metadata directly,
+    // outside beforeSend. Keep replay off until the SDK can redact that URL.
+    sessionReplaySampleRate: 0,
     trackUserInteractions: true,
+    enablePrivacyForActionName: true,
     trackResources: true,
     trackLongTasks: true,
-    defaultPrivacyLevel: "mask-user-input",
+    defaultPrivacyLevel: "mask",
+    beforeSend: sanitizeDatadogRumEvent,
     allowedTracingUrls: DATADOG_ALLOWED_TRACING_URLS,
     plugins: [reactPlugin()],
   }
@@ -82,6 +158,18 @@ export const GOOGLE_ANALYTICS_ACTION_PARAM_ALLOWLIST: Readonly<
     "watch_search.result_source",
     "watch_search.result_type",
   ],
+  "watch_rail.item_impression": [
+    "watch_rail.surface",
+    "watch_rail.block",
+    "watch_rail.presentation",
+    "watch_rail.position",
+  ],
+  "watch_rail.item_clicked": [
+    "watch_rail.surface",
+    "watch_rail.block",
+    "watch_rail.presentation",
+    "watch_rail.position",
+  ],
 }
 
 /**
@@ -106,6 +194,40 @@ export const GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS: Readonly<
     resultSource: asString(params["watch_search.result_source"]),
     resultType: asString(params["watch_search.result_type"]),
   }),
+  "watch_rail.item_impression": (params) => {
+    const railSurface = asRailSurface(params["watch_rail.surface"])
+    const railBlock = asRailBlock(params["watch_rail.block"])
+    const railPresentation = asRailPresentation(
+      params["watch_rail.presentation"],
+    )
+    const itemPosition = asPositionBucket(params["watch_rail.position"])
+    if (!railSurface || !railBlock || !railPresentation || !itemPosition)
+      return null
+    return {
+      type: "rail_impression",
+      railSurface,
+      railBlock,
+      railPresentation,
+      itemPosition,
+    }
+  },
+  "watch_rail.item_clicked": (params) => {
+    const railSurface = asRailSurface(params["watch_rail.surface"])
+    const railBlock = asRailBlock(params["watch_rail.block"])
+    const railPresentation = asRailPresentation(
+      params["watch_rail.presentation"],
+    )
+    const itemPosition = asPositionBucket(params["watch_rail.position"])
+    if (!railSurface || !railBlock || !railPresentation || !itemPosition)
+      return null
+    return {
+      type: "rail_item_clicked",
+      railSurface,
+      railBlock,
+      railPresentation,
+      itemPosition,
+    }
+  },
 }
 
 function asFiniteNumber(value: unknown): number | undefined {
@@ -114,6 +236,71 @@ function asFiniteNumber(value: unknown): number | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function asRailSurface(
+  value: unknown,
+): "watch-home" | "watch-search" | "watch-video" | "watch-series" | undefined {
+  return value === "watch-home" ||
+    value === "watch-search" ||
+    value === "watch-video" ||
+    value === "watch-series"
+    ? value
+    : undefined
+}
+
+function asRailBlock(
+  value: unknown,
+):
+  | "hero"
+  | "collections"
+  | "authored"
+  | "results"
+  | "editorial"
+  | "chapters"
+  | "episodes"
+  | undefined {
+  return value === "hero" ||
+    value === "collections" ||
+    value === "authored" ||
+    value === "results" ||
+    value === "editorial" ||
+    value === "chapters" ||
+    value === "episodes"
+    ? value
+    : undefined
+}
+
+function asRailPresentation(
+  value: unknown,
+):
+  | "hero-card"
+  | "carousel"
+  | "grid"
+  | "result-list"
+  | "authored-block"
+  | "episode-grid"
+  | undefined {
+  return value === "hero-card" ||
+    value === "carousel" ||
+    value === "grid" ||
+    value === "result-list" ||
+    value === "authored-block" ||
+    value === "episode-grid"
+    ? value
+    : undefined
+}
+
+function asPositionBucket(
+  value: unknown,
+): "1" | "2-3" | "4-10" | "11-25" | "26+" | undefined {
+  return value === "1" ||
+    value === "2-3" ||
+    value === "4-10" ||
+    value === "11-25" ||
+    value === "26+"
+    ? value
+    : undefined
 }
 
 function lookup<T>(
@@ -177,15 +364,7 @@ export function identifyDatadogRumUser(user: DatadogRumUser | undefined) {
     return
   }
 
-  const email = user.email?.trim() || undefined
-  const name = user.name?.trim() || undefined
-  safeReportDatadogRum("user", () =>
-    datadogRum.setUser({
-      id,
-      email,
-      name,
-    }),
-  )
+  safeReportDatadogRum("user", () => datadogRum.setUser({ id }))
 }
 
 export function clearDatadogRumUser() {

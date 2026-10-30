@@ -10,6 +10,10 @@ const { fetchWithRetry } = vi.hoisted(() => ({
       new Response("{}", { status: 200 }),
   ),
 }))
+const { rumAction } = vi.hoisted(() => ({ rumAction: vi.fn() }))
+vi.mock("@/components/DatadogRum", () => ({
+  reportDatadogRumAction: rumAction,
+}))
 vi.mock("@/lib/recommendation-browser", () => ({
   recommendationFetchWithRetry: fetchWithRetry,
 }))
@@ -59,6 +63,7 @@ describe("WatchExposureBoundary", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     fetchWithRetry.mockReset()
+    rumAction.mockReset()
     fetchWithRetry.mockResolvedValue(new Response("{}", { status: 200 }))
     Object.defineProperty(document, "readyState", {
       configurable: true,
@@ -814,6 +819,12 @@ describe("WatchExposureBoundary", () => {
     )
     const first = container.querySelector("a")!
     act(() => first.click())
+    expect(rumAction).toHaveBeenCalledWith("watch_rail.item_clicked", {
+      "watch_rail.surface": "watch-search",
+      "watch_rail.block": "results",
+      "watch_rail.presentation": "result-list",
+      "watch_rail.position": "1",
+    })
     expect(bodies().filter((event) => event.kind === "selected")).toHaveLength(
       1,
     )

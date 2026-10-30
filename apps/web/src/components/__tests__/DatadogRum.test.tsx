@@ -50,7 +50,9 @@ import DatadogRum, {
   identifyDatadogRumUser,
   reportDatadogRumAction,
   reportDatadogRumError,
+  sanitizeDatadogRumEvent,
 } from "@/components/DatadogRum"
+import type { RumEvent } from "@datadog/browser-rum"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import {
   flushWatchAnalyticsDispatches,
@@ -128,11 +130,13 @@ describe("DatadogRum", () => {
         env: "prod",
         version: "abc123",
         sessionSampleRate: 50,
-        sessionReplaySampleRate: 10,
+        sessionReplaySampleRate: 0,
+        beforeSend: sanitizeDatadogRumEvent,
         trackUserInteractions: true,
+        enablePrivacyForActionName: true,
         trackResources: true,
         trackLongTasks: true,
-        defaultPrivacyLevel: "mask-user-input",
+        defaultPrivacyLevel: "mask",
         plugins: [{ name: "react-plugin" }],
       }),
     )
@@ -143,10 +147,104 @@ describe("DatadogRum", () => {
           propagatorTypes: ["tracecontext"],
         }),
         expect.objectContaining({
+          match: "https://www.jesusfilm.org/watch/api/",
+          propagatorTypes: ["tracecontext"],
+        }),
+        expect.objectContaining({
           match: "https://admin.jesusfilm.org/api/graphql",
           propagatorTypes: ["tracecontext"],
         }),
       ]),
+    )
+  })
+
+  it("strips query strings and fragments from RUM URLs", () => {
+    const view = {
+      type: "view",
+      view: {
+        url: "https://www.jesusfilm.org/watch/?email=viewer%40example.test#account",
+        referrer:
+          "https://www.jesusfilm.org/watch/video.html?token=secret#player",
+        performance: {
+          lcp: {
+            resource_url:
+              "https://www.jesusfilm.org/_next/image?url=private&width=800",
+          },
+        },
+      },
+    }
+    const resource = {
+      type: "resource",
+      resource: {
+        url: "https://www.jesusfilm.org/watch/api/profile?user=secret",
+      },
+    }
+
+    expect(sanitizeDatadogRumEvent(view as unknown as RumEvent)).toBe(true)
+    expect(view.view.url).toBe("https://www.jesusfilm.org/watch/")
+    expect(view.view.referrer).toBe(
+      "https://www.jesusfilm.org/watch/video.html",
+    )
+    expect(view.view.performance.lcp.resource_url).toBe(
+      "https://www.jesusfilm.org/_next/image",
+    )
+    const emptyReferrer = {
+      type: "view",
+      view: { url: "https://example.test/", referrer: "" },
+    }
+    sanitizeDatadogRumEvent(emptyReferrer as unknown as RumEvent)
+    expect(emptyReferrer.view.referrer).toBe("")
+    sanitizeDatadogRumEvent(resource as unknown as RumEvent)
+    expect(resource.resource.url).toBe(
+      "https://www.jesusfilm.org/watch/api/profile",
+    )
+
+    const action = {
+      type: "action",
+      view: {
+        id: "view-id",
+        url: "https://www.jesusfilm.org/watch/?token=secret",
+        referrer: "https://example.test/path?session=secret",
+      },
+    }
+    sanitizeDatadogRumEvent(action as unknown as RumEvent)
+    expect(action.view.url).toBe("https://www.jesusfilm.org/watch/")
+    expect(action.view.referrer).toBe("https://example.test/path")
+
+    const error = {
+      type: "error",
+      error: {
+        message:
+          "Fetch failed: https://www.jesusfilm.org/watch/api?token=secret",
+        handling_stack:
+          "at route (https://www.jesusfilm.org/watch/api?token=secret)",
+        source: "network",
+      },
+      view: {
+        id: "view-id",
+        url: "https://www.jesusfilm.org/watch/?token=secret",
+      },
+    }
+    sanitizeDatadogRumEvent(error as unknown as RumEvent)
+    expect(error.error.message).toBe(
+      "Fetch failed: https://www.jesusfilm.org/watch/api",
+    )
+    expect(error.view.url).toBe("https://www.jesusfilm.org/watch/")
+    expect(error.error.handling_stack).toBe(
+      "at route (https://www.jesusfilm.org/watch/api)",
+    )
+
+    const longTask = {
+      type: "long_task",
+      long_task: {
+        scripts: [
+          { source_url: "https://www.jesusfilm.org/app.js?token=secret" },
+        ],
+      },
+    }
+    sanitizeDatadogRumEvent(longTask as unknown as RumEvent)
+    expect(longTask.long_task.scripts[0]?.source_url).toBe(
+      "https://www.jesusfilm.org/app.js",
     )
   })
 
@@ -312,18 +410,36 @@ describe("DatadogRum", () => {
     expect(gtag).toHaveBeenCalledWith("event", "search_result_clicked", {})
   })
 
-  it("identifies signed-in users in RUM without image data", () => {
+  it("projects rail outcomes to legacy GA with only finite dimensions", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction("watch_rail.item_clicked", {
+      "watch_rail.surface": "watch-search",
+      "watch_rail.block": "results",
+      "watch_rail.presentation": "result-list",
+      "watch_rail.position": "2-3",
+      "watch_rail.item_id": "content-123",
+      "watch_rail.item_title": "Private title",
+      "watch_rail.href": "https://www.jesusfilm.org/watch/private.html",
+    })
+
+    expect(gtag).toHaveBeenCalledWith("event", "rail_item_clicked", {
+      rail_surface: "watch-search",
+      rail_block: "results",
+      rail_presentation: "result-list",
+      rail_position: "2-3",
+    })
+  })
+
+  it("identifies signed-in users in RUM using only an opaque ID", () => {
     identifyDatadogRumUser({
       id: " auth-user-123 ",
       email: " viewer@example.test ",
       name: " Viewer Example ",
     })
 
-    expect(datadogRumMock.setUser).toHaveBeenCalledWith({
-      id: "auth-user-123",
-      email: "viewer@example.test",
-      name: "Viewer Example",
-    })
+    expect(datadogRumMock.setUser).toHaveBeenCalledWith({ id: "auth-user-123" })
   })
 
   it("clears the RUM user when the session is anonymous", () => {
@@ -461,6 +577,34 @@ describe("DatadogRum — GA projection under the v2 collector", () => {
     ]) {
       expect(serialized).not.toContain(forbidden)
     }
+  })
+
+  it("projects the rail impression action into the typed v2 event contract", () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    reportDatadogRumAction("watch_rail.item_impression", {
+      "watch_rail.surface": "watch-home",
+      "watch_rail.block": "collections",
+      "watch_rail.presentation": "carousel",
+      "watch_rail.position": "4-10",
+      "watch_rail.visibility": "intersection-observer",
+      "watch_rail.item_id": "content-123",
+    })
+    runFrame()
+
+    expect(gtag).toHaveBeenCalledWith(
+      "event",
+      "rail_impression",
+      expect.objectContaining({
+        event_contract_version: 2,
+        watch_rail_surface: "watch-home",
+        watch_rail_block: "collections",
+        watch_rail_presentation: "carousel",
+        watch_rail_position: "4-10",
+      }),
+    )
+    expect(gtag.mock.calls[0]?.[2]).not.toHaveProperty("watch_rail.item_id")
   })
 
   it("sends nothing to GA for an action with no registered projection", () => {
