@@ -165,6 +165,8 @@ class NativeAndroidPlayerView(
   private var endHandled = false
   private var ignoreSelectUntil = 0L
   private var revealKeyCode: Int? = null
+  private var revealKeyGeneration = 0L
+  private val selectGesture = NativeSelectGesture()
   private var focusObserver: ViewTreeObserver? = null
 
   private val hideControllerWork = Runnable { hideControls() }
@@ -676,6 +678,21 @@ class NativeAndroidPlayerView(
       return true
     }
 
+    if (isSelect) {
+      when (selectGesture.handle(
+        event.keyCode,
+        event.action == KeyEvent.ACTION_DOWN,
+        event.repeatCount,
+        !controllerVisible || isFocused,
+        hasPlaybackError
+      )) {
+        NativeSelectAction.TOGGLE -> { togglePlayback(progressBar); return true }
+        NativeSelectAction.REVEAL -> { showControls(backButton); return true }
+        NativeSelectAction.CONSUME -> return true
+        NativeSelectAction.PASS -> Unit
+      }
+    }
+
     if (revealKeyCode == event.keyCode) {
       if (event.action == KeyEvent.ACTION_UP) revealKeyCode = null
       return true
@@ -683,9 +700,6 @@ class NativeAndroidPlayerView(
 
     if (!controllerVisible || isFocused) {
       when (event.keyCode) {
-        KeyEvent.KEYCODE_DPAD_CENTER,
-        KeyEvent.KEYCODE_ENTER,
-        KeyEvent.KEYCODE_NUMPAD_ENTER,
         KeyEvent.KEYCODE_DPAD_LEFT,
         KeyEvent.KEYCODE_DPAD_RIGHT,
         KeyEvent.KEYCODE_DPAD_UP,
@@ -693,8 +707,9 @@ class NativeAndroidPlayerView(
           if (event.action == KeyEvent.ACTION_DOWN) {
             revealKeyCode = event.keyCode
             val revealedBy = event.keyCode
+            val revealGeneration = ++revealKeyGeneration
             handler.postDelayed({
-              if (revealKeyCode == revealedBy) revealKeyCode = null
+              if (revealKeyCode == revealedBy && revealKeyGeneration == revealGeneration) revealKeyCode = null
             }, 5_000)
             showControls(progressBar)
           }
