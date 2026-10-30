@@ -104,3 +104,12 @@ lowest scheduling priority.
 - Browser, 32px root font: the native-language line is larger than 11px.
 - Page load: check that the change adds no new request and no new JavaScript
   beyond a few bytes, because the dialogs load on demand.
+
+## October 29 integration disposition
+
+PR #2836 now builds on #2826's shared TierListbox migration. Opening Terms
+resets popup state immediately while selected quality stays in the modal, so
+one Escape closes Terms and returns focus to its opener. The existing popup
+regression test fails without that reset; selection retention has separate
+behavior coverage. The remaining shared popup-placement work in this ticket
+is not claimed complete by this integration repair.

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "025"
 title: Migrate DownloadModal's inline quality dropdown onto the shared TierListbox so the popup mechanics have one owner
@@ -60,11 +60,21 @@ did not belong in the collection-modal bug fix.
 4. Real-browser check inside the single-video modal (poster + terms dialog
    present): option click and Escape must not dismiss the outer dialog.
 
+# Resolution
+
+Done 2026-10-20 in feat-761
+(`docs/roadmap/platform/feat-761-watch-download-quality-keyboard.md`).
+`DownloadModal` now renders `TierListbox` with
+`testIdPrefix="watch-download-modal-size"` (trigger test id is the prefix
+itself; the suite's selectors were updated). The unused per-option
+`data-size-bytes` attribute was dropped instead of adding an
+`optionAttributes` hook. Modal-level keyboard scenarios live in
+`apps/web/src/components/watch/__tests__/DownloadModal.test.tsx`.
+
 # Popup placement ownership
 
 `TierListbox` opens its popup below the trigger only. It does not flip above the
 trigger and does not limit its height to the viewport. This was deferred in the
 collection quality listbox plan and is now tracked in
 `docs/roadmap/platform/feat-782-watch-download-dialog-text-and-popup-residuals.md`.
-Fix placement once in `TierListbox`, so the single-video picker gets the same
-behavior after this migration.
+Both download modals now use `TierListbox`; fix placement in that shared owner.
