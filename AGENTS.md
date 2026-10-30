@@ -62,3 +62,15 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - `packages/rag-contracts/AGENTS.md` (canonical) + `packages/rag-contracts/CLAUDE.md` (provider redirect)
 - `docs/roadmap/rag/CLAUDE.md`
 - `packages/admin-graphql/CLAUDE.md`
+
+## Cursor Cloud specific instructions
+
+- Node is 24.22.0 and pnpm is 9.12.3 (`.nvmrc` is `24`, root `packageManager` is `pnpm@9.12.3`). On the default Cloud Agent image, `/exec-daemon/node` is Node 22 and sits earlier on `PATH` than `/usr/local/bin`. The environment install links Node 24, corepack, and pnpm into `/usr/local/cargo/bin` so `node -v` prints `v24.22.0` and `pnpm -v` prints `9.12.3`.
+- PostgreSQL 18 with pgvector and Redis come up from the environment start script via `pg_ctlcluster 18 main` and `redis-server` (this image uses tini, so `service`/`systemctl` are not the boot path). Admin data is `postgresql://forge:forge@127.0.0.1:5432/forge_admin`. Start then runs `pnpm --filter @forge/admin exec prisma migrate deploy` and `pnpm --filter @forge/admin seed-web-fixtures`.
+- Start writes `apps/admin/.env` and `apps/web/.env.local` only when that path is absent, using the local consumer bearer `local-dev-web-admin-key`. A file that is already present stays untouched.
+- Dev servers stay off the boot path so a full Next.js monorepo does not start on every agent. Start them when needed:
+  - `pnpm --filter @forge/admin dev` → http://127.0.0.1:3003 (`/api/health`, `/api/graphql`)
+  - `pnpm --filter @forge/web dev` → http://127.0.0.1:3000/watch
+  - `pnpm --filter roadmap dev` → http://127.0.0.1:3100
+- Seeded Watch proof without production Auth: GraphQL `experienceBySlug(locale: "en", slug: "easter")` returns the published Easter experience, and http://127.0.0.1:3000/watch/easter.html renders it. The admin UI login redirects to production Auth at https://auth.jesusfilm.org.
+- Scoped checks match the package scripts, for example `pnpm --filter @forge/watch-url-policy test`.
