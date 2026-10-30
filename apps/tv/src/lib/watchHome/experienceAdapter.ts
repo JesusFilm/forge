@@ -287,10 +287,15 @@ export function reconcileWatchHome(
     nextLastGoodBlocks = input.experienceBlocks
     if (input.experienceOutcome === "error") logs.push("error-recovered")
   } else {
-    // A definitive fulfilled-absent homepage invalidates any stale last-good, so a
-    // later transient error can't resurrect a removed homepage (R9); error/empty give
-    // no fresh authoritative signal, so leave last-good unchanged.
-    if (input.experienceOutcome === "absent") nextLastGoodBlocks = null
+    // A definitive absent/explicitly emptied homepage retires the old body. A
+    // nonempty body that could not hydrate still keeps the existing resilience
+    // behavior; a later error must not resurrect an intentionally removed body.
+    if (
+      input.experienceOutcome === "absent" ||
+      (input.experienceOutcome === "present" &&
+        input.experienceBlocks?.length === 0)
+    )
+      nextLastGoodBlocks = null
     logs.push(
       input.experienceOutcome === "error"
         ? "error"

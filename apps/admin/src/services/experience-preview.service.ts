@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client"
 import type { Block } from "@/domain/blocks"
 import { ExperienceLocaleDraftSnapshotSchema } from "@/services/experience.schemas"
+import { findDefaultWatchTemplateId } from "./watch-default-template"
 
 const PREVIEW_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/
 
@@ -10,6 +11,11 @@ export type ExperiencePreviewShape = {
   locale: string
   slug: string
   isHomepage: boolean
+  homepageLayout: boolean
+  /** Generic parent route-template flag; multiple Experiences may be templates. */
+  isTemplate: boolean
+  /** Server-selected public Watch template, never asserted by the snapshot. */
+  isDefaultTemplate: boolean
   pathSegment: string | null
   title: string | null
   metaDescription: string | null
@@ -68,15 +74,24 @@ export class ExperiencePreviewService {
         id: true,
         experienceId: true,
         locale: true,
+        experience: { select: { isTemplate: true } },
       },
     })
     if (!locale) return null
+
+    const isDefaultTemplate =
+      locale.experience.isTemplate &&
+      (await findDefaultWatchTemplateId(this.prisma)) === locale.experienceId
 
     return {
       experienceId: locale.experienceId,
       localeId: locale.id,
       locale: locale.locale,
       ...snapshot.data.data,
+      // After the snapshot spread: identity comes from the parent row, never
+      // from editor-supplied draft data.
+      isTemplate: locale.experience.isTemplate,
+      isDefaultTemplate,
     }
   }
 }

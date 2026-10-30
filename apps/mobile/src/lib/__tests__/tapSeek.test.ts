@@ -48,8 +48,9 @@ describe("singleTapAction", () => {
   it("hides when the chrome was already visible at press-in", () => {
     expect(singleTapAction(true)).toBe("hide")
   })
-  it("keeps the chrome up when it was hidden (just revealed on press-in)", () => {
-    // Guards R3: a tap-to-reveal must not be undone by its own single-tap timer.
-    expect(singleTapAction(false)).toBe("keep")
+  it("reveals the chrome when it was hidden at press-in", () => {
+    // The press itself reveals nothing, so a double tap on hidden chrome seeks
+    // with the chrome still hidden (owner, 2026-10-16).
+    expect(singleTapAction(false)).toBe("reveal")
   })
 })

@@ -31,7 +31,7 @@ test("retains all ten choices and the requested defaults", () => {
     "10",
   ])
   expect(DEFAULT_STARTUP_ANIMATION).toBe("09")
-  expect(DEFAULT_LOADING_ANIMATION).toBe("03")
+  expect(DEFAULT_LOADING_ANIMATION).toBe("dots")
 })
 
 test("dots is the last loading alternative and is not a startup choice", () => {
@@ -78,7 +78,7 @@ test.each(LOGO_ANIMATIONS)(
 test("older preferences keep their schema and resolve animation defaults separately", () => {
   const prefs = parseStoredPreferences('{"audioLanguageSlug":"thai"}')
   expect(prefs.startupAnimationId ?? DEFAULT_STARTUP_ANIMATION).toBe("09")
-  expect(prefs.loadingAnimationId ?? DEFAULT_LOADING_ANIMATION).toBe("03")
+  expect(prefs.loadingAnimationId ?? DEFAULT_LOADING_ANIMATION).toBe("dots")
   expect(prefs.audioLanguageSlug).toBe("thai")
 })
 
@@ -87,7 +87,7 @@ test("invalid stored choices use the correct independent default", () => {
     '{"startupAnimationId":5,"loadingAnimationId":"99"}',
   )
   expect(prefs.startupAnimationId).toBe("09")
-  expect(prefs.loadingAnimationId).toBe("03")
+  expect(prefs.loadingAnimationId).toBe("dots")
 })
 
 test("a pre-hydration selection cannot reset the other choice or player preferences", () => {

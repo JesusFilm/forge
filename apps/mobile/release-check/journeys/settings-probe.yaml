@@ -1,0 +1,71 @@
+# The settings probe (KTD5). It runs first on each device from cleared app
+# data, and a failure stops the run. The runner sets EXPLORE_TAB to "shown" or
+# "hidden" from test-settings.json and the reach rules in screens.json.
+appId: org.jesusfilm.forgewatch
+name: settings-probe
+---
+- assertTrue:
+    condition: ${EXPLORE_TAB == "shown" || EXPLORE_TAB == "hidden"}
+    label: The runner gave the Explore tab expectation
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- assertVisible:
+    id: home-body-live
+    label: The Home body comes from the live Experience
+- assertNotVisible:
+    id: home-body-fallback
+    label: The Home body is not the frozen fallback
+- assertVisible:
+    text: My Watch
+    label: The tab bar shows
+- runFlow:
+    when:
+      true: ${EXPLORE_TAB == "shown"}
+    commands:
+      - assertVisible:
+          text: Explore
+          label: The Explore tab shows
+    label: Check that the Explore tab shows
+- runFlow:
+    when:
+      true: ${EXPLORE_TAB == "hidden"}
+    commands:
+      - assertNotVisible:
+          text: Explore
+          label: The Explore tab is hidden
+    label: Check that the Explore tab is hidden
+# The live Experience puts the For You block third, under the hero.
+- assertNotVisible:
+    text: Recommended for You
+    label: No For You shelf at the top of Home
+- scroll:
+    label: Scroll Home down once
+- assertNotVisible:
+    text: Recommended for You
+    label: No For You shelf after one scroll
+- scroll:
+    label: Scroll Home down twice
+- assertNotVisible:
+    text: Recommended for You
+    label: No For You shelf after two scrolls
+# On the Android tablet, a tap during the scroll's coast did not open the tab.
+- waitForAnimationToEnd:
+    label: Wait for Home to stop moving
+- tapOn:
+    text: My Watch
+    retryTapIfNoChange: true
+    label: Open My Watch
+- assertVisible:
+    id: screen-tab-profile
+    label: My Watch shows
+- assertVisible:
+    text: "Sign in, coming soon.*"
+    enabled: false
+    label: The sign-in card is disabled

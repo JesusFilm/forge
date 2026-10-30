@@ -138,6 +138,7 @@
     "versesAriaValue": "Vearssat {first} rájes {last} rádjái, oktiibuot {total}, {chapter}",
     "demoVerse": "Gease bajás boahtte vearsii",
     "demoChapter": "Gease gurutbeallái boahtte kapihttalii",
+    "demoChapterRtl": "Gease olgešbeallái boahtte kapihttalii",
     "demoSkip": "Deaddil njuikestan dihte",
     "demoSkipAriaLabel": "Njuikes geassinčájeheami badjel",
     "selectVerseAriaHint": "Deaddil guktii vai válljet dán vearssa",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Vállje girjji",
+    "chooseChapter": "Vállje kapihttala",
+    "chooseVerse": "Vállje vearssa",
     "oldTestament": "Boares testameanta",
     "newTestament": "Ođđa testameanta",
     "books": "Girjjit",
@@ -193,7 +196,7 @@
     "someBooks": "{count} / {total, plural, one {# girji} two {# girjji} other {# girjji}}",
     "twoNames": "{first} ja {second}",
     "threeNames": "{first}, {second} ja {third}",
-    "onDevice": "Dán ovttadagas",
+    "downloaded": "Viežžojuvvon",
     "downloading": "Viežžamin {percent} %",
     "downloadStopped": "Viežžan bisánii",
     "updateAvailable": "Ođasmahttin gávdno",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Ráiddu plakáhta",
     "videosHeading": "Videot",
     "detailsLoadError": "Buot dieđuid ii sáhttán rahpat.",
+    "languagesTitle": "Videogiella",
     "searchLanguagesPlaceholder": "Oza gielaid…",
     "searchLanguagesAriaLabel": "Oza gielaid",
     "noLanguagesFound": "Gielat eai gávdnon",
@@ -502,6 +506,7 @@
     "resumeAt": "Geahča viidáset {time} rájes",
     "unknownLanguage": "Dovdameahttun",
     "downloadedStatus": "Viežžojuvvon",
+    "languagesTitle": "Videogiella",
     "searchLanguagesPlaceholder": "Oza gielaid…",
     "searchLanguagesAriaLabel": "Oza gielaid",
     "noLanguagesFound": "Gielat eai gávdnon",
@@ -773,5 +778,8 @@
     "send": "Sádde",
     "sending": "Sáddemin…",
     "sendAriaLabel": "Sádde máhcahusa"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Áppa geavaha du báikkálaš neahta gávdnan dihtii ovttadagaid maidda sáhtát sáddet, vai sáhtát čuojahit videoid du TV:s."
   }
 }

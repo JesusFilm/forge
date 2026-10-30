@@ -4,8 +4,10 @@ const config: NextConfig = {
   agentRules: false,
   output: "standalone",
   allowedDevOrigins:
-    process.env.NODE_ENV === "development" && process.env.FEEDBACK_BASE_URL
-      ? [new URL(process.env.FEEDBACK_BASE_URL).hostname]
+    process.env.NODE_ENV === "development"
+      ? [process.env.FEEDBACK_BASE_URL, process.env.FEEDBACK_LOCAL_BASE_URL]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => new URL(value).hostname)
       : [],
   async headers() {
     return [

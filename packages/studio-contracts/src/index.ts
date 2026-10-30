@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { STUDIO_MAX_AUDIO_VOLUME } from "./audio"
 
 export const studioIdSchema = z
   .string()
@@ -164,6 +165,16 @@ export const studioTextPropertiesSchema = z
     exitFrames: z.number().int().min(1).max(300).optional(),
   })
   .strict()
+export const studioAudioFadeSchema = z
+  .object({
+    fadeInFrames: frame.default(0),
+    fadeOutFrames: frame.default(0),
+    fadeInCurve: z.number().min(-1).max(1).default(0),
+    fadeOutCurve: z.number().min(-1).max(1).default(0),
+    fadeInCurvePosition: z.number().min(0.05).max(0.95).optional(),
+    fadeOutCurvePosition: z.number().min(0.05).max(0.95).optional(),
+  })
+  .strict()
 const itemBase = {
   id: studioIdSchema,
   trackId: studioIdSchema,
@@ -205,7 +216,8 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
         })
         .strict()
         .optional(),
-      volume: z.number().min(0).max(2),
+      volume: z.number().min(0).max(STUDIO_MAX_AUDIO_VOLUME),
+      audioFade: studioAudioFadeSchema.optional(),
     })
     .strict(),
   z
@@ -215,7 +227,8 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
       narrationFor: studioIdSchema.optional(),
       asset: studioAssetReferenceSchema,
       sourceStartMs: z.number().int().nonnegative().max(86_400_000),
-      volume: z.number().min(0).max(2),
+      volume: z.number().min(0).max(STUDIO_MAX_AUDIO_VOLUME),
+      audioFade: studioAudioFadeSchema.optional(),
     })
     .strict(),
   z
@@ -243,9 +256,8 @@ export const studioDocumentSchema = z
     tracks: z.array(studioTrackSchema).max(64),
     components: z.array(studioComponentSchema).max(128),
     items: z.array(studioTimelineItemSchema).max(1000),
-    packRevisionIds: z.array(studioIdSchema).max(64),
   })
-  .strict()
+  .strip()
   .superRefine((doc, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: "custom", message })
     if (new TextEncoder().encode(JSON.stringify(doc)).length > 262144)
@@ -254,7 +266,6 @@ export const studioDocumentSchema = z
       doc.tracks.map((t) => t.id),
       doc.items.map((i) => i.id),
       doc.components.map((c) => c.versionId),
-      doc.packRevisionIds,
     ])
       if (new Set(ids).size !== ids.length) fail("Duplicate identity")
     for (const c of doc.components) {
@@ -453,12 +464,6 @@ export const studioOperationSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
-      kind: z.literal("assign-content-packs"),
-      packRevisionIds: z.array(studioIdSchema).max(64),
-    })
-    .strict(),
-  z
-    .object({
       kind: z.literal("restore-document"),
       document: studioDocumentSchema,
     })
@@ -600,6 +605,7 @@ export const studioListSchema = z
   .strict()
 export const studioProjectSummarySchema = z
   .object({
+    canDelete: z.boolean().optional(),
     projectId: studioIdSchema,
     revision: z.number().int().positive(),
     lifecycle: studioLifecycleSchema,

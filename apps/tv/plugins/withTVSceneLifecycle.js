@@ -10,6 +10,14 @@ const startup = `    window = UIWindow(frame: UIScreen.main.bounds)
       in: window,
       launchOptions: launchOptions)`
 
+const sceneStartup = `    forgeLaunchOptions = launchOptions
+#if DEBUG
+    // Expo SDK 54 dev launcher requires the window and prepared React root
+    // before ExpoAppDelegate notifies didFinishLaunching subscribers.
+    // The scene delegate attaches this existing window when it connects.
+${startup}
+#endif`
+
 function patchAppDelegate(source) {
   if (source.includes("class ForgeSceneDelegate:")) return source
   if (!source.includes("  var window: UIWindow?")) {
@@ -30,7 +38,7 @@ function patchAppDelegate(source) {
         "  var window: UIWindow?",
         "  var window: UIWindow?\n  var forgeLaunchOptions: [UIApplication.LaunchOptionsKey: Any]?",
       )
-      .replace(startup, "    forgeLaunchOptions = launchOptions") +
+      .replace(startup, sceneStartup) +
     "\n" +
     delegate
   )

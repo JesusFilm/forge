@@ -210,13 +210,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   subtitle: {
     marginTop: 3,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "500",
   },
   subtitleFailed: {

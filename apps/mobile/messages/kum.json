@@ -138,6 +138,7 @@
     "versesAriaValue": "Аятлар {first}–{last}, барысы {total}, {chapter}",
     "demoVerse": "Гелеген аят учун оьрге тартыгъыз",
     "demoChapter": "Гелеген бап учун солгъа тартыгъыз",
+    "demoChapterRtl": "Гелеген бап учун онггъа тартыгъыз",
     "demoSkip": "Оьтмек учун басыгъыз",
     "demoSkipAriaLabel": "Тартыв уьлгюсюнден оьт",
     "selectVerseAriaHint": "Бу аятны сайламакъ учун эки керен басыгъыз",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китап сайла",
+    "chooseChapter": "Бап сайла",
+    "chooseVerse": "Аят сайла",
     "oldTestament": "Эски Васият",
     "newTestament": "Янгы Васият",
     "books": "Китаплар",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# китапдан {count} китап} other {# китапдан {count} китап}}",
     "twoNames": "{first} ва {second}",
     "threeNames": "{first}, {second} ва {third}",
-    "onDevice": "Бу телефонда бар",
+    "downloaded": "Юкленди",
     "downloading": "Юкленип тура: {percent}%",
     "downloadStopped": "Юклев токътады",
     "updateAvailable": "Янгыртыв бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериалны постери",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Толу маълумат ачылмады.",
+    "languagesTitle": "Видеону тили",
     "searchLanguagesPlaceholder": "Тиллени изле…",
     "searchLanguagesAriaLabel": "Тиллени изле",
     "noLanguagesFound": "Тил табулмады",
@@ -502,6 +506,7 @@
     "resumeAt": "Давам эт: {time}",
     "unknownLanguage": "Белгисиз",
     "downloadedStatus": "Юкленди",
+    "languagesTitle": "Видеону тили",
     "searchLanguagesPlaceholder": "Тиллени изле…",
     "searchLanguagesAriaLabel": "Тиллени изле",
     "noLanguagesFound": "Тил табулмады",
@@ -773,5 +778,8 @@
     "send": "Ёлла",
     "sending": "Ёллана…",
     "sendAriaLabel": "Пикру ёлла"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложение телевизоргъа чыгъарагъан алатланы тапмакъ учун локал сетигизден пайдалана, шо саялы видеоланы телевизоругъузда ойнатып болажакъсыз."
   }
 }

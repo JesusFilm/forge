@@ -77,6 +77,12 @@ let mockUiTag = "en"
 jest.mock("../../../hooks/useUiTag", () => ({
   useUiTag: () => mockUiTag,
 }))
+// jest-expo reports Liquid Glass as available, so each case pins the branch.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 const mockDownloads: {
   offlineRecords: OfflineDownloadRecord[]
   isReady: boolean
@@ -441,12 +447,13 @@ describe("MyWatchScreen in a right-to-left UI (KTD13)", () => {
     }
   }
 
-  it("gives the Downloads heading the UI direction, and none in English", async () => {
+  // feat-695 KTD6: with mirroring on, English UI text sets its edge too.
+  it("gives the Downloads heading the UI direction in English and Arabic", async () => {
     mockDownloads.offlineRecords = [record("v-1", "downloaded")]
     const english = await renderScreen()
     expect(headingDirection(english)).toEqual({
-      direction: undefined,
-      writingDirection: undefined,
+      direction: "ltr",
+      writingDirection: "ltr",
     })
     await unmount(english)
 
@@ -464,6 +471,75 @@ describe("MyWatchScreen in a right-to-left UI (KTD13)", () => {
     expect(pressableByLabel(renderer, "More").props["dd-action-name"]).toBe(
       "my-watch-more",
     )
+    await unmount(renderer)
+  })
+})
+
+describe("See all on Liquid Glass", () => {
+  afterEach(() => {
+    mockGate.glass = true
+  })
+
+  function seeAllPressable(renderer: TestInstance): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (candidate) =>
+        candidate.props.accessibilityLabel === SEE_ALL_LABEL &&
+        typeof candidate.props.style === "function",
+    )
+    expect(node).toBeDefined()
+    return node!
+  }
+
+  function glassWithin(renderer: TestInstance, control: RenderedNode) {
+    return renderer.root.findAll((node) => {
+      if (node.type !== "GlassView") return false
+      for (let at = node.parent; at != null; at = at.parent) {
+        if (at === control) return true
+      }
+      return false
+    })
+  }
+
+  it.each([
+    ["on iOS 26", true],
+    ["without Liquid Glass", false],
+  ] as const)("%s, See all has the right look", async (_name, glass) => {
+    mockGate.glass = glass
+    mockDownloads.offlineRecords = [record("v-1", "downloaded")]
+    const renderer = await renderScreen()
+    const control = seeAllPressable(renderer)
+    const views = glassWithin(renderer, control)
+    const style = control.props.style as (state: {
+      pressed: boolean
+    }) => unknown
+    const pressedOpacity = StyleSheet.flatten(
+      style({ pressed: true }) as ViewStyle,
+    ).opacity
+    if (glass) {
+      // A glass pill with Apple's press response; the target never dims,
+      // because an opacity below 1 stops the glass drawing.
+      expect(views).toHaveLength(1)
+      expect(views[0]!.props.isInteractive).toBe(true)
+      expect(
+        StyleSheet.flatten(views[0]!.props.style as ViewStyle).borderRadius,
+      ).toBe(999)
+      expect(pressedOpacity).toBeUndefined()
+    } else {
+      expect(views).toHaveLength(0)
+      expect(pressedOpacity).toBe(0.85)
+    }
+    await unmount(renderer)
+  })
+
+  it("draws the menu control in glass on iOS 26", async () => {
+    mockDownloads.offlineRecords = [record("v-1", "downloaded")]
+    const renderer = await renderScreen()
+    const [menu] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "More" &&
+        typeof node.props.onPress === "function",
+    )
+    expect(glassWithin(renderer, menu!)).toHaveLength(1)
     await unmount(renderer)
   })
 })

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
 
 const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -204,6 +203,36 @@ describe("buildWatchHomeModelFromVideos", () => {
     ])
     // feat-440: the homepage carousel carries pooled library videos only.
     expect(Object.keys(model.carousel)).toEqual(["pools"])
+  })
+
+  it("tags a Kurmanji Standard subtitle track with the corrected tag, not admin's ko-kmr", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          preferredVariant: makeVariant({
+            videoEdition: {
+              subtitles: [
+                {
+                  vttSrc: "https://cdn.example/jesus.kmr.vtt",
+                  primary: true,
+                  // Admin's real row: kurmanji-standard carries `ko-kmr`.
+                  language: { slug: "kurmanji-standard", bcp47: "ko-kmr" },
+                },
+              ],
+            },
+          }),
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]?.subtitleVttSrc).toBe(
+      "https://cdn.example/jesus.kmr.vtt",
+    )
+    expect(model.heroSlides[0]?.subtitleLanguageBcp47).toBe("kmr")
   })
 
   it("renders limited child cards with standalone discovery routes", async () => {
@@ -503,6 +532,74 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(jesusPool?.videos.map((video) => video.id)).toEqual(["1_jf-0-1"])
   })
 
+  // Pin WATCH_CHAPTER_CAROUSEL_RECIPE's source bytes from
+  // apps/admin/src/services/mux-image-derivative.service.ts without importing
+  // server code across app boundaries. Portrait sources need smartcrop too.
+  it.each([
+    [
+      "mux-card",
+      "https://image.mux.com/mux-card/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    ],
+    [
+      "  mux/card?x=1  ",
+      "https://image.mux.com/mux%2Fcard%3Fx%3D1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    ],
+    [null, null],
+    [undefined, null],
+    ["", null],
+    ["  ", null],
+  ])(
+    "pins model card-frame output for playback id %j",
+    async (playbackId, expectedImage) => {
+      const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+      const model = buildWatchHomeModelFromVideos({
+        locale: "en",
+        languageSlug: "english",
+        videos: [
+          makeVideo({
+            images: [],
+            preferredVariant: makeVariant({ muxVideo: { playbackId } }),
+          }),
+        ] as never,
+      })
+
+      expect(model.heroSlides).toHaveLength(1)
+      expect(model.heroSlides[0]?.imageUrl).toBe(expectedImage)
+      expect(model.missingData).toContainEqual(
+        expect.objectContaining({
+          field: "image",
+          sourceId: "1_jf-0-0",
+          fallback: expectedImage ? "Mux thumbnail" : "Styled placeholder",
+        }),
+      )
+    },
+  )
+
+  it("keeps authored model artwork and its metadata ahead of the frame fallback", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          images: [
+            makeImage({
+              blurDataUrl: "data:image/jpeg;base64,authored",
+              dominantColor: "#123456",
+            }),
+          ],
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]).toMatchObject({
+      imageUrl: "https://cdn.example/jesus-cinematic.jpg",
+      blurDataUrl: "data:image/jpeg;base64,authored",
+      dominantColor: "#123456",
+    })
+    expect(model.missingData.some((item) => item.field === "image")).toBe(false)
+  })
+
   it("uses Mux thumbnails when admin images are missing and records the image gap", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -520,7 +617,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
 
     expect(model.heroSlides[0]?.imageUrl).toBe(
-      resolveMuxFrameThumbnailUrl("mux-fallback"),
+      "https://image.mux.com/mux-fallback/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
     )
     expect(
       model.missingData.some(

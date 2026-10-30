@@ -1,0 +1,100 @@
+# Swipe the hero pager, use the selector rail, scroll the shelves, and open a
+# card. Home rotates by date, so the journey checks structure (KTD12).
+appId: org.jesusfilm.forgewatch
+name: home-hero-shelves
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- assertVisible:
+    id: home-body-live
+    label: The Home body comes from the live Experience
+- assertNotVisible:
+    id: home-body-fallback
+    label: The Home body is not the frozen fallback
+- assertVisible:
+    text: "Slide [0-9]+ of [0-9]+"
+    label: The hero pager shows its position
+# A tablet's hero fills the first screen, so the rail can be below it.
+- scrollUntilVisible:
+    element:
+      text: Featured video selector
+    direction: DOWN
+    timeout: 20000
+    label: Show the selector rail
+# The rail centers the card of the active slide, so the journey swipes it to
+# its start before it picks the first card.
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          from:
+            text: Featured video selector
+          direction: RIGHT
+          label: Swipe the selector rail toward its start
+    label: Swipe the selector rail to its start
+- tapOn:
+    id: home-hero-selector-card
+    index: 0
+    label: Pick the first card in the selector rail
+- extendedWaitUntil:
+    visible:
+      text: "Slide 1 of [0-9]+"
+    timeout: 10000
+    label: The hero shows the first slide
+# An image slide moves on by itself after 7 seconds. A swipe from an element
+# can wait that long for the element, so the swipe uses screen points.
+- swipe:
+    start: 80%,25%
+    end: 20%,25%
+    label: Swipe the hero pager
+- extendedWaitUntil:
+    visible:
+      text: "Slide 2 of [0-9]+"
+    timeout: 3000
+    label: The hero shows the second slide
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ items? in .+"
+    direction: DOWN
+    timeout: 30000
+    label: Scroll to a shelf
+- scroll:
+    label: Scroll the shelves
+- scroll:
+    label: Scroll the shelves again
+- scrollUntilVisible:
+    element:
+      text: Featured video selector
+    direction: UP
+    timeout: 30000
+    label: Scroll back to the selector rail
+# A tap goes to the first video card in the tree. From the top, that card is
+# the one that this step centers, so no other view takes the tap.
+- scrollUntilVisible:
+    element:
+      id: home-card-video
+    direction: DOWN
+    visibilityPercentage: 100
+    centerElement: true
+    timeout: 30000
+    label: Center the first video card
+- tapOn:
+    id: home-card-video
+    label: Open a video card
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 20000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays

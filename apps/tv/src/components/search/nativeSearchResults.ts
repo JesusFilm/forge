@@ -3,6 +3,7 @@
 // screen's React/JSX module graph under jest-expo — same split as searchResultPath.
 
 import { type SearchResult } from "../../lib/queries"
+import { resultKindLabel } from "./searchDisplay"
 
 /** The native view's card contract (expo-tvos-search `SearchResult`). */
 export type NativeSearchResult = {
@@ -13,9 +14,9 @@ export type NativeSearchResult = {
 }
 
 /**
- * Project app results onto native cards. Nulls become ABSENT (undefined), never
- * the string "null": the native layer validates imageUrl as a URL and would
- * count a null-ish string as invalid, surfacing onError noise per card.
+ * Project app results onto native cards using the same readable content kind as
+ * the React renderer. Missing artwork stays absent: the native layer validates
+ * imageUrl as a URL and would surface onError noise for a null-ish string.
  */
 export function toNativeSearchResults(
   results: readonly SearchResult[],
@@ -23,7 +24,7 @@ export function toNativeSearchResults(
   return results.map((result) => ({
     id: result.id,
     title: result.title,
-    subtitle: result.label ?? undefined,
+    subtitle: resultKindLabel(result),
     imageUrl: result.imageUrl ?? undefined,
   }))
 }

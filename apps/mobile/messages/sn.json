@@ -138,6 +138,7 @@
     "versesAriaValue": "Ndima {first} kusvika {last} pa {total}, {chapter}",
     "demoVerse": "Svedza kumusoro kuti uone ndima inotevera",
     "demoChapter": "Svedza kuruboshwe kuti uone chitsauko chinotevera",
+    "demoChapterRtl": "Svedza kurudyi kuti uone chitsauko chinotevera",
     "demoSkip": "Dzvanya kuti usvetuke",
     "demoSkipAriaLabel": "Svetuka muenzaniso wekusvedza",
     "selectVerseAriaHint": "Dzvanya kaviri kuti usarudze ndima iyi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Sarudza bhuku",
+    "chooseChapter": "Sarudza chitsauko",
+    "chooseVerse": "Sarudza ndima",
     "oldTestament": "Testamente Yekare",
     "newTestament": "Testamente Itsva",
     "books": "Mabhuku",
@@ -193,7 +196,7 @@
     "someBooks": "{count} pa{total, plural, one {bhuku #} other {mabhuku #}}",
     "twoNames": "{first} uye {second}",
     "threeNames": "{first}, {second} uye {third}",
-    "onDevice": "Pafoni ino",
+    "downloaded": "Yadhawunirodhwa",
     "downloading": "Kudhawunirodha {percent}%",
     "downloadStopped": "Kudhawunirodha kwamira",
     "updateAvailable": "Inogona kuvandudzwa",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Mufananidzo wenhevedzano",
     "videosHeading": "Mavhidhiyo",
     "detailsLoadError": "Hatina kukwanisa kurodha ruzivo rwese.",
+    "languagesTitle": "Mutauro wevhidhiyo",
     "searchLanguagesPlaceholder": "Tsvaga mitauro...",
     "searchLanguagesAriaLabel": "Tsvaga mitauro",
     "noLanguagesFound": "Hapana mitauro yawanikwa",
@@ -502,6 +506,7 @@
     "resumeAt": "Enderera kubva pa {time}",
     "unknownLanguage": "Usingazivikanwi",
     "downloadedStatus": "Yadhawunirodhwa",
+    "languagesTitle": "Mutauro wevhidhiyo",
     "searchLanguagesPlaceholder": "Tsvaga mitauro...",
     "searchLanguagesAriaLabel": "Tsvaga mitauro",
     "noLanguagesFound": "Hapana mitauro yawanikwa",
@@ -773,5 +778,8 @@
     "send": "Tumira",
     "sending": "Kutumira…",
     "sendAriaLabel": "Tumira mhinduro"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Apu inoshandisa netiweki yako yepedyo kutsvaga zvishandiso zvinogamuchira mavhidhiyo aunotumira, kuti ugone kutamba mavhidhiyo paTV yako."
   }
 }

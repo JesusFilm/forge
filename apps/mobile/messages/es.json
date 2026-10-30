@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículos {first} a {last} de {total}, {chapter}",
     "demoVerse": "Desliza hacia arriba para ver el siguiente versículo",
     "demoChapter": "Desliza hacia la izquierda para ver el siguiente capítulo",
+    "demoChapterRtl": "Desliza hacia la derecha para ver el siguiente capítulo",
     "demoSkip": "Toca para omitir",
     "demoSkipAriaLabel": "Omitir la demostración de deslizamiento",
     "selectVerseAriaHint": "Toca dos veces para seleccionar este versículo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Elige un libro",
+    "chooseChapter": "Elige un capítulo",
+    "chooseVerse": "Elige un versículo",
     "oldTestament": "Antiguo Testamento",
     "newTestament": "Nuevo Testamento",
     "books": "Libros",
@@ -193,7 +196,7 @@
     "someBooks": "{count} de {total, plural, one {# libro} many {# libros} other {# libros}}",
     "twoNames": "{first} y {second}",
     "threeNames": "{first}, {second} y {third}",
-    "onDevice": "En este dispositivo",
+    "downloaded": "Descargado",
     "downloading": "Descargando {percent} %",
     "downloadStopped": "Descarga detenida",
     "updateAvailable": "Actualización disponible",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Póster de la serie",
     "videosHeading": "Vídeos",
     "detailsLoadError": "No se pudieron cargar todos los detalles.",
+    "languagesTitle": "Idioma del video",
     "searchLanguagesPlaceholder": "Buscar idiomas…",
     "searchLanguagesAriaLabel": "Buscar idiomas",
     "noLanguagesFound": "No se encontraron idiomas",
@@ -502,6 +506,7 @@
     "resumeAt": "Reanudar en {time}",
     "unknownLanguage": "Desconocido",
     "downloadedStatus": "Descargado",
+    "languagesTitle": "Idioma del video",
     "searchLanguagesPlaceholder": "Buscar idiomas…",
     "searchLanguagesAriaLabel": "Buscar idiomas",
     "noLanguagesFound": "No se encontraron idiomas",
@@ -773,5 +778,8 @@
     "send": "Enviar",
     "sending": "Enviando…",
     "sendAriaLabel": "Enviar comentarios"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "La app usa tu red local para encontrar dispositivos a los que transmitir, de modo que puedas reproducir videos en tu televisor."
   }
 }

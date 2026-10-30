@@ -1,6 +1,7 @@
 package expo.modules.nativeandroidplayer
 
 import android.app.Dialog
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -27,7 +28,8 @@ internal class NativeSearchDialog(
   context: Context,
   title: String,
   private val onChoice: (String) -> Unit,
-  onClosed: () -> Unit
+  onClosed: () -> Unit,
+  initialQuery: String = ""
 ) : Dialog(context) {
   private val list = ListView(context)
   private val search = EditText(context)
@@ -37,7 +39,10 @@ internal class NativeSearchDialog(
   private var visibleRows = emptyList<NativeChoiceRow>()
   private var activeId: String? = null
   private var status: String? = null
+  private var confirmationDialog: AlertDialog? = null
+  private val confirmation = NativeChoiceConfirmation()
   private val icon = if (title == "Subtitles") R.drawable.native_player_text else R.drawable.native_player_globe
+  val queryText: String get() = search.text.toString()
 
   init {
     requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -106,7 +111,7 @@ internal class NativeSearchDialog(
       isFocusableInTouchMode = true
       setOnItemClickListener { _, _, index, _ ->
         val row = visibleRows.getOrNull(index)
-        if (row != null && !row.disabled) { onChoice(row.id); dismiss() }
+        if (row != null && !row.disabled) choose(row)
       }
       setOnKeyListener { _, code, event ->
         when {
@@ -146,7 +151,12 @@ internal class NativeSearchDialog(
       }
     }
     setContentView(root)
-    setOnDismissListener { onClosed() }
+    setOnDismissListener {
+      confirmation.resolve(false)
+      confirmationDialog?.dismiss()
+      confirmationDialog = null
+      onClosed()
+    }
     search.nextFocusUpId = search.id
     search.nextFocusDownId = list.id
     list.nextFocusUpId = search.id
@@ -154,6 +164,7 @@ internal class NativeSearchDialog(
     close.nextFocusUpId = list.id
     close.nextFocusDownId = close.id
     close.nextFocusLeftId = list.id
+    search.setText(initialQuery)
   }
 
   fun update(options: List<NativeChoiceRow>, selectedId: String?, message: String?) {
@@ -161,6 +172,37 @@ internal class NativeSearchDialog(
     activeId = selectedId
     status = message
     render()
+  }
+
+  private fun choose(row: NativeChoiceRow) {
+    if (confirmationDialog != null) return
+    val message = row.confirmationMessage.takeUnless { row.id == activeId }
+    val immediate = confirmation.request(row.id, message)
+    if (immediate != null) {
+      onChoice(immediate)
+      dismiss()
+      return
+    }
+    val expectedActiveId = activeId
+    val alert = AlertDialog.Builder(context)
+      .setTitle("Switch audio language?")
+      .setMessage(message)
+      .setNegativeButton("Cancel") { _, _ -> confirmation.resolve(false) }
+      .setPositiveButton("Continue") { _, _ ->
+        val id = confirmation.resolve(true)
+        if (id != null && isShowing && activeId == expectedActiveId && rows.any { it.id == id && !it.disabled }) {
+          onChoice(id)
+          dismiss()
+        }
+      }
+      .create()
+    confirmationDialog = alert
+    alert.setOnDismissListener {
+      confirmation.resolve(false)
+      confirmationDialog = null
+    }
+    alert.show()
+    alert.getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus()
   }
 
   override fun show() {

@@ -138,6 +138,7 @@
     "versesAriaValue": "{total}లో వచనాలు {first} నుండి {last} వరకు, {chapter}",
     "demoVerse": "తదుపరి వచనం కోసం పైకి స్వైప్ చేయండి",
     "demoChapter": "తదుపరి అధ్యాయం కోసం ఎడమకు స్వైప్ చేయండి",
+    "demoChapterRtl": "తదుపరి అధ్యాయం కోసం కుడికి స్వైప్ చేయండి",
     "demoSkip": "దాటవేయడానికి నొక్కండి",
     "demoSkipAriaLabel": "స్వైప్ ప్రదర్శనను దాటవేయండి",
     "selectVerseAriaHint": "ఈ వచనాన్ని ఎంచుకోవడానికి రెండుసార్లు నొక్కండి",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "పుస్తకాన్ని ఎంచుకోండి",
+    "chooseChapter": "అధ్యాయాన్ని ఎంచుకోండి",
+    "chooseVerse": "వచనాన్ని ఎంచుకోండి",
     "oldTestament": "పాత నిబంధన",
     "newTestament": "క్రొత్త నిబంధన",
     "books": "పుస్తకాలు",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# పుస్తకంలో {count}} other {# పుస్తకాలలో {count}}}",
     "twoNames": "{first} మరియు {second}",
     "threeNames": "{first}, {second} మరియు {third}",
-    "onDevice": "ఈ పరికరంలో ఉంది",
+    "downloaded": "డౌన్‌లోడ్ అయింది",
     "downloading": "డౌన్‌లోడ్ అవుతోంది {percent}%",
     "downloadStopped": "డౌన్‌లోడ్ ఆగిపోయింది",
     "updateAvailable": "అప్‌డేట్ అందుబాటులో ఉంది",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "సిరీస్ పోస్టర్",
     "videosHeading": "వీడియోలు",
     "detailsLoadError": "పూర్తి వివరాలను లోడ్ చేయలేకపోయాము.",
+    "languagesTitle": "వీడియో భాష",
     "searchLanguagesPlaceholder": "భాషలను శోధించండి…",
     "searchLanguagesAriaLabel": "భాషలను శోధించండి",
     "noLanguagesFound": "భాషలు ఏవీ కనుగొనబడలేదు",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} నుండి కొనసాగించండి",
     "unknownLanguage": "తెలియని భాష",
     "downloadedStatus": "డౌన్‌లోడ్ అయింది",
+    "languagesTitle": "వీడియో భాష",
     "searchLanguagesPlaceholder": "భాషలను శోధించండి…",
     "searchLanguagesAriaLabel": "భాషలను శోధించండి",
     "noLanguagesFound": "భాషలు ఏవీ కనుగొనబడలేదు",
@@ -773,5 +778,8 @@
     "send": "పంపండి",
     "sending": "పంపుతోంది…",
     "sendAriaLabel": "ప్రతిస్పందన పంపండి"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ప్రసార పరికరాలను కనుగొనడానికి యాప్ మీ స్థానిక నెట్‌వర్క్‌ను ఉపయోగిస్తుంది, దీని వల్ల మీరు మీ టీవీలో వీడియోలను ప్లే చేయవచ్చు."
   }
 }

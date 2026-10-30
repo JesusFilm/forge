@@ -130,7 +130,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   }
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-video-carousel" style={layout.sectionOuter}>
       {vcSubtitle != null && (
         <Text
           style={[
@@ -185,6 +185,5 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

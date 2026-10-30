@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} av {total}, {chapter}",
     "demoVerse": "Strúka upp fyri næsta vers",
     "demoChapter": "Strúka til vinstru fyri næsta kapittul",
+    "demoChapterRtl": "Strúka til høgru fyri næsta kapittul",
     "demoSkip": "Trýst fyri at leypa um",
     "demoSkipAriaLabel": "Leyp um vísingina av strúkingini",
     "selectVerseAriaHint": "Trýst tvær ferðir fyri at velja hetta versið",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Vel eina bók",
+    "chooseChapter": "Vel eitt kapittul",
+    "chooseVerse": "Vel eitt vers",
     "oldTestament": "Gamla testamenti",
     "newTestament": "Nýggja testamenti",
     "books": "Bøkur",
@@ -193,7 +196,7 @@
     "someBooks": "{count} av {total, plural, one {# bók} other {# bókum}}",
     "twoNames": "{first} og {second}",
     "threeNames": "{first}, {second} og {third}",
-    "onDevice": "Á hesum tólinum",
+    "downloaded": "Tikið niður",
     "downloading": "Tekur niður: {percent} %",
     "downloadStopped": "Niðurtøkan steðgaði",
     "updateAvailable": "Dagføring tøk",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakat fyri røðina",
     "videosHeading": "Videobrot",
     "detailsLoadError": "Tað eydnaðist ikki at lesa allar upplýsingarnar inn.",
+    "languagesTitle": "Málið á videobrotinum",
     "searchLanguagesPlaceholder": "Leita eftir málum…",
     "searchLanguagesAriaLabel": "Leita eftir málum",
     "noLanguagesFound": "Eingi mál funnin",
@@ -502,6 +506,7 @@
     "resumeAt": "Halt fram við {time}",
     "unknownLanguage": "Ókent",
     "downloadedStatus": "Tikið niður",
+    "languagesTitle": "Málið á videobrotinum",
     "searchLanguagesPlaceholder": "Leita eftir málum…",
     "searchLanguagesAriaLabel": "Leita eftir málum",
     "noLanguagesFound": "Eingi mál funnin",
@@ -773,5 +778,8 @@
     "send": "Send inn",
     "sending": "Sendir…",
     "sendAriaLabel": "Send afturmelding"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appin brúkar títt lokala net til at finna tól at senda til, so at tú kanst spæla videobrot á sjónvarpinum."
   }
 }

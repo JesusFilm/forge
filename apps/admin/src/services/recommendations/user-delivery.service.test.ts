@@ -1,198 +1,51 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { composeUserRecommendations } from "./user-delivery.service"
-import {
-  personalizedInput,
-  profileCandidateResult,
-} from "./delivery.service.test-helpers"
+import { personalizedInput } from "./delivery.service.test-helpers"
 import {
   userDeliveryHarness as harness,
   video,
 } from "./user-delivery.service.test-helpers"
 
-describe("source-free recommendations", () => {
+describe("content-only source-free recommendations", () => {
   afterEach(() => vi.useRealTimers())
-  it("returns a served slate within budget even if lease release stalls", async () => {
-    vi.useFakeTimers()
-    const h = harness(6)
-    h.release.mockImplementation(() => new Promise(() => {}))
-    let result: unknown
-    const delivery = h.service.deliver(personalizedInput()).then((value) => {
-      result = value
-    })
-    await vi.advanceTimersByTimeAsync(1500)
-    expect(result).toMatchObject({ result: "served", profileCount: 6 })
-    await delivery
-  })
 
-  it("bounds a serving-state transaction that cannot start before the deadline", async () => {
-    vi.useFakeTimers()
-    const h = harness(0)
-    h.getServingState.mockImplementation(() => new Promise(() => {}))
-    let result: unknown
-    const delivery = h.service.deliver(personalizedInput()).then((value) => {
-      result = value
-    })
-    await vi.advanceTimersByTimeAsync(1500)
-    expect(result).toMatchObject({
-      result: "unavailable",
-      reason: "delivery_timeout",
-    })
-    expect(h.curated).not.toHaveBeenCalled()
-    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
-    expect(h.release).toHaveBeenCalledOnce()
-    await delivery
-  })
-  it("returns six profile videos without retrieving fallback or seeded candidates", async () => {
-    const h = harness(6),
-      response = await h.service.deliver(personalizedInput())
-    expect(response).toMatchObject({
-      result: "served",
-      profileCount: 6,
-      curatedCount: 0,
-    })
-    expect(h.curated).not.toHaveBeenCalled()
-    expect(h.retrieve).not.toHaveBeenCalled()
-    expect(h.retrieveProfile).toHaveBeenCalledWith(
-      expect.objectContaining({ seedMediaId: null }),
-    )
-    expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          purpose: "user",
-          seedMediaId: null,
-          state: "ISSUED",
+  it.each([0, 1, 6])(
+    "serves only editorial metadata pools with %i old profile candidates",
+    async (count) => {
+      const h = harness(count)
+      const result = await h.service.deliver(personalizedInput())
+      expect(result).toMatchObject({
+        result: "served",
+        profileCount: 0,
+        curatedCount: 6,
+        cohort: "cold_start",
+      })
+      expect(result.items).toHaveLength(6)
+      expect(result.items.every((item) => item.generator === "curated")).toBe(
+        true,
+      )
+      expect(result.items[0]).not.toHaveProperty("embeddingText")
+      expect(h.authorizeProfile).not.toHaveBeenCalled()
+      expect(h.retrieveProfile).not.toHaveBeenCalled()
+      expect(h.history).not.toHaveBeenCalled()
+      expect(h.curated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          interestVideoIds: [],
+          audioLanguageSlug: "english",
         }),
-      }),
-    )
-    expect(response.items[0].canonicalHref).toBe("/watch/video-0.html")
-    expect(response.items[0]).not.toHaveProperty("sceneIndex")
-    expect(response.items[0]).not.toHaveProperty("embeddingText")
-    expect(response.items[0]).not.toHaveProperty("videoCoreId")
-  })
+      )
+    },
+  )
 
-  it("retrieves a fresh curated alternative even when six profile candidates include a short watch", async () => {
-    const h = harness(6)
-    h.history.mockResolvedValue([
-      {
-        mediaId: "video-0",
-        completed: false,
-        recentlyTried: true,
-        qualified: false,
-      },
-    ])
-    const response = await h.service.deliver(personalizedInput())
-    expect(response).toMatchObject({
-      result: "served",
-      profileCount: 5,
-      curatedCount: 1,
-    })
-    expect(response.items.map((item) => item.videoId)).toEqual([
-      "video-1",
-      "video-2",
-      "video-3",
-      "video-4",
-      "video-5",
-      "video-10",
-    ])
-    expect(h.curated).toHaveBeenCalledOnce()
-  })
-
-  it("uses short-only history for freshness, not thematic curated interests", async () => {
-    const h = harness(0)
-    h.history.mockResolvedValue([
-      {
-        mediaId: "video-10",
-        completed: false,
-        recentlyTried: true,
-        qualified: false,
-      },
-    ])
-    const response = await h.service.deliver(personalizedInput())
-    expect(response.items.map((item) => item.videoId)).not.toContain("video-10")
-    expect(h.curated).toHaveBeenCalledWith(
-      expect.objectContaining({ interestVideoIds: [] }),
-    )
-  })
-
-  it("applies localized same-title history to a different Core edition", async () => {
-    const h = harness(6)
-    h.history.mockResolvedValue([
-      {
-        mediaId: "watched-edition",
-        videoCoreId: "another-film",
-        videoTitle: video(0).videoTitle,
-        completed: false,
-        recentlyTried: true,
-        qualified: false,
-      },
-    ])
-    const response = await h.service.deliver(personalizedInput())
-    expect(h.history).toHaveBeenCalledWith(
-      expect.objectContaining({ locale: "en" }),
-    )
-    expect(response.items.map((item) => item.videoId)).toEqual([
-      "video-1",
-      "video-2",
-      "video-3",
-      "video-4",
-      "video-5",
-      "video-10",
-    ])
-  })
-
-  it("keeps recent profile reserves when optional fresh curated retrieval fails", async () => {
-    const h = harness(6)
-    h.history.mockResolvedValue([
-      {
-        mediaId: "video-0",
-        completed: false,
-        recentlyTried: true,
-        qualified: false,
-      },
-    ])
-    h.curated.mockRejectedValue(new Error("pool unavailable"))
-    const response = await h.service.deliver(personalizedInput())
-    expect(response).toMatchObject({ result: "served", profileCount: 6 })
-    expect(response.items.at(-1)?.videoId).toBe("video-0")
-  })
-
-  it("refills from recently tried canonical identities only after fresh supply", () => {
-    expect(
-      composeUserRecommendations(
-        [video(1), video(2)],
-        [video(3)],
-        [
-          {
-            mediaId: "alternate-edition",
-            videoCoreId: video(1).videoCoreId + "AD",
-            completed: false,
-            recentlyTried: true,
-            qualified: false,
-          },
-        ],
-        6,
-      ),
-    ).toEqual([video(2), video(3), video(1)])
-  })
-
-  it("does not discard viewing-history exclusions when the history read stalls", async () => {
-    vi.useFakeTimers()
+  it("does not depend on a stalled retired history provider", async () => {
     const h = harness(6)
     h.history.mockImplementation(() => new Promise(() => {}))
-    const pending = h.service.deliver(personalizedInput())
-    await vi.advanceTimersByTimeAsync(1500)
-    expect(await pending).toMatchObject({
-      result: "unavailable",
-      reason: "delivery_timeout",
-      items: [],
-    })
-    expect(h.curated).not.toHaveBeenCalled()
-    expect(h.tx.recommendationRequest.create).not.toHaveBeenCalled()
+    expect((await h.service.deliver(personalizedInput())).result).toBe("served")
+    expect(h.history).not.toHaveBeenCalled()
   })
 
-  it("returns no capabilities when issuance remains pending past the response deadline", async () => {
+  it("bounds pending issuance without exposing capabilities", async () => {
     vi.useFakeTimers()
-    const h = harness(6)
+    const h = harness(0)
     h.tx.recommendationRequest.create.mockImplementation(
       () => new Promise(() => {}),
     )
@@ -202,92 +55,6 @@ describe("source-free recommendations", () => {
       result: "unavailable",
       reason: "delivery_timeout",
       items: [],
-    })
-  })
-  it.each([0, 1, 4])(
-    "fills exactly the missing positions after %i profile candidates",
-    async (count) => {
-      const h = harness(count),
-        response = await h.service.deliver(personalizedInput())
-      expect(response).toMatchObject({
-        result: "served",
-        profileCount: count,
-        curatedCount: 6 - count,
-      })
-      expect(response.items).toHaveLength(6)
-      expect(
-        response.items
-          .slice(0, count)
-          .every((item) => item.generator === "multi-interest-profile"),
-      ).toBe(true)
-    },
-  )
-  it("removes completed/duplicate results before deciding how many fallback cards to append", async () => {
-    const h = harness(6)
-    h.history.mockResolvedValue([
-      { mediaId: "video-0", completed: true },
-      { mediaId: "video-1", completed: false },
-    ])
-    const response = await h.service.deliver(personalizedInput())
-    expect(response).toMatchObject({ profileCount: 5, curatedCount: 1 })
-    expect(response.items.map((item) => item.videoId)).toEqual([
-      "video-2",
-      "video-3",
-      "video-4",
-      "video-5",
-      "video-1",
-      "video-10",
-    ])
-    expect(
-      composeUserRecommendations(
-        [video(1)],
-        [
-          video(1),
-          { ...video(2), videoCoreId: video(1).videoCoreId + "AD" },
-          video(3),
-        ],
-        [],
-        6,
-      ),
-    ).toEqual([video(1), video(3)])
-  })
-  it("suppresses alternate editions of a recently completed video", () => {
-    expect(
-      composeUserRecommendations(
-        [],
-        [video(1), video(2)],
-        [
-          {
-            mediaId: "another-edition",
-            videoCoreId: video(1).videoCoreId + "AD",
-            completed: true,
-          },
-        ],
-        6,
-      ),
-    ).toEqual([video(2)])
-  })
-  it("uses starters while the only profile signal is a click", async () => {
-    const h = harness(6)
-    h.retrieveProfile.mockResolvedValue({
-      ...profileCandidateResult,
-      projection: {
-        ...profileCandidateResult.projection,
-        qualifiedInterestCount: 0,
-      },
-    })
-    expect(await h.service.deliver(personalizedInput())).toMatchObject({
-      profileCount: 0,
-      curatedCount: 6,
-      cohort: "cold_start",
-    })
-  })
-  it("continues with curated results after a profile retrieval failure", async () => {
-    const h = harness(4)
-    h.retrieveProfile.mockRejectedValue(new Error("timeout"))
-    expect(await h.service.deliver(personalizedInput())).toMatchObject({
-      result: "served",
-      curatedCount: 6,
     })
   })
   it("does not read profile/history without valid authority", async () => {

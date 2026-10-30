@@ -138,6 +138,7 @@
     "versesAriaValue": "Шигырьләр {first}–{last}, барлыгы {total}, {chapter}",
     "demoVerse": "Киләсе шигырь өчен өскә сыпырыгыз",
     "demoChapter": "Киләсе бүлек өчен сулга сыпырыгыз",
+    "demoChapterRtl": "Киләсе бүлек өчен уңга сыпырыгыз",
     "demoSkip": "Калдыру өчен басыгыз",
     "demoSkipAriaLabel": "Сыпыру күрсәтмәсен калдыру",
     "selectVerseAriaHint": "Бу шигырьне сайлау өчен ике тапкыр басыгыз",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китап сайлагыз",
+    "chooseChapter": "Бүлек сайлагыз",
+    "chooseVerse": "Шигырь сайлагыз",
     "oldTestament": "Иске Гаһед",
     "newTestament": "Яңа Гаһед",
     "books": "Китаплар",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# китаптан {count}} other {# китаптан {count}}}",
     "twoNames": "{first} һәм {second}",
     "threeNames": "{first}, {second} һәм {third}",
-    "onDevice": "Бу җайланмада",
+    "downloaded": "Йөкләнде",
     "downloading": "Йөкләнә: {percent}%",
     "downloadStopped": "Йөкләү туктады",
     "updateAvailable": "Яңарту бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Серия постеры",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Тулы мәгълүматны йөкләп булмады.",
+    "languagesTitle": "Видео теле",
     "searchLanguagesPlaceholder": "Телләрне эзләү…",
     "searchLanguagesAriaLabel": "Телләрне эзләү",
     "noLanguagesFound": "Телләр табылмады",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} урыныннан дәвам итү",
     "unknownLanguage": "Билгесез",
     "downloadedStatus": "Йөкләнде",
+    "languagesTitle": "Видео теле",
     "searchLanguagesPlaceholder": "Телләрне эзләү…",
     "searchLanguagesAriaLabel": "Телләрне эзләү",
     "noLanguagesFound": "Телләр табылмады",
@@ -773,5 +778,8 @@
     "send": "Җибәрү",
     "sending": "Җибәрелә…",
     "sendAriaLabel": "Фикер җибәрү"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Кушымта телевизорга чыгару җайланмаларын табу өчен җирле челтәрегезне куллана, шулай итеп сез видеоларны телевизорыгызда уйната аласыз."
   }
 }

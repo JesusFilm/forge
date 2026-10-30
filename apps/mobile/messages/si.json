@@ -138,6 +138,7 @@
     "versesAriaValue": "පද {first} සිට {last} දක්වා, මුළු ගණන {total}, {chapter}",
     "demoVerse": "ඊළඟ පදය සඳහා ඉහළට ස්වයිප් කරන්න",
     "demoChapter": "ඊළඟ පරිච්ඡේදය සඳහා වමට ස්වයිප් කරන්න",
+    "demoChapterRtl": "ඊළඟ පරිච්ඡේදය සඳහා දකුණට ස්වයිප් කරන්න",
     "demoSkip": "මඟ හැරීමට තට්ටු කරන්න",
     "demoSkipAriaLabel": "ස්වයිප් ආදර්ශනය මඟ හරින්න",
     "selectVerseAriaHint": "මෙම පදය තේරීමට දෙවරක් තට්ටු කරන්න",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "පොතක් තෝරන්න",
+    "chooseChapter": "පරිච්ඡේදයක් තෝරන්න",
+    "chooseVerse": "පදයක් තෝරන්න",
     "oldTestament": "පරණ ගිවිසුම",
     "newTestament": "අලුත් ගිවිසුම",
     "books": "පොත්",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {පොත් #න්} other {පොත් #න්}} {count}",
     "twoNames": "{first} සහ {second}",
     "threeNames": "{first}, {second} සහ {third}",
-    "onDevice": "මෙම උපාංගයේ ඇත",
+    "downloaded": "බාගත කළා",
     "downloading": "බාගත වෙමින් {percent}%",
     "downloadStopped": "බාගත කිරීම නැවතුණා",
     "updateAvailable": "යාවත්කාලීනයක් ඇත",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "මාලා පෝස්ටරය",
     "videosHeading": "වීඩියෝ",
     "detailsLoadError": "සම්පූර්ණ විස්තර පූරණය කළ නොහැකි විය.",
+    "languagesTitle": "වීඩියෝ භාෂාව",
     "searchLanguagesPlaceholder": "භාෂා සොයන්න…",
     "searchLanguagesAriaLabel": "භාෂා සොයන්න",
     "noLanguagesFound": "භාෂා කිසිවක් හමු නොවීය",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} සිට නැවත අරඹන්න",
     "unknownLanguage": "නොදන්නා භාෂාව",
     "downloadedStatus": "බාගත කළා",
+    "languagesTitle": "වීඩියෝ භාෂාව",
     "searchLanguagesPlaceholder": "භාෂා සොයන්න…",
     "searchLanguagesAriaLabel": "භාෂා සොයන්න",
     "noLanguagesFound": "භාෂා කිසිවක් හමු නොවීය",
@@ -773,5 +778,8 @@
     "send": "යවන්න",
     "sending": "යවමින්…",
     "sendAriaLabel": "ප්‍රතිපෝෂණ යවන්න"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "විකාශන උපාංග සොයා ගැනීමට යෙදුම ඔබේ දේශීය ජාලය භාවිත කරයි, එවිට ඔබට ඔබේ රූපවාහිනියේ වීඩියෝ වාදනය කළ හැක."
   }
 }

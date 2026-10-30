@@ -12,7 +12,6 @@ const document = studioDocumentSchema.parse({
   fps: 30,
   durationInFrames: 90,
   tracks: [{ id: "main", kind: "visual" }],
-  packRevisionIds: [],
   components: [
     {
       versionId: "custom",

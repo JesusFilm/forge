@@ -138,6 +138,7 @@
     "versesAriaValue": "ខទី {first} ដល់ {last} ក្នុងចំណោម {total}, {chapter}",
     "demoVerse": "អូសឡើងលើដើម្បីទៅខបន្ទាប់",
     "demoChapter": "អូសទៅឆ្វេងដើម្បីទៅជំពូកបន្ទាប់",
+    "demoChapterRtl": "អូសទៅស្ដាំដើម្បីទៅជំពូកបន្ទាប់",
     "demoSkip": "ចុចដើម្បីរំលង",
     "demoSkipAriaLabel": "រំលងការបង្ហាញពីរបៀបអូស",
     "selectVerseAriaHint": "ចុចពីរដងដើម្បីជ្រើសរើសខនេះ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "ជ្រើសរើសគម្ពីរ",
+    "chooseChapter": "ជ្រើសរើសជំពូក",
+    "chooseVerse": "ជ្រើសរើសខ",
     "oldTestament": "គម្ពីរសញ្ញាចាស់",
     "newTestament": "គម្ពីរសញ្ញាថ្មី",
     "books": "គម្ពីរ",
@@ -193,7 +196,7 @@
     "someBooks": "គម្ពីរ {count} ក្នុងចំណោម {total, plural, other {#}}",
     "twoNames": "{first} និង {second}",
     "threeNames": "{first}, {second} និង {third}",
-    "onDevice": "មាននៅលើឧបករណ៍នេះ",
+    "downloaded": "បានទាញយក",
     "downloading": "កំពុងទាញយក {percent}%",
     "downloadStopped": "ការទាញយកបានឈប់",
     "updateAvailable": "មានកំណែថ្មី",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ផ្ទាំងរូបភាពស៊េរី",
     "videosHeading": "វីដេអូ",
     "detailsLoadError": "មិនអាចផ្ទុកព័ត៌មានលម្អិតពេញលេញបានទេ។",
+    "languagesTitle": "ភាសាវីដេអូ",
     "searchLanguagesPlaceholder": "ស្វែងរកភាសា…",
     "searchLanguagesAriaLabel": "ស្វែងរកភាសា",
     "noLanguagesFound": "រកមិនឃើញភាសា",
@@ -502,6 +506,7 @@
     "resumeAt": "បន្តពី {time}",
     "unknownLanguage": "មិនស្គាល់",
     "downloadedStatus": "បានទាញយក",
+    "languagesTitle": "ភាសាវីដេអូ",
     "searchLanguagesPlaceholder": "ស្វែងរកភាសា…",
     "searchLanguagesAriaLabel": "ស្វែងរកភាសា",
     "noLanguagesFound": "រកមិនឃើញភាសា",
@@ -773,5 +778,8 @@
     "send": "ផ្ញើ",
     "sending": "កំពុងផ្ញើ…",
     "sendAriaLabel": "ផ្ញើមតិយោបល់"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "កម្មវិធីប្រើបណ្ដាញមូលដ្ឋានរបស់អ្នក ដើម្បីស្វែងរកឧបករណ៍ដែលអាចទទួលការបញ្ជូនបាន ដូច្នេះអ្នកអាចចាក់វីដេអូនៅលើទូរទស្សន៍របស់អ្នក។"
   }
 }

@@ -138,6 +138,7 @@
     "versesAriaValue": "ข้อ {first} ถึง {last} จาก {total}, {chapter}",
     "demoVerse": "ปัดขึ้นเพื่อไปข้อถัดไป",
     "demoChapter": "ปัดซ้ายเพื่อไปบทถัดไป",
+    "demoChapterRtl": "ปัดขวาเพื่อไปบทถัดไป",
     "demoSkip": "แตะเพื่อข้าม",
     "demoSkipAriaLabel": "ข้ามการสาธิตการปัด",
     "selectVerseAriaHint": "แตะสองครั้งเพื่อเลือกข้อนี้",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "เลือกหนังสือ",
+    "chooseChapter": "เลือกบท",
+    "chooseVerse": "เลือกข้อ",
     "oldTestament": "พันธสัญญาเดิม",
     "newTestament": "พันธสัญญาใหม่",
     "books": "หนังสือ",
@@ -193,7 +196,7 @@
     "someBooks": "{count} จาก {total, plural, other {# เล่ม}}",
     "twoNames": "{first} และ {second}",
     "threeNames": "{first}, {second} และ {third}",
-    "onDevice": "อยู่ในอุปกรณ์นี้",
+    "downloaded": "ดาวน์โหลดแล้ว",
     "downloading": "กำลังดาวน์โหลด {percent}%",
     "downloadStopped": "การดาวน์โหลดหยุดลง",
     "updateAvailable": "มีอัปเดตใหม่",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "โปสเตอร์ซีรีส์",
     "videosHeading": "วิดีโอ",
     "detailsLoadError": "โหลดรายละเอียดทั้งหมดไม่สำเร็จ",
+    "languagesTitle": "ภาษาวิดีโอ",
     "searchLanguagesPlaceholder": "ค้นหาภาษา...",
     "searchLanguagesAriaLabel": "ค้นหาภาษา",
     "noLanguagesFound": "ไม่พบภาษา",
@@ -502,6 +506,7 @@
     "resumeAt": "ดูต่อที่ {time}",
     "unknownLanguage": "ไม่ทราบภาษา",
     "downloadedStatus": "ดาวน์โหลดแล้ว",
+    "languagesTitle": "ภาษาวิดีโอ",
     "searchLanguagesPlaceholder": "ค้นหาภาษา...",
     "searchLanguagesAriaLabel": "ค้นหาภาษา",
     "noLanguagesFound": "ไม่พบภาษา",
@@ -773,5 +778,8 @@
     "send": "ส่ง",
     "sending": "กำลังส่ง…",
     "sendAriaLabel": "ส่งความคิดเห็น"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "แอปใช้เครือข่ายเฉพาะที่ของคุณเพื่อค้นหาอุปกรณ์ที่รองรับการแคสต์ คุณจึงเล่นวิดีโอบนทีวีได้"
   }
 }

@@ -38,6 +38,11 @@ builder.prismaObject("ExperienceLocale", {
     slug: t.exposeString("slug"),
     // Stripped for PUBLIC so anonymous callers cannot enumerate homepage flags.
     isHomepage: t.exposeBoolean("isHomepage", { ...STRIPPED_FOR_PUBLIC }),
+    homepageLayout: t.exposeBoolean("homepageLayout", {
+      ...STRIPPED_FOR_PUBLIC,
+      description:
+        "Renders with the Watch home layout and admits homepage-only blocks without being the live homepage (see isHomepage).",
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -141,6 +146,7 @@ ExperienceLocaleEffectiveRef.implement({
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
     isHomepage: t.exposeBoolean("isHomepage"),
+    homepageLayout: t.exposeBoolean("homepageLayout"),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -154,7 +160,7 @@ ExperienceLocaleEffectiveRef.implement({
         resolveWatchHomeCategoryRailReadBlocks({
           rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
           blocks: row.blocks,
-          isHomepage: row.isHomepage,
+          isHomepage: row.isHomepage || row.homepageLayout,
         }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
@@ -233,7 +239,26 @@ ExperiencePreviewRef.implement({
     localeId: t.exposeID("localeId", { nullable: false }),
     locale: t.exposeString("locale", { nullable: false }),
     slug: t.exposeString("slug", { nullable: false }),
-    isHomepage: t.exposeBoolean("isHomepage", { nullable: false }),
+    isHomepage: t.exposeBoolean("isHomepage", {
+      nullable: false,
+      description:
+        "Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.",
+    }),
+    homepageLayout: t.exposeBoolean("homepageLayout", {
+      nullable: false,
+      description:
+        "Render this draft with the Watch home layout even though it is not the live homepage. Renderers use isHomepage OR homepageLayout.",
+    }),
+    isTemplate: t.exposeBoolean("isTemplate", {
+      nullable: false,
+      description:
+        "Whether the parent Experience is a route template. Multiple Experiences may be route templates.",
+    }),
+    isDefaultTemplate: t.exposeBoolean("isDefaultTemplate", {
+      nullable: false,
+      description:
+        "Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.",
+    }),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
     metaDescription: t.exposeString("metaDescription", { nullable: true }),
@@ -255,7 +280,7 @@ ExperiencePreviewRef.implement({
           resolveWatchHomeCategoryRailReadBlocks({
             rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
             blocks: row.blocks,
-            isHomepage: row.isHomepage,
+            isHomepage: row.isHomepage || row.homepageLayout,
           }),
           row.locale,
         ) as Block[],

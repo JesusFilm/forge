@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}. bertsetetik {last}. bertsetera, guztira {total}, {chapter}",
     "demoVerse": "Pasatu hatza gora hurrengo bertsetera joateko",
     "demoChapter": "Pasatu hatza ezkerrera hurrengo kapitulura joateko",
+    "demoChapterRtl": "Pasatu hatza eskuinera hurrengo kapitulura joateko",
     "demoSkip": "Ukitu saltatzeko",
     "demoSkipAriaLabel": "Saltatu hatza pasatzeko erakustaldia",
     "selectVerseAriaHint": "Ukitu birritan bertsete hau hautatzeko",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Aukeratu liburu bat",
+    "chooseChapter": "Aukeratu kapitulu bat",
+    "chooseVerse": "Aukeratu bertsete bat",
     "oldTestament": "Itun Zaharra",
     "newTestament": "Itun Berria",
     "books": "Liburuak",
@@ -193,7 +196,7 @@
     "someBooks": "{count}/{total, plural, one {# liburu} other {# liburu}}",
     "twoNames": "{first} eta {second}",
     "threeNames": "{first}, {second} eta {third}",
-    "onDevice": "Gailu honetan",
+    "downloaded": "Deskargatuta",
     "downloading": "Deskargatzen, % {percent}",
     "downloadStopped": "Deskarga gelditu da",
     "updateAvailable": "Eguneratzea erabilgarri",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Seriearen kartela",
     "videosHeading": "Bideoak",
     "detailsLoadError": "Ezin izan dira xehetasun guztiak kargatu.",
+    "languagesTitle": "Bideoaren hizkuntza",
     "searchLanguagesPlaceholder": "Bilatu hizkuntzak…",
     "searchLanguagesAriaLabel": "Bilatu hizkuntzak",
     "noLanguagesFound": "Ez da hizkuntzarik aurkitu",
@@ -502,6 +506,7 @@
     "resumeAt": "Berrekin hemendik: {time}",
     "unknownLanguage": "Ezezaguna",
     "downloadedStatus": "Deskargatuta",
+    "languagesTitle": "Bideoaren hizkuntza",
     "searchLanguagesPlaceholder": "Bilatu hizkuntzak…",
     "searchLanguagesAriaLabel": "Bilatu hizkuntzak",
     "noLanguagesFound": "Ez da hizkuntzarik aurkitu",
@@ -773,5 +778,8 @@
     "send": "Bidali",
     "sending": "Bidaltzen…",
     "sendAriaLabel": "Bidali iritzia"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikazioak zure sare lokala erabiltzen du igorpenerako gailuak aurkitzeko, bideoak zure telebistan erreproduzitu ahal izan ditzazun."
   }
 }

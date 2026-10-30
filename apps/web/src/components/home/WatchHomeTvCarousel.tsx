@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type MutableRefObject,
   type ReactNode,
   type RefObject,
@@ -22,7 +23,10 @@ import { Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
-import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
+import {
+  useIsWatchModalActive,
+  usePauseForWatchModal,
+} from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -31,6 +35,7 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
+import { useTouchGatedPrefetch } from "@/components/home/useTouchGatedPrefetch"
 import {
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
@@ -123,8 +128,9 @@ export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
 /**
  * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
  * rather than a shared import: the two surfaces have different dwell
- * profiles and should be able to move independently. The values match today
- * because the reasoning does.
+ * profiles and should be able to move independently. The buffer values match
+ * because the reasoning does. The hero also measures bandwidth before picking
+ * its first rendition (`lib/hls-start-level.ts`); this intro does not yet.
  *
  * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
  * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
@@ -177,9 +183,9 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
       // Frame-first for the hero, authored-first for the card below. The admin
       // library holds only mobile derivatives for these videos (measured 640x300
       // for `mobileCinematicHigh`), which a full-bleed intro upscales about
-      // fourfold; the 1280x720 Mux poster uses the warm hero recipe. At card
-      // size the authored image has pixels to spare, so it stays preferred
-      // there and the 448x252 Mux frame is its fallback.
+      // fourfold; the Mux WEBP poster uses the existing 1280-wide hero
+      // recipe, without a height parameter. At card size the authored image
+      // stays preferred, with the 448x252 Mux frame as its fallback.
       // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
       // and `??` would both keep it and suppress the Mux tier below it.
       const posterUrl =
@@ -213,12 +219,18 @@ function PrimaryAction({
   slide: WatchHomeTvCarouselSlide
 }) {
   const t = useTranslations("WatchHome")
+  // Re-targets on every hero advance, so on touch an ungated viewport
+  // prefetch fetches each slide's page in turn (W-025).
+  const prefetchGate = useTouchGatedPrefetch()
 
   if (!slide.href) return null
 
   return (
     <Link
       href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
+      prefetch={prefetchGate.prefetch}
+      onFocus={prefetchGate.onFocus}
+      onPointerMove={prefetchGate.onPointerMove}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
       className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
@@ -801,31 +813,55 @@ function WatchHomePlaybackProgressRing({
         stroke="rgba(255,255,255,0.18)"
         strokeWidth="3"
       />
-      <circle
-        key={animationKey}
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="none"
-        stroke="rgba(255,255,255,0.9)"
-        strokeLinecap="round"
-        strokeWidth="3"
-        className="watch-home-progress-ring"
-        data-paused={paused ? "true" : "false"}
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference}
-        style={
-          {
-            "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
-            animationPlayState: paused ? "paused" : "running",
-            // Held progress stays readable — a stall at 60% still shows where
-            // it stopped — but steps back so the spinner reads as the live
-            // element of the two arcs. Only a STALL dims it; a deliberate
-            // pause leaves the arc at full strength.
-            opacity: buffering ? 0.4 : 1,
-          } as CSSProperties
-        }
-      />
+      {/* Elapsed time is the filled arc, exactly as before; only the way it
+          grows changed. `stroke-dashoffset` cannot run on the compositor, so
+          the fill is two half-ring arcs (fixed dash geometry) that each turn
+          into their own half of the ring. The viewports are static clips —
+          the first covers the half the fill travels through first, the second
+          the half it finishes in — so each arc is revealed as it rotates in
+          and the visible fill grows 0 → 100% over the slide's duration.
+          Each half rotates only `transform`; the second waits out the first
+          (half the duration) via a CSS delay, so pausing both holds the fill.
+          Butt caps: a round cap would show a dot at 0% where an arc is parked
+          just outside its clip. Only a STALL dims it; a deliberate pause
+          leaves the fill at full strength. */}
+      <g key={animationKey} style={{ opacity: buffering ? 0.4 : 1 }}>
+        {(["first", "second"] as const).map((half) => (
+          <svg
+            key={half}
+            x={0}
+            y={half === "first" ? center : 0}
+            width={svgSize}
+            height={center}
+            viewBox={`0 ${half === "first" ? center : 0} ${svgSize} ${center}`}
+            overflow="hidden"
+          >
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke="rgba(255,255,255,0.9)"
+              strokeWidth="3"
+              className={
+                half === "first"
+                  ? "watch-home-progress-ring"
+                  : "watch-home-progress-ring watch-home-progress-ring-second"
+              }
+              data-half={half}
+              data-paused={paused ? "true" : "false"}
+              strokeDasharray={`${circumference / 2} ${circumference}`}
+              strokeDashoffset={0}
+              style={
+                {
+                  "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
+                  animationPlayState: paused ? "paused" : "running",
+                } as CSSProperties
+              }
+            />
+          </svg>
+        ))}
+      </g>
       {/* The loading state belongs on the ring itself: this circle is what
           promised the viewer that something was playing, so it is where the
           correction has to appear. The group carries a CSS-delayed fade so a
@@ -862,11 +898,6 @@ function WatchHomePlaybackProgressRing({
           className="watch-home-progress-ring-reset"
           strokeDasharray={circumference}
           strokeDashoffset={0}
-          style={
-            {
-              "--watch-home-progress-circumference": circumference,
-            } as CSSProperties
-          }
         />
       ) : null}
     </svg>
@@ -1060,6 +1091,13 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   )
 })
 
+/**
+ * Anything inside the hero frame that owns its own click. A frame click that
+ * lands on one of these is that control's, never an unmute.
+ */
+const WATCH_HOME_HERO_CONTROL_SELECTOR =
+  "a[href], button, input, select, textarea, [role='button'], [role='link']"
+
 export function WatchHomeTvCarousel({
   heroManifestCatalog,
   exposurePlacement,
@@ -1071,6 +1109,7 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  const watchModalActive = useIsWatchModalActive()
   const {
     activeIndex,
     activeSlide,
@@ -1094,7 +1133,9 @@ export function WatchHomeTvCarousel({
     slides: timelineSlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    playbackHeld: watchModalActive,
+  })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   // Separate from wrapperRef: that one is on the media layer, which reaches
@@ -1114,6 +1155,24 @@ export function WatchHomeTvCarousel({
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
     setPlayer((current) => (current === next ? current : next))
   }, [])
+  // The whole muted intro is an unmute target, the way the watch-page hero's
+  // pre-reveal click surface is, and it unmutes through the button's own
+  // handler. Delegated from the frame rather than a transparent layer because
+  // the title copy sits above the media and would swallow a layer's clicks.
+  // An unmuted intro ignores frame clicks so a stray tap can't silence it.
+  const handleHeroFrameClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!isMuted) return
+      if (
+        event.target instanceof Element &&
+        event.target.closest(WATCH_HOME_HERO_CONTROL_SELECTOR)
+      ) {
+        return
+      }
+      toggleMuted()
+    },
+    [isMuted, toggleMuted],
+  )
   // Chrome visibility is shell-level state that survives client-side
   // navigation, so arriving from a watch page whose player hid the header has
   // to restore it explicitly.
@@ -1140,6 +1199,7 @@ export function WatchHomeTvCarousel({
           drops that overlap to zero. */}
       <div
         ref={heroFrameRef}
+        onClick={handleHeroFrameClick}
         style={
           {
             // Measured fit wins once hydrated; the classes below are the
@@ -1152,6 +1212,7 @@ export function WatchHomeTvCarousel({
         }
         className={cn(
           "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isMuted && "cursor-pointer",
           isMuted
             ? // Short enough for the categories rail to sit fully inside the
               // first viewport, floored so a squat window keeps a usable intro

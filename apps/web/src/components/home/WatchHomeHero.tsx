@@ -33,7 +33,6 @@ export function WatchHomeHero({ slides }: WatchHomeHeroProps) {
           src={featured.imageUrl}
           alt={featured.imageAlt}
           fill
-          priority
           sizes="100vw"
           className="absolute inset-0 -z-20 scale-105 object-cover opacity-55 blur-[2px]"
         />

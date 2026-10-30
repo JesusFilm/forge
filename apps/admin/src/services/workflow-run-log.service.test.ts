@@ -54,6 +54,21 @@ describe("workflow run log service", () => {
         details: { incremental: true },
       }),
     })
+    expect(
+      client.workflowRun.create.mock.calls[0]?.[0].data,
+    ).not.toHaveProperty("id")
+  })
+
+  it("uses an explicit ID only for an idempotent operation", async () => {
+    const client = createMockClient()
+    await createWorkflowRunLog(
+      { id: "manual-operation-1", workflowKey: "retention", trigger: "manual" },
+      client as never,
+    )
+    expect(client.workflowRun.create.mock.calls[0]?.[0].data).toHaveProperty(
+      "id",
+      "manual-operation-1",
+    )
   })
 
   it("maps an editor-triggered push campaign run to the manual trigger", async () => {
