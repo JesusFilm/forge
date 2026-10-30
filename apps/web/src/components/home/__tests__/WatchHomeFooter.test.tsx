@@ -157,9 +157,12 @@ describe("WatchHomeFooter", () => {
       expect(action.classList.contains("min-w-0")).toBe(true)
       expect(action.classList.contains("break-words")).toBe(true)
     })
-    expect(navigation?.lastElementChild?.classList.contains("min-h-9")).toBe(
+    expect(navigation?.lastElementChild?.classList.contains("min-h-11")).toBe(
       true,
     )
+    Array.from(navigation?.querySelectorAll("a") ?? []).forEach((link) => {
+      expect(link.classList.contains("min-h-11")).toBe(true)
+    })
   })
 
   it("equally distributes contact details without dividers", () => {
@@ -179,6 +182,15 @@ describe("WatchHomeFooter", () => {
     expect(contactGrid?.classList.contains("w-full")).toBe(true)
     expect(contactGrid?.classList.contains("break-words")).toBe(true)
     expect(contactGrid?.children).toHaveLength(3)
+
+    const contactActions = contactGrid?.querySelectorAll("a, button") ?? []
+    expect(contactActions).toHaveLength(2)
+    expect(
+      contactActions[0]?.parentElement?.classList.contains("flex-col"),
+    ).toBe(true)
+    Array.from(contactActions).forEach((action) => {
+      expect(action.classList.contains("min-h-11")).toBe(true)
+    })
 
     Array.from(contactGrid?.children ?? []).forEach((column) => {
       expect(column.className).not.toContain("border-")

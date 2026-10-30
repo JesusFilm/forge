@@ -100,7 +100,7 @@ describe("WatchHeroOverlay", () => {
   })
 
   it("exports one primary action treatment for both surfaces", () => {
-    expect(WATCH_HERO_PRIMARY_ACTION_CLASS).toContain("bg-brand-red")
+    expect(WATCH_HERO_PRIMARY_ACTION_CLASS).toContain("bg-[#d33a43]")
     expect(WATCH_HERO_PRIMARY_ACTION_CLASS).toContain("rounded-full")
   })
 })
