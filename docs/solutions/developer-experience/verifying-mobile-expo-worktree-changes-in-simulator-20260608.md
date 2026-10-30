@@ -1,7 +1,7 @@
 ---
 title: Verifying mobile (Expo) worktree changes in the iOS simulator
 date: 2026-06-08
-last_updated: 2026-10-01
+last_updated: 2026-10-19
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -125,6 +125,13 @@ Three further facts about the endpoint:
 - Metro inlines every `EXPO_PUBLIC_*` value at bundler startup. A shell
   `export` does nothing, and a reload picks up nothing. **Cold-restart Metro**
   after any environment change.
+  Corrected 2026-10-19: a dev bundle does not inline these values. It reads
+  them through `expo/virtual/env`, which merges the `.env` files over
+  `process.env`. So a shell `export` reaches the bundle, but it loses to a
+  `.env` file that sets the same key. That module exists so that a `.env`
+  edit can hot-reload, so "a reload picks up nothing" is not verified for a
+  `.env` edit. The cold restart is still the verified step. See
+  [the dev-bundle precedence learning](expo-dev-bundle-env-file-beats-shell-override.md).
 
 **Write paths, added 2026-09-17 (feat-516).** The facts above cover read
 paths. A bearer-gated mutation path gets `UNAUTHENTICATED` from a local

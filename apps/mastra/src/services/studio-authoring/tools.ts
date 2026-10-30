@@ -22,19 +22,6 @@ export function studioAssetTools(
       inputSchema: z.object({ search: z.string().max(200).optional() }),
       execute: async (input) => call("assets", input),
     }),
-    discoverPacks: createTool({
-      id: "discoverPacks",
-      description: "Discover Content Packs.",
-      inputSchema: z.object({ search: z.string().max(200).optional() }),
-      execute: async (input) => call("packs", input),
-    }),
-    readPack: createTool({
-      id: "readPack",
-      description:
-        "Read immutable source evidence and separate editorial guidance.",
-      inputSchema: z.object({ id: z.string() }),
-      execute: async (input) => call("pack", input.id),
-    }),
     readSource: createTool({
       id: "readSource",
       description:

@@ -24,6 +24,33 @@ const SOURCE_PAGE_SIZE = 20
 
 type Tx = Prisma.TransactionClient
 
+/** Shared expiry-only proof page. Artifact and bound-import holds protect the
+ * same rows in both ordinary and operator retention. */
+export async function purgeExpiredPrecomputedGenerationProofs(
+  tx: Tx,
+  now: Date,
+): Promise<number> {
+  return tx.$executeRaw(Prisma.sql`
+    DELETE FROM recommendation_precomputed_generation_retention_proof proof
+    WHERE proof.ctid IN (
+      SELECT expired.ctid FROM recommendation_precomputed_generation_retention_proof expired
+      WHERE expired.expires_at <= ${now}
+        AND (expired.snapshot_sha256 IS NULL OR expired.artifact_deleted_at IS NOT NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_ga_capture_artifact artifact
+          WHERE artifact.generation_id = expired.generation_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_ga_capture_import import
+          WHERE import.destination_generation_id = expired.generation_id
+            AND import.state = 'bound'
+        )
+      ORDER BY expired.expires_at, expired.generation_id
+      LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
+    )
+  `)
+}
+
 export type PrecomputedGenerationPurge = Readonly<{
   generationsAbandoned: number
   generationsRetiring: number
@@ -60,25 +87,7 @@ export async function purgeExpiredPrecomputedGenerations(
   const idleCutoff = new Date(
     now.getTime() - PRECOMPUTED_ABANDONED_IDLE_DAYS * 86_400_000,
   )
-  const proofsDeleted = await tx.$executeRaw(Prisma.sql`
-    DELETE FROM recommendation_precomputed_generation_retention_proof proof
-    WHERE proof.ctid IN (
-      SELECT expired.ctid FROM recommendation_precomputed_generation_retention_proof expired
-      WHERE expired.expires_at <= ${now}
-        AND (expired.snapshot_sha256 IS NULL OR expired.artifact_deleted_at IS NOT NULL)
-        AND NOT EXISTS (
-          SELECT 1 FROM recommendation_precomputed_ga_capture_artifact artifact
-          WHERE artifact.generation_id = expired.generation_id
-        )
-        AND NOT EXISTS (
-          SELECT 1 FROM recommendation_precomputed_ga_capture_import import
-          WHERE import.destination_generation_id = expired.generation_id
-            AND import.state = 'bound'
-        )
-      ORDER BY expired.expires_at, expired.generation_id
-      LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
-    )
-  `)
+  const proofsDeleted = await purgeExpiredPrecomputedGenerationProofs(tx, now)
   const [abandoned] = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT g.id FROM recommendation_precomputed_generation g
     WHERE g.status IN ('incomplete', 'capacity_blocked')

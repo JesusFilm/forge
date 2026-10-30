@@ -2,7 +2,7 @@ import { once } from "node:events"
 import { randomBytes } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
 import { getRedisClient } from "@/infra/redis"
@@ -30,18 +30,12 @@ import {
   RecommendationDeliveryService,
   runRecommendationRetrievalQuery,
 } from "./delivery.service"
-import { getLiveProfileCandidates } from "./candidates/profile-candidate.service"
-import {
-  runCandidatePlatform,
-  runSemanticCandidatePlatform,
-} from "./orchestration"
+import { runSemanticCandidatePlatform } from "./orchestration"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
-import { getRecommendationRecentContext } from "./recent-context.service"
 import { createRecommendationDeliveryDependencies } from "./delivery.factory"
 import { createRecommendationTokenService } from "./token.service"
 import { getEligibleRecommendationVideoIds } from "@/services/scene-recommendations-retriever"
 import type { SemanticRetrievalDiagnostics } from "./delivery-diagnostics"
-import { loadCowatchPlayableRows } from "./cowatch/candidate.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const DELIVERY_FIXTURE_MODE = env.RECOMMENDATION_DELIVERY_DB_FIXTURE
@@ -279,8 +273,9 @@ async function installContentEmbeddingContractAuthority(
   )
 }
 
-async function installHybridDeliveryAuthority(client: Client): Promise<void> {
-  const projectionMedia = await client.query<{ video_id: string }>(`
+// Keep retained playback and fenced assignment history; retired cookies have no backing profile or consent rows.
+async function installRetiredHybridHistory(client: Client): Promise<void> {
+  const historyMedia = await client.query<{ video_id: string }>(`
     SELECT transcript.video_id
     FROM video_transcript transcript
     JOIN video_transcript_chunk chunk
@@ -293,59 +288,13 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
     ORDER BY transcript.video_id
     LIMIT 1
   `)
-  const projectionMediaId = projectionMedia.rows[0]?.video_id
-  if (!projectionMediaId) {
+  const historyMediaId = historyMedia.rows[0]?.video_id
+  if (!historyMediaId) {
     throw new Error(
-      "Explicit delivery fixture has no non-seed vector video for hybrid profile retrieval.",
+      "Explicit delivery fixture has no non-seed vector video for retained playback history.",
     )
   }
-  await client.query(
-    `INSERT INTO recommendation_profile (
-      id, token_digest, privacy_generation, choice, state, expires_at,
-      updated_at
-    ) VALUES (
-      'delivery-benchmark-profile', $1, 1, 'durable_allowed', 'active',
-      '2030-01-01T00:00:00.000Z', '2026-08-27T00:00:00.000Z'
-    )`,
-    [BENCHMARK_PROFILE_TOKEN_DIGEST],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_generation (
-      id, manifest_id, scope, profile_id, privacy_generation, generation,
-      state, projection_version, clustering_version,
-      eligibility_policy_version, outcome_classifier_version,
-      input_window_start, input_window_end, input_watermark, input_digest,
-      contribution_count, durable_interest_count, coverage, stability,
-      cohort_quality, retention_days, published_at, expires_at
-    ) VALUES (
-      'delivery-benchmark-projection', 'multi-interest-profile-shadow-v1',
-      'durable', 'delivery-benchmark-profile', 1, 1, 'published',
-      'multi-interest-profile-projection-v1',
-      'deterministic-farthest-first-medoids-v1',
-      'recommendation-integrity-v1', 'active-watch-proxy-v1',
-      '2026-08-26T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
-      '2026-08-27T00:00:00.000Z', $1, 1, 1, 1, 1, 0.9, 180,
-      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z'
-    )`,
-    ["7".repeat(64)],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_interest (
-      id, generation_id, kind, interest_ordinal, medoid_media_id,
-      medoid_source_digest, embedding, weight, support_count, stability,
-      expires_at
-    )
-    SELECT
-      'delivery-benchmark-interest', 'delivery-benchmark-projection',
-      'durable', 0, $1::varchar(191), $2, avg(chunk.embedding), 1, 1, 1,
-      '2030-01-01T00:00:00.000Z'
-    FROM video_transcript transcript
-    JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
-    WHERE transcript.video_id::text = $1::text
-      AND chunk.embedding IS NOT NULL
-    GROUP BY transcript.video_id`,
-    [projectionMediaId, "8".repeat(64)],
-  )
+
   await client.query(
     `INSERT INTO recommendation_playback_episode (
       id, media_id, session_digest, state, capability_jti, signing_kid,
@@ -356,7 +305,7 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       '2026-08-27T02:00:00.000Z', '2026-08-27T03:00:00.000Z', 1,
       '2026-08-27T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
       '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
-    [projectionMediaId, BENCHMARK_SESSION_DIGEST],
+    [historyMediaId, BENCHMARK_SESSION_DIGEST],
   )
   await client.query(
     `INSERT INTO recommendation_outcome_revision (
@@ -386,42 +335,7 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
     ["2".repeat(64)],
   )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_contribution (
-      id, generation_id, kind, source_id_digest, source_outcome_id,
-      target_media_id, interest_ordinal, weight,
-      eligibility_policy_version, outcome_classifier_version,
-      source_eligibility_decision_id, source_eligibility_revision,
-      privacy_generation, occurred_at, expires_at
-    ) VALUES ('delivery-benchmark-contribution',
-      'delivery-benchmark-projection', 'qualified_outcome', $1,
-      'delivery-benchmark-outcome', $2, 0, 1,
-      'recommendation-integrity-v1', 'active-watch-proxy-v1',
-      'delivery-benchmark-decision', 1, 1,
-      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
-    ["3".repeat(64), projectionMediaId],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_pointer (
-      scope_digest, scope, profile_id, privacy_generation, generation_id,
-      pointer_generation, updated_at
-    ) VALUES (
-      $1, 'durable', 'delivery-benchmark-profile', 1,
-      'delivery-benchmark-projection', 1, '2026-08-27T00:00:00.000Z'
-    )`,
-    ["9".repeat(64)],
-  )
-  await client.query(
-    `INSERT INTO recommendation_consent_receipt (
-      id, token_digest, contract_version, choice, state, profile_id,
-      privacy_generation, expires_at, updated_at
-    ) VALUES (
-      'delivery-benchmark-consent', $1, 'recommendation-consent-v1',
-      'personalization', 'active', 'delivery-benchmark-profile', 1,
-      '2030-01-01T00:00:00.000Z', '2026-08-27T00:00:00.000Z'
-    )`,
-    [BENCHMARK_CONSENT_RECEIPT_DIGEST],
-  )
+
   await client.query(
     `INSERT INTO recommendation_experiment (
       id, experiment_version, surface_version, control_manifest_id,
@@ -444,12 +358,13 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
     `INSERT INTO recommendation_experiment_assignment (
       id, experiment_id, unit_kind, unit_digest, profile_id,
       privacy_generation, arm, assignment_probability, configuration_digest,
-      generation, assigned_at, expires_at
+      generation, assigned_at, expires_at, state, fenced_at, fence_reason
     ) VALUES (
       'delivery-benchmark-assignment', 'delivery-benchmark-experiment',
-      'anonymous_profile', $1, 'delivery-benchmark-profile', 1,
+      'anonymous_profile', $1, NULL, NULL,
       'challenger', 0.1, $2, 1, '2026-08-27T00:00:00.000Z',
-      '2030-01-01T00:00:00.000Z'
+      '2030-01-01T00:00:00.000Z', 'fenced',
+      '2026-08-27T00:00:00.000Z', 'behavioral_retirement'
     )`,
     [BENCHMARK_PROFILE_TOKEN_DIGEST, "a".repeat(64)],
   )
@@ -537,7 +452,7 @@ async function prepareExplicitDeliveryFixture(
             `CREATE VIEW "${fixtureSchema}"."${table}" AS SELECT * FROM public."${table}"`,
           )
         }
-        await installHybridDeliveryAuthority(client)
+        await installRetiredHybridHistory(client)
         const snapshotUrl = new URL(databaseUrl)
         snapshotUrl.searchParams.delete("options")
         snapshotUrl.searchParams.set("schema", fixtureSchema)
@@ -707,7 +622,7 @@ async function prepareExplicitDeliveryFixture(
         ],
       )
     }
-    await installHybridDeliveryAuthority(client)
+    await installRetiredHybridHistory(client)
     await installIncompatibleNearerChunks(client)
     await installWrongAudioNearerChunks(client)
     const fixtureUrl = new URL(databaseUrl)
@@ -1018,9 +933,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             evidenceComplete: false,
             composedCount: 6,
           },
-          personalizationDecision: {
-            effectiveManifestId: "semantic-candidate-platform-v1",
-          },
+          personalizationDecision: null,
         })
         expect(saved.items).toHaveLength(6)
         console.info(
@@ -1029,7 +942,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       },
     )
 
-    it("keeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s", async () => {
+    it("keeps complete semantic delivery inside 1.5s with retired credentials and fenced history", async () => {
       expect(fixtureKind).toBe(
         DELIVERY_FIXTURE_MODE === "production_snapshot"
           ? "production_snapshot"
@@ -1054,12 +967,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         readRevokedKids: async () => [],
         now: () => benchmarkNow,
       })
+      const retiredBehavioralDependency = vi.fn(() => {
+        throw new Error("Retired behavioral dependency invoked")
+      })
       const service = new RecommendationDeliveryService({
         prisma,
         admission: {
           acquire: async () => ({
             allowed: true as const,
-            leaseId: "hybrid-db-benchmark",
+            leaseId: "semantic-db-benchmark",
           }),
           release: async () => undefined,
         },
@@ -1094,64 +1010,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           ),
         recheckCached: async (items) => [...items],
         orchestrate: runSemanticCandidatePlatform,
-        orchestrateHybrid: runCandidatePlatform,
-        authorizeProfile: async (input) => {
-          const receipt = await prisma.recommendationConsentReceipt.findUnique({
-            where: { tokenDigest: input.consentReceiptDigest },
-            include: { profile: true },
-          })
-          return Boolean(
-            receipt?.profile?.tokenDigest === input.profileTokenDigest &&
-            receipt.state === "ACTIVE" &&
-            receipt.choice === "PERSONALIZATION" &&
-            receipt.privacyGeneration === receipt.profile?.privacyGeneration,
-          )
-        },
-        assignExperiment: async () => ({
-          assignment: {
-            assignmentId: "delivery-benchmark-assignment",
-            experimentId: "delivery-benchmark-experiment",
-            experimentVersion: "delivery-benchmark-experiment-v1",
-            experimentGeneration: 1,
-            arm: "challenger",
-            effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-            assignmentProbability: 0.1,
-            configurationDigest: "a".repeat(64),
-          },
-          bypassReason: null,
-        }),
-        retrieveProfile: (input) =>
-          runRecommendationRetrievalQuery(
-            prisma,
-            input.deadlineAt,
-            (scopedPrisma) =>
-              getLiveProfileCandidates(scopedPrisma, {
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest: input.profileTokenDigest,
-                now: input.now,
-                context: {
-                  surface: RECOMMENDATION_CONTRACTS.surface,
-                  purpose: "watch",
-                  locale: input.locale,
-                  audioLanguageSlug: input.audioLanguageSlug,
-                  seedMediaId: input.seedMediaId,
-                  manifestId: input.manifestId,
-                },
-              }),
-          ),
-        resolveRecentContext: (input) =>
-          runRecommendationRetrievalQuery(
-            prisma,
-            input.deadlineAt,
-            (scopedPrisma) =>
-              getRecommendationRecentContext(scopedPrisma, {
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest: input.profileTokenDigest,
-                allowDurableProfileLinks: input.allowDurableProfileLinks,
-                locale: input.locale,
-                now: input.now,
-              }),
-          ),
+        // Old callers and stored hybrid manifests cannot revive these lanes.
+        orchestrateHybrid: retiredBehavioralDependency,
+        authorizeProfile: retiredBehavioralDependency,
+        assignExperiment: retiredBehavioralDependency,
+        retrieveProfile: retiredBehavioralDependency,
+        resolveRecentContext: retiredBehavioralDependency,
         tokenService: {
           activeKid: signingKey.kid,
           signDeliveryCapability: signer.signDeliveryCapability,
@@ -1165,7 +1029,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id: null,
             role: "CONSUMER_BEARER",
             fleet: false,
-            rateLimitBucketKey: "hybrid-delivery-db-benchmark",
+            rateLimitBucketKey: "semantic-delivery-db-benchmark",
           },
           seedMediaId: seed[0]!.id,
           locale: "en",
@@ -1187,14 +1051,19 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           new Set(run.response.items.map((item) => item.targetMediaId)).size,
         ).toBe(6)
-        expect(run.response.personalization?.executionMode).toBe(
-          "hybrid_personalized",
-        )
+        expect(run.response.personalization).toMatchObject({
+          executionMode: "semantic_contextual",
+          lane: "semantic_control",
+          interestCount: 0,
+          sessionIntentPresent: false,
+        })
         expect(
           run.response.items.some(
-            (item) => item.candidateGenerator === "multi-interest-profile",
+            (item) =>
+              item.candidateGenerator === "multi-interest-profile" ||
+              item.candidateGenerator === "directional-cowatch",
           ),
-        ).toBe(true)
+        ).toBe(false)
         expect(
           run.response.items.every(
             (item) => item.capability.split(".").length === 3,
@@ -1203,6 +1072,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           Buffer.byteLength(JSON.stringify(run.response)),
         ).toBeLessThanOrEqual(MAX_DELIVERY_RESPONSE_BYTES)
+        expect(retiredBehavioralDependency).not.toHaveBeenCalled()
+        expect(
+          await prisma.recommendationPersonalizationDecision.findUnique({
+            where: { requestId: run.response.requestId! },
+          }),
+        ).toBeNull()
         const persisted = await prisma.recommendationCandidateRun.findUnique({
           where: { requestId: run.response.requestId! },
         })
@@ -1213,8 +1088,21 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         })
       }
 
+      expect(
+        await prisma.recommendationExperimentAssignment.findUniqueOrThrow({
+          where: { id: "delivery-benchmark-assignment" },
+        }),
+      ).toMatchObject({
+        unitKind: "ANONYMOUS_PROFILE",
+        arm: "CHALLENGER",
+        state: "FENCED",
+        profileId: null,
+        privacyGeneration: null,
+        fenceReason: "behavioral_retirement",
+      })
+
       console.info(
-        `[recommendations] event=hybrid_complete_service_benchmark fixture=${fixtureKind} cold_ms=${Math.ceil(cold.elapsedMs)} warm_ms=${Math.ceil(warm.elapsedMs)} composed=${cold.response.items.length} unique=${new Set(cold.response.items.map((item) => item.targetMediaId)).size} shortfall=${cold.response.shortfallReason ?? "none"}`,
+        `[recommendations] event=semantic_complete_service_benchmark fixture=${fixtureKind} cold_ms=${Math.ceil(cold.elapsedMs)} warm_ms=${Math.ceil(warm.elapsedMs)} composed=${cold.response.items.length} unique=${new Set(cold.response.items.map((item) => item.targetMediaId)).size} shortfall=${cold.response.shortfallReason ?? "none"}`,
       )
     })
 
@@ -1337,13 +1225,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                   "mandarin-china",
                 ),
               ).toEqual(new Set(expectedTargetIds))
-              const cowatchRows = await loadCowatchPlayableRows(
-                tx,
-                expectedTargetIds,
-                { locale: display!, audioLanguageSlug: "mandarin-china" },
-              )
-              expect(cowatchRows).toHaveLength(12)
-              expect(cowatchRows.every((row) => row.themes?.length)).toBe(true)
             }
             await tx.$executeRaw`DELETE FROM video_locale WHERE locale = 'zh-hant'`
             const missing: SemanticRetrievalDiagnostics[] = []
@@ -1370,14 +1251,6 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 "mandarin-china",
               ),
             ).toEqual(new Set())
-            await tx.$executeRaw`UPDATE video_transcript SET model = 'inactive-model' WHERE video_id = 'target-video-0'`
-            const incompatible = await loadCowatchPlayableRows(
-              tx,
-              ["target-video-0"],
-              { locale: "zh-hans", audioLanguageSlug: "mandarin-china" },
-            )
-            expect(incompatible).toHaveLength(1)
-            expect(incompatible[0]?.themes).toBeNull()
             throw rollback
           }),
         ).rejects.toBe(rollback)

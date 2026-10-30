@@ -1,0 +1,3 @@
+  101 /Users/someone/Library/Android/sdk/emulator/qemu/darwin-aarch64/qemu-system-aarch64 -avd forge_rc_phone -port 5640 -no-snapshot-load -no-snapshot-save -memory 4096
+  202 /Users/someone/Library/Android/sdk/emulator/qemu/darwin-aarch64/qemu-system-aarch64 -avd Pixel_9a_API_35 -memory 4096
+  303 /bin/zsh -l

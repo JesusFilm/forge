@@ -6,8 +6,6 @@ import {
   type PlaybackDiscoverySource,
 } from "./contracts"
 import { createRecommendationIntegrityService } from "./integrity.service"
-import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
-import { dispatchRecommendationProfileFeedback } from "./profiles/job"
 
 export type PlaybackOutcomeEnvelope = Readonly<{
   contractVersion: typeof PLAYBACK_OUTCOME_CONTRACT_VERSION
@@ -82,24 +80,7 @@ export async function dispatchPlaybackOutcomeToRecommendationConsumer(
 ): Promise<void> {
   const envelope = await readPlaybackOutcomeEnvelope(outcomeId, prisma)
   if (!envelope) return
-  const receipt = await createRecommendationIntegrityService(
-    prisma,
-  ).classifyPlaybackOutcome(envelope.outcomeId)
-  if (
-    receipt.state !== "eligible" ||
-    !receipt.eligibleScopes.includes("profile")
-  ) {
-    return
-  }
-  const activeProfile = await resolveActiveRecommendationProfileLink(prisma, {
-    sessionDigest: envelope.sessionDigest,
-    now: new Date(),
-  })
-  if (!activeProfile) return
-  await dispatchRecommendationProfileFeedback({
-    sessionDigest: envelope.sessionDigest,
-    profileId: activeProfile.profileId,
-    privacyGeneration: activeProfile.privacyGeneration,
-    evidenceWatermark: envelope.createdAt,
-  })
+  await createRecommendationIntegrityService(prisma).classifyPlaybackOutcome(
+    envelope.outcomeId,
+  )
 }

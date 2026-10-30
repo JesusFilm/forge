@@ -5,9 +5,8 @@
  *
  * On a touch device every visible rail link used to fire a speculative
  * `?_rsc=` document prefetch on load. The links now ship with prefetch off and
- * arm per link on intent (focus, or deliberate mouse movement); a
- * hover-capable desktop arms them right after mount, keeping the eager
- * posture the bounded rail had before. `next/link` strips `prefetch` before
+ * arm per link on intent (focus, or deliberate mouse movement). Desktop links
+ * also stay gated as the compact home band brings categories into view. `next/link` strips `prefetch` before
  * spreading onto the anchor, so the sibling suite (which renders through
  * `renderToStaticMarkup` with a real Link) cannot see it. This file mocks
  * `next/link` to reflect the prop onto `data-prefetch`.
@@ -124,20 +123,20 @@ describe("WatchHomeCategoryRail prefetch posture", () => {
     expect(prefetchOf(SEE_ALL)).toBe("false")
   })
 
-  it("keeps the eager desktop posture on a hover-capable device", () => {
+  it("keeps desktop links gated until individual intent", () => {
     stubPointer("mouse")
     renderRail()
 
-    expect(new Set(tilePrefetchValues())).toEqual(new Set(["undefined"]))
-    expect(prefetchOf(SEE_ALL)).toBe("undefined")
+    expect(new Set(tilePrefetchValues())).toEqual(new Set(["false"]))
+    expect(prefetchOf(SEE_ALL)).toBe("false")
   })
 
   /**
    * The real desktop path: server HTML is gated (the server cannot know the
-   * pointer), and hydration flips it to the default strategy. `createRoot`
+   * pointer), and hydration must keep categories gated until intent. `createRoot`
    * alone never exercises the server snapshot, so this uses `hydrateRoot`.
    */
-  it("hydrates gated server markup into eager prefetch on a desktop", () => {
+  it("hydrates desktop markup without eager category prefetch", () => {
     stubPointer("mouse")
     const rail = (
       <NextIntlClientProvider locale="en" messages={enMessages}>
@@ -155,8 +154,8 @@ describe("WatchHomeCategoryRail prefetch posture", () => {
     })
 
     expect(recoverableErrors).toEqual([])
-    expect(prefetchOf(SEE_ALL)).toBe("undefined")
-    expect(new Set(tilePrefetchValues())).toEqual(new Set(["undefined"]))
+    expect(prefetchOf(SEE_ALL)).toBe("false")
+    expect(new Set(tilePrefetchValues())).toEqual(new Set(["false"]))
   })
 
   it("treats a browser without matchMedia as touch, failing closed", () => {
@@ -172,7 +171,7 @@ describe("WatchHomeCategoryRail prefetch posture", () => {
    * arm — a rail-wide latch would refetch all thirteen pages on one tap.
    */
   it("arms only the focused link, so one tap does not fan out", () => {
-    stubPointer("touch")
+    stubPointer("mouse")
     renderRail()
 
     const first = container.querySelector<HTMLAnchorElement>(

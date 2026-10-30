@@ -1,0 +1,31 @@
+# The iOS speed pass first video frame (KTD19, R21). It runs after the cold
+# launch flow, so the app is on Home. The watch page starts the video itself.
+appId: org.jesusfilm.forgewatch
+name: speed-first-frame
+---
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS 26 can ask "Open in ...?" before the app gets the link, so this wait is
+# optional. A wait for the prompt here would hold up the time of every sample.
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 20000
+    optional: true
+    label: The first video frame shows
+- runFlow:
+    when:
+      notVisible:
+        id: player-first-frame
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Confirm the open prompt
+      - extendedWaitUntil:
+          visible:
+            id: player-first-frame
+          timeout: 60000
+          label: The first video frame shows after the prompt
+    label: Answer the open prompt when it shows

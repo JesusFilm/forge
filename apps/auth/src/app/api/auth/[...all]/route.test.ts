@@ -660,6 +660,115 @@ describe("Auth route wrapper", () => {
     },
   )
 
+  it.each([
+    {
+      clientId: "jfp_web_staging",
+      resource: "https://admin-stage.jesusfilm.org/api/graphql",
+      redirectUri: "https://web-stage.jesusfilm.org/watch/api/auth/callback",
+    },
+    {
+      clientId: "jfp_web_production",
+      resource: "https://admin.jesusfilm.org/api/graphql",
+      redirectUri: "https://www.jesusfilm.org/watch/api/auth/callback",
+    },
+  ])(
+    "forwards the Watch user-data resource for its own Web client ($clientId)",
+    async ({ clientId, resource, redirectUri }) => {
+      const { GET } = await import("./route")
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid profile:read email:read web:watch-events:write",
+        resource,
+        state: "opaque-state",
+        code_challenge: "pkce-challenge",
+        code_challenge_method: "S256",
+      }).toString()
+
+      const response = await GET(new Request(url), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+
+      expect(response.status).toBe(200)
+      expect(authGet).toHaveBeenCalledOnce()
+      const forwarded = authGet.mock.calls[0]?.[0]
+      if (!(forwarded instanceof Request)) throw new Error("Expected a request")
+      expect(forwarded.url).toBe(url.toString())
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      name: "another environment's Web client",
+      query:
+        "client_id=jfp_web_local&resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a non-Web first-party client",
+      query:
+        "client_id=jfp_tv_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a dynamic client",
+      query:
+        "client_id=codex_dynamic&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a scope outside the Web ceiling",
+      query:
+        "client_id=jfp_web_local&scope=openid+admin%3Aaccess&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "the Watch resource with another resource",
+      query:
+        "client_id=jfp_web_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql&resource=http%3A%2F%2Flocalhost%3A3003%2Fmcp",
+    },
+    {
+      name: "a Watch resource with an unregistered path",
+      query:
+        "client_id=jfp_web_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql%2Fother",
+    },
+  ])("rejects Watch user-data authorization for $name", async ({ query }) => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(`http://localhost:3004/api/auth/oauth2/authorize?${query}`),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid_target",
+    })
+    expect(authGet).not.toHaveBeenCalled()
+    expect(decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
+  it("still rejects a configured custom audience for the Web client", async () => {
+    vi.resetModules()
+    vi.stubEnv("AUTH_VALID_AUDIENCES", "http://localhost:4318/api/graphql")
+    try {
+      const { GET } = await import("./route")
+      const response = await GET(
+        new Request(
+          "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_local&scope=openid+web%3Awatch-events%3Awrite&resource=http%3A%2F%2Flocalhost%3A4318%2Fapi%2Fgraphql",
+        ),
+        { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+      )
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        error: "invalid_target",
+      })
+      expect(authGet).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
   it("adds the canonical native resource for a seeded Changelog client", async () => {
     getSession.mockResolvedValueOnce({
       session: { id: "session_123" },

@@ -7,19 +7,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { RecommendationIntegrityService } from "./integrity.service"
 import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "./integrity-policy"
-import { publishCowatchShadowGeneration } from "./cowatch/projection.service"
-import { RecommendationOwnerReleaseOperator } from "./promotion/owner-operator"
-import { readActiveOwnerRelease } from "./promotion/owner-authority"
-import { createRecommendationPromotionService } from "./promotion/service"
 
 const day = 86_400_000
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex")
 
-// Real producer receipts, publication, qualification and invalidation triggers.
+// Real producer receipts and eligibility revision reuse; no retired graph publication.
 // Synthetic playback evidence only; no production data or fabricated evaluations.
 describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
-  "playback measurement reuse with native graph authority",
+  "playback measurement reuse after behavioral retirement",
   () => {
     const databaseName = `integrity_reuse_${randomUUID().replaceAll("-", "")}`
     let admin: Client, migration: Client, db: PrismaClient
@@ -53,23 +49,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         adapter: new PrismaPg({ connectionString: url.toString(), max: 4 }),
       })
       // Close the seeded legacy A/A through the supported operator.
-      const promotion = createRecommendationPromotionService(db)
-      const pointer = await db.recommendationPromotionPointer.findUniqueOrThrow(
-        { where: { id: "recommendation-promotion-pointer" } },
-      )
-      const actor = { id: "owned-integrity-fixture", role: "ADMIN" as const }
-      const stopped = await promotion.setKillSwitch({
-        actor,
-        expectedPointerGeneration: pointer.generation,
-        enabled: true,
-        reason: "owner_direct_activation",
-      })
-      await promotion.setKillSwitch({
-        actor,
-        expectedPointerGeneration: stopped.generation,
-        enabled: false,
-        reason: "owner_direct_activation",
-      })
     }, 120_000)
     afterAll(async () => {
       await db?.$disconnect()
@@ -229,51 +208,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const receipt = await service.classifyPlaybackOutcome(outcomeId)
         expect(receipt.eligibleScopes).toContain("aggregate")
       }
-      const classifiedAt = new Date()
-      const publication = await publishCowatchShadowGeneration(
-        db,
-        classifiedAt,
-        {
-          version: "episode-event-window-v1",
-          windowStart: start,
-          windowEnd: new Date(start.getTime() + 1_800_000),
-          evaluationAsOf: classifiedAt,
-        },
-      )
-      if (publication.status !== "published" || !publication.generation)
-        throw new Error("Expected actual finite graph publication")
-      const graphGenerationId = publication.generation
-      const operator = new RecommendationOwnerReleaseOperator({ prisma: db })
-      const pointer = await db.recommendationPromotionPointer.findUniqueOrThrow(
-        { where: { id: "recommendation-promotion-pointer" } },
-      )
-      const input = {
-        actor: { id: "owned-integrity-fixture", role: "ADMIN" as const },
-        authenticatedAt: new Date(),
-        operationId: randomUUID(),
-        expectedPointerGeneration: pointer.generation,
-        graphGenerationId,
-      }
-      const prepared = await operator.prepare(input)
-      if (prepared.status !== "prepared")
-        throw new Error("Expected native preparation")
-      const activated = await operator.activate({
-        ...input,
-        bindingDigest: prepared.bindingDigest,
-      })
-      expect(activated.status).toBe("active")
-      const authority = await readActiveOwnerRelease(db, new Date())
-      if (!authority) throw new Error("Expected current graph authority")
       const outcomeId = outcomes[0]!
       const original =
         await db.recommendationEligibilityDecision.findFirstOrThrow({
           where: { outcomeId, isCurrent: true },
         })
       return {
-        authority,
         original,
         outcomeId,
-        graphGenerationId,
         expiresAt,
         episodeId: `${id}-0-0`,
         classify: () => service.classifyPlaybackOutcome(outcomeId),
@@ -303,45 +245,24 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     async function expectCurrent(
       fixture: Awaited<ReturnType<typeof sourceFixture>>,
     ) {
-      expect(await readActiveOwnerRelease(db, new Date())).toEqual(
-        fixture.authority,
-      )
       expect(
-        await db.recommendationCowatchGeneration.findUniqueOrThrow({
-          where: { id: fixture.graphGenerationId },
+        await db.recommendationEligibilityDecision.findUniqueOrThrow({
+          where: { id: fixture.original.id },
         }),
-      ).toMatchObject({ invalidatedAt: null })
-      expect(
-        await db.recommendationOwnerRelease.findUniqueOrThrow({
-          where: { id: fixture.authority.releaseId },
-        }),
-      ).toMatchObject({ revokedAt: null })
+      ).toMatchObject({ isCurrent: true })
     }
-
-    async function expectRevoked(
+    async function expectSuperseded(
       fixture: Awaited<ReturnType<typeof sourceFixture>>,
     ) {
-      expect(await readActiveOwnerRelease(db, new Date())).toBeNull()
       expect(
-        await db.recommendationCowatchGeneration.findUniqueOrThrow({
-          where: { id: fixture.graphGenerationId },
+        await db.recommendationEligibilityDecision.findUniqueOrThrow({
+          where: { id: fixture.original.id },
         }),
-      ).toMatchObject({
-        invalidatedAt: expect.any(Date),
-        invalidationReason: "eligibility_changed",
-      })
-      expect(
-        await db.recommendationOwnerRelease.findUniqueOrThrow({
-          where: { id: fixture.authority.releaseId },
-        }),
-      ).toMatchObject({
-        revokedAt: expect.any(Date),
-        revocationReason: "eligibility_changed",
-      })
+      ).toMatchObject({ isCurrent: false })
     }
 
     it.each(["current", "legacy"] as const)(
-      "keeps one untouched %s receipt and graph authority through ambient drift and concurrent classifiers",
+      "keeps one untouched %s receipt through ambient drift and concurrent classifiers",
       async (inputFormat) => {
         const fixture = await sourceFixture(inputFormat)
         await fixture.addAmbientViewer()
@@ -375,7 +296,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     )
 
     it.each(["current", "legacy"] as const)(
-      "still appends and revokes a %s receipt when changed measurements cross a policy threshold",
+      "still appends and supersedes a %s receipt when changed measurements cross a policy threshold",
       async (inputFormat) => {
         const fixture = await sourceFixture(inputFormat)
         await fixture.exceedContributionCap()
@@ -401,13 +322,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             where: { outcomeId: fixture.outcomeId },
           }),
         ).toBe(2)
-        await expectRevoked(fixture)
+        await expectSuperseded(fixture)
       },
       30_000,
     )
 
     it.each(["current", "legacy"] as const)(
-      "still appends and revokes a %s receipt for changed non-measure evidence with an identical positive verdict",
+      "still appends and supersedes a %s receipt for changed non-measure evidence with an identical positive verdict",
       async (inputFormat) => {
         const fixture = await sourceFixture(inputFormat)
         await db.$transaction(async (tx) => {
@@ -434,7 +355,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           eligibleScopes: ["profile", "aggregate"],
           contributionWeight: fixture.original.contributionWeight,
         })
-        await expectRevoked(fixture)
+        await expectSuperseded(fixture)
       },
       30_000,
     )

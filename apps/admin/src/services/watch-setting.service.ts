@@ -7,8 +7,12 @@
 // `on ExperienceLocale` is tracked under U5b/U6.
 
 import type { ExperienceLocale, PrismaClient } from "@prisma/client"
+import { projectPublishedWatchAudience } from "./watch-audience-projection"
+import { WATCH_DEFAULT_TEMPLATE_SELECTION } from "./watch-default-template"
 
 export type WatchSettingShape = {
+  /** Requested locale for nested audience reads; not a public content field. */
+  locale: string
   documentId: string | null
   homepageExperience: ExperienceLocale | null
   defaultTemplateExperience: ExperienceLocale | null
@@ -29,10 +33,19 @@ export class WatchSettingService {
     const documentId = homepage?.experienceId ?? template?.experienceId ?? null
 
     return {
+      locale,
       documentId,
       homepageExperience: homepage,
       defaultTemplateExperience: template,
     }
+  }
+
+  async getWatchAudience(root: WatchSettingShape, locale?: string | null) {
+    const template =
+      locale != null && locale !== root.locale
+        ? await this.findTemplateLocale(locale)
+        : root.defaultTemplateExperience
+    return projectPublishedWatchAudience(template)
   }
 
   private async findHomepageLocale(
@@ -72,7 +85,7 @@ export class WatchSettingService {
     locale: string,
   ): Promise<ExperienceLocale | null> {
     const template = await this.prisma.experience.findFirst({
-      where: { isTemplate: true, archivedAt: null },
+      ...WATCH_DEFAULT_TEMPLATE_SELECTION,
       include: {
         locales: {
           where: { locale, status: "PUBLISHED" },

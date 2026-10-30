@@ -1,6 +1,7 @@
 import {
   STUDIO_MCP_APP_SEED,
   STUDIO_MCP_RESOURCE_SCOPES,
+  ADMIN_APP_SEED,
   ADMIN_MCP_APP_KEY,
   ADMIN_MCP_APP_SEED,
   ADMIN_MCP_DEFAULT_SCOPES,
@@ -9,6 +10,9 @@ import {
   CHANGELOG_DEFAULT_SCOPES,
   MANAGER_APP_KEY,
   MANAGER_APP_SEED,
+  WEB_APP_KEY,
+  WEB_APP_SEED,
+  WEB_DEFAULT_SCOPES,
   type AppEnvironmentSeed,
 } from "./apps"
 import { AUTH_SCOPES, type AuthScopeKey } from "./scopes"
@@ -18,6 +22,7 @@ export type OAuthResourceClass =
   | "admin-mcp"
   | "changelog-mcp"
   | "manager-session"
+  | "watch-user-data"
   | "auth-issuer"
   | "custom-audience"
 
@@ -83,6 +88,27 @@ function managerSessionResourcePolicies(): OAuthResourcePolicy[] {
 }
 
 /**
+ * Admin GraphQL as an audience for the signed-in viewer's own Watch data.
+ * Derived from the Admin registry (not AUTH_VALID_AUDIENCES) so it can never
+ * be widened by configuration, and bound to Web's seeded scopes so a Web
+ * token minted for it carries nothing Web could not already request.
+ */
+function watchUserDataResourcePolicies(): OAuthResourcePolicy[] {
+  return ADMIN_APP_SEED.environments.map((environment) => ({
+    identifier: new URL(
+      "/api/graphql",
+      environment.allowedOrigins[0],
+    ).toString(),
+    resourceClass: "watch-user-data" as const,
+    trustedProduct: "admin" as const,
+    trustedApp: WEB_APP_KEY,
+    trustedEnvironment: environment.kind,
+    allowedScopes: WEB_DEFAULT_SCOPES,
+    dcrExposure: "protected" as const,
+  }))
+}
+
+/**
  * Builds the provider's complete protected-resource policy without consulting
  * database state. First-party client trust remains owned by the app seed
  * registry; this catalogue describes targets, not clients.
@@ -112,6 +138,7 @@ export function createOAuthResourceCatalog({
     allowedScopes: CHANGELOG_DEFAULT_SCOPES,
   }).forEach(add)
   managerSessionResourcePolicies().forEach(add)
+  watchUserDataResourcePolicies().forEach(add)
   STUDIO_MCP_APP_SEED.environments.forEach((e) =>
     add({
       identifier: e.mcpResourceAudience!,
@@ -174,4 +201,26 @@ export function resolveOAuthResource(
   identifier: string,
 ): OAuthResourcePolicy | undefined {
   return catalogue.find((resource) => resource.identifier === identifier)
+}
+
+/**
+ * Authorize-time admission for a Watch user-data target: only the Web client
+ * seeded for the target's own environment, and only within Web's scopes. The
+ * provider still requires the per-client resource link before issuing.
+ * `requestedScopes` is null when the request omits `scope`, in which case the
+ * provider falls back to the client's seeded Web defaults.
+ */
+export function isWatchUserDataAuthorization(
+  target: OAuthResourcePolicy,
+  clientId: string | null,
+  requestedScopes: readonly string[] | null,
+): boolean {
+  if (target.resourceClass !== "watch-user-data") return false
+  const webClientId = WEB_APP_SEED.environments.find(
+    ({ kind }) => kind === target.trustedEnvironment,
+  )?.clientId
+  if (!clientId || clientId !== webClientId) return false
+  return (requestedScopes ?? []).every((scope) =>
+    target.allowedScopes.includes(scope as AuthScopeKey),
+  )
 }

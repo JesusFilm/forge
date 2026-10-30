@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import { loadRecommendationPrivacyHealth } from "./privacy.service"
 
 describe("recommendation privacy health", () => {
-  it("returns aggregate and one non-linkable transition detail without identity material", async () => {
+  it("returns a non-linkable retired profile view without reading old rows", async () => {
     const prisma = {
       recommendationProfile: {
         count: vi
@@ -43,23 +43,25 @@ describe("recommendation privacy health", () => {
 
     expect(health).toEqual({
       profiles: {
-        active: 4,
-        tombstoned: 2,
-        expired: 1,
-        pendingErasure: 1,
+        active: 0,
+        tombstoned: 0,
+        expired: 0,
+        pendingErasure: 0,
         failedErasure: 0,
       },
-      transitions: { grant: 5, reset: 0, withdraw: 2, delete: 0, expire: 0 },
-      staleWorkerRejections: 3,
-      lastDeletionDrillAt: new Date("2026-08-25T11:00:00.000Z"),
-      latestTransition: {
-        kind: "withdraw",
-        fromGeneration: 2,
-        toGeneration: null,
-        erasureState: "pending",
-        occurredAt: new Date("2026-08-25T11:30:00.000Z"),
-      },
+      transitions: { grant: 0, reset: 0, withdraw: 0, delete: 0, expire: 0 },
+      staleWorkerRejections: 0,
+      lastDeletionDrillAt: null,
+      latestTransition: null,
     })
+    expect(prisma.recommendationProfile.count).not.toHaveBeenCalled()
+    expect(prisma.recommendationProfile.aggregate).not.toHaveBeenCalled()
+    expect(
+      prisma.recommendationConsentTransition.groupBy,
+    ).not.toHaveBeenCalled()
+    expect(
+      prisma.recommendationConsentTransition.findFirst,
+    ).not.toHaveBeenCalled()
     expect(JSON.stringify(health)).not.toMatch(
       /profileId|session|cookie|token|digest|auditId|history/i,
     )

@@ -661,7 +661,7 @@ export function PublicPrecomputedControls({
                           ? `r${report.revision} ${report.isFinal ? "final" : "provisional"} ${result?.outcome ?? "unavailable"}`
                           : "not evaluated"}
                         {result ? (
-                          <details>
+                          <details className="w-[40rem] max-w-[80vw] whitespace-normal">
                             <summary className="cursor-pointer underline">
                               Review clicks, engagement and delivery health
                             </summary>

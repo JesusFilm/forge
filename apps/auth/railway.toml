@@ -23,11 +23,11 @@
 # Path so the dashboard governs there too.
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/auth build && cp -r apps/auth/.next/static apps/auth/.next/standalone/apps/auth/.next/static"
+builder = "DOCKERFILE"
+dockerfilePath = "/apps/auth/Dockerfile"
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 node apps/auth/.next/standalone/apps/auth/server.js"
+startCommand = "node /app/apps/auth/.next/standalone/apps/auth/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

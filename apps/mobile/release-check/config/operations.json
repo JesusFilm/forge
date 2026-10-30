@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "readOnly": [
+    "Query.experienceBySlug",
+    "Query.watchSetting",
+    "Query.video",
+    "Query.videoBySlug",
+    "Query.videoDub",
+    "Query.watchHomeVideos",
+    "Query.watchLanguageInventory"
+  ],
+  "savedAnswer": ["Query.watchSearch"],
+  "successReply": ["Mutation.submitFeedback"],
+  "blocked": [
+    "Query.myWatchProgress",
+    "Query.userRecommendations",
+    "Mutation.recordWatchSearchEvent",
+    "Mutation.upsertMyWatchProgress",
+    "Mutation.createRecommendationViewer",
+    "Mutation.updateRecommendationViewer",
+    "Mutation.recordSemanticRecommendationEvidence",
+    "Mutation.selectSemanticRecommendation",
+    "Mutation.claimSemanticRecommendationEpisode",
+    "Mutation.issueWatchPlaybackContext",
+    "Mutation.recordSemanticRecommendationPlayback",
+    "Mutation.registerPushDevice",
+    "Mutation.reportPushOpen"
+  ],
+  "writesOnRead": [
+    {
+      "coordinate": "BibleCitation.passage",
+      "source": "apps/admin/src/services/scripture-passage.service.ts",
+      "why": "A passage read fills the YouVersion passage cache (bible_passage_cache) when the cached row is missing or expired."
+    },
+    {
+      "coordinate": "MediaCollectionItem.videoImage",
+      "source": "apps/admin/src/services/video-image-blur-data-url.service.ts",
+      "why": "An Experience media-collection item read fills the blur image and dominant colour of its video image (video_image.blur_data_url, dominant_color) when either is missing, after the response."
+    }
+  ]
+}
