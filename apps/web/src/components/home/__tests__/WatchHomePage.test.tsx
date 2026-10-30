@@ -99,14 +99,18 @@ vi.mock("next/image", () => ({
 // `_hlsConfig` is an object and has to come out of the spread the way
 // `disableTracking` already does, or React would stringify it onto the
 // element as an unknown attribute.
-const { muxVideoHlsConfigs, muxVideoRenders } = vi.hoisted(() => ({
-  muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
-  // One entry per render of the carousel subtree, recording the src it
-  // mounted. Kept separate from the config recorder so a change to how
-  // `_hlsConfig` is captured cannot silently invalidate a render-count
-  // assertion that has nothing to do with it.
-  muxVideoRenders: [] as Array<string | undefined>,
-}))
+const { muxVideoHlsConfigs, muxVideoRenders, deferredMuxRef } = vi.hoisted(
+  () => ({
+    muxVideoHlsConfigs: [] as Array<Record<string, unknown> | undefined>,
+    // One entry per render of the carousel subtree, recording the src it
+    // mounted. Kept separate from the config recorder so a change to how
+    // `_hlsConfig` is captured cannot silently invalidate a render-count
+    // assertion that has nothing to do with it.
+    muxVideoRenders: [] as Array<string | undefined>,
+    // Separates DOM mounting from the media wrapper publishing its actual ref.
+    deferredMuxRef: { hold: false, publish: null as (() => void) | null },
+  }),
+)
 
 function lastMuxVideoHlsConfig(): Record<string, unknown> | undefined {
   return muxVideoHlsConfigs[muxVideoHlsConfigs.length - 1]
@@ -125,11 +129,31 @@ vi.mock("@forge/video-player/mux-video", async () => {
       { disableTracking: _disableTracking, _hlsConfig, ...props },
       ref,
     ) {
+      const holdRef = React.useCallback(
+        (element: HTMLVideoElement | null) => {
+          const publish = () => {
+            if (typeof ref === "function") ref(element)
+            else if (ref) ref.current = element
+          }
+          if (element) deferredMuxRef.publish = publish
+          else {
+            deferredMuxRef.publish = null
+            publish()
+          }
+        },
+        [ref],
+      )
       muxVideoHlsConfigs.push(_hlsConfig)
       muxVideoRenders.push(
         typeof props.src === "string" ? props.src : undefined,
       )
-      return <video ref={ref} data-testid="watch-home-tv-video" {...props} />
+      return (
+        <video
+          ref={deferredMuxRef.hold ? holdRef : ref}
+          data-testid="watch-home-tv-video"
+          {...props}
+        />
+      )
     }),
   }
 })
@@ -366,6 +390,8 @@ beforeEach(() => {
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
   muxVideoRenders.length = 0
+  deferredMuxRef.hold = false
+  deferredMuxRef.publish = null
   // jsdom does not implement media playback. The intro requests playback on a
   // timer, so an element a test never stubs would otherwise log "Not
   // implemented" on every turn that outlives the poster hold.
@@ -479,6 +505,247 @@ describe("WatchHomePage", () => {
     })
 
     expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
+  })
+
+  it("holds the intro player until the page has loaded, keeping the poster", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    subtitleVttSrc: "https://cdn.example/jesus.vtt",
+                    subtitleLanguageBcp47: "en",
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(
+        container.querySelector(
+          '[data-testid="watch-home-tv-visual-layer"] [role="img"][data-priority="true"]',
+        ),
+      ).not.toBeNull()
+
+      readyState.mockReturnValue("complete")
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      )
+      expect(video).not.toBeNull()
+      // The subtitle track still reaches a player that mounted late.
+      expect(
+        video?.querySelector("track[data-subtitle-track]")?.getAttribute("src"),
+      ).toBe("https://cdn.example/jesus.vtt")
+    } finally {
+      readyState.mockRestore()
+    }
+  })
+
+  it("keeps unseen slides while load is held and starts the late player before canplay", async () => {
+    vi.useFakeTimers()
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )!
+      const openingTitle = carousel.getAttribute("aria-label")
+      const playedBeforeLoad = readWatchHomeTvPlayedIds()
+
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+      expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeLoad)
+
+      readyState.mockReturnValue("complete")
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+      const video = container.querySelector<HTMLVideoElement>(
+        '[data-testid="watch-home-tv-video"]',
+      )!
+      expect(video).not.toBeNull()
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play
+
+      // Native HLS may need play() before canplay. Its poster hold starts
+      // when the late player attaches, not during the earlier load hold.
+      await act(async () => {
+        vi.advanceTimersByTime(1_499)
+      })
+      expect(play).not.toHaveBeenCalled()
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(play).toHaveBeenCalledTimes(1)
+
+      // Once a real player is allowed and attached, a genuinely dead stream
+      // still loses its turn after the normal 12-second buffering ceiling.
+      await act(async () => {
+        vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS - 1_501)
+      })
+      expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+      await act(async () => {
+        vi.advanceTimersByTime(2)
+      })
+      expect(carousel.getAttribute("aria-label")).not.toBe(openingTitle)
+    } finally {
+      readyState.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  it("waits for the actual player ref after page load permits mounting", async () => {
+    vi.useFakeTimers()
+    deferredMuxRef.hold = true
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("complete")
+    try {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeSequencedModel()} />)
+      })
+      const video = container.querySelector<HTMLVideoElement>(
+        '[data-testid="watch-home-tv-video"]',
+      )!
+      expect(video).not.toBeNull()
+      expect(deferredMuxRef.publish).not.toBeNull()
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play
+      const carousel = container.querySelector(
+        '[data-testid="watch-home-tv-carousel"]',
+      )!
+      const openingTitle = carousel.getAttribute("aria-label")
+      const playedBeforeAttach = readWatchHomeTvPlayedIds()
+
+      for (let interval = 0; interval < 3; interval++) {
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
+        })
+        expect(carousel.getAttribute("aria-label")).toBe(openingTitle)
+        expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeAttach)
+        expect(play).not.toHaveBeenCalled()
+      }
+
+      await act(async () => {
+        deferredMuxRef.publish!()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(1_499)
+      })
+      expect(play).not.toHaveBeenCalled()
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+      })
+      expect(play).toHaveBeenCalledTimes(1)
+    } finally {
+      readyState.mockRestore()
+      vi.useRealTimers()
+    }
+  })
+
+  // Only the passive intro waits for `load`. A slow below-fold resource must
+  // not hold back playback the viewer explicitly asked for.
+  it("mounts the intro player at once when the viewer presses Play before load", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+    })) as unknown as typeof window.matchMedia
+    const video = () =>
+      container.querySelector('[data-testid="watch-home-tv-video"]')
+    const toggle = () =>
+      container.querySelector<HTMLButtonElement>(
+        '[data-testid="watch-home-hero-pause-toggle"]',
+      )!
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [{ ...makeCard(), eyebrow: "Featured" }],
+            })}
+          />,
+        )
+      })
+      expect(video()).toBeNull()
+      expect(toggle().getAttribute("aria-label")).toBe("Play")
+
+      await act(async () => {
+        toggle().click()
+      })
+
+      expect(video()).not.toBeNull()
+      expect(toggle().getAttribute("aria-label")).toBe("Pause")
+    } finally {
+      readyState.mockRestore()
+      window.matchMedia = originalMatchMedia
+    }
+  })
+
+  it("keeps waiting for load when the viewer pauses before it", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    const video = () =>
+      container.querySelector('[data-testid="watch-home-tv-video"]')
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [{ ...makeCard(), eyebrow: "Featured" }],
+            })}
+          />,
+        )
+      })
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="watch-home-hero-pause-toggle"]',
+          )!
+          .click()
+      })
+      expect(video()).toBeNull()
+    } finally {
+      readyState.mockRestore()
+    }
   })
 
   it("caps the requested rendition on a Mux hero stream", async () => {
@@ -959,6 +1226,50 @@ describe("WatchHomePage", () => {
           await renderUnderWatchModal(false)
           expect(play).toHaveBeenCalledTimes(1)
         } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("keeps a late player's turn while a modal holds its first play", async () => {
+        vi.useFakeTimers()
+        const readyState = vi
+          .spyOn(document, "readyState", "get")
+          .mockReturnValue("loading")
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(true)
+          const openingTitle = carouselLabel()
+          const playedBeforeLoad = readWatchHomeTvPlayedIds()
+          await act(async () => {
+            vi.advanceTimersByTime(40_000)
+          })
+          expect(currentVideo()).toBeNull()
+
+          readyState.mockReturnValue("complete")
+          await act(async () => {
+            window.dispatchEvent(new Event("load"))
+          })
+          const video = currentVideo()
+          expect(video).not.toBeNull()
+          const play = stubPlay(video)
+
+          // This fresh element is already paused, so the modal causes no
+          // pause event. Settle each watchdog interval independently.
+          expect(video.paused).toBe(true)
+          for (let interval = 0; interval < 3; interval++) {
+            await act(async () => {
+              vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS)
+            })
+            expect(carouselLabel()).toBe(openingTitle)
+            expect(readWatchHomeTvPlayedIds()).toEqual(playedBeforeLoad)
+            expect(play).not.toHaveBeenCalled()
+          }
+
+          await renderUnderWatchModal(false)
+          expect(currentVideo()).toBe(video)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          readyState.mockRestore()
           vi.useRealTimers()
         }
       })
@@ -2869,6 +3180,66 @@ describe("WatchHomePage", () => {
       expect(video.muted).toBe(true)
       expect(muteButtonLabel()).toBe("Unmute preview")
     })
+  })
+
+  it("paints the first slide's poster without the enter fade, then crossfades later slides", async () => {
+    // The first poster is the LCP image. Fading it in from opacity 0 let a
+    // slow phone paint it on the invisible frame, so Chrome dropped it and
+    // took LCP from the next slide seconds later.
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [
+                    makeCarouselSlide(),
+                    makeCarouselSlide({
+                      id: "queued-2",
+                      title: "Queued Two",
+                      href: "/queued-two.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-two-thumb.jpg",
+                      src: "https://stream.example/queued-two.m3u8",
+                    }),
+                  ],
+                },
+              ],
+            },
+          })}
+        />,
+      )
+    })
+    const visualLayers = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="watch-home-tv-visual-layer"]',
+        ),
+      )
+
+    expect(visualLayers()).toHaveLength(1)
+    expect(visualLayers()[0]!.className).not.toContain("watch-home-media-enter")
+
+    const select = async (label: string) => {
+      const button = container.querySelector(
+        `button[aria-label="${label}"]`,
+      ) as HTMLButtonElement
+      await act(async () => {
+        button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+    }
+
+    await select("Show Queued Two")
+    const [leaving, entering] = visualLayers()
+    expect(leaving!.className).toContain("watch-home-media-exit")
+    expect(entering!.className).toContain("watch-home-media-enter")
+
+    // Returning to the first slide is a transition too, so it crossfades.
+    await select("Show Queued One")
+    expect(visualLayers().at(-1)!.className).toContain("watch-home-media-enter")
   })
 
   it("advances between pooled library videos with no branded slide in the sequence", async () => {
