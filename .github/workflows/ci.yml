@@ -25,7 +25,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -55,7 +55,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -104,7 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -124,7 +124,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -164,7 +164,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -336,7 +336,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -374,7 +374,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -418,7 +418,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -456,7 +456,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -471,7 +471,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
       - name: Test the patched-deps guard logic
@@ -490,7 +490,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -585,7 +585,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -615,7 +615,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -682,7 +682,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -718,7 +718,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
