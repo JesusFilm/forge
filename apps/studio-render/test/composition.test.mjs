@@ -135,7 +135,6 @@ test(
               controls: {},
             },
           ],
-          packRevisionIds: [],
           items: [
             {
               id: "video",

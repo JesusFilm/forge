@@ -1,3 +1,4 @@
+import { sourceAdmissionDocument } from "./studio-source-admission"
 import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { createHash } from "node:crypto"
 import { z } from "zod"
@@ -39,7 +40,12 @@ export async function prepareStudioRenderInput(
         endMs: z.number(),
       }),
     )
-    .parse(await call("preview-sources", { projectId, document }))
+    .parse(
+      await call("preview-sources", {
+        projectId,
+        document: sourceAdmissionDocument(document),
+      }),
+    )
   const assets = createStudioAssetBroker(call, signal)
   const files: {
     name: string

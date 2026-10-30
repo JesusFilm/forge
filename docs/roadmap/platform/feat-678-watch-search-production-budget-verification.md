@@ -3,7 +3,7 @@ id: "feat-678"
 title: "Validate Watch search production budget and alerts"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-09"
 duration: 2
 depends_on:
@@ -109,4 +109,42 @@ requirements; it does not authorize deployment shortcuts or production stress.
 - Publish an evidence ledger that distinguishes verified deadline behavior,
   measured percentile outcomes, sample limitations, and remaining blockers.
   Update FGE-29 only to the state supported by that evidence; this ticket is
-  not started and makes no production performance or alert-delivery claim.
+  in progress and makes no production performance or alert-delivery claim.
+
+## October 23 Investigation
+
+Evidence and remaining checks:
+`docs/reports/2026-10-23-watch-search-timeout-investigation.md`.
+
+The reported public Watch query intermittently returned HTTP 504 in both the
+browser and API probes. EXPERIENCE-only requests also failed without content
+retrieval. Read-only Datadog and Railway access now confirms serving-profile
+timeouts on two request-ID-correlated probes. One retained trace shows the
+missing-projection fallback spending 638 ms on projection lookup, 766 ms on
+contract lookup and 2,081 ms on transcript compatibility, exceeding the
+1,900 ms preparation cutoff before retrieval. These are client-observed DB
+path timings, not isolated SQL execution times. Other language/hydration
+timeouts and shared database pressure still need separate attribution.
+
+A local regression-tested fix includes profile preparation in bounded
+Candidate response `latencyMs`; the deadline already charged that time. It
+changes measurement only, not availability or the timeout policy. Keep this
+ticket in progress until the normal deployment and verification of the remedy,
+full-outcome monitoring, representative percentiles and alert delivery are
+verified. Existing Datadog inventory has broad Watch error/load-time monitors
+but no search-specific monitor or synthetic test. No production writes,
+deployment, monitor creation, or notification change was performed.
+
+After owner approval, read-only EXPLAIN ANALYZE isolated a corpus-sized join:
+164,700 chunk-index lookups and 280,107 rows sorted for one version. The
+version-first EXISTS rewrite preserves compatibility and measured 36-40 ms
+versus 1,102-1,309 ms in both comparison orders. No projection bootstrap is
+needed for this code fix. Ten PostgreSQL integration cases include a red/green
+60,000-chunk work-bound regression and are added to Watch CI; 122 existing
+focused tests plus one monitor-contract test pass. See
+`docs/solutions/performance-issues/watch-search-cold-compatibility-join-fanout.md`.
+
+The monitor template under `infra/datadog-monitors/watch-search/` passes the
+Datadog validate-only API. It is not active and has no approved notification
+destination. Post-deploy end-to-end latency, non-profile failures, complete
+outcome instrumentation and alert delivery remain acceptance items.

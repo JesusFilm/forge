@@ -56,3 +56,13 @@ overlay, search responses replayed from production):
   is inert while search is open.
 
 Not run: NVDA/VoiceOver, real devices.
+
+## October 29 current-main verification
+
+Updated against main a672f688b; 186 provider tests pass. Chromium checks at
+320, 390 and 1280px confirm first lazy-open focus, 24 forward/backward Tab
+steps inside the dialog, inert header, no horizontal page overflow, and Escape
+returning focus to the exact search opener. At 320px the input is 260px wide.
+These checks start after provider hydration and still exercise a cold overlay.
+Combined loading validation and exact-head CI remain release gates; this is
+prepared code, not a claim that the PR has merged.

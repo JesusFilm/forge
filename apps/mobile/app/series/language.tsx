@@ -21,6 +21,7 @@ export default function SeriesLanguageRoute() {
 
   return (
     <SeriesLanguageSheet
+      testID="screen-series-language"
       languages={languages}
       activeLanguageSlug={selectedLanguageSlug ?? ""}
       onLanguageChange={handleLanguageChange}

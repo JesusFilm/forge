@@ -32,3 +32,5 @@ export {
   adminPreCopyWatchExperienceFragment,
   adminWatchExperienceFragment,
 } from "./watch-experience"
+
+export { adminWatchAudienceFragment } from "./blocks/watch-audience"

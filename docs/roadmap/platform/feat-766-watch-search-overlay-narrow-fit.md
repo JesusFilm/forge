@@ -90,3 +90,13 @@ Not done: the results scroller is still 136 px tall at 320x360. A real
 on-screen keyboard does not shrink the layout viewport on iOS Safari or
 Android Chrome, so 320x360 overstates the loss; the suggestion panel
 already follows `visualViewport`. No real-device keyboard check was run.
+
+## October 29 current-main verification
+
+Updated against main a672f688b; 186 provider tests pass. Chromium checks at
+320, 390 and 1280px confirm first lazy-open focus, 24 forward/backward Tab
+steps inside the dialog, inert header, no horizontal page overflow, and Escape
+returning focus to the exact search opener. At 320px the input is 260px wide.
+These checks start after provider hydration and still exercise a cold overlay.
+Combined loading validation and exact-head CI remain release gates; this is
+prepared code, not a claim that the PR has merged.

@@ -1,0 +1,82 @@
+# Play a series episode, then go to the next episode (R19 starter journey).
+# Washi Gospel has five short episodes in a fixed order, so the journey names
+# the first two (R21).
+appId: org.jesusfilm.forgewatch
+name: series-next-episode
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://series/washi-gospel
+    label: Open the Washi Gospel series
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-series
+    timeout: 30000
+    label: The series page shows
+- scrollUntilVisible:
+    element:
+      id: series-episode-card
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+    label: Scroll to the episodes
+- tapOn:
+    text: 'Can God be Known\?.*'
+    label: Open the first episode
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows the first episode
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The first episode plays
+- assertVisible:
+    text: 'Can God be Known\?'
+    label: The page names the first episode
+# Up Next lists the other episodes, so a swap of its cards proves the move.
+- scrollUntilVisible:
+    element:
+      text: 'Play What are Humans\?'
+    direction: DOWN
+    timeout: 20000
+    label: Scroll to the next episode in Up Next
+- tapOn:
+    text: 'Play What are Humans\?'
+    label: Open the next episode
+- extendedWaitUntil:
+    visible:
+      text: 'Play Can God be Known\?'
+    timeout: 20000
+    label: Up Next offers the first episode
+- assertNotVisible:
+    text: 'Play What are Humans\?'
+    label: Up Next no longer offers the next episode
+- assertVisible:
+    id: screen-watch
+    label: The watch page shows the next episode
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The next episode plays
