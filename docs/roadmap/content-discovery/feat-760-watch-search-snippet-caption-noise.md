@@ -3,7 +3,7 @@ id: "feat-760"
 title: "Keep caption markers out of Watch search result snippets"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-21"
 duration: 2
 depends_on: []
@@ -70,3 +70,12 @@ visible snippet. Found in the 2026-10-20 website audit round 02
 - `pnpm --filter @forge/admin exec vitest run src/services/watch-search.service.test.ts`.
 - After deploy, search `is god real` on `/watch`: no result snippet consists
   only of caption markers.
+
+## Implementation disposition (October 29)
+
+PR #2851 implements closed-vocabulary display cleanup in
+`apps/admin/src/services/watch-search-snippet.ts`, both search service mappings,
+and regression coverage. Ranking, evidence and start times are unchanged.
+Complete means implementation is prepared; the PR remains unmerged. Further
+non-English/markup cue vocabulary is tracked by feat-781 and must preserve real
+editorial brackets. The dated production example above is not a current probe.

@@ -14,6 +14,17 @@ was submitted.
 Round 01 (`2026-10-20-watch-website-audit-round-01.md`, in PR #2821) covered
 templates and page-load performance.
 
+## October 29 merge-preparation note
+
+This is an October 20 heuristic snapshot, not a fresh audit of main. Main now
+contains published audience configuration and Grow, Partner and Share journeys;
+their earlier absence below does not authorize removing or rebuilding those
+working flows. The snippet display repair is prepared in PR #2851 / feat-760,
+with additional cue variants tracked by feat-781. The History redirect repair
+is now feat-909 in PR #2822; feat-756 belongs to separate exposure-retention
+work on main. These references describe prepared implementations, not merged
+or deployed changes.
+
 ## Personas and jobs to be done
 
 ### Unbeliever: a curious visitor who needs context
