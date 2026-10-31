@@ -33,7 +33,7 @@ describe("syncVideos", () => {
       } as never)
       .mockResolvedValueOnce({
         data: {
-          videos: [
+          adminVideos: [
             {
               id: "video-core-1",
               slug: "video",
@@ -91,6 +91,7 @@ describe("syncVideos", () => {
               ],
               locked: false,
               noIndex: false,
+              restrictViewPlatforms: [],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],
@@ -218,12 +219,12 @@ describe("syncVideos", () => {
         }),
       }),
     )
-    // Core gates restrictViewPlatforms behind publisher auth, so sync never
-    // reads it: create must fall back to the schema default and update must
-    // leave the admin-stored value alone.
+    // Core Sync reads the publisher-gated `adminVideos` field, so it observes
+    // restrictViewPlatforms directly: both create and update write Core's
+    // value, not a schema default or an untouched stored value.
     const upsertArgs = tx.video.upsert.mock.calls[0][0]
-    expect(upsertArgs.create).not.toHaveProperty("restrictViewPlatforms")
-    expect(upsertArgs.update).not.toHaveProperty("restrictViewPlatforms")
+    expect(upsertArgs.create).toHaveProperty("restrictViewPlatforms", [])
+    expect(upsertArgs.update).toHaveProperty("restrictViewPlatforms", [])
     expect(tx.videoLocale.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -280,7 +281,7 @@ describe("syncVideos", () => {
       .mockResolvedValueOnce({ data: { bibleBooks: [] } } as never)
       .mockResolvedValueOnce({
         data: {
-          videos: [
+          adminVideos: [
             {
               id: "video-core-1",
               slug: "video",
@@ -304,12 +305,13 @@ describe("syncVideos", () => {
               children: [],
               locked: false,
               noIndex: false,
+              restrictViewPlatforms: [],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],
         },
       } as never)
-      .mockResolvedValueOnce({ data: { videos: [] } } as never)
+      .mockResolvedValueOnce({ data: { adminVideos: [] } } as never)
 
     const tx = {
       video: {

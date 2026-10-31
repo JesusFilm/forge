@@ -39,6 +39,7 @@ export const CoreVideoSchema = z.object({
   children: z.array(z.object({ id: z.string().min(1) })),
   locked: z.boolean(),
   noIndex: z.boolean(),
+  restrictViewPlatforms: z.array(z.string()),
   updatedAt: z.string().min(1),
 })
 

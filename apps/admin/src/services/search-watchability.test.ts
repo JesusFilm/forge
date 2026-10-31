@@ -260,6 +260,7 @@ describe("SearchWatchabilityService", () => {
     const sql = rawSql(prisma, SUBTITLE_QUERY)
     expect(sql).toContain("video.deleted_at IS NULL")
     expect(sql).toContain("video.no_index = FALSE")
+    expect(sql).toContain("NOT ('watch' = ANY(video.restrict_view_platforms))")
     expect(sql).toContain("published_locale.status = 'published'")
     expect(sql).toContain("ve.deleted_at IS NULL")
     expect(sql).toContain("target_language.deleted_at IS NULL")
