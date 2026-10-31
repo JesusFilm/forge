@@ -33,6 +33,7 @@ import {
 } from "./search-watchability"
 import { elapsedMs, nowMs } from "./hybrid-search-timing"
 import { watchSearchQueryEmbeddingProcessCache } from "./watch-search-query-embedding-cache"
+import { displayTranscriptSnippet } from "./watch-search-snippet"
 import {
   bestVideoImageUrl,
   sortVideoImagesByDisplayPreference,
@@ -1997,7 +1998,7 @@ function mapSemanticCandidate({
     slug: candidate.videoSlug,
     title: candidate.videoTitle,
     description: null,
-    snippet: candidate.sceneDescription,
+    snippet: displayTranscriptSnippet(candidate.sceneDescription),
     imageUrl: candidate.imageUrl,
     imageBlurDataUrl: null,
     muxThumbnailBlurDataUrl: null,
