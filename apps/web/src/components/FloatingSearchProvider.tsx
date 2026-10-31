@@ -377,6 +377,7 @@ export function FloatingSearchProvider({
   const nextSearchSubmitIntentIdRef = useRef(0)
   const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
@@ -412,6 +413,16 @@ export function FloatingSearchProvider({
       }
       if (next) {
         pageLanguageCancellationRef.current?.cancel()
+        if (typeof document !== "undefined") {
+          const active = document.activeElement
+          if (
+            active instanceof HTMLElement &&
+            active !== document.body &&
+            !active.closest('[role="dialog"]')
+          ) {
+            searchReturnFocusRef.current = active
+          }
+        }
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -1021,8 +1032,8 @@ export function FloatingSearchProvider({
         />
         <header
           data-testid="floating-header"
-          inert={headerChromeInert || undefined}
-          aria-hidden={headerChromeInert || undefined}
+          inert={modalChromeHidden || headerChromeInert || undefined}
+          aria-hidden={modalChromeHidden || headerChromeInert || undefined}
           onFocusCapture={handleHeaderFocus}
           onBlurCapture={handleHeaderBlur}
           onKeyDownCapture={handleHeaderKeyDown}
@@ -1064,9 +1075,9 @@ export function FloatingSearchProvider({
           <div
             className={`${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${
               modalChromeHidden
-                ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-                    headerLanguageControlVisible ? "" : "col-span-2"
-                  }`
+                ? // The language control is hidden while search is open, so
+                  // the phone field row takes its column too.
+                  `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`
                 : ""
             }`}
           >
@@ -1130,6 +1141,8 @@ export function FloatingSearchProvider({
                 ref={globalLanguageTriggerRef}
                 data-testid="floating-header-language-button"
                 onClick={headerLanguageClick}
+                inert={modalChromeHidden || undefined}
+                tabIndex={modalChromeHidden ? -1 : undefined}
                 aria-haspopup="dialog"
                 aria-expanded={
                   pageSpecificLanguageSwitcherActive
@@ -1140,7 +1153,7 @@ export function FloatingSearchProvider({
                 disabled={headerLanguageBusy}
                 aria-label={globalLanguageLabel}
                 title={globalLanguageLabel}
-                className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                className={`${modalChromeHidden ? "invisible" : ""} pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
                   modalChromeHidden
                     ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
                     : ""
@@ -1204,6 +1217,7 @@ export function FloatingSearchProvider({
             languageVideosHref={languageVideosHref}
             resetToken={searchResetToken}
             pendingSubmitIntent={pendingSearchSubmitIntent}
+            returnFocusRef={searchReturnFocusRef}
             onReady={markSearchControllerReady}
           />
         ) : null}
