@@ -12,7 +12,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { ChevronDown, Mail as MailIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import { MessageCircleIcon } from "@/components/sections/RelatedQuestions"
+import { MessageCircleIcon } from "@/components/sections/MessageCircleIcon"
 import { Button } from "@/components/ui/button"
 import {
   WATCH_PILL_BUTTON_CLASS,

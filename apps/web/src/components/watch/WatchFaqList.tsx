@@ -4,6 +4,11 @@ import { useId } from "react"
 import type { MouseEvent, ReactNode } from "react"
 import { ChevronDown } from "lucide-react"
 
+export {
+  WATCH_FAQ_EYEBROW_CLASS,
+  WATCH_FAQ_HEADING_CLASS,
+} from "@/components/watch/watch-faq-classes"
+
 /**
  * The FAQ disclosure rows shared by the Watch surfaces: the "what's new" page
  * (`components/whats-new/WhatsNewFaq.tsx`) and the authored Experience FAQ
@@ -44,14 +49,6 @@ import { ChevronDown } from "lucide-react"
  * accordion. Both ignore a toggle that matches what they already believe,
  * which is what stops the echo from a row React just closed.
  */
-
-/** Section eyebrow type scale. Colour is the caller's. */
-export const WATCH_FAQ_EYEBROW_CLASS =
-  "text-xs font-semibold tracking-[0.3em] uppercase sm:text-sm"
-
-/** Section heading type scale. Colour is the caller's. */
-export const WATCH_FAQ_HEADING_CLASS =
-  "text-3xl leading-[1.1] font-semibold tracking-[-0.025em] text-balance sm:text-4xl lg:text-5xl"
 
 export type WatchFaqItem = {
   /** Stable identity for the open-set. Index-derived is fine. */
