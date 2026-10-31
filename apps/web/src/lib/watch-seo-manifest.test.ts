@@ -45,6 +45,50 @@ describe("parseWatchSeoManifest", () => {
     expect(parseWatchSeoManifest(manifest)).toEqual(manifest)
   })
 
+  it("carries languageSlugs through and tolerates an older snapshot without it", () => {
+    const withLanguageSlugs = {
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["english", "cebuano"],
+        },
+      ],
+    }
+
+    expect(parseWatchSeoManifest(withLanguageSlugs)).toEqual(withLanguageSlugs)
+    // An admin snapshot generated before this field existed must still parse.
+    expect(parseWatchSeoManifest(manifest)).toEqual(manifest)
+  })
+
+  it("rejects a malformed languageSlugs list", () => {
+    expect(
+      parseWatchSeoManifest({
+        ...manifest,
+        videoRouteGroups: [
+          {
+            contentSlug: "jesus",
+            alternates: [],
+            languageSlugs: ["english", ""],
+          },
+        ],
+      }),
+    ).toBeNull()
+    expect(
+      parseWatchSeoManifest({
+        ...manifest,
+        videoRouteGroups: [
+          {
+            contentSlug: "jesus",
+            alternates: [],
+            languageSlugs: "english",
+          },
+        ],
+      }),
+    ).toBeNull()
+  })
+
   it("rejects malformed route groups and skipped-count maps", () => {
     expect(
       parseWatchSeoManifest({
@@ -139,6 +183,77 @@ describe("getWatchSeoManifest", () => {
       expect(warnSpy).toHaveBeenCalledWith(
         "[watch] event=watch_seo_manifest.fetch.failed status=503 url=https://admin.test/api/watch-seo-manifest",
       )
+    } finally {
+      dateSpy.mockRestore()
+    }
+  })
+
+  it("replaces a legacy-shaped cached manifest once the validator changes, with no cache clear", async () => {
+    // R1 (PR #2385): an older Admin strips `languageSlugs` and tags the body
+    // with the bare version. After it retires, the new Admin tags the widened
+    // body of the same snapshot with a different validator, so the web
+    // process's cached validator no longer matches and the conditional request
+    // is answered with a full 200 instead of a 304. The server stand-in applies
+    // the same exact-match rule Admin's route does. The red-before-fix evidence
+    // for the Admin half lives in the Admin route test; this pins that the
+    // client sends its cached validator and then replaces BOTH manifest and
+    // validator, across several TTL expirations, without clearWatchSeoManifestCache.
+    process.env.ADMIN_GRAPHQL_URL = "https://admin.test/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "key-one"
+    let now = 1_000
+    const dateSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const legacyShaped: WatchSeoManifest = {
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+        },
+      ],
+    }
+    const widened: WatchSeoManifest = {
+      ...manifest,
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+          languageSlugs: ["english", "cebuano"],
+        },
+      ],
+    }
+    let server: { etag: string; body: WatchSeoManifest } = {
+      etag: '"version-1"',
+      body: legacyShaped,
+    }
+    const conditional: Array<string | null> = []
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const sent =
+        (init.headers as Record<string, string>)["If-None-Match"] ?? null
+      conditional.push(sent)
+      return sent === server.etag
+        ? new Response(null, { status: 304, headers: { etag: server.etag } })
+        : new Response(JSON.stringify(server.body), {
+            status: 200,
+            headers: { etag: server.etag },
+          })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      await expect(getWatchSeoManifest()).resolves.toEqual(legacyShaped)
+
+      server = { etag: '"version-1.r2"', body: widened }
+      for (let poll = 0; poll < 3; poll += 1) {
+        now += 61_000
+        await expect(getWatchSeoManifest()).resolves.toEqual(widened)
+      }
+
+      expect(conditional).toEqual([
+        null,
+        '"version-1"',
+        '"version-1.r2"',
+        '"version-1.r2"',
+      ])
     } finally {
       dateSpy.mockRestore()
     }
