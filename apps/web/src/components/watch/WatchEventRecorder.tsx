@@ -291,6 +291,13 @@ export function WatchEventRecorder({
         reportGoogleAnalyticsEvent("videostarts", v1Params(current, 0))
       }
     }
+    // Mux can start in its attachment effect before this sibling subscribes.
+    // Recover only from actual playback, never from an activation intent.
+    // Normal play events still report every play; these fallback signals
+    // only fill a missing first start, including repeated playing on stalls.
+    const ensurePlaybackStarted = () => {
+      if (!startedRef.current) reportPlaybackStarted()
+    }
     const reportMilestone = (milestone: WatchAnalyticsMilestonePercent) => {
       const current = snapshot()
       if (contractV2) {
@@ -314,6 +321,12 @@ export function WatchEventRecorder({
         Number.isFinite(player.currentTime)
           ? player.currentTime
           : 0
+      // Both play and playing may precede a late subscription. Positive
+      // unpaused progress is the remaining evidence of actual playback;
+      // a paused seek or a zero-position update is not.
+      if (player.paused === false && currentTime > 0) {
+        ensurePlaybackStarted()
+      }
       const progress = duration != null ? currentTime / duration : 0
       const progressPercent = Math.round(progress * 100)
       // A seek across several milestones reports each crossed one, in order,
@@ -386,12 +399,14 @@ export function WatchEventRecorder({
     }
 
     player.addEventListener("play", reportPlaybackStarted)
+    player.addEventListener("playing", ensurePlaybackStarted)
     player.addEventListener("pause", reportPlaybackPaused)
     player.addEventListener("timeupdate", evaluate)
     player.addEventListener("ended", complete)
 
     return () => {
       player.removeEventListener("play", reportPlaybackStarted)
+      player.removeEventListener("playing", ensurePlaybackStarted)
       player.removeEventListener("pause", reportPlaybackPaused)
       player.removeEventListener("timeupdate", evaluate)
       player.removeEventListener("ended", complete)

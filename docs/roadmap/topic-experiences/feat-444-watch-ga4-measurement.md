@@ -60,6 +60,14 @@ search, language, download, share, and CTA outcomes.
 
 ## Progress
 
+- 2026-10-31: Actual poster-first local HLS playback exposed missed first
+  `play` events before recorder subscription in both flag modes. The recorder
+  now recovers the initial start from native `playing`, or positive unpaused
+  progress if both early events were missed. Normal play/resume reporting and
+  identity guards remain unchanged; paused seeks and activation intent do not
+  synthesize starts. Four StrictMode timing regressions fail before the repair.
+  Fresh independent review, repaired-tree browser closure, publication hooks
+  and new-head CI remain pending; operator and loading acceptance remain open.
 - 2026-10-30: The player recorder now receives the reactive media attachment
   from `WatchPageClient`. Poster-first late mounts and element replacement
   resubscribe listeners without resetting the video/dub guards. StrictMode

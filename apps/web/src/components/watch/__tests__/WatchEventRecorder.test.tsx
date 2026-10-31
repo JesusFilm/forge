@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { act, StrictMode } from "react"
+import { act, StrictMode, useEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -41,6 +41,8 @@ function makePlayer() {
   return {
     currentTime: 0,
     duration: 120,
+    paused: true,
+    ended: false,
     addEventListener: vi.fn((event: string, listener: Listener) => {
       const set = listeners.get(event) ?? new Set<Listener>()
       set.add(listener)
@@ -55,6 +57,19 @@ function makePlayer() {
   } as unknown as MuxPlayerRef & { dispatch(event: string): void }
 }
 
+function PlayBeforeRecorderSubscription({
+  player,
+}: {
+  player: ReturnType<typeof makePlayer> | null
+}) {
+  useEffect(() => {
+    if (!player) return
+    Object.assign(player, { paused: false })
+    player.dispatch("play")
+  }, [player])
+  return null
+}
+
 describe.each([false, true])(
   "deferred player attachment (v2=%s)",
   (contractV2) => {
@@ -67,10 +82,14 @@ describe.each([false, true])(
       currentPlayer: ReturnType<typeof makePlayer> | null,
       videoId = "video-1",
       videoDubId = "dub-1",
+      playBeforeSubscription = false,
     ) {
       await act(async () => {
         root.render(
           <StrictMode>
+            <PlayBeforeRecorderSubscription
+              player={playBeforeSubscription ? currentPlayer : null}
+            />
             <WatchEventRecorder
               player={currentPlayer}
               videoId={videoId}
@@ -129,6 +148,84 @@ describe.each([false, true])(
       mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = undefined
     })
 
+    it("recovers the first play emitted by an earlier sibling effect", async () => {
+      await renderAttachment(null)
+      const player = makePlayer()
+      await renderAttachment(player, "video-1", "dub-1", true)
+      // The hero can start playback in its passive effect before the
+      // recorder's sibling effect subscribes. No click intent is evidence
+      // of playback; the subsequent native playing transition is.
+      expect(countOf("videoplay")).toBe(0)
+      await step(() => player.dispatch("playing"))
+      expect(countOf("videoplay")).toBe(1)
+      expect(countOf("videostarts")).toBe(1)
+      await step(() => player.dispatch("playing"))
+      expect(countOf("videoplay")).toBe(1)
+      expect(countOf("videostarts")).toBe(1)
+    })
+
+    it("recovers already-playing attachment before its first progress receipt", async () => {
+      await renderAttachment(null)
+      const player = makePlayer()
+      Object.assign(player, { paused: false, currentTime: 0.25 })
+      player.dispatch("play")
+      player.dispatch("playing")
+      await renderAttachment(player)
+      expect(countOf("videostarts")).toBe(0)
+      await step(() => player.dispatch("timeupdate"))
+      expect(countOf("videoplay")).toBe(1)
+      expect(countOf("videostarts")).toBe(1)
+      await step(() => {
+        player.currentTime = 30
+        player.dispatch("timeupdate")
+      })
+      const names = gtag.mock.calls
+        .filter(([command]) => command === "event")
+        .map(([, name]) => name)
+      expect(names.slice(0, 2)).toEqual(["videoplay", "videostarts"])
+      expect(countOf("videoplay")).toBe(1)
+      expect(countOf("video_progress")).toBe(1)
+    })
+
+    it("does not infer a start from paused or zero-position updates", async () => {
+      const player = makePlayer()
+      await renderAttachment(player)
+      await step(() => player.dispatch("timeupdate"))
+      await step(() => {
+        player.currentTime = 30
+        player.dispatch("timeupdate")
+      })
+      expect(countOf("videoplay")).toBe(0)
+      expect(countOf("videostarts")).toBe(0)
+      await step(() => {
+        Object.assign(player, { paused: false, currentTime: 0 })
+        player.dispatch("timeupdate")
+      })
+      expect(countOf("videostarts")).toBe(0)
+    })
+
+    it("keeps observed play and resume events while ignoring repeated playing", async () => {
+      const player = makePlayer()
+      await renderAttachment(player)
+      await step(() => {
+        Object.assign(player, { paused: false })
+        player.dispatch("play")
+        player.dispatch("playing")
+        player.dispatch("playing")
+      })
+      expect(countOf("videoplay")).toBe(1)
+      expect(countOf("videostarts")).toBe(1)
+      await step(() => {
+        Object.assign(player, { paused: true })
+        player.dispatch("pause")
+        Object.assign(player, { paused: false })
+        player.dispatch("play")
+        player.dispatch("playing")
+      })
+      expect(countOf("videoplay")).toBe(2)
+      expect(countOf("videostarts")).toBe(1)
+    })
+
     it("records a player attached after mount and stops listening on detach", async () => {
       await renderAttachment(null)
       expect(gtag).not.toHaveBeenCalled()
@@ -155,6 +252,7 @@ describe.each([false, true])(
       const callsBeforeDetach = gtag.mock.calls.length
       await step(() => {
         player.dispatch("play")
+        player.dispatch("playing")
         player.dispatch("pause")
         player.dispatch("timeupdate")
         player.dispatch("ended")
@@ -175,6 +273,7 @@ describe.each([false, true])(
       const callsBeforeReplacement = gtag.mock.calls.length
       await step(() => {
         oldPlayer.dispatch("play")
+        oldPlayer.dispatch("playing")
         oldPlayer.dispatch("pause")
         oldPlayer.currentTime = 120
         oldPlayer.dispatch("timeupdate")
