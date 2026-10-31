@@ -24,7 +24,9 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 
 ## Compound Engineering
 
-- Follow the Compound Engineering loop: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.
+- Always use the available Compound Engineering skills for Forge software-engineering work, including Forge checkouts and Codex worktrees outside `/home/lado/Projects`. Repository identity, not filesystem path, controls this rule.
+- Use the smallest Compound Engineering workflow that fits the request. Invoke `compound-engineering:lfg` only when the user explicitly requests LFG or hands-off shipping. Preserve the user's limits on delegation and publication and the repository production deployment boundary.
+- Follow the Compound Engineering loop: `ce-plan` -> `ce-work` -> `ce-code-review` -> `ce-compound`.
 - Start with explicit scope in `docs/plans/` or `docs/<scope>/plans/` when planning is needed.
 - Use Compound Engineering to brainstorm against the roadmap ticket before implementation when that workflow is available in your environment.
 - After completion, compound durable learnings back into docs or rules.

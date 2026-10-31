@@ -222,14 +222,20 @@ tags:                         # Searchable: cms, manager, web, mobile, tv, graph
 - **Completing a feature**: set `status: "complete"`
 - **Retiring authorized scope**: set `status: "cancelled"`, preserve the historical requirements below a dated reason, and reconcile both sides of obsolete dependencies. Cancellation is terminal but does not satisfy an implementation dependency.
 - **New work identified during a feature**: create a new `feat-NNN` file in the appropriate lane directory
-- **After `ce:brainstorm`**: if brainstorm identifies new features, add them to the roadmap
-- **After `ce:compound`**: if the learning reveals follow-up work, create a ticket for it
+- **After `ce-brainstorm`**: if brainstorm identifies new features, add them to the roadmap
+- **After `ce-compound`**: if the learning reveals follow-up work, create a ticket for it
 
 ## Compound Engineering
 
-This repo uses the compound engineering workflow. After completing work:
+This repo uses the compound engineering workflow.
 
-1. Run `ce:compound` to capture what you learned.
+- Always use the available Compound Engineering skills for Forge software-engineering work, including Forge checkouts and Codex worktrees outside `/home/lado/Projects`. Repository identity, not filesystem path, controls this rule.
+- Use the smallest Compound Engineering workflow that fits the request. Invoke `compound-engineering:lfg` only when the user explicitly requests LFG or hands-off shipping. Preserve the user's limits on delegation and publication and the repository production deployment boundary.
+- Follow the Compound Engineering loop: `ce-plan` -> `ce-work` -> `ce-code-review` -> `ce-compound`.
+
+After completing work:
+
+1. Run `ce-compound` to capture what you learned.
 2. Tag solutions with the correct category from `docs/solutions/`.
 3. Update this CLAUDE.md if a new pattern should be permanent.
 4. Check if the learning applies across packages — if so, document it at the root level.
@@ -238,7 +244,7 @@ This repo uses the compound engineering workflow. After completing work:
 ### Before Starting Work
 
 1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
-2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/admin-graphql`"
+2. Run `ce-plan` with explicit scope: "Add X, affecting `apps/web` and `packages/admin-graphql`"
 3. Reference `docs/solutions/` for past patterns relevant to the task. It is organized by category, and each write-up carries YAML frontmatter (`module`, `tags`, `problem_type`, `component`) you can filter on.
 4. Check `todos/` for related outstanding findings.
 5. Set the roadmap feature to `status: "in-progress"` if applicable.
