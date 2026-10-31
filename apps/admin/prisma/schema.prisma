@@ -2650,6 +2650,12 @@ model Video {
   coreId                String                @unique @map("core_id")
   source                SourceTier            @default(CORE)
   slug                  String                @unique
+  /// Former slugs of this video, newest first, synced read-only from Core's
+  /// `Video.previousSlugs`. Redirect candidates for the watch route
+  /// manifest (`WatchRouteManifestService.loadRedirectSlugs`) — Core keeps
+  /// every historical alias here even across multiple renames, so each entry
+  /// always redirects directly to the CURRENT `slug` (no redirect chains).
+  previousSlugs         String[]              @default([]) @map("previous_slugs")
   label                 VideoLabel?
   /// `@map("video_source")` is required: the column was created snake-
   /// case in `0001_init` while the field is camelCase. Without the

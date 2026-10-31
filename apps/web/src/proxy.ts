@@ -42,6 +42,7 @@ import {
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   proveWatchContentAudioLanguageByManifest,
+  resolveWatchRedirectSlug,
   type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
@@ -702,7 +703,24 @@ async function classifyManifestAdmission(
     if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
       return { kind: "admit" }
     }
-    return defaultVideoAdmission ?? { kind: "not-found" }
+    if (defaultVideoAdmission) return defaultVideoAdmission
+    // Former video slug (Core `Video.previousSlugs`, forge#2856): redirect
+    // `/<oldSlug>.html` to the canonical URL for the video's current slug.
+    const redirectTargetSlug = resolveWatchRedirectSlug(manifest, slug)
+    if (redirectTargetSlug) {
+      const defaultAudioLanguageSlug =
+        publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+      if (defaultAudioLanguageSlug) {
+        return {
+          kind: "redirect",
+          pathname: watchVideoPath(
+            asContentSlug(redirectTargetSlug),
+            asLocaleSlug(defaultAudioLanguageSlug),
+          ),
+        }
+      }
+    }
+    return { kind: "not-found" }
   }
 
   if (
@@ -741,6 +759,25 @@ async function classifyManifestAdmission(
     )
   ) {
     return { kind: "admit" }
+  }
+
+  if (decision.manifestRoute.kind === "video") {
+    // Former video slug (Core `Video.previousSlugs`, forge#2856): redirect
+    // `/<oldSlug>.html/<lang>.html` to the current slug, keeping the
+    // requested language segment exactly as asked.
+    const redirectTargetSlug = resolveWatchRedirectSlug(
+      manifest,
+      decision.manifestRoute.contentSlug,
+    )
+    if (redirectTargetSlug) {
+      return {
+        kind: "redirect",
+        pathname: watchVideoExplicitLanguagePath(
+          asContentSlug(redirectTargetSlug),
+          asLocaleSlug(decision.manifestRoute.audioLanguageSlug),
+        ),
+      }
+    }
   }
 
   if (decision.manifestRoute.kind === "episode") {

@@ -39,6 +39,7 @@ const VIDEOS_QUERY = `
     ) {
       id
       slug
+      previousSlugs
       label
       publishedAt
       primaryLanguageId
@@ -85,6 +86,7 @@ const VIDEOS_QUERY = `
 type CoreVideo = {
   id: string
   slug: string
+  previousSlugs: string[]
   label: string | null
   publishedAt: string | null
   primaryLanguageId: string | null
@@ -399,6 +401,7 @@ export async function syncVideos({
                 create: {
                   coreId: video.id,
                   slug: video.slug,
+                  previousSlugs: video.previousSlugs,
                   label: mapVideoLabel(video.label),
                   videoSource: mapVideoSource(video.source),
                   publishedAt: video.publishedAt
@@ -418,6 +421,7 @@ export async function syncVideos({
                 },
                 update: {
                   slug: video.slug,
+                  previousSlugs: video.previousSlugs,
                   label: mapVideoLabel(video.label),
                   videoSource: mapVideoSource(video.source),
                   publishedAt: video.publishedAt

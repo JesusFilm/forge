@@ -11,6 +11,7 @@ import {
   isWatchRouteAdmittedByManifest,
   parseWatchRouteManifest,
   proveWatchContentAudioLanguageByManifest,
+  resolveWatchRedirectSlug,
   type WatchRouteManifest,
 } from "./watch-route-manifest"
 
@@ -37,6 +38,9 @@ const manifest: WatchRouteManifest = {
     jesus: {
       easter: [0],
     },
+  },
+  redirectSlugs: {
+    "old-jesus-slug": "jesus",
   },
 }
 
@@ -85,6 +89,31 @@ describe("parseWatchRouteManifest", () => {
         ...manifest,
         audioLanguageIndexesByEpisode: { jesus: { "the-beginning": [null] } },
       }),
+    ).toBeNull()
+    expect(
+      parseWatchRouteManifest({
+        ...manifest,
+        redirectSlugs: { "old-jesus-slug": null },
+      }),
+    ).toBeNull()
+  })
+})
+
+describe("resolveWatchRedirectSlug", () => {
+  it("resolves a known former slug to its current slug", () => {
+    expect(resolveWatchRedirectSlug(manifest, "old-jesus-slug")).toBe("jesus")
+  })
+
+  it("returns null for a slug that is not a known alias", () => {
+    expect(resolveWatchRedirectSlug(manifest, "jesus")).toBeNull()
+    expect(resolveWatchRedirectSlug(manifest, "never-existed")).toBeNull()
+  })
+
+  it("returns null when the manifest omits redirectSlugs (legacy snapshot)", () => {
+    const legacyManifest: WatchRouteManifest = { ...manifest }
+    delete legacyManifest.redirectSlugs
+    expect(
+      resolveWatchRedirectSlug(legacyManifest, "old-jesus-slug"),
     ).toBeNull()
   })
 })
