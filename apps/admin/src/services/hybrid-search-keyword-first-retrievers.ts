@@ -13,6 +13,7 @@
  * Consumer visibility gate is identical to R4's `searchVideoKeyword`:
  *   - `v.deleted_at IS NULL` (Video tombstone)
  *   - `vl.status = 'published'` (per-locale publish state)
+ *   - canonical Watch platform restriction on organic and curated video rows
  *
  * Re-derived from cms's keyword-weighted, trigram, and exact-title
  * retrievers; SQL shape ports, column names + locale filter do not.
@@ -27,6 +28,7 @@ import {
   type SearchTimingRecorder,
 } from "./hybrid-search-timing"
 import { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
+import { notRestrictedFromWatchSql } from "./search-watchability"
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -35,18 +37,21 @@ import { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
 export type KeywordWeightedSearchParams = {
   query: string
   locale: string
+  displayLocale?: string
   limit: number
 }
 
 export type TrigramSearchParams = {
   query: string
   locale: string
+  displayLocale?: string
   limit: number
 }
 
 export type ExactTitleSearchParams = {
   query: string
   locale: string
+  displayLocale?: string
   limit: number
 }
 
@@ -70,6 +75,7 @@ type VideoKeywordRowShape = RankedItem & {
   videoCoreId: string | null
   videoSlug: string
   videoTitle: string
+  matchedTitle?: string
   imageUrl: null
   description: string | null
 }
@@ -106,6 +112,7 @@ type KeywordWeightedRow = {
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
+  matched_title?: string | null
   description: string | null
   rank: number
 }
@@ -115,6 +122,7 @@ type TrigramRow = {
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
+  matched_title?: string | null
   description: string | null
   similarity: number
 }
@@ -124,6 +132,7 @@ type ExactTitleRow = {
   video_core_id: string | null
   video_slug: string | null
   video_title: string | null
+  matched_title?: string | null
   description: string | null
   title_length: number
   title_matched?: boolean
@@ -205,8 +214,9 @@ export async function searchByKeywordWeighted(
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
 
-  const { locale, limit } = params
+  const { locale, displayLocale = locale, limit } = params
   const tsvector = Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)
+  const watchVisibility = notRestrictedFromWatchSql("v")
 
   const rows = await recordSearchDbTiming(
     timing,
@@ -215,25 +225,38 @@ export async function searchByKeywordWeighted(
       SELECT * FROM (
         SELECT DISTINCT ON (v.id)
           v.id           AS video_id,
+          vl.id          AS video_locale_id,
           v.core_id      AS video_core_id,
           v.slug         AS video_slug,
-          vl.title       AS video_title,
-          vl.description AS description,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.title ELSE vl.title END AS video_title,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.description ELSE vl.description END AS description,
+          vl.title AS matched_title,
           ts_rank_cd(
             ${tsvector},
             websearch_to_tsquery('simple', ${trimmed})
           ) AS rank
         FROM video_locale vl
+        LEFT JOIN LATERAL (
+          SELECT display_candidate.*
+          FROM video_locale display_candidate
+          WHERE display_candidate.video_id = vl.video_id
+            AND display_candidate.locale = ${displayLocale}
+            AND display_candidate.status = 'published'
+            AND display_candidate.deleted_at IS NULL
+          ORDER BY display_candidate.id
+          LIMIT 1
+        ) display_vl ON TRUE
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
           AND v.no_index = false
+          AND ${watchVisibility}
         WHERE ${tsvector} @@ websearch_to_tsquery('simple', ${trimmed})
           AND vl.locale = ${locale}
           AND vl.status = 'published'
           AND vl.deleted_at IS NULL
-        ORDER BY v.id, rank DESC
+        ORDER BY v.id, rank DESC, vl.id
       ) sub
-      ORDER BY sub.rank DESC
+      ORDER BY sub.rank DESC, sub.video_id ASC
       LIMIT ${limit}
     `,
   )
@@ -244,6 +267,7 @@ export async function searchByKeywordWeighted(
     videoCoreId: row.video_core_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
+    matchedTitle: row.matched_title ?? row.video_title ?? "",
     imageUrl: null,
     description: row.description,
     rank: Number(row.rank),
@@ -294,7 +318,8 @@ export async function searchByTrigram(
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
 
-  const { locale, limit } = params
+  const { locale, displayLocale = locale, limit } = params
+  const watchVisibility = notRestrictedFromWatchSql("v")
 
   const rows = await recordSearchDbTiming(
     timing,
@@ -303,25 +328,38 @@ export async function searchByTrigram(
       SELECT * FROM (
         SELECT DISTINCT ON (v.id)
           v.id           AS video_id,
+          vl.id          AS video_locale_id,
           v.core_id      AS video_core_id,
           v.slug         AS video_slug,
-          vl.title       AS video_title,
-          vl.description AS description,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.title ELSE vl.title END AS video_title,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.description ELSE vl.description END AS description,
+          vl.title AS matched_title,
           GREATEST(
             similarity(vl.title, ${trimmed}),
             similarity(coalesce(vl.description, ''), ${trimmed})
           ) AS similarity
         FROM video_locale vl
+        LEFT JOIN LATERAL (
+          SELECT display_candidate.*
+          FROM video_locale display_candidate
+          WHERE display_candidate.video_id = vl.video_id
+            AND display_candidate.locale = ${displayLocale}
+            AND display_candidate.status = 'published'
+            AND display_candidate.deleted_at IS NULL
+          ORDER BY display_candidate.id
+          LIMIT 1
+        ) display_vl ON TRUE
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
           AND v.no_index = false
+          AND ${watchVisibility}
         WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
           AND vl.locale = ${locale}
           AND vl.status = 'published'
           AND vl.deleted_at IS NULL
-        ORDER BY v.id, similarity DESC
+        ORDER BY v.id, similarity DESC, vl.id
       ) sub
-      ORDER BY sub.similarity DESC
+      ORDER BY sub.similarity DESC, sub.video_id ASC
       LIMIT ${limit}
     `,
   )
@@ -332,6 +370,7 @@ export async function searchByTrigram(
     videoCoreId: row.video_core_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
+    matchedTitle: row.matched_title ?? row.video_title ?? "",
     imageUrl: null,
     description: row.description,
     similarity: Number(row.similarity),
@@ -371,8 +410,9 @@ export async function searchByExactTitle(
   const tokens = tokenizeForExactTitle(params.query)
   if (tokens.length === 0) return []
 
-  const { locale, limit } = params
+  const { locale, displayLocale = locale, limit } = params
   const normalizedQuery = normalizeWatchSearchCurationQuery(params.query)
+  const watchVisibility = notRestrictedFromWatchSql("v")
 
   // One ILIKE per token, ANDed. Each bound to its own parameter via
   // `Prisma.sql` template fragment; `Prisma.join` composes them.
@@ -388,18 +428,31 @@ export async function searchByExactTitle(
       WITH candidate_sources AS (
         SELECT
           v.id            AS video_id,
+          vl.id           AS video_locale_id,
           v.core_id       AS video_core_id,
           v.slug          AS video_slug,
-          vl.title        AS video_title,
-          vl.description  AS description,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.title ELSE vl.title END AS video_title,
+          CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.description ELSE vl.description END AS description,
+          vl.title AS matched_title,
           LENGTH(vl.title) AS title_length,
           TRUE             AS title_matched,
           FALSE            AS curated,
           NULL::integer    AS curation_position
         FROM video_locale vl
+        LEFT JOIN LATERAL (
+          SELECT display_candidate.*
+          FROM video_locale display_candidate
+          WHERE display_candidate.video_id = vl.video_id
+            AND display_candidate.locale = ${displayLocale}
+            AND display_candidate.status = 'published'
+            AND display_candidate.deleted_at IS NULL
+          ORDER BY display_candidate.id
+          LIMIT 1
+        ) display_vl ON TRUE
         JOIN video v ON v.id = vl.video_id
           AND v.deleted_at IS NULL
           AND v.no_index = false
+          AND ${watchVisibility}
         WHERE ${ilikeChain}
           AND vl.locale = ${locale}
           AND vl.status = 'published'
@@ -407,10 +460,12 @@ export async function searchByExactTitle(
         UNION ALL
         SELECT
           v.id             AS video_id,
+          vl.id            AS video_locale_id,
           v.core_id        AS video_core_id,
           v.slug           AS video_slug,
           vl.title         AS video_title,
           vl.description   AS description,
+          vl.title AS matched_title,
           LENGTH(vl.title)  AS title_length,
           FALSE             AS title_matched,
           TRUE              AS curated,
@@ -423,33 +478,47 @@ export async function searchByExactTitle(
           ON v.core_id = curation.target_video_core_id
          AND v.deleted_at IS NULL
          AND v.no_index = FALSE
-        JOIN video_locale vl
-          ON vl.video_id = v.id
-         AND vl.locale = ${locale}
-         AND vl.status = 'published'
-         AND vl.deleted_at IS NULL
+         AND ${watchVisibility}
+        JOIN LATERAL (
+          SELECT display_candidate.*
+          FROM video_locale display_candidate
+          WHERE display_candidate.video_id = v.id
+            AND display_candidate.locale = ${displayLocale}
+            AND display_candidate.status = 'published'
+            AND display_candidate.deleted_at IS NULL
+          ORDER BY display_candidate.id
+          LIMIT 1
+        ) vl ON TRUE
         WHERE alias.active = TRUE
           AND alias.normalized_query = ${normalizedQuery}
       ), deduped AS (
         SELECT DISTINCT ON (video_id)
           video_id,
+          video_locale_id,
           video_core_id,
           video_slug,
           video_title,
           description,
+          matched_title,
           title_length,
           BOOL_OR(title_matched) OVER (PARTITION BY video_id) AS title_matched,
           BOOL_OR(curated) OVER (PARTITION BY video_id) AS curated,
           MIN(curation_position) FILTER (WHERE curated)
             OVER (PARTITION BY video_id) AS curation_position
         FROM candidate_sources
-        ORDER BY video_id, title_matched DESC, curated DESC, title_length ASC
+        ORDER BY
+          video_id,
+          candidate_sources.title_matched DESC,
+          candidate_sources.curated DESC,
+          title_length ASC,
+          video_locale_id ASC
       )
       SELECT *
       FROM deduped
       ORDER BY curated DESC,
                curation_position ASC NULLS LAST,
-               title_length ASC
+               title_length ASC,
+               video_id ASC
       LIMIT ${limit}
     `,
   )
@@ -460,6 +529,7 @@ export async function searchByExactTitle(
     videoCoreId: row.video_core_id,
     videoSlug: row.video_slug ?? "",
     videoTitle: row.video_title ?? "",
+    matchedTitle: row.matched_title ?? row.video_title ?? "",
     imageUrl: null,
     description: row.description,
     titleLength: Number(row.title_length),

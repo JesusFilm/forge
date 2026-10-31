@@ -67,6 +67,94 @@ describe("resolveSearchLanguageSignals", () => {
     expect(prisma.language.findMany).toHaveBeenCalledTimes(1)
   })
 
+  it("returns canonical query and target BCP-47 metadata without conflating playback intent or adding a lookup", async () => {
+    prisma.language.findMany.mockResolvedValue([
+      ...activeLanguages,
+      { bcp47: "de", slug: "german-standard" },
+    ])
+    const input = {
+      query: "Hoffnung",
+      queryLanguageSlug: "DE-de",
+      targetLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "english",
+    }
+    const result = await resolveSearchLanguageSignals({ prisma, input })
+
+    expect(result).toEqual({
+      targetLanguageSlug: "spanish-castilian",
+      targetLanguageSource: "explicit_target",
+      targetLanguageBcp47: "es",
+      queryLanguageSlug: "german-standard",
+      queryLanguageBcp47: "de",
+      queryNamedLanguageSlug: null,
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: null,
+      routeLanguageBcp47: null,
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    await expect(
+      resolveSearchLanguageSignals({ prisma, input }),
+    ).resolves.toEqual(result)
+    expect(prisma.language.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
+  })
+
+  it("keeps ambiguous or unknown query identities null while preserving an exact target slug", async () => {
+    prisma.language.findMany.mockResolvedValue([
+      { bcp47: "de", slug: "german-standard" },
+      { bcp47: "de", slug: "german-legacy" },
+    ])
+    for (const queryLanguageSlug of ["de-DE", "unknown-language"]) {
+      const result = await resolveSearchLanguageSignals({
+        prisma,
+        input: { targetLanguageSlug: "german-standard", queryLanguageSlug },
+      })
+      expect(result).toMatchObject({
+        targetLanguageSlug: "german-standard",
+        targetLanguageSource: "explicit_target",
+        targetLanguageBcp47: "de",
+        queryLanguageSlug: null,
+        queryLanguageBcp47: null,
+      })
+    }
+  })
+
+  it("does not fabricate BCP-47 for conflicting canonical metadata or unqueried fallback identities", async () => {
+    prisma.language.findMany.mockResolvedValueOnce([
+      { bcp47: "de", slug: "german-standard" },
+      { bcp47: "de-DE", slug: "german-standard" },
+    ])
+    await expect(
+      resolveSearchLanguageSignals({
+        prisma,
+        input: {
+          targetLanguageSlug: "german-standard",
+          queryLanguageSlug: "german-standard",
+        },
+      }),
+    ).resolves.toMatchObject({
+      targetLanguageSlug: "german-standard",
+      targetLanguageSource: "explicit_target",
+      targetLanguageBcp47: null,
+      queryLanguageSlug: "german-standard",
+      queryLanguageBcp47: null,
+    })
+    prisma.language.findMany.mockClear()
+    await expect(
+      resolveSearchLanguageSignals({ prisma, input: {} }),
+    ).resolves.toMatchObject({
+      targetLanguageSlug: "english",
+      targetLanguageSource: "fallback",
+      targetLanguageBcp47: null,
+      queryLanguageSlug: null,
+      queryLanguageBcp47: null,
+    })
+    expect(prisma.language.findMany).not.toHaveBeenCalled()
+  })
+
   it.each(["en", "en-US", "EN-us"])(
     "canonicalizes %s to English without changing its source",
     async (targetLanguageSlug) => {

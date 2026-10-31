@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import { Prisma } from "@prisma/client"
 import { CONTENT_EMBEDDING_CONTRACT_POINTER_ID } from "./content-embedding-contract"
 import {
   calculateVideoSemanticMixedScore,
@@ -470,6 +471,48 @@ describe("searchVideoSemantic", () => {
       /ORDER BY\s+vl_display\.language_core_id ASC NULLS LAST,\s+vl_display\.language_slug ASC NULLS LAST,\s+vl_display\.id ASC/,
     )
     expect(hydratedTail).toMatch(/LIMIT\s+1/)
+  })
+
+  it("excludes Watch-restricted semantic evidence before the candidate window", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 1,
+    })
+
+    const [strings, ...values] = prisma.$queryRaw.mock.calls.at(-1) as [
+      TemplateStringsArray,
+      ...unknown[],
+    ]
+    // Expand fragments in place with Prisma itself. Appending fragment text
+    // after the query cannot establish that visibility precedes the cap.
+    const query = Prisma.sql(strings, ...values)
+    const visibleCandidates = sqlBetween(
+      query.sql,
+      "visible_semantic_candidates AS",
+      "transcript_source AS",
+    )
+    const predicate = "NOT ('watch' = ANY(v.restrict_view_platforms))"
+    expect(visibleCandidates).toContain(predicate)
+    expect(query.sql.split(predicate)).toHaveLength(2)
+    expect(visibleCandidates).not.toContain("LIMIT")
+    expect(visibleCandidates).not.toContain("video_dub")
+    expect(visibleCandidates).not.toContain("playback_id")
+
+    const transcriptSource = sqlBetween(
+      query.sql,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    expect(transcriptSource).toContain("FROM visible_semantic_candidates")
+    const limitIndex = transcriptSource.indexOf("LIMIT")
+    expect(limitIndex).toBeGreaterThan(-1)
+    expect(query.sql.indexOf(predicate)).toBeLessThan(
+      query.sql.indexOf("transcript_source AS"),
+    )
+    expect(query.values.filter((value) => value === 2)).toHaveLength(1)
   })
 
   it("uses bounded per-source candidate windows after per-video collapse", async () => {

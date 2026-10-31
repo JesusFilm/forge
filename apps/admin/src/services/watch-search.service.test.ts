@@ -157,16 +157,21 @@ function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
   }
 }
 
-function exactTitleResult(resultId: string, videoTitle: string) {
+function exactTitleResult(
+  resultId: string,
+  videoTitle: string,
+  matchedTitle = videoTitle,
+) {
   return {
     resultType: "video",
     resultId,
     videoCoreId: `core-${resultId}`,
     videoSlug: resultId,
     videoTitle,
+    matchedTitle,
     imageUrl: null,
     description: null,
-    titleLength: videoTitle.length,
+    titleLength: matchedTitle.length,
   }
 }
 
@@ -364,7 +369,7 @@ describe("WatchSearchService", () => {
     }
   })
 
-  it("uses the canonical Language BCP-47 value for non-English lexical retrieval", async () => {
+  it("keeps canonical display BCP-47 separate from the explicit lexical target", async () => {
     await service.search({
       query: "Hoffnung",
       targetLanguageSlug: "english",
@@ -385,15 +390,137 @@ describe("WatchSearchService", () => {
       expect(retriever).toHaveBeenNthCalledWith(
         1,
         prisma,
-        expect.objectContaining({ locale: "de" }),
+        expect.objectContaining({ locale: "en", displayLocale: "de" }),
       )
       expect(retriever).toHaveBeenNthCalledWith(
         2,
         prisma,
-        expect.objectContaining({ locale: "de" }),
+        expect.objectContaining({ locale: "en", displayLocale: "de" }),
       )
     }
   })
+
+  it("uses query or explicitly selected target language for lexical retrieval", async () => {
+    await service.search({
+      query: "Jesús",
+      queryLanguageSlug: "spanish-castilian",
+      targetLanguageSlug: "french",
+      displayLanguageSlug: "english",
+    })
+    await service.search({
+      query: "Jésus",
+      targetLanguageSlug: "french",
+      displayLanguageSlug: "english",
+    })
+    await service.search({
+      query: "Jesus",
+      queryLanguageSlug: "english",
+      targetLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "spanish-castilian",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenNthCalledWith(
+        1,
+        prisma,
+        expect.objectContaining({ locale: "es", displayLocale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        2,
+        prisma,
+        expect.objectContaining({ locale: "fr", displayLocale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        3,
+        prisma,
+        expect.objectContaining({ locale: "en", displayLocale: "es" }),
+      )
+    }
+  })
+
+  it.each([
+    { queryNamedLanguageSlug: "french", source: "query_named_language" },
+    { routeLanguageSlug: "french", source: "route" },
+    { currentWatchLanguageSlug: "french", source: "current_watch" },
+    {
+      acceptLanguage: "fr",
+      displayLanguageSlug: null,
+      source: "accept_language",
+    },
+    { query: "Иисус", source: "query_script" },
+  ])(
+    "does not treat $source as explicit lexical intent",
+    async ({ source, ...input }) => {
+      const result = await service.search({
+        query: "Jesus",
+        displayLanguageSlug: "english",
+        ...input,
+      })
+
+      expect(result.languageInterpretation.targetLanguageSource).toBe(source)
+      for (const retriever of [
+        searchByExactTitleMock,
+        searchByKeywordWeightedMock,
+        searchByTrigramMock,
+      ]) {
+        expect(retriever).toHaveBeenCalledWith(
+          prisma,
+          expect.objectContaining({ locale: "en", displayLocale: "en" }),
+        )
+      }
+    },
+  )
+
+  it("keeps an inferred language name separate from explicit lexical intent", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([{ slug: "french" }])
+    const result = await service.search({
+      query: "Jesus French",
+      displayLanguageSlug: "english",
+    })
+    expect(result.languageInterpretation).toMatchObject({
+      targetLanguageSlug: "french",
+      targetLanguageSource: "query_named_language",
+    })
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenCalledWith(prisma, {
+        query: "Jesus",
+        locale: "en",
+        displayLocale: "en",
+        limit: 100,
+      })
+    }
+  })
+
+  it.each([null, "german-standard"])(
+    "uses canonical BCP-47 for unmapped query language %s or explicit target",
+    async (queryLanguageSlug) => {
+      await service.search({
+        query: "Hoffnung",
+        queryLanguageSlug,
+        targetLanguageSlug: queryLanguageSlug ? "french" : "german-standard",
+        displayLanguageSlug: "english",
+      })
+
+      for (const retriever of [
+        searchByExactTitleMock,
+        searchByKeywordWeightedMock,
+        searchByTrigramMock,
+      ]) {
+        expect(retriever).toHaveBeenCalledWith(
+          prisma,
+          expect.objectContaining({ locale: "de", displayLocale: "en" }),
+        )
+      }
+    },
+  )
 
   it("uses a valid client request id when one is supplied", async () => {
     const result = await service.search({
@@ -511,7 +638,8 @@ describe("WatchSearchService", () => {
     ]) {
       expect(retriever).toHaveBeenCalledWith(prisma, {
         query: "JESUS",
-        locale: "en",
+        locale: "ru",
+        displayLocale: "en",
         limit: 100,
       })
     }
@@ -555,6 +683,101 @@ describe("WatchSearchService", () => {
         },
       }),
     ])
+  })
+
+  it("ranks by the matched-language title while returning the display-language title", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult(
+            "broad-hit",
+            "The Life of Jesus",
+            "La vida de Jesús",
+          ),
+          exactTitleResult("localized-hit", "Jesus", "Jesús"),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Jesús",
+      queryLanguageSlug: "spanish-castilian",
+      targetLanguageSlug: "russian",
+      displayLanguageSlug: "english",
+      limit: 2,
+    })
+
+    expect(result.results.map(({ id }) => id)).toEqual([
+      "localized-hit",
+      "broad-hit",
+    ])
+    expect(result.results[0]).toMatchObject({
+      title: "Jesus",
+      scoreBreakdown: { evidenceBoost: 0.45 },
+      action: { kind: "watch", hrefLanguageSlug: "russian" },
+    })
+    expect(result.results[1].scoreBreakdown.evidenceBoost).toBe(0.2)
+    expect(result.languageInterpretation.targetLanguageSlug).toBe("russian")
+    for (const [input] of hydrateMock.mock.calls) {
+      expect(input.targetLanguageSlug).toBe("russian")
+    }
+  })
+
+  it("keeps a fused matched-title metadata hit ahead of a higher-source-score broad exact hit", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult(
+            "a-broad",
+            "A Story of Hope",
+            "Historia de esperanza",
+          ),
+        ],
+        keywordWeighted: [
+          {
+            ...metadataResult("z-localized", "Hope"),
+            matchedTitle: "Esperanza",
+          },
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            targetAudioWatchability(videoId),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Esperanza",
+      queryLanguageSlug: "spanish-castilian",
+      targetLanguageSlug: "russian",
+      displayLanguageSlug: "english",
+    })
+    // Metadata occurs in one of two RRF lists: source score 0.5/relevance
+    // 0.415 loses to exact 1/0.75 unless matched whole-title priority survives fusion.
+    expect(result.results.map(({ id }) => id)).toEqual([
+      "z-localized",
+      "a-broad",
+    ])
+    expect(result.results[0]).toMatchObject({
+      title: "Hope",
+      scoreBreakdown: { sourceScore: 0.5, relevance: 0.415 },
+      action: { hrefLanguageSlug: "russian" },
+    })
+    expect(result.results[1].scoreBreakdown.relevance).toBe(0.75)
   })
 
   it("hydrates catalog fields only for the final result page", async () => {

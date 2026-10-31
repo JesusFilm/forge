@@ -38,6 +38,7 @@ import {
   recordSearchDbTiming,
   type SearchTimingRecorder,
 } from "./hybrid-search-timing"
+import { notRestrictedFromWatchSql } from "./search-watchability"
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -339,7 +340,8 @@ type ExperienceKeywordRow = {
  * consumers render those like keyword-only matches (no deep-link).
  *
  * Consumer visibility gate: `video.deleted_at IS NULL` +
- * `video_locale.status = 'published'` for the requested locale. We do
+ * `video_locale.status = 'published'` for the requested locale, plus the
+ * canonical Watch platform restriction before the candidate cap. We do
  * NOT require `VideoDub.published = true` on the dub lookup — some
  * languages legitimately have no published dub yet, and the result
  * should still surface (playbackId null).
@@ -353,6 +355,7 @@ export async function searchVideoSemantic(
   const candidateLimit = Math.max(limit * 2, limit)
 
   const transcriptProvenanceFilter = videoTranscriptProvenanceFilter()
+  const watchVisibility = notRestrictedFromWatchSql("v")
 
   const evidenceRows = await recordSearchDbTiming(
     timing,
@@ -402,6 +405,7 @@ export async function searchVideoSemantic(
         JOIN video v ON v.id = b.video_id
           AND v.deleted_at IS NULL
           AND v.no_index = false
+          AND ${watchVisibility}
         WHERE EXISTS (
           SELECT 1
           FROM video_locale vl_visible
