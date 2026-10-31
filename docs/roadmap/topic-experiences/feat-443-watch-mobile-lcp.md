@@ -36,11 +36,33 @@ isolated before changing the media-heavy rendering path. Linear: FGE-117.
 - `preload`
 - `MuxVideo`
 
-## What To Build
+## Implementation Progress
 
-Map Search Console URL groups to Watch templates, reproduce representative
-mobile LCP, identify the dominant resource/work, and propose measured fixes
-with server, bundle, media, CLS, INP, and player-readiness guardrails.
+- Added a closed Watch URL path-shape classifier and Datadog `beforeSend`
+  enrichment using each event's `view.url`. It adds only
+  `context.watch.path_shape`; view names and non-Watch events remain unchanged.
+- Made the below-the-fold Bible promo explicitly lazy in empty and populated
+  citation states.
+- Added an opt-in complete-HTML URL-probe contract for representative JESUS,
+  Spanish JESUS, and standalone Lumo routes: exactly one high-priority image
+  preload, matching the hero poster's responsive candidates.
+- Added unit coverage for route-shape cardinality, RUM context merging, promo
+  loading intent, and probe parsing/classification.
+- October 30 review follow-up: corrected Link-header tokenization, retained
+  responsive sizes and width/density descriptors, and resolved resource URLs
+  against the actual final response URL. Discriminating parse-to-classify
+  regressions cover R1-2624-1/2/3. Scope and source-only verification are in
+  `docs/plans/2026-10-30-pr2624-preload-probe-repair-plan.md`; these offline
+  probe repairs do not establish page-load or field improvements.
+- R2 density follow-up: effective source sets also include each nonempty
+  default `src`/`href` at `1x` when neither width descriptors nor explicit `1x`
+  candidates override it; matching covers preload and high-priority identity.
+
+Search Console URL groups, current Datadog field distributions, five-run
+mobile traces, post-deploy facet creation, and follow-up Search Console
+validation remain operational evidence. Do not attribute the property-wide
+10,222 poor URLs to Watch without that evidence. Keep FGE-117 open until the
+field baseline and post-release safety window are recorded.
 
 ## Constraints
 
