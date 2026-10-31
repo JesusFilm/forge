@@ -138,11 +138,13 @@ function withTitleSuffix(title: string): string {
   return `${trimmed} ${TITLE_SUFFIX}`
 }
 
+const CONTENT_IMAGE_FALLBACK_ALT = "Jesus Film Project"
+
 const DEFAULT_OG_IMAGE = {
-  url: "https://images.unsplash.com/photo-1482424917728-d82d29662023?w=1400&auto=format&fit=crop&q=60",
-  width: 1400,
-  height: 933,
-  alt: "Jesus Film Project",
+  url: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/images/watch-social-card.jpg`,
+  width: 1200,
+  height: 630,
+  alt: "Jesus teaches a group beside the Sea of Galilee",
   type: "image/jpeg" as const,
 }
 
@@ -271,7 +273,7 @@ export function buildWatchVideoMetadataModel(
       ? `Watch ${structuredDataTitle} from Jesus Film Project.`
       : null)
   const imageAlt =
-    options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
+    options.video.imageAlt ?? options.video.title ?? CONTENT_IMAGE_FALLBACK_ALT
   const muxSocialImage = buildMuxSocialImage(
     options.selectedVariant.muxVideo?.playbackId,
     imageAlt,
@@ -395,7 +397,7 @@ function toMetadata(
     const imageAlt =
       resolvedPage.routeVideo.imageAlt ??
       resolvedPage.routeVideo.title ??
-      DEFAULT_OG_IMAGE.alt
+      CONTENT_IMAGE_FALLBACK_ALT
     const managedSocialImage = buildManagedSocialImage(
       resolvedPage.routeVideo.socialImage,
       imageAlt,
@@ -468,7 +470,7 @@ function toMetadata(
         url: cms.ogImage.url,
         width: cms.ogImage.width ?? DEFAULT_OG_IMAGE.width,
         height: cms.ogImage.height ?? DEFAULT_OG_IMAGE.height,
-        alt: cms.ogImage.alt || DEFAULT_OG_IMAGE.alt,
+        alt: cms.ogImage.alt || CONTENT_IMAGE_FALLBACK_ALT,
         type: "image/jpeg" as const,
       }
     : DEFAULT_OG_IMAGE
@@ -555,7 +557,7 @@ export function generateSeriesMetadata(
         url: posterUrl,
         width: DEFAULT_OG_IMAGE.width,
         height: DEFAULT_OG_IMAGE.height,
-        alt: series.imageAlt ?? series.title ?? DEFAULT_OG_IMAGE.alt,
+        alt: series.imageAlt ?? series.title ?? CONTENT_IMAGE_FALLBACK_ALT,
         type: "image/jpeg" as const,
       }
     : DEFAULT_OG_IMAGE

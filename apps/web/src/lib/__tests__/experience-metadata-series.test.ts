@@ -88,13 +88,46 @@ describe("generateSeriesMetadata", () => {
     expect(images?.[0]?.url).toBe("https://cdn.example/storyclubs.high.jpg")
   })
 
+  it("uses a neutral description for an untitled series poster", () => {
+    const meta = generateSeriesMetadata("en", {
+      series: makeSeries({ title: null, imageAlt: null }),
+      pathLocale: "en",
+    })
+    const expectedImage = {
+      url: "https://cdn.example/storyclubs.high.jpg",
+      alt: "Jesus Film Project",
+    }
+
+    expect(meta.openGraph?.images).toEqual([
+      expect.objectContaining(expectedImage),
+    ])
+    expect(meta.twitter?.images).toEqual([expectedImage])
+  })
+
   it("falls back to the default OG image when series.images is empty", () => {
     const meta = generateSeriesMetadata("en", {
       series: makeSeries({ images: [] }),
       pathLocale: "en",
     })
     const images = meta.openGraph?.images as Array<{ url: string }>
-    expect(images?.[0]?.url).toContain("unsplash.com")
+    expect(images?.[0]?.url).toBe(
+      "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+    )
+    expect(meta.openGraph?.images).toEqual([
+      {
+        url: "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Jesus teaches a group beside the Sea of Galilee",
+        type: "image/jpeg",
+      },
+    ])
+    expect(meta.twitter?.images).toEqual([
+      {
+        url: "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+        alt: "Jesus teaches a group beside the Sea of Galilee",
+      },
+    ])
   })
 
   it("sets robots index/follow false when series.noIndex is true", () => {

@@ -95,6 +95,66 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.twitter?.description).toBe(metadata.openGraph?.description)
   })
 
+  it.each(["", null, undefined, "Authored Easter artwork"])(
+    "keeps the authored Experience image description for alt %s",
+    async (alt) => {
+      resolveWatchPageMock.mockResolvedValue({
+        data: { kind: "experience", experience: { title: "Easter" } },
+        error: null,
+      })
+      // The real Experience mapper returns empty alt and null dimensions.
+      experienceToMetadataMock.mockReturnValue({
+        title: "Easter",
+        description: "Easter films",
+        ogTitle: "Easter",
+        ogDescription: "Easter films",
+        pathSegment: null,
+        ogImage: {
+          url: "https://media.example/easter-art.jpg",
+          width: null,
+          height: null,
+          alt,
+        },
+      })
+      const { getWatchPageMetadata } = await import("./experience-metadata")
+      const metadata = await getWatchPageMetadata("en", { slug: "easter" })
+      const expectedImage = {
+        url: "https://media.example/easter-art.jpg",
+        alt: alt || "Jesus Film Project",
+      }
+
+      expect(metadata.openGraph?.images).toEqual([
+        expect.objectContaining(expectedImage),
+      ])
+      expect(metadata.twitter?.images).toEqual([expectedImage])
+    },
+  )
+
+  it("uses a neutral description for an untitled template image", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "video-template",
+        routeVideo: {
+          title: null,
+          imageAlt: null,
+          imageUrl: "https://media.example/authored-art.jpg",
+        },
+      },
+      error: null,
+    })
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", { slug: "easter" })
+    const expectedImage = {
+      url: "https://media.example/authored-art.jpg",
+      alt: "Jesus Film Project",
+    }
+
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining(expectedImage),
+    ])
+    expect(metadata.twitter?.images).toEqual([expectedImage])
+  })
+
   it("uses route video metadata for template-backed watch pages", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -199,8 +259,10 @@ describe("getWatchPageMetadata", () => {
       images: [
         {
           url: "https://media.example/jesus-social.jpg",
-          width: 1400,
-          height: 933,
+          // Null authored dimensions fall back to the centralized default
+          // social-card size (1200x630).
+          width: 1200,
+          height: 630,
           alt: "JESUS film still",
           type: "image/png",
         },
@@ -588,6 +650,25 @@ describe("buildWatchVideoMetadataModel", () => {
     bibleCitations: [],
   }
 
+  it("uses a neutral description for an untitled Mux image", async () => {
+    const { generateWatchVideoMetadata } = await import("./experience-metadata")
+    const metadata = generateWatchVideoMetadata("en", {
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: { ...video, title: null, imageAlt: null },
+    })
+    const expectedImage = {
+      url: "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+      alt: "Jesus Film Project",
+    }
+
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining(expectedImage),
+    ])
+    expect(metadata.twitter?.images).toEqual([expectedImage])
+  })
+
   it("declares Kurmanji Standard dub and captions from the corrected tag, not admin's ko-kmr", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")
@@ -692,6 +773,145 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(structuredData.thumbnailUrl).toEqual([
       "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
     ])
+  })
+
+  it("preserves authored social image dimensions that differ from the default card", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        socialImage: {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1600,
+          height: 900,
+          mimeType: "image/jpeg",
+        },
+      },
+    })
+
+    expect(model.image).toMatchObject({
+      url: "https://media.example/jesus-social.jpg",
+      width: 1600,
+      height: 900,
+    })
+  })
+
+  it("fills only the missing authored dimension from the default card", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        socialImage: {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1600,
+          height: null,
+          mimeType: "image/jpeg",
+        },
+      },
+    })
+
+    expect(model.image).toMatchObject({ width: 1600, height: 630 })
+  })
+
+  it.each([
+    { width: null, height: 900, expectedWidth: 1200, expectedHeight: 900 },
+    { width: 0, height: -1, expectedWidth: 1200, expectedHeight: 630 },
+    {
+      width: Number.NaN,
+      height: Infinity,
+      expectedWidth: 1200,
+      expectedHeight: 630,
+    },
+  ])(
+    "uses safe fallback dimensions for $width × $height managed art",
+    async ({ width, height, expectedWidth, expectedHeight }) => {
+      const { buildWatchVideoMetadataModel } =
+        await import("./experience-metadata")
+      const model = buildWatchVideoMetadataModel({
+        routeSlug: "jesus",
+        pathLocale: "english",
+        selectedVariant,
+        video: {
+          ...video,
+          socialImage: {
+            url: " https://media.example/art.png ",
+            width,
+            height,
+            mimeType: " image/png ",
+          },
+        },
+      })
+
+      expect(model.image).toMatchObject({
+        url: "https://media.example/art.png",
+        width: expectedWidth,
+        height: expectedHeight,
+        type: "image/png",
+      })
+    },
+  )
+
+  it.each([null, "   "])(
+    "does not invent a JPEG MIME type for managed art with MIME %s",
+    async (mimeType) => {
+      const { buildWatchVideoMetadataModel } =
+        await import("./experience-metadata")
+      const model = buildWatchVideoMetadataModel({
+        routeSlug: "jesus",
+        pathLocale: "english",
+        selectedVariant,
+        video: {
+          ...video,
+          socialImage: {
+            url: "https://media.example/art",
+            width: null,
+            height: null,
+            mimeType,
+          },
+        },
+      })
+
+      expect(model.image).toMatchObject({
+        url: "https://media.example/art",
+        width: 1200,
+        height: 630,
+      })
+      expect(model.image).not.toHaveProperty("type")
+    },
+  )
+
+  it("ignores a blank managed URL and preserves the Mux fallback", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        socialImage: {
+          url: " \t",
+          width: 1600,
+          height: 900,
+          mimeType: "image/png",
+        },
+      },
+    })
+
+    expect(model.image).toMatchObject({
+      url: "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+      type: "image/jpeg",
+    })
   })
 
   it("falls back field-by-field for blank localized overrides", async () => {
