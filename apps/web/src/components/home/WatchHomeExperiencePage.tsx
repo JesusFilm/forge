@@ -32,6 +32,8 @@ type WatchHomeExperiencePageProps = {
   /** Published audience configuration; absent keeps the code definitions. */
   audience?: WatchAudienceResolution
   heroModel: WatchHomeModel
+  /** A resolved hero error left independent authored body content available. */
+  heroUnavailable?: boolean
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
@@ -154,6 +156,7 @@ export function WatchHomeExperiencePage({
   audienceEnabled = false,
   audience,
   heroModel,
+  heroUnavailable = false,
   blocks,
   locale = "en",
   languageSlug,
@@ -342,7 +345,15 @@ export function WatchHomeExperiencePage({
         {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
             rail to the viewport edges. `html`/`body` already clip the page,
             so nothing gains a horizontal scrollbar. */}
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
+        {/* An unavailable carousel has no height. Keep the restored body below
+            the fixed header without reserving a full empty hero viewport. */}
+        <div
+          className={`relative z-10 mx-auto -mt-[100vh] max-w-[1920px]${
+            heroUnavailable
+              ? " pt-[calc(5.5rem+env(safe-area-inset-top,0px))] md:pt-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:pt-[calc(4.25rem+env(safe-area-inset-top,0px))]"
+              : ""
+          }`}
+        >
           {normalized.hasAuthoredPageHeading ? null : (
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}

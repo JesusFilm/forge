@@ -107,6 +107,39 @@ function visibleContainerChildren(block: BlockRecord): readonly unknown[] {
   return visible
 }
 
+/**
+ * A hero placeholder cannot rescue a failed hero query. Nor can a static rail
+ * whose items were all removed by Admin's visibility projection. Keep other
+ * authored content (including lazy dynamic rails) available; this is not a
+ * prediction of whether every asynchronous section will eventually succeed.
+ */
+export function hasIndependentWatchHomeBody(
+  blocks: readonly unknown[],
+): boolean {
+  return blocks.some((value) => {
+    if (!value || typeof value !== "object") return false
+    const block = value as BlockRecord
+    switch (block.__typename) {
+      case "WatchHomeHeroBlock":
+      case "WatchAudienceBlock": // Configuration, rendered by the gated band.
+      case "CardBlock":
+      case "VideoRecommendationsBlock": // The section dispatcher returns null.
+        return false
+      case "MediaCollectionBlock":
+        return (
+          block.itemsSource === "dynamicCollections" ||
+          (block.itemsSource !== "routeVideoChildren" && !!block.items?.length)
+        )
+      case "SectionBlock":
+        return hasIndependentWatchHomeBody(block.sectionContent ?? [])
+      case "ContainerBlock":
+        return hasIndependentWatchHomeBody(visibleContainerChildren(block))
+      default:
+        return true
+    }
+  })
+}
+
 function authoredDestinations(
   blocks: readonly unknown[],
   fallbackLanguageSlug: string,

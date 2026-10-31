@@ -662,6 +662,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           carousel: { pools: [] },
           missingData: [],
         },
+        heroUnavailable: false,
         blocks: [],
         legacyCategoryRailCompatibility: true,
         locale: "es",
@@ -774,6 +775,165 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
 
     expect(redirectMock).not.toHaveBeenCalled()
     expect(watchHomeExperiencePageMock).toHaveBeenCalled()
+  })
+
+  it("renders localized builder blocks when the localized hero query fails", async () => {
+    const blocks = [{ __typename: "TextBlock", id: "body", text: "Hello" }]
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "home-es",
+          slug: "watch-home",
+          title: "Watch",
+          blocks,
+        },
+      },
+      error: null,
+    })
+
+    await render1Seg("spanish-castilian.html")
+
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        heroModel: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        heroUnavailable: true,
+        blocks,
+      }),
+      undefined,
+    )
+  })
+
+  it("keeps a healthy localized hero when the authored body query fails operationally", async () => {
+    const model = {
+      heroSlides: [{ id: "hero-es" }],
+      sections: [],
+      carousel: { pools: [] },
+      missingData: [],
+    }
+    resolveWatchHomeMock.mockResolvedValue({ data: model, error: null })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        heroModel: model,
+        blocks: [],
+        locale: "es",
+        languageSlug: "spanish-castilian",
+      }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    expect(redirectMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves the missing-localized-home redirect even when the hero also fails", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    await expect(render1Seg("russian.html")).rejects.toThrow(
+      "NEXT_REDIRECT:/russian.html/videos",
+    )
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("shows localized empty state after successful empty responses", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: { kind: "experience", experience: { blocks: [] } },
+      error: null,
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(experienceEmptyMock).toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("shows localized error after both independent queries fail", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(experienceErrorMock).toHaveBeenCalledWith(
+      { message: "Hero unavailable" },
+      undefined,
+    )
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
+  it("starts localized hero and body reads in parallel", async () => {
+    let finishHero!: (value: unknown) => void
+    let finishBody!: (value: unknown) => void
+    resolveWatchHomeMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishHero = resolve
+      }),
+    )
+    resolveWatchPageMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishBody = resolve
+      }),
+    )
+    const pending = render1Seg("spanish-castilian.html")
+    await vi.waitFor(() => expect(resolveWatchPageMock).toHaveBeenCalled())
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("es", "spanish-castilian")
+    finishBody({
+      data: {
+        kind: "experience",
+        experience: { blocks: [{ __typename: "TextBlock", heading: "Ready" }] },
+      },
+      error: null,
+    })
+    finishHero({ data: null, error: new Error("Resolved hero error") })
+    await pending
+    expect(watchHomeExperiencePageMock).toHaveBeenCalled()
+  })
+
+  it("keeps the raw audio language with English catalog fallback during hero failure", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [
+            { __typename: "TextBlock", heading: "Independent fallback body" },
+          ],
+        },
+      },
+      error: null,
+    })
+    await render1Seg("aari.html")
+    expect(resolveWatchHomeMock).toHaveBeenCalledWith("en", "aari")
+    expect(resolveWatchPageMock).toHaveBeenCalledWith("en")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: "en",
+        languageSlug: "aari",
+        publicDocumentPathname: "/watch/aari.html",
+      }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
   })
 
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {

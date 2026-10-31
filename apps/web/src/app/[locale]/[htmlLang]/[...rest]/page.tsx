@@ -82,7 +82,10 @@ import {
   watchSeriesCollectionStructuredDataJson,
   watchVideoStructuredDataJson,
 } from "@/lib/watch-structured-data"
-import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
+import {
+  hasIndependentWatchHomeBody,
+  projectWatchHomeVisibleContent,
+} from "@/lib/watch-home-visible-content"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
@@ -759,10 +762,6 @@ async function renderOneSegment(shape: {
       redirect(languageVideosIndexPath(languageSlug))
     }
 
-    if (heroResult.error) {
-      return <ExperienceError message={heroResult.error.message} />
-    }
-
     const builderBlocks =
       pageResult.data?.kind === "experience"
         ? watchExperienceBlocks(pageResult.data.experience)
@@ -778,12 +777,33 @@ async function renderOneSegment(shape: {
       })
     }
 
-    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
+    if (
+      heroResult.error &&
+      !hasIndependentWatchHomeBody(builderBlocks) &&
+      !(
+        pageResult.data?.kind === "experience" &&
+        pageResult.data.watchHomeCategoryRailCompatibility === "legacy-schema"
+      )
+    ) {
+      return <ExperienceError message={heroResult.error.message} />
+    }
+
+    if (
+      !heroResult.error &&
+      !heroResult.data.heroSlides.length &&
+      !builderBlocks.length
+    ) {
       return <ExperienceEmpty />
+    }
+    const heroModel = heroResult.data ?? {
+      heroSlides: [],
+      sections: [],
+      carousel: { pools: [] },
+      missingData: [],
     }
     const localeSlug = tryAsLocaleSlug(slug)
     const visibleContent = projectWatchHomeVisibleContent({
-      model: heroResult.data,
+      model: heroModel,
       blocks: builderBlocks,
       languageSlug: slug,
     })
@@ -806,7 +826,8 @@ async function renderOneSegment(shape: {
         <WatchHomeExperiencePage
           audienceEnabled={audienceEnabled}
           audience={audience}
-          heroModel={heroResult.data}
+          heroModel={heroModel}
+          heroUnavailable={Boolean(heroResult.error)}
           blocks={visibleContent.blocks}
           languageSlug={slug}
           publicDocumentPathname={

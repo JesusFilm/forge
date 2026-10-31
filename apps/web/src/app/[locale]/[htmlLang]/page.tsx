@@ -26,7 +26,10 @@ import {
 } from "@/i18n/client-messages"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import { watchHomeCollectionStructuredDataJson } from "@/lib/watch-structured-data"
-import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
+import {
+  hasIndependentWatchHomeBody,
+  projectWatchHomeVisibleContent,
+} from "@/lib/watch-home-visible-content"
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -95,10 +98,6 @@ export default async function HomePage({ params }: PageProps) {
     </WatchChromeShell>
   )
 
-  if (heroResult.error) {
-    return withMessages(<ExperienceError message={heroResult.error.message} />)
-  }
-
   const builderBlocks =
     pageResult.data?.kind === "experience"
       ? watchExperienceBlocks(pageResult.data.experience)
@@ -114,13 +113,34 @@ export default async function HomePage({ params }: PageProps) {
     })
   }
 
-  if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
+  if (
+    heroResult.error &&
+    !hasIndependentWatchHomeBody(builderBlocks) &&
+    !(
+      pageResult.data?.kind === "experience" &&
+      pageResult.data.watchHomeCategoryRailCompatibility === "legacy-schema"
+    )
+  ) {
+    return withMessages(<ExperienceError message={heroResult.error.message} />)
+  }
+
+  if (
+    !heroResult.error &&
+    !heroResult.data.heroSlides.length &&
+    !builderBlocks.length
+  ) {
     return withMessages(<ExperienceEmpty />)
   }
 
+  const heroModel = heroResult.data ?? {
+    heroSlides: [],
+    sections: [],
+    carousel: { pools: [] },
+    missingData: [],
+  }
   const languageSlug = publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
   const visibleContent = projectWatchHomeVisibleContent({
-    model: heroResult.data,
+    model: heroModel,
     blocks: builderBlocks,
     languageSlug,
   })
@@ -144,7 +164,8 @@ export default async function HomePage({ params }: PageProps) {
       <WatchHomeExperiencePage
         audienceEnabled={audienceEnabled}
         audience={audience}
-        heroModel={heroResult.data}
+        heroModel={heroModel}
+        heroUnavailable={Boolean(heroResult.error)}
         blocks={visibleContent.blocks}
         locale={locale}
         languageSlug={languageSlug}

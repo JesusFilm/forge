@@ -4,12 +4,12 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 29, 2026)
+## Status (October 30, 2026)
 
-- **Total tickets:** 985
-- **Complete:** 746
+- **Total tickets:** 988
+- **Complete:** 748
 - **Cancelled:** 43
-- **In progress:** 81
+- **In progress:** 82
 - **Not started:** 57
 - **Blocked:** 58
 - **Overdue and open:** 0
@@ -242,7 +242,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | —     | 1    | —   | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | —     | 1    | —   | complete    |
 | [feat-673](content-discovery/feat-673-watch-unavailable-language-identity.md)                                  | Preserve selected catalog language on unavailable Watch pages                                   | vlad       | P2       | —     | 1    | —   | complete    |
-| [feat-905](content-discovery/feat-905-retired-behavioral-schema-removal.md)                                    | Remove drained behavioral recommendation schema and code                                        | nisal      | P2       | —     | 7    | —   | not-started |
+| [feat-905](content-discovery/feat-905-retired-behavioral-schema-removal.md)                                    | Remove drained behavioral recommendation schema and code                                        | nisal      | P2       | —     | 7    | —   | complete    |
 
 ### Media Generation
 
@@ -917,6 +917,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-899](platform/feat-899-mobile-bible-swipe-demo-ends-early.md)                    | Mobile Bible swipe demonstration ends after one cycle                                 | urim       | P2       | —     | 2    | —   | not-started |
 | [feat-900](platform/feat-900-mobile-mini-player-floats-paused.md)                      | Mobile mini player can float paused after a playing page closes                       | urim       | P2       | —     | 2    | —   | not-started |
 | [feat-901](platform/feat-901-qa-runner-journey-command.md)                             | /qa-runner command for QA engineers to create or change mobile release check journeys | urim       | P2       | —     | 1    | —   | complete    |
+| [feat-907](platform/feat-907-watch-server-component-ref-errors.md)                     | Localize Watch server-component ref rendering errors                                  | nisal      | P2       | —     | 2    | —   | not-started |
 
 ### Topic Experiences
 
@@ -1020,3 +1021,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-688](topic-experiences/feat-688-watch-surface-deadline-order.md)                      | Order the Watch surface deadline pairs                                           | vlad          | P2       | —     | 1    | —   | in-progress |
 | [feat-697](topic-experiences/feat-697-watch-home-category-rail-scrollbar.md)                | Hide the Watch home category rail scrollbar                                      | vlad          | P2       | —     | 1    | —   | complete    |
 | [feat-904](topic-experiences/feat-904-tv-emulator-snapshot-playback-investigation.md)       | Investigate retained Android emulator snapshot and capture instability           | ekkasit       | P2       | —     | 2    | —   | not-started |
+| [feat-633](topic-experiences/feat-633-watch-home-hero-fail-open.md)                         | Keep Watch Home Content Available When the Hero Query Fails                      | vlad          | P1       | —     | 1    | —   | in-progress |
+| [feat-906](topic-experiences/feat-906-tv-controls-navigation-batch1.md)                     | Repair Watch TV playback controls and Home navigation                            | ekkasit       | P1       | —     | 3    | —   | complete    |

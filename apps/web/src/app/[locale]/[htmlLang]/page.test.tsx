@@ -165,7 +165,17 @@ describe("Watch root homepage", () => {
   it("renders builder-authored homepage blocks under the static hero model", async () => {
     const blocks = [
       { __typename: "WatchHomeHeroBlock", t: "watchHomeHero" },
-      { __typename: "MediaCollectionBlock", t: "mediaCollection" },
+      {
+        __typename: "MediaCollectionBlock",
+        t: "mediaCollection",
+        items: [
+          {
+            videoId: "fixture-video",
+            resolvedTitle: "Fixture film",
+            videoSlug: "fixture-film",
+          },
+        ],
+      },
     ]
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -190,6 +200,7 @@ describe("Watch root homepage", () => {
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
       audienceEnabled: false,
+      heroUnavailable: false,
       heroModel,
       blocks,
       locale: "en",
@@ -197,6 +208,143 @@ describe("Watch root homepage", () => {
       legacyCategoryRailCompatibility: false,
       publicDocumentPathname: "/watch",
     })
+  })
+
+  it("keeps builder-authored homepage blocks when the hero query fails", async () => {
+    const blocks = [
+      {
+        __typename: "MediaCollectionBlock",
+        t: "mediaCollection",
+        items: [
+          {
+            videoId: "fixture-video",
+            resolvedTitle: "Fixture film",
+            videoSlug: "fixture-film",
+          },
+        ],
+      },
+    ]
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: { kind: "experience", experience: { blocks } },
+      error: null,
+    })
+
+    const element = await HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    const home = element.props.children.props.children.props.children[1]
+    expect(home.type).toBe(watchHomeExperiencePageMock)
+    expect(home.props).toEqual(
+      expect.objectContaining({
+        heroUnavailable: true,
+        heroModel: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        blocks,
+      }),
+    )
+  })
+
+  it("preserves audience and legacy props while the hero is unavailable", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    const audience = {
+      kind: "authored",
+      sourceLocale: "en",
+      config: { roles: [] },
+      identity: "fixture",
+    }
+    resolveWatchAudienceMock.mockResolvedValue(audience)
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Hero failed"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [{ __typename: "TextBlock", heading: "Authored body" }],
+        },
+        watchHomeCategoryRailCompatibility: "legacy-schema",
+      },
+      error: null,
+    })
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audienceEnabled: true,
+        audience,
+        legacyCategoryRailCompatibility: true,
+        publicDocumentPathname: "/watch",
+      }),
+      undefined,
+    )
+  })
+
+  it("starts the hero and body together and waits for both resolved results", async () => {
+    let finishHero!: (value: unknown) => void
+    let finishBody!: (value: unknown) => void
+    resolveWatchHomeMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishHero = resolve
+      }),
+    )
+    resolveWatchPageMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishBody = resolve
+      }),
+    )
+    const pending = HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+    })
+    await vi.waitFor(() => expect(resolveWatchPageMock).toHaveBeenCalled())
+    expect(resolveWatchHomeMock).toHaveBeenCalled()
+    finishBody({
+      data: {
+        kind: "experience",
+        experience: {
+          blocks: [{ __typename: "TextBlock", heading: "Body ready" }],
+        },
+      },
+      error: null,
+    })
+    let settled = false
+    void pending.then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    finishHero({ data: null, error: new Error("Resolved hero error") })
+    const element = await pending
+    expect(element.props.children.props.children.props.children[1].type).toBe(
+      watchHomeExperiencePageMock,
+    )
+  })
+
+  it("shows the hero error when both the hero and builder body are unavailable", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+
+    const element = await HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(element.props.children.props.children.type).toBe(experienceErrorMock)
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
   })
 
   it("keeps the static hero shell when the builder homepage is missing", async () => {
@@ -208,6 +356,7 @@ describe("Watch root homepage", () => {
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
       audienceEnabled: false,
+      heroUnavailable: false,
       heroModel,
       blocks: [],
       locale: "en",
@@ -215,6 +364,23 @@ describe("Watch root homepage", () => {
       legacyCategoryRailCompatibility: false,
       publicDocumentPathname: "/watch",
     })
+  })
+
+  it("keeps the healthy hero when the body query fails operationally", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: null,
+      error: new Error("Body unavailable"),
+    })
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "en" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ heroModel, blocks: [] }),
+      undefined,
+    )
+    expect(experienceErrorMock).not.toHaveBeenCalled()
   })
 
   it("threads the old-schema category rail compatibility flag", async () => {
