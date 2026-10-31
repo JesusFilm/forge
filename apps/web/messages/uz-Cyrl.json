@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеосига ўтиш",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Асосий мазмунга ўтиш"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project бош саҳифаси",
     "navigation": "Пастки навигация",

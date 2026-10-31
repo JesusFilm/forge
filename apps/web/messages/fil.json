@@ -530,6 +530,9 @@
     "scrollToVideo": "Mag-scroll sa video na {title}",
     "forYou": "Para sa iyo"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumaktaw sa pangunahing nilalaman"
+  },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",
     "navigation": "Nabigasyon sa footer",

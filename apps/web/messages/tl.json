@@ -395,6 +395,9 @@
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumaktaw sa pangunahing nilalaman"
+  },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",
     "navigation": "Pag-navigate sa footer",

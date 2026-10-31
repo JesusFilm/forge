@@ -530,6 +530,9 @@
     "scrollToVideo": "Tadiavo ny lahatsary {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Hanketo amin'ny votoaty fototra"
+  },
   "WatchFooter": {
     "home": "Pejy fandraisana Jesus Film Project",
     "navigation": "Fikarohana ambany pejy",

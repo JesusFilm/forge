@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеосуна түшүңүз",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Кол утка шилчиир"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project баш бети",
     "navigation": "Төмөнкү навигация",

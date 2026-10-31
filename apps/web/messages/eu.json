@@ -530,6 +530,9 @@
     "scrollToVideo": "Joan {title} bideora",
     "forYou": "Zuretzat"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Joan eduki nagusira"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project hasiera",
     "navigation": "Orri-azpiko nabigazioa",

@@ -395,6 +395,9 @@
     "backToWatch": "Watch に戻る",
     "browseVideos": "動画を閲覧"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "メインコンテンツへスキップ"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ホーム",
     "navigation": "フッターナビゲーション",

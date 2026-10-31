@@ -539,6 +539,9 @@
     "nextVideoPreview": "Следующее видео в предпросмотре",
     "forYou": "Рекомендуем вам"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Перейти к основному содержанию"
+  },
   "WatchFooter": {
     "home": "Главная Jesus Film Project",
     "navigation": "Навигация в нижней части страницы",

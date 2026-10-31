@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrollja għall-video {title}",
     "forYou": "Għalik"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Aqbeż għall-kontenut ewlieni"
+  },
   "WatchFooter": {
     "home": "Dar Jesus Film Project",
     "navigation": "Navigazzjoni tal-footer",

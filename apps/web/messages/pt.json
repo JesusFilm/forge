@@ -395,6 +395,9 @@
     "backToWatch": "Voltar ao Watch",
     "browseVideos": "Procurar vídeos"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ir para o conteúdo principal"
+  },
   "WatchFooter": {
     "home": "Página inicial do Jesus Film Project",
     "navigation": "Navegação do rodapé",
