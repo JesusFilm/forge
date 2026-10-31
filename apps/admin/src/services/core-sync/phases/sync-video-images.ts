@@ -14,6 +14,7 @@ import { coreQuery } from "../core-client"
 import { CoreVideoImageSchema } from "../schemas/video-image"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 
 // 100 videos × ~2 images each = ~200 image rows per response. Conservative
 // page size to keep Core's response under its per-call cost ceiling — the
@@ -148,64 +149,80 @@ export async function syncVideoImages({
     progress.setTotal(offset + rawVideos.length)
 
     try {
-      let updated = 0
-      let skippedMissingVideo = 0
-      const missingVideoSamples: Array<{ imageId: string; videoId: string }> =
-        []
-      await prisma.$transaction(async (tx) => {
-        for (const image of images) {
-          if (!image.videoId) continue
-          const videoId = videoMap.get(image.videoId)
-          if (!videoId) {
-            skippedMissingVideo++
-            if (missingVideoSamples.length < 5) {
-              missingVideoSamples.push({
-                imageId: image.id,
-                videoId: image.videoId,
-              })
-            }
-            continue
-          }
-          seenCoreIds.add(image.id)
+      const pageResult = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            let updated = 0
+            let skippedMissingVideo = 0
+            const missingVideoSamples: Array<{
+              imageId: string
+              videoId: string
+            }> = []
+            const pageSeenCoreIds: string[] = []
 
-          await tx.videoImage.upsert({
-            where: { coreId: image.id },
-            create: {
-              coreId: image.id,
-              videoId,
-              url: image.url,
-              aspectRatio: image.aspectRatio,
-              mobileCinematicHigh: image.mobileCinematicHigh,
-              mobileCinematicLow: image.mobileCinematicLow,
-              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-              thumbnail: image.thumbnail,
-              videoStill: image.videoStill,
-              syncedAt: new Date(),
-            },
-            update: {
-              videoId,
-              url: image.url,
-              aspectRatio: image.aspectRatio,
-              mobileCinematicHigh: image.mobileCinematicHigh,
-              mobileCinematicLow: image.mobileCinematicLow,
-              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-              thumbnail: image.thumbnail,
-              videoStill: image.videoStill,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          updated++
-        }
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += updated
-      if (skippedMissingVideo > 0) {
+            for (const image of images) {
+              if (!image.videoId) continue
+              const videoId = videoMap.get(image.videoId)
+              if (!videoId) {
+                skippedMissingVideo++
+                if (missingVideoSamples.length < 5) {
+                  missingVideoSamples.push({
+                    imageId: image.id,
+                    videoId: image.videoId,
+                  })
+                }
+                continue
+              }
+              pageSeenCoreIds.push(image.id)
+
+              await tx.videoImage.upsert({
+                where: { coreId: image.id },
+                create: {
+                  coreId: image.id,
+                  videoId,
+                  url: image.url,
+                  aspectRatio: image.aspectRatio,
+                  mobileCinematicHigh: image.mobileCinematicHigh,
+                  mobileCinematicLow: image.mobileCinematicLow,
+                  mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+                  thumbnail: image.thumbnail,
+                  videoStill: image.videoStill,
+                  syncedAt: new Date(),
+                },
+                update: {
+                  videoId,
+                  url: image.url,
+                  aspectRatio: image.aspectRatio,
+                  mobileCinematicHigh: image.mobileCinematicHigh,
+                  mobileCinematicLow: image.mobileCinematicLow,
+                  mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+                  thumbnail: image.thumbnail,
+                  videoStill: image.videoStill,
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+              updated++
+            }
+
+            return {
+              updated,
+              skippedMissingVideo,
+              missingVideoSamples,
+              pageSeenCoreIds,
+            }
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-images.page.${offset}` },
+      )
+      for (const coreId of pageResult.pageSeenCoreIds) seenCoreIds.add(coreId)
+      stats.updated += pageResult.updated
+      if (pageResult.skippedMissingVideo > 0) {
         console.warn(
           JSON.stringify({
             event: "core-sync.video-image.skipped-missing-videos",
             offset,
-            count: skippedMissingVideo,
-            samples: missingVideoSamples,
+            count: pageResult.skippedMissingVideo,
+            samples: pageResult.missingVideoSamples,
           }),
         )
       }
@@ -242,15 +259,29 @@ export async function syncVideoImages({
   // < PAGE_SIZE`. Sibling phases (sync-videos, sync-dubs) use the same
   // `seenCoreIds.size > 0` guard.
   if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
-    const result = await prisma.videoImage.updateMany({
-      where: {
-        source: "CORE",
-        deletedAt: null,
-        OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    try {
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.videoImage.updateMany({
+            where: {
+              source: "CORE",
+              deletedAt: null,
+              OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.video-images.soft-delete" },
+      )
+      stats.softDeleted += result.count
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-image.soft-delete.error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
   }
 
   return stats

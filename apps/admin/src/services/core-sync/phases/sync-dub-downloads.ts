@@ -8,6 +8,7 @@ import { coreQuery, CoreGraphQLError } from "../core-client"
 import { CoreDubDownloadSchema } from "../schemas/dub-download"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 export const PAGE_SIZE = 20000
@@ -271,11 +272,15 @@ export async function syncDubDownloads({
     })
 
     try {
-      await prisma.$transaction(async (tx) => {
-        await bulkUpsertDownloads(tx, writes, {
-          refreshUnchangedRows: !since,
-        })
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
+      await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            await bulkUpsertDownloads(tx, writes, {
+              refreshUnchangedRows: !since,
+            })
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-dub-downloads.page.${pageOffset}` },
+      )
       stats.updated += writes.length
     } catch (err) {
       stats.errors++
@@ -353,15 +358,29 @@ export async function syncDubDownloads({
   }
 
   if (!since && stats.errors === 0) {
-    const result = await prisma.videoDubDownload.updateMany({
-      where: {
-        source: "CORE",
-        deletedAt: null,
-        OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    try {
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.videoDubDownload.updateMany({
+            where: {
+              source: "CORE",
+              deletedAt: null,
+              OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.video-dub-downloads.soft-delete" },
+      )
+      stats.softDeleted += result.count
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-dub-download.soft-delete.error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
   }
 
   return stats

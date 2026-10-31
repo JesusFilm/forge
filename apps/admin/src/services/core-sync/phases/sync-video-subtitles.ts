@@ -12,6 +12,7 @@ import { coreQuery, CoreGraphQLError } from "../core-client"
 import { CoreVideoSubtitleSchema } from "../schemas/video-subtitle"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 export const PAGE_SIZE = 500
@@ -365,88 +366,106 @@ export async function syncVideoSubtitles({
     progress.setTotal(pageOffset + subtitles.length)
 
     try {
-      let pageUpdated = 0
-      let pageSkippedMissingParent = 0
-      let pageSkippedManagerOwned = 0
-      const missingParentSamples: Array<{
-        subtitleId: string
-        videoId: string
-        videoEditionId: string
-      }> = []
+      const pageResult = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            let pageSkippedMissingParent = 0
+            let pageSkippedManagerOwned = 0
+            const missingParentSamples: Array<{
+              subtitleId: string
+              videoId: string
+              videoEditionId: string
+            }> = []
+            const pageSkippedMissingParentIds: string[] = []
 
-      await prisma.$transaction(async (tx) => {
-        const existingSubtitles = await tx.videoSubtitle.findMany({
-          where: { coreId: { in: subtitles.map((subtitle) => subtitle.id) } },
-          select: { coreId: true, source: true },
-        })
-        const managerOwnedCoreIds = new Set(
-          existingSubtitles
-            .filter((subtitle) => subtitle.source === "MANAGER")
-            .map((subtitle) => subtitle.coreId)
-            .filter((coreId): coreId is string => coreId != null),
-        )
+            const existingSubtitles = await tx.videoSubtitle.findMany({
+              where: {
+                coreId: { in: subtitles.map((subtitle) => subtitle.id) },
+              },
+              select: { coreId: true, source: true },
+            })
+            const managerOwnedCoreIds = new Set(
+              existingSubtitles
+                .filter((subtitle) => subtitle.source === "MANAGER")
+                .map((subtitle) => subtitle.coreId)
+                .filter((coreId): coreId is string => coreId != null),
+            )
 
-        const writes: SubtitleWrite[] = []
-        for (const subtitle of subtitles) {
-          if (managerOwnedCoreIds.has(subtitle.id)) {
-            pageSkippedManagerOwned++
-            continue
-          }
+            const writes: SubtitleWrite[] = []
+            for (const subtitle of subtitles) {
+              if (managerOwnedCoreIds.has(subtitle.id)) {
+                pageSkippedManagerOwned++
+                continue
+              }
 
-          const videoId = videoMap.get(subtitle.videoId)
-          const videoEditionId = editionMap.get(subtitle.videoEdition.id)
-          if (!videoId || !videoEditionId) {
-            pageSkippedMissingParent++
-            skippedMissingParentIds.add(subtitle.id)
-            if (missingParentSamples.length < 5) {
-              missingParentSamples.push({
-                subtitleId: subtitle.id,
-                videoId: subtitle.videoId,
-                videoEditionId: subtitle.videoEdition.id,
+              const videoId = videoMap.get(subtitle.videoId)
+              const videoEditionId = editionMap.get(subtitle.videoEdition.id)
+              if (!videoId || !videoEditionId) {
+                pageSkippedMissingParent++
+                pageSkippedMissingParentIds.push(subtitle.id)
+                if (missingParentSamples.length < 5) {
+                  missingParentSamples.push({
+                    subtitleId: subtitle.id,
+                    videoId: subtitle.videoId,
+                    videoEditionId: subtitle.videoEdition.id,
+                  })
+                }
+                continue
+              }
+
+              const updatedAt = subtitle.updatedAt
+                ? new Date(subtitle.updatedAt)
+                : new Date()
+
+              writes.push({
+                id: randomUUID(),
+                coreId: subtitle.id,
+                videoId,
+                videoEditionId,
+                languageId: langMap.get(subtitle.languageId) ?? null,
+                value: subtitle.value,
+                primary: String(subtitle.primary),
+                vttSrc: subtitle.vttSrc,
+                srtSrc: subtitle.srtSrc,
+                updatedAt: updatedAt.toISOString(),
               })
             }
-            continue
-          }
 
-          const updatedAt = subtitle.updatedAt
-            ? new Date(subtitle.updatedAt)
-            : new Date()
+            await bulkUpsertVideoSubtitles(tx, writes, {
+              refreshUnchangedRows,
+            })
 
-          writes.push({
-            id: randomUUID(),
-            coreId: subtitle.id,
-            videoId,
-            videoEditionId,
-            languageId: langMap.get(subtitle.languageId) ?? null,
-            value: subtitle.value,
-            primary: String(subtitle.primary),
-            vttSrc: subtitle.vttSrc,
-            srtSrc: subtitle.srtSrc,
-            updatedAt: updatedAt.toISOString(),
-          })
-        }
+            return {
+              pageUpdated: writes.length,
+              pageSkippedMissingParent,
+              pageSkippedManagerOwned,
+              missingParentSamples,
+              pageSkippedMissingParentIds,
+            }
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-subtitles.page.${pageOffset}` },
+      )
 
-        await bulkUpsertVideoSubtitles(tx, writes, { refreshUnchangedRows })
-        pageUpdated += writes.length
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-
-      stats.updated += pageUpdated
-      if (pageSkippedMissingParent > 0) {
+      for (const subtitleId of pageResult.pageSkippedMissingParentIds) {
+        skippedMissingParentIds.add(subtitleId)
+      }
+      stats.updated += pageResult.pageUpdated
+      if (pageResult.pageSkippedMissingParent > 0) {
         console.warn(
           JSON.stringify({
             event: "core-sync.video-subtitle.skipped-missing-parent",
             offset: pageOffset,
-            count: pageSkippedMissingParent,
-            samples: missingParentSamples,
+            count: pageResult.pageSkippedMissingParent,
+            samples: pageResult.missingParentSamples,
           }),
         )
       }
-      if (pageSkippedManagerOwned > 0) {
+      if (pageResult.pageSkippedManagerOwned > 0) {
         console.warn(
           JSON.stringify({
             event: "core-sync.video-subtitle.skipped-manager-owned",
             offset: pageOffset,
-            count: pageSkippedManagerOwned,
+            count: pageResult.pageSkippedManagerOwned,
           }),
         )
       }
@@ -574,14 +593,18 @@ export async function syncVideoSubtitles({
   }
 
   try {
-    const result = await prisma.$executeRaw`
-      UPDATE "video_subtitle"
-      SET "deleted_at" = NOW()
-      WHERE "source" = 'core'::"SourceTier"
-        AND "deleted_at" IS NULL
-        AND "core_id" IS NOT NULL
-        AND NOT ("core_id" = ANY(${toPgArray(Array.from(inventory.ids))}::text[]))
-    `
+    const result = await withPrismaPoolTimeoutRetry(
+      () =>
+        prisma.$executeRaw`
+          UPDATE "video_subtitle"
+          SET "deleted_at" = NOW()
+          WHERE "source" = 'core'::"SourceTier"
+            AND "deleted_at" IS NULL
+            AND "core_id" IS NOT NULL
+            AND NOT ("core_id" = ANY(${toPgArray(Array.from(inventory.ids))}::text[]))
+        `,
+      { operation: "core-sync.video-subtitles.soft-delete" },
+    )
     stats.softDeleted += Number(result)
   } catch (err) {
     stats.errors++

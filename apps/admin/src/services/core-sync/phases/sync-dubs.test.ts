@@ -425,4 +425,188 @@ describe("syncDubs", () => {
     expect(prisma.videoDub.updateMany).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
+
+  it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariants: [
+          {
+            id: "variant-1",
+            videoId: "video-core-1",
+            slug: "dub",
+            language: null,
+            duration: 10,
+            lengthInMilliseconds: null,
+            hls: null,
+            dash: null,
+            share: null,
+            downloadable: false,
+            published: true,
+            brightcoveId: null,
+            videoEdition: null,
+            muxVideo: null,
+          },
+        ],
+      },
+    } as never)
+
+    const tx = makeTxFake()
+    const prisma = makePrismaFake({ tx })
+    prisma.$transaction = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+      })
+      .mockImplementationOnce(async (fn: (trx: TxFake) => Promise<void>) =>
+        fn(tx),
+      )
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubs({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(stats.updated).toBe(1)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout transaction error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariants: [
+          {
+            id: "variant-1",
+            videoId: "video-core-1",
+            slug: "dub",
+            language: null,
+            duration: 10,
+            lengthInMilliseconds: null,
+            hls: null,
+            dash: null,
+            share: null,
+            downloadable: false,
+            published: true,
+            brightcoveId: null,
+            videoEdition: null,
+            muxVideo: null,
+          },
+        ],
+      },
+    } as never)
+
+    const tx = makeTxFake()
+    const prisma = makePrismaFake({ tx })
+    prisma.$transaction = vi.fn().mockImplementationOnce(() => {
+      throw new Error("some other failure")
+    })
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubs({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
+
+  it("retries the soft-delete updateMany when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariants: [
+          {
+            id: "variant-1",
+            videoId: "video-core-1",
+            slug: null,
+            language: { id: "lang-en" },
+            duration: 0,
+            lengthInMilliseconds: null,
+            hls: null,
+            dash: null,
+            share: null,
+            downloadable: false,
+            published: true,
+            brightcoveId: null,
+            videoEdition: null,
+            muxVideo: null,
+            downloads: [],
+          },
+        ],
+      },
+    } as never)
+
+    const tx = makeTxFake()
+    const prisma = makePrismaFake({ tx, executeRawResult: 7 })
+    prisma.videoDub.updateMany = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+      })
+      .mockResolvedValueOnce({ count: 7 })
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubs({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.videoDub.updateMany).toHaveBeenCalledTimes(2)
+    expect(stats.softDeleted).toBe(7)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout soft-delete error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariants: [
+          {
+            id: "variant-1",
+            videoId: "video-core-1",
+            slug: null,
+            language: { id: "lang-en" },
+            duration: 0,
+            lengthInMilliseconds: null,
+            hls: null,
+            dash: null,
+            share: null,
+            downloadable: false,
+            published: true,
+            brightcoveId: null,
+            videoEdition: null,
+            muxVideo: null,
+            downloads: [],
+          },
+        ],
+      },
+    } as never)
+
+    const tx = makeTxFake()
+    const prisma = makePrismaFake({ tx, executeRawResult: 7 })
+    prisma.videoDub.updateMany = vi.fn().mockImplementationOnce(() => {
+      throw new Error("some other failure")
+    })
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubs({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.videoDub.updateMany).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

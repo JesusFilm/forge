@@ -9,6 +9,7 @@ import { coreQuery } from "../core-client"
 import { CoreVideoEditionSchema } from "../schemas/video-edition"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 const VIDEO_EDITIONS_QUERY = `
@@ -154,9 +155,13 @@ export async function syncVideoEditions({
         name: edition.name ?? "",
       }))
 
-      await prisma.$transaction(async (tx) => {
-        await bulkUpsertVideoEditions(tx, writes)
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
+      await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            await bulkUpsertVideoEditions(tx, writes)
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-editions.page.${offset}` },
+      )
       stats.updated += writes.length
     } catch (err) {
       stats.errors++
@@ -185,15 +190,29 @@ export async function syncVideoEditions({
   }
 
   if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
-    const result = await prisma.videoEdition.updateMany({
-      where: {
-        source: "CORE",
-        coreId: { notIn: [...seenCoreIds] },
-        deletedAt: null,
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    try {
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.videoEdition.updateMany({
+            where: {
+              source: "CORE",
+              coreId: { notIn: [...seenCoreIds] },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.video-editions.soft-delete" },
+      )
+      stats.softDeleted += result.count
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-edition.soft-delete.error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
   }
 
   return stats
