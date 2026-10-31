@@ -888,13 +888,18 @@ describe("WatchSemanticRecommendations lifecycle", () => {
   })
 
   it("fails open to the trusted href when tab storage is unavailable", async () => {
+    // Spy on the prototype of the `sessionStorage` the component reads, not
+    // the global `Storage`: from Node 25 the runtime's own Web Storage can
+    // back `sessionStorage` while `Storage` is still jsdom's, so a
+    // `Storage.prototype` spy silently never fires.
+    const storagePrototype = Object.getPrototypeOf(sessionStorage) as Storage
     const storageGet = vi
-      .spyOn(Storage.prototype, "getItem")
+      .spyOn(storagePrototype, "getItem")
       .mockImplementation(() => {
         throw new DOMException("Storage disabled", "SecurityError")
       })
     const storageSet = vi
-      .spyOn(Storage.prototype, "setItem")
+      .spyOn(storagePrototype, "setItem")
       .mockImplementation(() => {
         throw new DOMException("Storage disabled", "SecurityError")
       })

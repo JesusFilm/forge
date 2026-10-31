@@ -11,7 +11,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import type { LanguagePickerVariant } from "@/components/watch/LanguagePickerModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import {
-  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  writeWatchChapterCarouselPreserveState,
   type WatchChapterCarouselPreserveState,
   type WatchChapterNavigationIntent,
 } from "@/components/watch/chapter-navigation"
@@ -393,10 +393,7 @@ export function WatchPageClient({
             targetVideoDocumentId: intent.targetVideoDocumentId,
             sourceCarouselIndex: intent.sourceCarouselIndex ?? null,
           }
-          window.sessionStorage.setItem(
-            WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
-            JSON.stringify(preserveState),
-          )
+          writeWatchChapterCarouselPreserveState(preserveState)
         }
         const nextHref = chapterAutoplayEnabled
           ? appendAutoplaySignal(intent.href)

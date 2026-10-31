@@ -48,7 +48,7 @@ import {
 } from "@/lib/url"
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import {
-  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  consumeWatchChapterCarouselPreserveState,
   type WatchChapterCarouselPreserveState,
   type WatchChapterNavigationIntent,
 } from "./chapter-navigation"
@@ -73,10 +73,8 @@ function consumePreservedCarouselIndex({
 }): number | null {
   if (typeof window === "undefined") return null
 
-  const raw = window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+  const raw = consumeWatchChapterCarouselPreserveState()
   if (!raw) return null
-
-  window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
 
   let state: WatchChapterCarouselPreserveState
   try {

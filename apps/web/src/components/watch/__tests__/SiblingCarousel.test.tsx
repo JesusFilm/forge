@@ -124,7 +124,11 @@ vi.mock("next-intl", () => ({
 }))
 
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
-import { WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY } from "@/components/watch/chapter-navigation"
+import {
+  WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+  consumeWatchChapterCarouselPreserveState,
+  writeWatchChapterCarouselPreserveState,
+} from "@/components/watch/chapter-navigation"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -1461,6 +1465,155 @@ describe("SiblingCarousel — edge cases", () => {
     expect(active?.getAttribute("data-href")).toBe(
       "/jesus-collection.html/child-4-slug.html",
     )
+  })
+
+  // Chrome "block all site data" (and some embedded/privacy browsers) make
+  // the `window.sessionStorage` getter itself throw a SecurityError. The
+  // carousel reads it in a render-time state initializer, so an unguarded
+  // read replaced the whole film page with the route error.
+  function blockSessionStorage(behaviour: "getter" | "quota"): () => void {
+    const original = Object.getOwnPropertyDescriptor(window, "sessionStorage")
+    const storage = window.sessionStorage
+    if (behaviour === "getter") {
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        get() {
+          throw new DOMException("Storage disabled", "SecurityError")
+        },
+      })
+    } else {
+      const quota = () => {
+        throw new DOMException("Quota exceeded", "QuotaExceededError")
+      }
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: {
+          getItem: () => null,
+          setItem: quota,
+          removeItem: () => undefined,
+        },
+      })
+    }
+    return () => {
+      if (original) Object.defineProperty(window, "sessionStorage", original)
+      else Object.defineProperty(window, "sessionStorage", { value: storage })
+    }
+  }
+
+  it("renders the rail when the sessionStorage getter throws", async () => {
+    const restore = blockSessionStorage("getter")
+    try {
+      act(() => {
+        root.render(
+          <SiblingCarousel block={makeBlock(6, 3)} languageSlug="english" />,
+        )
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      const active = container.querySelector(
+        "[data-testid='sibling-carousel-item'][data-active='true']",
+      )
+      expect(active?.getAttribute("data-href")).toBe(
+        "/jesus-collection.html/child-4-slug.html",
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  for (const behaviour of ["getter", "quota"] as const) {
+    it(`hands the preserved index over once, in memory, when storage is blocked (${behaviour})`, () => {
+      const restore = blockSessionStorage(behaviour)
+      try {
+        writeWatchChapterCarouselPreserveState({
+          languageSlug: "english",
+          sourceVideoDocumentId: "child-1",
+          targetVideoDocumentId: "child-4",
+          sourceCarouselIndex: 2,
+        })
+        expect(
+          JSON.parse(consumeWatchChapterCarouselPreserveState() ?? "null"),
+        ).toEqual({
+          languageSlug: "english",
+          sourceVideoDocumentId: "child-1",
+          targetVideoDocumentId: "child-4",
+          sourceCarouselIndex: 2,
+        })
+        expect(consumeWatchChapterCarouselPreserveState()).toBeNull()
+      } finally {
+        restore()
+      }
+    })
+  }
+
+  it("reads a later stored handoff after an earlier one fell back to memory", () => {
+    const restore = blockSessionStorage("quota")
+    writeWatchChapterCarouselPreserveState({
+      languageSlug: "english",
+      sourceVideoDocumentId: "stale",
+      targetVideoDocumentId: "stale",
+    })
+    restore()
+    writeWatchChapterCarouselPreserveState({
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "fresh",
+    })
+    expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
+    expect(consumeWatchChapterCarouselPreserveState()).toBeNull()
+  })
+
+  it("hands over the fresh in-memory handoff when a full store still holds a stale one", () => {
+    // Readable but full: the earlier handoff is still stored, and writing
+    // the new one throws. The stale stored entry must not win, or the rail
+    // jumps because it targets a different video.
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({ targetVideoDocumentId: "stale" }),
+    )
+    const storage = window.sessionStorage
+    const setItem = vi.spyOn(storage, "setItem").mockImplementation(() => {
+      throw new DOMException("Quota exceeded", "QuotaExceededError")
+    })
+    try {
+      writeWatchChapterCarouselPreserveState({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "fresh",
+      })
+      expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
+      expect(consumeWatchChapterCarouselPreserveState()).toBeNull()
+      expect(storage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)).toBeNull()
+    } finally {
+      setItem.mockRestore()
+    }
+  })
+
+  it("still prefers the fresh in-memory handoff when the stale one cannot be removed", () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({ targetVideoDocumentId: "stale" }),
+    )
+    const storage = window.sessionStorage
+    const fail = () => {
+      throw new DOMException("Storage failed", "QuotaExceededError")
+    }
+    const setItem = vi.spyOn(storage, "setItem").mockImplementation(fail)
+    const removeItem = vi.spyOn(storage, "removeItem").mockImplementation(fail)
+    try {
+      writeWatchChapterCarouselPreserveState({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "fresh",
+      })
+      expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
+    } finally {
+      setItem.mockRestore()
+      removeItem.mockRestore()
+      storage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+    }
   })
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {
