@@ -66,6 +66,23 @@ import {
   WatchModalActivityProvider,
 } from "@/components/watch/WatchModalActivityProvider"
 
+// The hero CTA reads the app router so it can append the live resume position at
+// click time instead of rendering it into the href (FGE-139 / W-003). This suite
+// renders the carousel outside a Next app-router provider, so the real hook
+// throws "invariant expected app router to be mounted".
+const routerPushMock = vi.hoisted(() => vi.fn())
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: routerPushMock,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}))
+
 vi.mock("next/image", () => ({
   default: ({
     alt,
@@ -359,7 +376,26 @@ function makeTimedSequencedModel(
 let container: HTMLDivElement
 let root: Root
 
+// The hero CTA's resume position rides the click, not the rendered href
+// (FGE-139 / W-003), so both are read through these.
+function watchNowLink() {
+  return container.querySelector<HTMLAnchorElement>(
+    '[data-testid="watch-home-tv-actions"] a[href*="autoplay=1"]',
+  )
+}
+
+function clickWatchNow() {
+  const link = watchNowLink()
+  if (!link) throw new Error("watch now link did not render")
+  act(() => {
+    link.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
+    )
+  })
+}
+
 beforeEach(() => {
+  routerPushMock.mockClear()
   setRequestLocale("en")
   window.localStorage.clear()
   window.sessionStorage.clear()
@@ -855,6 +891,12 @@ describe("WatchHomePage", () => {
           .querySelector("a[href*='autoplay=1']")
           ?.getAttribute("href")
         const rendersAfterFirst = carouselRenders()
+        expect(hrefAfterFirst).toContain("autoplay=1")
+        expect(hrefAfterFirst).not.toContain("t=")
+        clickWatchNow()
+        expect(routerPushMock).toHaveBeenLastCalledWith(
+          expect.stringContaining("t=12"),
+        )
 
         setTime(12.8)
         await act(async () => {
@@ -867,7 +909,12 @@ describe("WatchHomePage", () => {
             ?.getAttribute("href"),
         ).toBe(hrefAfterFirst)
         expect(carouselRenders()).toBe(rendersAfterFirst)
-        expect(hrefAfterFirst).toContain("t=12")
+        // Equal render counts prove the same-second throttle; both click
+        // values would floor to 12 even if every event triggered a render.
+        clickWatchNow()
+        expect(routerPushMock).toHaveBeenLastCalledWith(
+          expect.stringContaining("t=12"),
+        )
 
         setTime(13.2)
         await act(async () => {
@@ -878,8 +925,12 @@ describe("WatchHomePage", () => {
           container
             .querySelector("a[href*='autoplay=1']")
             ?.getAttribute("href"),
-        ).toContain("t=13")
+        ).toBe(hrefAfterFirst)
         expect(carouselRenders()).toBe(rendersAfterFirst + 1)
+        clickWatchNow()
+        expect(routerPushMock).toHaveBeenLastCalledWith(
+          expect.stringContaining("t=13"),
+        )
       } finally {
         vi.useRealTimers()
       }
@@ -1985,9 +2036,13 @@ describe("WatchHomePage", () => {
         video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
       })
 
-      // The resume offset now reaches far past the retired 30-second cap.
-      expect(container.querySelector("a[href*='t=42']")?.textContent).toContain(
-        "Watch Now",
+      // The resume offset now reaches far past the retired 30-second cap. It
+      // rides the click rather than the rendered href (FGE-139 / W-003), so the
+      // labelled affordance is checked here instead of through an href match.
+      expect(watchNowLink()?.textContent).toContain("Watch Now")
+      clickWatchNow()
+      expect(routerPushMock).toHaveBeenLastCalledWith(
+        expect.stringContaining("t=42"),
       )
 
       await act(async () => {
@@ -2558,7 +2613,7 @@ describe("WatchHomePage", () => {
     )
   })
 
-  it("carries the hero preview playback time into the watch now link", async () => {
+  it("carries the hero preview playback time into the watch now navigation", async () => {
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)
     })
@@ -2579,11 +2634,24 @@ describe("WatchHomePage", () => {
       video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
     })
 
-    expect(
-      container.querySelector(
-        "a[href='/jesus.html/english.html?t=12&autoplay=1']",
-      )?.textContent,
-    ).toContain("Watch Now")
+    // The position is carried at CLICK time, not in the rendered href: a href
+    // that moved with playback re-prefetched once a second (FGE-139 / W-003).
+    const cta = watchNowLink()
+    expect(cta?.getAttribute("href")).toBe(
+      "/jesus.html/english.html?autoplay=1",
+    )
+    expect(cta?.textContent).toContain("Watch Now")
+
+    clickWatchNow()
+
+    // This shows only that the handler called the mocked router's push once.
+    // The real `next/link` renders here with no live routing context, so the
+    // push count does not show whether Link's own navigation was suppressed.
+    // The cancellation is pinned in WatchHomeTvCarousel.primaryAction.test.tsx.
+    expect(routerPushMock).toHaveBeenCalledTimes(1)
+    expect(routerPushMock).toHaveBeenLastCalledWith(
+      "/jesus.html/english.html?t=12&autoplay=1",
+    )
   })
 
   it("shows available subtitles while the hero preview is muted", async () => {
@@ -3558,8 +3626,7 @@ describe("WatchHomePage", () => {
       const watchNow = container.querySelector(
         '[data-testid="watch-home-tv-actions"] a',
       ) as HTMLAnchorElement
-      // Focus arms the hero link's prefetch gate (a state update), so it
-      // must run inside act.
+      // Settle focus before advancing the clock to test anchor identity.
       act(() => {
         watchNow.focus()
       })

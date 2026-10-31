@@ -32,6 +32,9 @@ import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import { writeWatchUnavailableRecoveryContext } from "@/lib/watch-unavailable-recovery-context"
 import { cn } from "@/lib/utils"
+import { isUnmodifiedPrimaryNavigation } from "@/lib/link-navigation"
+
+export { isUnmodifiedPrimaryNavigation }
 
 type VideoCardProps = {
   result: SearchResult
@@ -399,20 +402,5 @@ export function VideoCard({
       </div>
       <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
     </Link>
-  )
-}
-
-export function isUnmodifiedPrimaryNavigation(
-  event: Pick<
-    ReactMouseEvent<HTMLAnchorElement>,
-    "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey"
-  >,
-): boolean {
-  return (
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey
   )
 }

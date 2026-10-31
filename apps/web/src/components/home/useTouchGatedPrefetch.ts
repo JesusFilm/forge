@@ -50,26 +50,15 @@ function serverHoverCapability(): boolean {
 }
 
 /**
- * Prefetch posture for a small, bounded set of Watch home links (the hero
- * "Watch Now" action and the category rail): eager on a hover-capable
- * desktop, intent-gated on touch.
+ * Intent-gated prefetch for bounded Watch home links such as the category rail.
+ * Server HTML and hydration start gated. Hover-capable clients arm eagerly
+ * unless the caller opts out with `eagerOnHover: false`, as the category rail
+ * does because its compact home band is visible during startup.
  *
- * On a touch device `next/link`'s viewport prefetch fires one speculative
- * `?_rsc=` document request per visible link, and the hero action re-targets
- * on every advance, so a phone on a slow connection spends its bandwidth on
- * pages nobody asked for while the intro video is still buffering (W-025).
- * The link therefore ships with prefetch off and arms only on a real intent
- * signal — keyboard focus, deliberate mouse movement, or the focus some
- * touch browsers (Android Chrome) give a tapped link; iOS Safari does not
- * focus links on tap, so there it is click-only. Touch users still get the
- * click itself, as with the card latch in `MediaCollection`.
- *
- * Unlike that card latch, a hover-capable device is armed from hydration on,
- * which keeps the eager desktop posture these bounded links already had.
- * The category rail opts out of eager desktop prefetch: the compact home
- * band brings it into view during startup, before the visitor asks to browse.
- * Prefetch only ever runs client-side after mount, so the gated server render
- * loses nothing.
+ * Keyboard focus and deliberate mouse movement arm only the intended link;
+ * touch scrolling does not. Some touch browsers focus a tapped link, while
+ * iOS Safari leaves it click-only. The hero "Watch Now" action uses a separate
+ * explicit `prefetch={false}` posture that never arms on intent.
  */
 export function useTouchGatedPrefetch({
   eagerOnHover = true,

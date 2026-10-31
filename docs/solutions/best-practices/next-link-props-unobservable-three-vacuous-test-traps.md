@@ -131,6 +131,11 @@ same family as
 Prefetch posture is pinned in unit tests via the mock, or observed under
 `next build` + `next start`. Nowhere else.
 
+**Added 2026-09-22:** once you are measuring under a real build, reading the
+numbers has its own trap — a residual fetch count is ambiguous without a control
+set of untouched links in the same window. See
+[nextjs-link-prefetch-residue-needs-control-set-measurement](nextjs-link-prefetch-residue-needs-control-set-measurement.md).
+
 ### Trap 2 — `__NEXT_ROUTER_BASEPATH` is read once at module load
 
 ```js
