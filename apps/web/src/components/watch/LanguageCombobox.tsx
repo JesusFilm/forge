@@ -280,6 +280,22 @@ export function LanguageCombobox({
     if (open) searchRef.current?.focus()
   }, [open])
 
+  // A controlled parent can close the list without our own handlers running
+  // (LanguagePickerModal's capture-phase Escape stops the event before the
+  // search input sees it). Unmounting the focused search input then drops
+  // focus to <body>, so hand it back to the trigger. Focus that already moved
+  // somewhere real (an outside click, the other combobox) is left alone.
+  const wasOpenRef = useRef(open)
+  useEffect(() => {
+    const wasOpen = wasOpenRef.current
+    wasOpenRef.current = open
+    if (!wasOpen || open) return
+    const active = document.activeElement
+    if (active === null || active === document.body) {
+      triggerRef.current?.focus()
+    }
+  }, [open])
+
   useLayoutEffect(() => {
     updatePopoverLayoutRef.current = () => {
       const measuredSearchHeight =
