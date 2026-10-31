@@ -50,6 +50,7 @@ import {
   fallbackDelivery,
   flush,
   jsonResponse,
+  observedElements,
   observerCallback,
   requestBodies,
   resetRoot,
@@ -612,6 +613,126 @@ describe("WatchSemanticRecommendations", () => {
           return url.endsWith("/evidence") || url.endsWith("/select")
         }),
       ).toHaveLength(0)
+    },
+  )
+
+  it("holds the slot's place with hidden placeholders that never count as cards", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    const pending = deferred<Response>()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? pending.promise
+          : acceptedEvidenceResponse(init),
+      ),
+    )
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+
+    const loading = container.querySelector('[data-state="loading"]')!
+    expect(loading.getAttribute("aria-busy")).toBe("true")
+    expect(loading.getAttribute("aria-label")).toBe(
+      "Loading recommended videos",
+    )
+    const placeholders = loading.querySelector(':scope > [aria-hidden="true"]')
+    expect(placeholders?.childElementCount).toBeGreaterThan(0)
+    expect(loading.querySelector("a, button, [tabindex]")).toBeNull()
+    expect(loading.querySelector("[data-recommendation-key]")).toBeNull()
+    expect(observedElements()).toHaveLength(0)
+
+    pending.resolve(jsonResponse({ delivery: sixItemDelivery }))
+    await flush()
+
+    const cards = [...container.querySelectorAll("a[data-recommendation-key]")]
+    expect(cards).toHaveLength(6)
+    expect(container.querySelector('[data-state="loading"]')).toBeNull()
+    expect(
+      container.querySelector(
+        '[data-block-type="SemanticRecommendations"] > [aria-hidden="true"]',
+      ),
+    ).toBeNull()
+    expect(observedElements()).toEqual(cards)
+  })
+
+  it("collapses the placeholders when delivery has nothing to show", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ delivery: emptyDelivery })),
+    )
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    expect(container.querySelector('[data-state="loading"]')).not.toBeNull()
+    await flush()
+
+    expect(container.innerHTML).toBe("")
+  })
+
+  it.each([
+    { name: "past the slot", top: -2_500, expected: [4_000 - 1_974] },
+    { name: "at the slot", top: 120, expected: [] },
+  ])(
+    "keeps a viewer scrolled $name in place when an empty result removes the placeholders",
+    async ({ top, expected }) => {
+      startRecommendationConsentBootstrap()
+      completeRecommendationConsentBootstrap()
+      const pending = deferred<Response>()
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => pending.promise),
+      )
+      // jsdom has no layout; stand in for the reserved slot's real geometry.
+      const rect = vi
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.dataset.state === "loading"
+            ? ({ top, height: 1_974 } as DOMRect)
+            : ({ top: 0, height: 0 } as DOMRect)
+        })
+      const scrollTo = vi.fn()
+      vi.stubGlobal("scrollTo", scrollTo)
+      vi.stubGlobal("scrollY", 4_000)
+
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+          />,
+        )
+      })
+      await flush()
+      pending.resolve(jsonResponse({ delivery: emptyDelivery }))
+      await flush()
+
+      expect(container.innerHTML).toBe("")
+      expect(
+        scrollTo.mock.calls.map(
+          ([options]) => (options as ScrollToOptions).top,
+        ),
+      ).toEqual(expected)
+      rect.mockRestore()
     },
   )
 
