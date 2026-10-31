@@ -9,6 +9,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { Prisma } from "@prisma/client"
 import {
   MAX_EXACT_TITLE_TOKENS,
   searchByExactTitle,
@@ -114,6 +115,7 @@ describe("searchByKeywordWeighted", () => {
         video_core_id: "1_BibleProject",
         video_slug: "bible-project",
         video_title: "The Bible Project",
+        matched_title: "El Proyecto Biblia",
         description: "Animated bible overview",
         rank: 0.42,
       },
@@ -132,6 +134,7 @@ describe("searchByKeywordWeighted", () => {
       videoCoreId: "1_BibleProject",
       videoSlug: "bible-project",
       videoTitle: "The Bible Project",
+      matchedTitle: "El Proyecto Biblia",
       imageUrl: null,
       description: "Animated bible overview",
       rank: 0.42,
@@ -221,6 +224,8 @@ describe("searchByKeywordWeighted", () => {
     expect(joined).toMatch(/vl\.status\s*=\s*'published'/)
     expect(joined).toMatch(/v\.deleted_at IS NULL/)
     expect(joined).toMatch(/v\.no_index = false/)
+    expect(joined).toContain("ORDER BY v.id, rank DESC, vl.id")
+    expect(joined).toContain("ORDER BY sub.rank DESC, sub.video_id ASC")
   })
 })
 
@@ -293,6 +298,8 @@ describe("searchByTrigram", () => {
     // description match (or vice versa) when the same row matches both.
     expect(joined).toMatch(/GREATEST\(\s*similarity\(vl\.title/)
     expect(joined).toMatch(/similarity\(coalesce\(vl\.description/)
+    expect(joined).toContain("ORDER BY v.id, similarity DESC, vl.id")
+    expect(joined).toContain("ORDER BY sub.similarity DESC, sub.video_id ASC")
   })
 
   it("returns rows whose match came via description-side trigram", async () => {
@@ -346,7 +353,8 @@ describe("searchByExactTitle", () => {
 
     const rows = await searchByExactTitle(prisma, {
       query: "the bible project",
-      locale: "en",
+      locale: "es",
+      displayLocale: "en",
       limit: 10,
     })
 
@@ -359,6 +367,18 @@ describe("searchByExactTitle", () => {
       curated: false,
       curationPosition: null,
     })
+    const querySql = (
+      prisma.$queryRaw.mock.calls[0][0] as TemplateStringsArray
+    ).join("?")
+    expect(querySql).toMatch(
+      /video_slug,[\s\S]*?video_title,[\s\S]*?description,[\s\S]*?matched_title,[\s\S]*?title_length/,
+    )
+    expect(querySql).toMatch(
+      /FROM watch_search_curation_alias[\s\S]*?JOIN LATERAL \([\s\S]*?display_candidate\.video_id = v\.id[\s\S]*?ORDER BY display_candidate\.id\s+LIMIT 1/,
+    )
+    expect(querySql.match(/JOIN LATERAL/g)).toHaveLength(2)
+    expect(querySql).toContain("video_locale_id ASC")
+    expect(querySql).toMatch(/video_id ASC\s+LIMIT \?/)
   })
 
   it("returns exact normalized editorial curation targets with their marker", async () => {
@@ -368,6 +388,7 @@ describe("searchByExactTitle", () => {
         video_core_id: "13_0-RPGospelIntro",
         video_slug: "rescue-project-introduction",
         video_title: "Rescue Project Introduction",
+        matched_title: "Rescue Project Introduction",
         description: "A Visual Vernacular introduction.",
         title_length: 27,
         title_matched: false,
@@ -378,13 +399,17 @@ describe("searchByExactTitle", () => {
 
     const rows = await searchByExactTitle(prisma, {
       query: "  Rescue   Project  ",
-      locale: "en",
+      locale: "es",
+      displayLocale: "en",
       limit: 20,
     })
 
     expect(rows[0]).toMatchObject({
       resultId: "video-rescue-intro",
       videoCoreId: "13_0-RPGospelIntro",
+      videoTitle: "Rescue Project Introduction",
+      matchedTitle: "Rescue Project Introduction",
+      description: "A Visual Vernacular introduction.",
       titleMatched: false,
       curated: true,
       curationPosition: 1,
@@ -428,16 +453,18 @@ describe("searchByExactTitle", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     // Tagged-template `prisma.$queryRaw\`...\`` passes the cooked
     // strings as the 0th arg and bound values as positional args after.
-    // Our query has five positional bindings:
-    //   ${ilikeChain}  ${locale}  ${locale}  ${normalizedQuery}  ${limit}
+    // Our query has eight positional fragments, including the two
+    // parameter-free Watch visibility predicates:
+    //   ${displayLocale} ${watchVisibility} ${ilikeChain} ${locale}
+    //   ${watchVisibility} ${displayLocale} ${normalizedQuery} ${limit}
     // — `Prisma.join` collapses the 16 ILIKE clauses into one bound
-    // expression. So the call should have 1 + 5 args total.
+    // expression. So the call should have 1 + 8 args total.
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    expect(callArgs.length - 1).toBe(5)
-    // The first bound positional is the `Prisma.Sql` from `Prisma.join`,
+    expect(callArgs.length - 1).toBe(8)
+    // The third bound positional is the `Prisma.Sql` from `Prisma.join`,
     // which exposes the constituent values. Each of those is one wrapped
     // ILIKE pattern. Cap holds: exactly 16 entries.
-    const ilikeChain = callArgs[1] as { values: string[] }
+    const ilikeChain = callArgs[3] as { values: string[] }
     expect(ilikeChain.values).toHaveLength(MAX_EXACT_TITLE_TOKENS)
     for (const value of ilikeChain.values) {
       expect(value.startsWith("%")).toBe(true)
@@ -455,10 +482,150 @@ describe("searchByExactTitle", () => {
       limit: 10,
     })
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    const ilikeChain = callArgs[1] as { values: string[] }
+    const ilikeChain = callArgs[3] as { values: string[] }
     expect(ilikeChain.values).toEqual(["%the%", "%bible%"])
     const [strings] = callArgs as [TemplateStringsArray]
     expect(strings.join("?")).toMatch(/v\.no_index = false/)
+  })
+})
+
+describe.each([
+  ["weighted", searchByKeywordWeighted],
+  ["trigram", searchByTrigram],
+  ["exact", searchByExactTitle],
+] as const)("%s lexical/display locale separation", (name, retrieve) => {
+  it("applies Watch visibility before ranking and limiting every source", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await retrieve(prisma, {
+      query: "Beacon",
+      locale: "en",
+      limit: 1,
+    })
+    const [strings, ...values] = prisma.$queryRaw.mock.calls[0] as [
+      TemplateStringsArray,
+      ...unknown[],
+    ]
+    // Expand the real Prisma fragments: the raw template alone hides the
+    // canonical predicate. This checks query construction, not DB filtering.
+    const query = Prisma.sql(strings, ...values)
+    const gatedJoins = query.sql.match(
+      /JOIN video v[\s\S]*?AND v\.no_index = false\s+AND NOT \('watch' = ANY\(v\.restrict_view_platforms\)\)/gi,
+    )
+    expect(gatedJoins).toHaveLength(name === "exact" ? 2 : 1)
+    expect(query.sql).not.toContain("playback_id")
+    expect(query.sql).not.toContain("video_dub")
+    expect(query.values.at(-1)).toBe(1)
+    if (name === "exact") {
+      // Curation cannot reintroduce a hidden record after the organic guard.
+      expect(query.sql).toMatch(
+        /FROM watch_search_curation_alias[\s\S]*?JOIN video v[\s\S]*?AND NOT \('watch' = ANY\(v\.restrict_view_platforms\)\)/,
+      )
+    }
+  })
+
+  it.each(["en", undefined])(
+    "binds lexical es separately from display %s and preserves stable published projection",
+    async (displayLocale) => {
+      const prisma = mockPrisma()
+      prisma.$queryRaw.mockResolvedValueOnce([
+        {
+          video_id: "localized",
+          video_core_id: "core-localized",
+          video_slug: "localized",
+          video_title: displayLocale ? "Hope" : "Esperanza",
+          matched_title: "Esperanza",
+          description: null,
+          rank: 0.7,
+          similarity: 0.8,
+          title_length: 9,
+        },
+      ])
+
+      const [row] = await retrieve(prisma, {
+        query: "Esperanza",
+        locale: "es",
+        displayLocale,
+        limit: 10,
+      })
+      expect(row).toMatchObject({
+        videoTitle: displayLocale ? "Hope" : "Esperanza",
+        matchedTitle: "Esperanza",
+        description: null,
+      })
+      const [strings, ...values] = prisma.$queryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        ...unknown[],
+      ]
+      const sql = strings.join("?")
+      const displayBindings = strings.flatMap((part, index) =>
+        part.includes("AND display_candidate.locale = ") ? [values[index]] : [],
+      )
+      const lexicalBindings = strings.flatMap((part, index) =>
+        part.includes("AND vl.locale = ") ? [values[index]] : [],
+      )
+      expect(lexicalBindings).toEqual(["es"])
+      expect(displayBindings).toEqual(
+        name === "exact"
+          ? [displayLocale ?? "es", displayLocale ?? "es"]
+          : [displayLocale ?? "es"],
+      )
+      expect(sql).toContain("LEFT JOIN LATERAL")
+      expect(sql).toMatch(
+        /display_candidate\.status = 'published'\s+AND display_candidate\.deleted_at IS NULL\s+ORDER BY display_candidate\.id\s+LIMIT 1/,
+      )
+      // Row presence, rather than COALESCE per field, preserves a display row's
+      // null description instead of silently substituting lexical-language copy.
+      expect(sql).toContain(
+        "CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.title ELSE vl.title END AS video_title",
+      )
+      expect(sql).toContain(
+        "CASE WHEN display_vl.video_id IS NOT NULL THEN display_vl.description ELSE vl.description END AS description",
+      )
+      expect(sql).toContain("vl.title AS matched_title")
+      expect(sql).toContain("vl.deleted_at IS NULL")
+      expect(sql).toContain("vl.status = 'published'")
+      expect(sql).toContain("v.deleted_at IS NULL")
+      expect(sql).toMatch(/v\.no_index = false/i)
+      if (name === "exact") {
+        expect(sql).toMatch(
+          /FROM watch_search_curation_alias[\s\S]*?JOIN LATERAL[\s\S]*?display_candidate\.video_id = v\.id/,
+        )
+        expect(sql).toContain(
+          "BOOL_OR(title_matched) OVER (PARTITION BY video_id)",
+        )
+        expect(sql).toContain("BOOL_OR(curated) OVER (PARTITION BY video_id)")
+        expect(sql).toContain("MIN(curation_position) FILTER (WHERE curated)")
+        expect(sql).toContain("candidate_sources.title_matched DESC")
+        expect(sql).toContain("candidate_sources.curated DESC")
+        expect(sql).toContain("video_locale_id ASC")
+        expect(sql).toMatch(
+          /curation_position ASC NULLS LAST,[\s\S]*?title_length ASC,[\s\S]*?video_id ASC/,
+        )
+      }
+    },
+  )
+
+  it("retains the displayed title for legacy rows without matched-title metadata", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "legacy",
+        video_core_id: null,
+        video_slug: "legacy",
+        video_title: "Hope",
+        description: null,
+        rank: 0.7,
+        similarity: 0.8,
+        title_length: 4,
+      },
+    ])
+    const [row] = await retrieve(prisma, {
+      query: "Hope",
+      locale: "en",
+      limit: 10,
+    })
+    expect(row).toMatchObject({ videoTitle: "Hope", matchedTitle: "Hope" })
   })
 })
 
