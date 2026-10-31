@@ -36,7 +36,7 @@ type MuxVideoCapturedProps = Record<string, unknown> & {
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
-const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
+const { muxVideoMock, mockPlayerRef, muxAttach } = vi.hoisted(() => {
   type MockPlayer = {
     muted: boolean
     currentTime: number
@@ -54,6 +54,9 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
 
   // Singleton ref proxy — tests reset its fields in `beforeEach`.
   const mockPlayerRef: { current: MockPlayer | null } = { current: null }
+  // `deferred` models production's dynamic Mux chunk: the backend renders but
+  // exposes no player handle until a later render attaches it.
+  const muxAttach = { deferred: false }
   function makePlayer(): MockPlayer {
     return {
       muted: true,
@@ -75,12 +78,12 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     const { ref } = props
     mockPlayerRef.current ??= makePlayer()
     useImperativeHandle(ref as React.RefObject<unknown>, () => {
-      return mockPlayerRef.current
+      return muxAttach.deferred ? null : mockPlayerRef.current
     })
     return null
   })
 
-  return { muxVideoMock, mockPlayerRef }
+  return { muxVideoMock, mockPlayerRef, muxAttach }
 })
 
 const { writeWatchVolumePreferenceMock } = vi.hoisted(() => ({
@@ -245,6 +248,7 @@ function makeTestPlayer(
     ...overrides,
   } as TestMockPlayer
 }
+import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
@@ -263,6 +267,7 @@ beforeEach(() => {
   muxVideoMock.mockClear()
   writeWatchVolumePreferenceMock.mockClear()
   mockPlayerRef.current = null
+  muxAttach.deferred = false
   mockRouterPush.mockClear()
   mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
@@ -2229,6 +2234,66 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
   })
 
+  it("starts sound playback from Enter on Watch now when the player attaches after the key press", async () => {
+    // Production regression (2026-10-20, /watch/jesus.html): Enter's keydown
+    // activated the player, so its click no longer queued the sound intent
+    // and a keyboard user got a silent preview with no chrome.
+    muxAttach.deferred = true
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    pill.focus()
+
+    await act(async () => {
+      pill.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+      // A browser activates a focused button with a click after Enter.
+      pill.click()
+    })
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("false")
+
+    muxAttach.deferred = false
+    await act(async () => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
+    // The pill unmounted; keyboard focus moves to play/pause, not <body>.
+    expect(document.activeElement?.getAttribute("data-testid")).toBe(
+      "hero-chrome-play",
+    )
+  })
+
+  it("leaves focus alone when a pointer click on Watch now reveals the chrome", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+      pill.click()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-wrapper"]')
+        ?.getAttribute("data-chrome-revealed"),
+    ).toBe("true")
+    expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
+      "hero-chrome-play",
+    )
+  })
+
   it("primes the player on pointerdown before the sound-intent click", async () => {
     act(() => {
       root.render(<HeroPlayer block={makeBlock()} />)
@@ -2659,6 +2724,66 @@ describe("HeroPlayer — custom chrome render", () => {
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).toBeNull()
   })
+})
+
+describe("HeroPlayer — injected subtitle track language", () => {
+  function makeVideoPlayer(): HTMLVideoElement {
+    const video = document.createElement("video")
+    Object.defineProperty(video, "textTracks", {
+      configurable: true,
+      value: Object.assign([], {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    })
+    Object.assign(video, {
+      play: vi.fn(() => Promise.resolve()),
+      pause: vi.fn(),
+    })
+    return video
+  }
+
+  beforeEach(() => {
+    // jsdom has no TextTrack support; stub the track getter the effect reads.
+    Object.defineProperty(HTMLTrackElement.prototype, "track", {
+      configurable: true,
+      get() {
+        return { mode: "disabled" }
+      },
+    })
+  })
+
+  afterEach(() => {
+    // Unmount while the stub is still installed (effect cleanup reads it).
+    act(() => {
+      root.unmount()
+    })
+    root = createRoot(container)
+    Reflect.deleteProperty(HTMLTrackElement.prototype, "track")
+  })
+
+  it.each([
+    { code: "ES", expectedSrclang: "es" },
+    { code: "pt", expectedSrclang: "pt" },
+    { code: null, expectedSrclang: null },
+  ])(
+    "sets srclang=$expectedSrclang for subtitle language $code and keeps the sentinel label",
+    async ({ code, expectedSrclang }) => {
+      const video = makeVideoPlayer()
+      mockPlayerRef.current = video as unknown as typeof mockPlayerRef.current
+
+      await revealChrome(makeBlock(), {
+        subtitleVttSrc: "https://cdn.example/subtitles/x.vtt",
+        subtitleLanguageCode: code,
+        hasSubtitleOptions: true,
+      })
+
+      const track = video.querySelector("track[data-subtitle-track]")
+      expect(track).not.toBeNull()
+      expect(track?.getAttribute("srclang")).toBe(expectedSrclang)
+      expect(track?.getAttribute("label")).toBe(FORGE_SUBTITLE_TRACK_LABEL)
+    },
+  )
 })
 
 describe("HeroPlayer — chrome button interactions", () => {
