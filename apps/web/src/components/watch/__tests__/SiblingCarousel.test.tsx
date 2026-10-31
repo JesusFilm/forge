@@ -1579,7 +1579,8 @@ describe("SiblingCarousel — image priority", () => {
     const img = activeImage()
     expect(img).not.toBeNull()
     expect(img!.getAttribute("data-src")).toBe("https://cdn.test/high.jpg")
-    expect(img!.getAttribute("data-alt")).toBe("Child 1 thumbnail")
+    // Decorative: the card's visible title already names the link.
+    expect(img!.getAttribute("data-alt")).toBe("")
   })
 
   it("uses a non-empty fallback alt for informative thumbnails without titles", () => {

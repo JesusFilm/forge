@@ -466,7 +466,7 @@ export function WhatsNewFeatureVote({
             floating beside the eyebrow. */}
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold tracking-[0.3em] text-[#131111]/55 uppercase sm:text-sm">
+            <p className="text-xs font-semibold tracking-[0.3em] text-[#131111]/65 uppercase sm:text-sm">
               {WHATS_NEW_VOTES.eyebrow}
             </p>
             <h2
@@ -497,7 +497,10 @@ export function WhatsNewFeatureVote({
         <ul
           ref={scroller}
           tabIndex={0}
-          role="group"
+          // role="list" (not "group"): "group" replaced the list role, so the
+          // cards stopped being list items. Explicit because Safari drops the
+          // implicit role from list-style:none lists.
+          role="list"
           aria-label={WHATS_NEW_VOTES.carouselLabel}
           data-testid="whats-new-vote-carousel"
           className="mt-10 -mr-5 flex snap-x snap-mandatory gap-6 overflow-x-auto pr-5 pb-2 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111] md:-mr-16 md:pr-16 xl:-mr-[max(6rem,calc((100vw-1920px)/2+6rem))] xl:pr-24 [&::-webkit-scrollbar]:hidden"
@@ -508,125 +511,133 @@ export function WhatsNewFeatureVote({
             const isTarget = hovered === feature.id
             const held = armed ? stickerOf(armed) : undefined
 
+            // Keep list-item semantics and retain the focused inner node when
+            // placement clears its button role.
             return (
               <li
                 key={feature.id}
                 data-testid="whats-new-vote-card"
                 data-stuck={stuck.length > 0 ? "" : undefined}
-                {...(held
-                  ? {
-                      role: "button",
-                      tabIndex: 0,
-                      "aria-label": `${WHATS_NEW_VOTES.placeLabel} ${held.label} ${WHATS_NEW_VOTES.onLabel} ${feature.title}`,
-                      onClick: (event: React.MouseEvent<HTMLLIElement>) =>
-                        stick(
-                          feature.id,
-                          held.id,
-                          pointFor(event, event.currentTarget),
-                        ),
-                      onKeyDown: (
-                        event: React.KeyboardEvent<HTMLLIElement>,
-                      ) => {
-                        if (event.key !== "Enter" && event.key !== " ") return
-                        event.preventDefault()
-                        stick(feature.id, held.id)
-                      },
-                    }
-                  : {})}
-                onDragOver={(event) => {
-                  if (remaining <= 0) return
-                  event.preventDefault()
-                  setHovered(feature.id)
-                }}
-                onDragLeave={() => setHovered(null)}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  setHovered(null)
-                  stick(
-                    feature.id,
-                    event.dataTransfer.getData(DRAG_TYPE),
-                    pointFor(event, event.currentTarget),
-                  )
-                }}
-                /* Warm greys, matched to the FAQ band's hue: every grey on
+                className="flex w-[78%] shrink-0 snap-start sm:w-[46%] lg:w-[31%]"
+              >
+                <div
+                  data-testid="whats-new-vote-target"
+                  // Retain focus after placement without an idle tab stop.
+                  tabIndex={held ? 0 : -1}
+                  {...(held
+                    ? {
+                        role: "button",
+                        "aria-label": `${WHATS_NEW_VOTES.placeLabel} ${held.label} ${WHATS_NEW_VOTES.onLabel} ${feature.title}`,
+                        onClick: (event: React.MouseEvent<HTMLDivElement>) =>
+                          stick(
+                            feature.id,
+                            held.id,
+                            pointFor(event, event.currentTarget),
+                          ),
+                        onKeyDown: (
+                          event: React.KeyboardEvent<HTMLDivElement>,
+                        ) => {
+                          if (event.key !== "Enter" && event.key !== " ") return
+                          event.preventDefault()
+                          stick(feature.id, held.id)
+                        },
+                      }
+                    : {})}
+                  onDragOver={(event) => {
+                    if (remaining <= 0) return
+                    event.preventDefault()
+                    setHovered(feature.id)
+                  }}
+                  onDragLeave={() => setHovered(null)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setHovered(null)
+                    stick(
+                      feature.id,
+                      event.dataTransfer.getData(DRAG_TYPE),
+                      pointFor(event, event.currentTarget),
+                    )
+                  }}
+                  /* Warm greys, matched to the FAQ band's hue: every grey on
                    this shelf sits on the same warm axis, and a neutral (or
                    blue-leaning) fill reads as a different material next to
                    it. Each step keeps the OKLab lightness of the cool grey
                    it replaced, so idle / has-stickers / drop-target still
                    separate by exactly as much as before. */
-                className={`relative flex w-[78%] shrink-0 snap-start flex-col rounded-2xl border p-6 transition-colors duration-200 sm:w-[46%] lg:w-[31%] ${
-                  held ? "cursor-copy" : ""
-                } ${
-                  isTarget
-                    ? "border-[#cb333b]/60 bg-[#edebe7]"
-                    : stuck.length > 0
-                      ? "border-[#cb333b]/25 bg-[#f3f1ed]"
-                      : "border-transparent bg-[#f7f5f1]"
-                }`}
-              >
-                <Icon
-                  aria-hidden
-                  className="size-7 text-[#131111] opacity-60"
-                />
-                <h3 className="mt-5 text-lg font-semibold text-[#131111]">
-                  {feature.title}
-                </h3>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-[#131111]/65">
-                  {feature.body}
-                </p>
+                  className={`relative flex w-full flex-col rounded-2xl border p-6 transition-colors duration-200 ${
+                    held ? "cursor-copy" : ""
+                  } ${
+                    isTarget
+                      ? "border-[#cb333b]/60 bg-[#edebe7]"
+                      : stuck.length > 0
+                        ? "border-[#cb333b]/25 bg-[#f3f1ed]"
+                        : "border-transparent bg-[#f7f5f1]"
+                  }`}
+                >
+                  <Icon
+                    aria-hidden
+                    className="size-7 text-[#131111] opacity-60"
+                  />
+                  <h3 className="mt-5 text-lg font-semibold text-[#131111]">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-[#131111]/65">
+                    {feature.body}
+                  </p>
 
-                {/* Everyone's votes, not just this browser's. Absent until the
+                  {/* Everyone's votes, not just this browser's. Absent until the
                     first read lands: the page is statically cached, so there is
                     no server-rendered number to show and "0 votes" would be a
                     guess rather than a count. */}
-                <p
-                  data-testid="whats-new-vote-count"
-                  data-feature={feature.id}
-                  className="relative mt-5 text-xs font-semibold tracking-[0.18em] text-[#131111]/50 uppercase tabular-nums"
-                >
-                  {counts == null
-                    ? "\u00A0"
-                    : voteCountLabel(counts[feature.id] ?? 0)}
-                </p>
+                  <p
+                    data-testid="whats-new-vote-count"
+                    data-feature={feature.id}
+                    className="relative mt-5 text-xs font-semibold tracking-[0.18em] text-[#131111]/65 uppercase tabular-nums"
+                  >
+                    {counts == null
+                      ? "\u00A0"
+                      : voteCountLabel(counts[feature.id] ?? 0)}
+                  </p>
 
-                {/* Stuck anywhere on the card. While a sticker is held these
+                  {/* Stuck anywhere on the card. While a sticker is held these
                   are inert spans, so the card can be the drop target
                   without nesting a button inside a button. */}
-                {stuck.map((entry, index) => {
-                  const sticker = stickerOf(entry.s)
-                  const position = {
-                    left: `${entry.x}%`,
-                    top: `${entry.y}%`,
-                    rotate: `${entry.r}deg`,
-                  }
+                  {stuck.map((entry, index) => {
+                    const sticker = stickerOf(entry.s)
+                    const position = {
+                      left: `${entry.x}%`,
+                      top: `${entry.y}%`,
+                      rotate: `${entry.r}deg`,
+                    }
 
-                  if (held) {
+                    if (held) {
+                      return (
+                        <span
+                          key={`${entry.s}-${index}`}
+                          aria-hidden
+                          style={position}
+                          className="watch-sticker-art pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-[length:var(--watch-sticker-stuck)]"
+                        >
+                          {sticker?.emoji}
+                        </span>
+                      )
+                    }
+
                     return (
-                      <span
+                      <button
                         key={`${entry.s}-${index}`}
-                        aria-hidden
+                        type="button"
+                        onClick={() => peel(feature.id, index)}
+                        data-testid={`whats-new-vote-peel-${feature.id}-${index}`}
+                        aria-label={`${WHATS_NEW_VOTES.removeLabel} ${sticker?.label} ${WHATS_NEW_VOTES.fromLabel} ${feature.title}`}
                         style={position}
-                        className="watch-sticker-art pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-[length:var(--watch-sticker-stuck)]"
+                        className="watch-sticker-art watch-sticker-pop absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer text-[length:var(--watch-sticker-stuck)] transition-transform duration-200 hover:scale-115 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111]"
                       >
-                        {sticker?.emoji}
-                      </span>
+                        <span aria-hidden>{sticker?.emoji}</span>
+                      </button>
                     )
-                  }
-
-                  return (
-                    <button
-                      key={`${entry.s}-${index}`}
-                      type="button"
-                      onClick={() => peel(feature.id, index)}
-                      data-testid={`whats-new-vote-peel-${feature.id}-${index}`}
-                      aria-label={`${WHATS_NEW_VOTES.removeLabel} ${sticker?.label} ${WHATS_NEW_VOTES.fromLabel} ${feature.title}`}
-                      style={position}
-                      className="watch-sticker-art watch-sticker-pop absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer text-[length:var(--watch-sticker-stuck)] transition-transform duration-200 hover:scale-115 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111]"
-                    >
-                      <span aria-hidden>{sticker?.emoji}</span>
-                    </button>
-                  )
-                })}
+                  })}
+                </div>
               </li>
             )
           })}

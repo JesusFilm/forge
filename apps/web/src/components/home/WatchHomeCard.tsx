@@ -137,7 +137,9 @@ export function WatchHomeCard({
         {card.imageUrl ? (
           <Image
             src={card.imageUrl}
-            alt={card.imageAlt}
+            // The link is named by the visible title, so repeating it as alt
+            // text reads the title twice. Untitled cards keep the alt.
+            alt={card.title.trim() ? "" : card.imageAlt}
             fill
             sizes={
               isVertical

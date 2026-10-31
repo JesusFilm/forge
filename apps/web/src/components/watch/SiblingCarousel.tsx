@@ -455,9 +455,11 @@ export function SiblingCarousel({
               validPendingNavigation != null &&
               validPendingNavigation.href === href &&
               validPendingNavigation.targetVideoDocumentId === child.documentId
-            const thumbnailAlt = child.title
-              ? t("thumbnailAlt", { title: child.title })
-              : t("relatedVideoThumbnail")
+            // The visible card title already names the link, so a titled
+            // thumbnail is decorative; repeating the title made each link read
+            // "The Beginning thumbnail Chapter The Beginning". Untitled cards
+            // keep an informative alt.
+            const thumbnailAlt = child.title ? "" : t("relatedVideoThumbnail")
 
             const cardClassName = cn(
               "relative block aspect-video overflow-hidden rounded-lg bg-stone-900 transition shadow-[0_2px_6px_rgba(0,0,0,0.35),0_14px_32px_-12px_rgba(0,0,0,0.6)]",

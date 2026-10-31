@@ -44,6 +44,24 @@ const cardFor = (featureId: string) => {
   )[index]
 }
 
+const targetFor = (featureId: string) =>
+  cardFor(featureId).querySelector<HTMLElement>(
+    '[data-testid="whats-new-vote-target"]',
+  ) ?? cardFor(featureId)
+
+function expectOwnedListItems() {
+  const list = q("whats-new-vote-carousel")!
+  expect(list.getAttribute("role")).toBe("list")
+  const cards = list.querySelectorAll('[data-testid="whats-new-vote-card"]')
+  expect(cards).toHaveLength(WHATS_NEW_VOTES.features.length)
+  for (const card of cards) {
+    expect(card.parentElement).toBe(list)
+    expect(card.tagName).toBe("LI")
+    // An explicit button role replaces the LI's implicit listitem role.
+    expect(card.getAttribute("role") ?? "listitem").toBe("listitem")
+  }
+}
+
 /**
  * jsdom has no `DataTransfer`, so drag tests hand the handlers the three
  * members this component actually uses. React reads `dataTransfer` off the
@@ -80,7 +98,9 @@ async function nextFrame() {
 function place(stickerId: string, featureId: string) {
   click(`whats-new-vote-sticker-${stickerId}`)
   act(() => {
-    cardFor(featureId).dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    targetFor(featureId).dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    )
   })
 }
 
@@ -276,14 +296,16 @@ describe("WhatsNewFeatureVote", () => {
     place(love.id, first.id)
     click(`whats-new-vote-sticker-${yes.id}`)
 
-    expect(cardFor(first.id).getAttribute("role")).toBe("button")
+    expect(cardFor(first.id).getAttribute("role")).toBeNull()
+    expect(targetFor(first.id).getAttribute("role")).toBe("button")
+    expect(targetFor(first.id).querySelector("button")).toBeNull()
     expect(q(`whats-new-vote-peel-${first.id}-0`)).toBeNull()
   })
 
   it("sticks where the pointer lands, not in a fixed slot", () => {
     render()
     click(`whats-new-vote-sticker-${love.id}`)
-    const card = cardFor(first.id)
+    const card = targetFor(first.id)
     card.getBoundingClientRect = () =>
       ({ left: 0, top: 0, width: 400, height: 200 }) as DOMRect
     act(() => {
@@ -356,7 +378,7 @@ describe("WhatsNewFeatureVote", () => {
     await nextFrame()
 
     act(() => {
-      const card = cardFor(first.id)
+      const card = targetFor(first.id)
       const event = dragEvent("drop", love.id)
       Object.defineProperty(event, "clientX", { value: 140 })
       Object.defineProperty(event, "clientY", { value: 90 })
@@ -437,6 +459,117 @@ describe("WhatsNewFeatureVote", () => {
 
     expect(q(`whats-new-vote-sticker-${love.id}`)).not.toBeNull()
     expect(q("whats-new-vote-put-back")).toBeNull()
+  })
+
+  it("exposes the vote cards as a labelled list of list items", () => {
+    render()
+    const carousel = q("whats-new-vote-carousel")!
+    const cards = [
+      ...document.querySelectorAll('[data-testid="whats-new-vote-card"]'),
+    ]
+
+    // A "group" role here replaced the list role and orphaned every <li>.
+    expect(carousel.tagName).toBe("UL")
+    expect(carousel.getAttribute("role")).toBe("list")
+    expect(carousel.getAttribute("aria-label")).toBeTruthy()
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(card.tagName).toBe("LI")
+      expect(card.parentElement).toBe(carousel)
+    }
+  })
+
+  it("preserves list-item roles through pick-up, put-back and Escape", () => {
+    render()
+    expectOwnedListItems()
+    click(`whats-new-vote-sticker-${love.id}`)
+    expectOwnedListItems()
+    click("whats-new-vote-put-back")
+    expectOwnedListItems()
+    click(`whats-new-vote-sticker-${yes.id}`)
+    act(() => {
+      q("whats-new-vote-put-back")?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      )
+    })
+    expectOwnedListItems()
+    expect(q("whats-new-vote-put-back")).toBeNull()
+    expect(document.activeElement).toBe(q(`whats-new-vote-sticker-${yes.id}`))
+  })
+
+  it.each(["Enter", " "])(
+    "preserves list-item roles and focus when %j places a sticker",
+    (key) => {
+      render()
+      click(`whats-new-vote-sticker-${love.id}`)
+      expectOwnedListItems()
+      const target = targetFor(first.id)
+      target.focus()
+      act(() => {
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true }),
+        )
+      })
+      expectOwnedListItems()
+      expect(stuckOn(first.id)).toBe(1)
+      expect(q("whats-new-vote-remaining")?.textContent).toContain("2")
+      expect(document.activeElement).toBe(target)
+      expect(target.isConnected).toBe(true)
+      // Chromium drops focus if tabindex disappears. JSDOM retains it, so
+      // require explicit idle focusability as well as the focus contract.
+      expect(target.getAttribute("tabindex")).toBe("-1")
+      target.blur()
+      target.focus()
+      expect(document.activeElement).toBe(target)
+      expect(target.tabIndex).toBe(-1)
+    },
+  )
+
+  it("keeps idle placement targets out of sequential keyboard navigation", () => {
+    render()
+    for (const target of container.querySelectorAll<HTMLElement>(
+      '[data-testid="whats-new-vote-target"]',
+    )) {
+      expect(target.tabIndex).toBe(-1)
+      expect(target.getAttribute("role")).toBeNull()
+    }
+  })
+
+  it("preserves list-item roles and card coordinates through drag/drop", async () => {
+    render()
+    dragStart(love.id)
+    await nextFrame()
+    expectOwnedListItems()
+    const target = targetFor(first.id)
+    target.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 400, height: 200 }) as DOMRect
+    act(() => {
+      const event = dragEvent("drop", love.id)
+      Object.defineProperty(event, "clientX", { value: 140 })
+      Object.defineProperty(event, "clientY", { value: 90 })
+      target.dispatchEvent(event)
+    })
+    expectOwnedListItems()
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}")
+    expect(stored[first.id][0].x).toBeCloseTo(35, 0)
+    expect(stored[first.id][0].y).toBeCloseTo(45, 0)
+    expect(stuckOn(first.id)).toBe(1)
+  })
+
+  it("preserves list-item roles when a drag ends without placement", async () => {
+    render()
+    dragStart(love.id)
+    await nextFrame()
+    act(() => {
+      q(`whats-new-vote-sticker-${love.id}`)?.dispatchEvent(
+        dragEvent("dragend", love.id),
+      )
+    })
+    expectOwnedListItems()
+    expect(targetFor(first.id).getAttribute("role")).toBe("button")
+    expect(stuckOn(first.id)).toBe(0)
+    click("whats-new-vote-put-back")
+    expectOwnedListItems()
   })
 
   it("stands the pile under the cards, at pick-up size", () => {
