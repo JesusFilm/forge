@@ -368,6 +368,10 @@ describe("SiblingCarousel — happy path", () => {
     expect(title?.className).toContain("inline-flex")
     expect(title?.className).toContain("font-bold")
     expect(title?.className).toContain("hover:underline")
+    // Keyboard focus needs more than the hover underline on this dark rail.
+    // The ring is inset because the truncating parent clips overflow.
+    expect(title?.className).toContain("focus-visible:ring-2")
+    expect(title?.className).toContain("focus-visible:ring-inset")
     const parentIcon = title?.querySelector(
       "[data-testid='sibling-carousel-parent-icon']",
     )

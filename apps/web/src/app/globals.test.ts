@@ -1099,3 +1099,15 @@ describe("Watch Home progress ring motion", () => {
     )
   })
 })
+
+describe("fixed feedback launcher clearance", () => {
+  // The launcher is fixed bottom-left; without this, a Tab-scrolled footer
+  // link at 320px landed 12-28% underneath it.
+  it("keeps keyboard focus scrolling above the launcher", () => {
+    const base = blockBody(css, "@layer base")
+    const html = blockBody(base, "html {")
+    expect(html).toContain(
+      "scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px))",
+    )
+  })
+})
