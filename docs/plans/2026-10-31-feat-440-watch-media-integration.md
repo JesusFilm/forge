@@ -244,3 +244,40 @@ The concurrent validator remains pinned to the earlier immutable c028 tree;
 its outcomes cannot certify this repair. Fresh independent source review and
 discriminating old-source RED/new-source GREEN checks are required. Broader
 normal hooks, current CI, browser/loading and operator gates remain open.
+
+## Current-main conflict composition — October 31
+
+External PR2824 advanced main to `f7a4f189635b5c4713be50cf7cbc4f914692b4de`.
+Published2622 remains `4a199138052eba37dbba8f15e425455562d15e6b`. Object-only
+analysis established one conflicting path, SeriesEpisodeCard. The owned
+checkout integrates those exact parents without rewriting the published branch.
+The resolution retains the provider loader/unoptimized props and main's
+localized episodeLabel alt fallback, translated eyebrow/container labels and
+decorative icon treatment. Normal rerere was disabled for this operation to
+avoid incidental shared preimage writes.
+
+The existing SeriesEpisodeCard test is the one additional main-relative path
+within this conflict repair's scope. Two focused integration controls combine
+Spanish missing-title labels with exact Admin derivative pass-through and
+responsive Mux loader selection. They inspect real component props through the
+existing Next Image test double; they do not establish provider delivery,
+image decoding, browser layout or page-loading performance. Prior4a/c2CI, R2
+source review/local349/HTTP and R5 offline fixture receipts remain separate
+from this new integrated candidate. Validation and independent source review
+must be recorded against its exact tree before any publication. Broader
+feat440/FGE61 and all actual browser/loading/provider/operator gates stay open.
+
+The current composed candidate passed353 focused cases in19 files, including
+the two new composition controls and incoming main's label tests. The same
+Admin/Spanish control fails against old4a at the localized alt assertion and
+against mainf7a at the unoptimized assertion; restored composition passes.
+Normal UI-locale generation, full nonincremental Web types with the declared
+8192MiB heap, scoped app ESLint/Prettier and current-main whitespace checks pass.
+The initial offline fetch instrumentation threw synchronously and caused two
+unhandled progress-subscription errors despite passing assertions; its original
+receipt is retained. The harness now rejects fetch asynchronously like native
+fetch while still denying all network. Two blocked relative progress-fetch
+invocations in the focused run are recorded; no socket request was admitted.
+Existing jsdom navigation and test-double unoptimized warnings remain disclosed.
+Independent integrated-source review, hooks/new-headCI and actual browser/image/
+loading/provider/operator acceptance remain open; no readiness is claimed.

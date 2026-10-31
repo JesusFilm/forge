@@ -17,9 +17,24 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({
-  default: ({ src, alt }: { src: string; alt: string }) =>
-    // jsx-only: no real Next image optimization in jsdom
-    React.createElement("img", { src, alt }),
+  default: ({
+    src,
+    alt,
+    loader,
+    unoptimized,
+  }: {
+    src: string
+    alt: string
+    loader?: unknown
+    unoptimized?: boolean
+  }) =>
+    // Capture the actual Next image contract; no optimizer/provider traffic.
+    React.createElement("img", {
+      src,
+      alt,
+      "data-custom-loader": String(typeof loader === "function"),
+      "data-unoptimized": String(unoptimized === true),
+    }),
 }))
 
 vi.mock("next/link", () => ({
@@ -38,13 +53,25 @@ vi.mock("next/link", () => ({
 }))
 
 vi.mock("lucide-react", () => ({
-  FolderOpen: ({ size }: { size?: number }) => (
-    <span data-testid="folder-open-icon" data-size={size} />
+  FolderOpen: ({
+    size,
+    "aria-hidden": ariaHidden,
+  }: {
+    size?: number
+    "aria-hidden"?: "true"
+  }) => (
+    <span
+      data-testid="folder-open-icon"
+      data-size={size}
+      aria-hidden={ariaHidden}
+    />
   ),
   Play: ({ size }: { size?: number }) => (
     <span data-testid="play-icon" data-size={size} />
   ),
 }))
+
+import { setRequestLocale } from "next-intl/server"
 
 import { SeriesEpisodeCard } from "@/components/watch/SeriesEpisodeCard"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
@@ -66,6 +93,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  setRequestLocale("en")
 })
 
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
@@ -95,7 +123,11 @@ function renderCard(props: {
   index?: number
   languageSlug?: string
   parentSlug?: string
+  locale?: "en" | "es"
 }) {
+  // The global next-intl mock (vitest.setup.ts) reads its active locale
+  // from setRequestLocale.
+  setRequestLocale(props.locale ?? "en")
   act(() => {
     root.render(
       <SeriesEpisodeCard
@@ -333,6 +365,41 @@ describe("SeriesEpisodeCard — Episode N label", () => {
       "Series",
     )
   })
+
+  // Production shape from the 2026-10-20 audit: a Spanish series page
+  // rendered Spanish chrome around English "Episode 1" card labels.
+  it("renders episode and container labels in the page's UI language", () => {
+    renderCard({ episode: makeEpisode(), index: 0, locale: "es" })
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Episodio 1",
+    )
+
+    renderCard({
+      episode: makeEpisode({ label: "series", slug: "nested-series" }),
+      locale: "es",
+    })
+    expect(container.querySelector("span.uppercase")?.textContent).toBe("Serie")
+
+    renderCard({
+      episode: makeEpisode({ label: "COLLECTION", slug: "nested-collection" }),
+      locale: "es",
+    })
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Colección",
+    )
+  })
+
+  it("keeps the container icon out of the link's accessible name", () => {
+    renderCard({
+      episode: makeEpisode({ label: "series", slug: "nested-series" }),
+      locale: "es",
+    })
+    expect(
+      container.querySelector('[data-testid="folder-open-icon"]'),
+    ).toSatisfy(
+      (icon: Element | null) => icon?.getAttribute("aria-hidden") === "true",
+    )
+  })
 })
 
 describe("SeriesEpisodeCard — href", () => {
@@ -471,12 +538,59 @@ describe("SeriesEpisodeCard — alt text fallback", () => {
     expect(img?.getAttribute("alt")).toBe("The Birth of Jesus")
   })
 
-  it("falls back to 'Episode N thumbnail' when title is null", () => {
+  it("falls back to the 'Episode N' label when title is null", () => {
     renderCard({
       episode: makeEpisode({ title: null }),
       index: 4,
     })
     const img = container.querySelector("img")
-    expect(img?.getAttribute("alt")).toBe("Episode 5 thumbnail")
+    expect(img?.getAttribute("alt")).toBe("Episode 5")
+  })
+})
+
+describe("SeriesEpisodeCard — provider images with localized fallback", () => {
+  it("keeps the Admin derivative unoptimized with a Spanish fallback label", () => {
+    renderCard({
+      episode: makeEpisode({
+        images: [],
+        muxPlaybackId: "mux-vertical-1",
+        title: null,
+      }),
+      locale: "es",
+      index: 4,
+    })
+    const image = container.querySelector("img")
+    expect(image?.getAttribute("alt")).toBe("Episodio 5")
+    expect(image?.getAttribute("src")).toBe(
+      "https://image.mux.com/mux-vertical-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(image?.getAttribute("data-unoptimized")).toBe("true")
+    expect(image?.getAttribute("data-custom-loader")).toBe("false")
+  })
+
+  it("keeps responsive Mux loading with a Spanish fallback label", () => {
+    const source =
+      "https://image.mux.com/responsive-1/thumbnail.jpg?width=1000&height=500&time=2"
+    renderCard({
+      episode: makeEpisode({
+        title: null,
+        images: [
+          {
+            documentId: "responsive-image",
+            mobileCinematicHigh: source,
+            thumbnail: null,
+            mobileCinematicLow: null,
+            url: source,
+          },
+        ],
+      }),
+      locale: "es",
+      index: 1,
+    })
+    const image = container.querySelector("img")
+    expect(image?.getAttribute("alt")).toBe("Episodio 2")
+    expect(image?.getAttribute("src")).toBe(source)
+    expect(image?.getAttribute("data-unoptimized")).toBe("false")
+    expect(image?.getAttribute("data-custom-loader")).toBe("true")
   })
 })
