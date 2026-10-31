@@ -59,6 +59,7 @@ import GoogleAnalytics, {
   getGoogleAnalyticsMeasurementId,
   reportGoogleAnalyticsEvent,
 } from "@/components/GoogleAnalytics"
+import { resetWatchAnalyticsEmitState } from "@/lib/watch-analytics-contract"
 
 let container: HTMLDivElement
 let root: Root
@@ -279,6 +280,38 @@ describe("GoogleAnalytics — v2 explicit SPA page views", () => {
   beforeEach(() => {
     mockEnv.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
     mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = MEASUREMENT_ID
+    // The SPA referrer chain is module-scoped; isolate it per test.
+    resetWatchAnalyticsEmitState()
+  })
+
+  it("credits the external referrer to the first page view only (R7)", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    const referrer = vi
+      .spyOn(document, "referrer", "get")
+      .mockReturnValue("https://www.google.com/search?q=viewer%40example.test")
+    try {
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+      await flushEffects()
+
+      navigationState.pathname = "/watch/jesus.html/urdu.html"
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+      await flushEffects()
+    } finally {
+      referrer.mockRestore()
+    }
+
+    expect(pageViews(gtag).map((params) => params.page_referrer)).toEqual([
+      // Origin only: the external query (and the e-mail in it) never leaves.
+      "https://www.google.com",
+      // `document.referrer` is unchanged by an App Router navigation; the
+      // previous canonical Watch page is the referrer instead.
+      "https://www.jesusfilm.org/watch/jesus.html",
+    ])
   })
 
   it("renders no script and no event path when GA is unconfigured", async () => {
