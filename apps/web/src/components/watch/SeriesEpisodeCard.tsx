@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { FolderOpen, Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import {
   VideoThumbnailCaption,
@@ -57,6 +58,7 @@ export function SeriesEpisodeCard({
   languageSlug,
   parentSlug,
 }: SeriesEpisodeCardProps) {
+  const videoLabels = useTranslations("VideoLabels")
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
@@ -71,8 +73,14 @@ export function SeriesEpisodeCard({
   const { url: thumbnailUrl, blurDataUrl } = resolveEpisodeThumbnail(episode)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   const isContainer = isSeriesRecord(episode)
+  // Chrome copy follows the page's UI catalog, like every other Watch card.
+  // "Episode N" joins the translated label and the number the same way the
+  // sibling carousel joins its rail label and position.
   const containerLabel =
-    episode.label?.toLowerCase() === "collection" ? "Collection" : "Series"
+    episode.label?.toLowerCase() === "collection"
+      ? videoLabels("collection")
+      : videoLabels("series")
+  const episodeLabel = `${videoLabels("episode")} ${index + 1}`
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
@@ -96,7 +104,7 @@ export function SeriesEpisodeCard({
       {thumbnailUrl ? (
         <Image
           src={thumbnailUrl}
-          alt={episode.title ?? `Episode ${index + 1} thumbnail`}
+          alt={episode.title ?? episodeLabel}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
           className="object-cover object-left-top"
@@ -129,10 +137,9 @@ export function SeriesEpisodeCard({
           affordance or a fake zero runtime. */}
       {isContainer && href ? (
         <div className="absolute top-2 right-2 rounded-full bg-black/40 p-1.5 text-white ring-1 ring-white/10 backdrop-blur-sm">
-          <FolderOpen
-            size={14}
-            aria-label={`Open ${containerLabel.toLowerCase()}`}
-          />
+          {/* Decorative: the eyebrow below already names the container
+              kind in the page's language. */}
+          <FolderOpen size={14} aria-hidden="true" />
         </div>
       ) : href || runtimeLabel ? (
         <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-sm sm:text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
@@ -146,7 +153,7 @@ export function SeriesEpisodeCard({
       {/* Bottom-left text block — EPISODE eyebrow + episode title. */}
       <VideoThumbnailCaption inset="compact">
         <VideoThumbnailEyebrow size="compact">
-          {isContainer ? containerLabel : `Episode ${index + 1}`}
+          {isContainer ? containerLabel : episodeLabel}
         </VideoThumbnailEyebrow>
         <VideoThumbnailTitle size="compact-md">
           {episode.title ?? ""}
