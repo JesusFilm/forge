@@ -417,6 +417,166 @@ describe("AdminGraphqlClient", () => {
     ])
   })
 
+  // Synthetic persisted records: production occurrence of cms_notify is unknown.
+  it.each(["current", "completed"] as const)(
+    "retains a legacy %s step, opaque options and every job in mixed lists",
+    async (legacyState) => {
+      const legacyCurrentStep =
+        legacyState === "current" ? "cms_notify" : undefined
+      const legacyOptions = {
+        notifyCms: true,
+        uploadMux: true,
+        oldIntegration: { key: "preserved", values: [1, "legacy"] },
+      }
+      const legacy = managerJobPayload({
+        id: `legacy-${legacyState}`,
+        status: legacyState === "current" ? "running" : "completed",
+        currentStep: legacyCurrentStep ?? null,
+        options: legacyOptions,
+        sourceCollectionTitle: "Preserved collection",
+        sourceMediaTitle: "Preserved source",
+        sourceLanguageCode: "en",
+        resolvedTargetLanguageCodes: ["es"],
+        artifacts: {
+          transcript: { kind: "downloadable", path: "asset/transcript.json" },
+          metadata: { kind: "metadata", data: { title: "Preserved metadata" } },
+        },
+        steps: [
+          {
+            name: "cms_notify",
+            status: legacyState === "current" ? "running" : "completed",
+            retries: 0,
+          },
+        ],
+      })
+      const jobs = [
+        managerJobPayload({
+          id: "modern-translation",
+          currentStep: "translation",
+          steps: [
+            {
+              name: "translation",
+              status: "completed",
+              retries: 0,
+              details: {
+                mastra: { runId: "preserved-run", languages: ["es"] },
+              },
+            },
+          ],
+        }),
+        legacy,
+        managerJobPayload({
+          id: "modern-crop",
+          currentStep: "smart_crop_render",
+          options: {
+            smartCrop: {
+              kind: "localized",
+              assetId: "crop-asset",
+              targetAspectRatio: "9:16",
+              cropMode: "speaker",
+            },
+          },
+          steps: [
+            { name: "smart_crop_render", status: "completed", retries: 0 },
+          ],
+        }),
+        managerJobPayload({
+          id: "historical-shorts",
+          currentStep: "shorts_render",
+          options: { shorts: { assetId: "short-asset" } },
+          steps: [{ name: "shorts_render", status: "completed", retries: 0 }],
+        }),
+      ]
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { managerJobs: jobs } })),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { managerJob: legacy } })),
+        )
+      const client = new AdminGraphqlClient({
+        graphqlUrl: "https://admin.example/api/graphql",
+        fetchImpl: fetchMock,
+      })
+      const list = await client.listJobs()
+      expect(list.map((job) => job.id)).toEqual(jobs.map((job) => job.id))
+      expect(list).toMatchObject([
+        jobs[0],
+        { ...legacy, currentStep: legacyCurrentStep },
+        jobs[2],
+        jobs[3],
+      ])
+      expect(list[1].options).toEqual(legacyOptions)
+      await expect(client.getJob(legacy.id)).resolves.toMatchObject({
+        ...legacy,
+        currentStep: legacyCurrentStep,
+        options: legacyOptions,
+      })
+    },
+  )
+
+  it.each(["shorts_render", "smart_crop_render"] as const)(
+    "accepts modern %s records independently of legacy compatibility",
+    async (name) => {
+      const job = managerJobPayload({
+        currentStep: name,
+        steps: [{ name, status: "completed", retries: 0 }],
+      })
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { managerJobs: [job] } })),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { managerJob: job } })),
+        )
+      const client = new AdminGraphqlClient({
+        graphqlUrl: "https://admin.example/api/graphql",
+        fetchImpl: fetchMock,
+      })
+      await expect(client.listJobs()).resolves.toMatchObject([job])
+      await expect(client.getJob(job.id)).resolves.toMatchObject(job)
+    },
+  )
+
+  it.each([
+    { currentStep: "future_unknown_step" },
+    {
+      steps: [{ name: "future_unknown_step", status: "completed", retries: 0 }],
+    },
+    { steps: [{ name: "translation", status: "invented", retries: 0 }] },
+    { status: "invented" },
+  ])(
+    "rejects a corrupt record alongside valid legacy and modern jobs: %j",
+    async (corruption) => {
+      const invalid = managerJobPayload({ id: "corrupt-job", ...corruption })
+      const legacy = managerJobPayload({
+        id: "valid-legacy",
+        steps: [{ name: "cms_notify", status: "completed", retries: 0 }],
+      })
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              data: { managerJobs: [legacy, invalid, managerJobPayload()] },
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { managerJob: invalid } })),
+        )
+      const client = new AdminGraphqlClient({
+        graphqlUrl: "https://admin.example/api/graphql",
+        fetchImpl: fetchMock,
+      })
+      await expect(client.listJobs()).rejects.toThrow(
+        "invalid Manager job list payload",
+      )
+      await expect(client.getJob(invalid.id)).rejects.toThrow(
+        "invalid Manager job payload",
+      )
+    },
+  )
+
   it("rejects unknown Manager job current steps in list and detail payloads", async () => {
     const invalidCurrentStepPayload = managerJobPayload({
       currentStep: "future_unknown_step",

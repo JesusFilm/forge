@@ -1,7 +1,6 @@
-// Job types — copied verbatim from the original VideoForge repo.
-// Forge extension: muxPlaybackId added to JobRecord (stored at job creation).
-// Forge uses a subset of the VideoForge workflow steps but keeps the full union
-// so the original UI components compile unchanged.
+// Job types adapted from VideoForge for Forge's persisted Admin job contract.
+// Step names include current workflows and legacy values required by job readers.
+// Execution inventories are defined separately in @/lib/workflow-steps.
 
 export type JobStatus = "pending" | "running" | "completed" | "failed"
 
@@ -35,6 +34,7 @@ export const WORKFLOW_STEP_NAMES = [
   "mux_upload",
   "theology_validation_bible_quotes",
   "seo_improvements",
+  // Legacy persisted read compatibility only; no notification is executed.
   "cms_notify",
   "smart_crop_fingerprint",
   "smart_crop_plan",
@@ -96,7 +96,6 @@ export type ShortsJobOptions = {
 export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
-  notifyCms?: boolean
   smartCrop?: SmartCropJobOptions
   shorts?: ShortsJobOptions
 }
