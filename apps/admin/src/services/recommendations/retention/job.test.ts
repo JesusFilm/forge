@@ -134,8 +134,20 @@ describe("recommendation retention job", () => {
       expect.any(Date),
       undefined,
       "stored-expiry-only",
+      "manual-cli",
     )
     expect(start).not.toHaveBeenCalled()
+  })
+
+  it("identifies the scheduled entry point independently of retention mode", async () => {
+    await runRecommendationRetentionFromScheduler()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "scheduled",
+      "scheduled-job",
+    )
   })
 
   it("keeps the scheduled job on ordinary retention", async () => {
@@ -145,6 +157,7 @@ describe("recommendation retention job", () => {
       expect.any(Date),
       undefined,
       "scheduled",
+      "worker-job",
     )
   })
 
@@ -243,34 +256,7 @@ describe("recommendation retention job", () => {
       data: expect.objectContaining({
         details: expect.objectContaining({
           batchLimitReached: false,
-          profileVectorSweepSkipped: false,
           purgeStatus: "succeeded",
-        }),
-      }),
-    })
-  })
-
-  it("records a busy vector sweep without marking the root purge as skipped", async () => {
-    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
-      ...purgeResult,
-      profileVectorSweepSkipped: true,
-    })
-
-    await expect(
-      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
-    ).resolves.toMatchObject({
-      status: "succeeded",
-      profileVectorSweepSkipped: true,
-      batchLimitReached: false,
-    })
-    expect(workflowRun.update).toHaveBeenCalledWith({
-      where: { id: "ledger-1" },
-      data: expect.objectContaining({
-        status: "SUCCEEDED",
-        details: expect.objectContaining({
-          purgeStatus: "succeeded",
-          batchLimitReached: false,
-          profileVectorSweepSkipped: true,
         }),
       }),
     })

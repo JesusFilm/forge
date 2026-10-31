@@ -32,16 +32,6 @@ Registering a Dynamic MCP Client identifies the client but grants no application
 
 A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
 
-## Studio authoring
-
-### Content Pack
-
-A reusable set of source material and editorial guidance used to plan or generate
-content. A Content Pack can guide an individual project or a period of calendar
-planning; it is distinct from a viewer-facing video collection.
-
-_Avoid_: Source Collection, Preacher Pack.
-
 ## Devotional generation
 
 ### Devotional Workspace
@@ -974,6 +964,18 @@ Under a Slot Cover, a started video becomes a Mini Player Session and keeps play
 
 ## Recommendations
 
+### Viewer Interest Profile (retired)
+
+A learned representation of a viewer's activity. Retired by the October 29, 2026
+product decision, along with behavioral projection and co-watch learning. Do not
+confuse it with a native installation credential or a video's content summary.
+
+### Video Content Profile
+
+A summary of a video's transcript and metadata used to build content-based
+recommendations (`RecommendationPrecomputedContentProfile`). It describes content,
+not a viewer, and remains part of the semantic/metadata architecture.
+
 ### Video Connection
 
 A meaningful relationship between Videos based on similarity, useful viewing
@@ -1886,6 +1888,20 @@ _Avoid:_ AI-generated campaign (it suggests that the agent wrote all of it).
 A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
 
 It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all. A mobile report of the translation kind also names the UI Locale that the app showed, and no other kind sends it; the kind shows only when that UI Locale is not English.
+
+## Mobile release checks
+
+### Release Check
+
+One run of the mobile release check runner before a TestFlight build or an over-the-air update goes out. It builds the app from the current commit, runs every Journey on five local test devices, and writes one report. Every failure fails the run, including a known bug and a flaky Journey. The report gives no release decision; the mobile owner makes it.
+
+### Journey
+
+One fixed, scripted path through the mobile app that a Release Check runs on every test device. It follows the same steps on each run, and it picks content by position where it can.
+
+### Not-Tested List
+
+The repo list of the screens and sheets that no Journey covers on purpose, each with a reason. The Release Check fails when a screen or sheet has no Journey and is not on this list, so a new screen cannot drop out of coverage without a decision.
 
 ## Flagged ambiguities
 

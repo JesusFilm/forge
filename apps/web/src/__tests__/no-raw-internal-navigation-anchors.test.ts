@@ -54,6 +54,16 @@ const KNOWN_RAW_NAVIGATION_ANCHORS: Record<
   string,
   { count: number; reason: string }
 > = {
+  "components/watch/WatchGrow.tsx": {
+    count: 1,
+    reason:
+      "Prototype-literal Grow lean/full switch: a query-only href (?as=grow&grow=full / ?as=grow) that deliberately reloads the same page, because WatchGrow reads its shape from the URL at load (useSyncExternalStore on popstate). A next/link soft navigation would change the URL without re-reading it and leave the wrong shape on screen.",
+  },
+  "components/watch/WatchGrowLean.tsx": {
+    count: 1,
+    reason:
+      "Prototype-literal Grow lean/full switch: a query-only href (?as=grow&grow=full / ?as=grow) that deliberately reloads the same page, because WatchGrow reads its shape from the URL at load (useSyncExternalStore on popstate). A next/link soft navigation would change the URL without re-reading it and leave the wrong shape on screen.",
+  },
   "components/home/WatchHomeFooter.tsx": {
     count: 2,
     reason:

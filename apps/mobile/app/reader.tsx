@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
 import { BibleReader } from "../src/components/bible/BibleReader"
@@ -17,13 +18,15 @@ export default function ReaderRoute() {
   const floatingObstacles = useFloatingObstacles()
 
   return (
-    <BibleReader
-      host="pushed"
-      source={source}
-      startRef={startRef}
-      onBack={() => router.back()}
-      floatingObstacles={floatingObstacles}
-      {...callbacks}
-    />
+    <View testID="screen-reader" style={{ flex: 1 }}>
+      <BibleReader
+        host="pushed"
+        source={source}
+        startRef={startRef}
+        onBack={() => router.back()}
+        floatingObstacles={floatingObstacles}
+        {...callbacks}
+      />
+    </View>
   )
 }

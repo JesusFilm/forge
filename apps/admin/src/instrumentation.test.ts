@@ -432,7 +432,7 @@ describe("workflow instrumentation", () => {
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationCowatchRefreshSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(ensureRecommendationRetentionSchedulerStarted).toHaveBeenCalledTimes(
       1,
     )
@@ -450,7 +450,7 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledWith(prisma)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
@@ -469,7 +469,7 @@ describe("workflow instrumentation", () => {
       await register()
       expect(
         ensureRecommendationProfileReconciliationSchedulerStarted,
-      ).toHaveBeenCalledOnce()
+      ).not.toHaveBeenCalled()
       expect(
         ensureRecommendationEpisodeFinalizationRecovery,
       ).toHaveBeenCalledOnce()
@@ -482,50 +482,19 @@ describe("workflow instrumentation", () => {
     }
   })
 
-  it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {
+  it("never starts or recovers retired behavioral learners", async () => {
     vi.useFakeTimers()
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
     mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
     const { register } = await import("./instrumentation")
-
     await register()
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(5 * 60_000)
-
+    ).not.toHaveBeenCalled()
     expect(
-      ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(2)
-  })
-
-  it("recovers co-watch scheduler failures independently of profile reconciliation", async () => {
-    vi.useFakeTimers()
-    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
-    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    try {
-      const { register } = await import("./instrumentation")
-      await register()
-      ensureRecommendationCowatchRefreshSchedulerStarted.mockRejectedValueOnce(
-        new Error("temporary scheduler recovery failure"),
-      )
-      await vi.advanceTimersByTimeAsync(10 * 60_000)
-      expect(
-        ensureRecommendationCowatchRefreshSchedulerStarted,
-      ).toHaveBeenCalledTimes(3)
-      expect(
-        ensureRecommendationProfileReconciliationSchedulerStarted,
-      ).toHaveBeenCalledTimes(3)
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "[recommendation-cowatch-refresh] event=scheduler_recovery_failure",
-        ),
-      )
-    } finally {
-      warn.mockRestore()
-    }
+      ensureRecommendationCowatchRefreshSchedulerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not block worker startup when recommendation recovery fails", async () => {
@@ -642,7 +611,7 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)

@@ -199,6 +199,16 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
           WATCH_LEARNING_PROGRESS_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/watch-learning-progress.service.db.test.ts --no-file-parallelism
+      - name: Exercise audience publication and importer against isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+          WATCH_AUDIENCE_DB_TEST: "1"
+          WATCH_AUDIENCE_IMPORT_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/watch-audience-publication.db.test.ts
+          src/scripts/import-watch-audience-config.db.test.ts
+          --no-file-parallelism
       - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -219,72 +229,55 @@ jobs:
           pnpm --filter @forge/admin test --
           src/services/recommendations/migration.db.test.ts
           src/services/recommendations/migration.candidates.db.test.ts
-          src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/migration.operations.db.test.ts
           src/services/recommendations/migration.attribution-reliability.db.test.ts
           src/services/recommendations/migration.playback-upgrade.db.test.ts
+          src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/playback-episode.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
-          src/services/recommendations/profile.service.db.test.ts
           src/services/recommendations/viewer-identity.service.db.test.ts
           src/services/recommendations/curated-pools.service.db.test.ts
-          src/services/recommendations/recent-context.db.test.ts
           src/services/recommendations/admin-ops/detail.db.test.ts
           src/services/recommendations/admin-ops/watch-exposure.service.db.test.ts
           src/services/recommendations/watch-surface-migration.db.test.ts
-          src/services/recommendations/viewing-mode.service.db.test.ts
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
           --no-file-parallelism
-      - name: Create owned Co-watch PostgreSQL fixtures
+      - name: Create owned recommendation PostgreSQL fixture
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_test'
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_feat565_test'
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_retention_standalone_test'
       - name: Apply owned retention fixture migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
         run: pnpm --filter @forge/admin exec prisma migrate deploy
-      - name: Exercise bounded recommendation retention tail against PostgreSQL
+      - name: Exercise guarded behavioral schema retirement against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
           RECOMMENDATION_DB_TEST: "1"
         run: >-
           pnpm --filter @forge/admin test --
-          src/services/recommendations/retention-profile-tail.db.test.ts
-          src/services/recommendations/retention-composition.db.test.ts
+          src/services/recommendations/retired-behavioral-schema.db.test.ts
+          --no-file-parallelism --maxWorkers=1
+      - name: Exercise retained ordinary retention and session context against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/retention-retained.db.test.ts
+          src/services/recommendations/retention-precomputed-links.db.test.ts
+          src/services/recommendations/recent-context.db.test.ts
           --no-file-parallelism --testTimeout=60000
-      - name: Exercise loaded standalone retention against PostgreSQL
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_retention_standalone_test
-          RECOMMENDATION_DB_TEST: "1"
-        run: |
-          pnpm --filter @forge/admin exec prisma migrate deploy
-          pnpm --filter @forge/admin test -- src/services/recommendations/retention-standalone.db.test.ts --no-file-parallelism --testTimeout=60000
-      - name: Exercise Co-watch refresh and measurement reuse against PostgreSQL
+      - name: Exercise recommendation measurement reuse against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
           RECOMMENDATION_DB_TEST: "1"
         run: >-
           pnpm --filter @forge/admin test --
-          src/services/recommendations/cowatch/refresh.db.test.ts
           src/services/recommendations/integrity.measurement-reuse.db.test.ts
-          --no-file-parallelism --testTimeout=30000
-      - name: Apply owned Co-watch authority fixture migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
-        run: pnpm --filter @forge/admin exec prisma migrate deploy
-      - name: Exercise Co-watch trial authority and source query against PostgreSQL
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
-          RECOMMENDATION_DB_TEST: "1"
-        run: >-
-          pnpm --filter @forge/admin test --
-          src/services/recommendations/cowatch/trial-authority.db.test.ts
-          src/services/recommendations/cowatch/source-query.db.test.ts
           --no-file-parallelism --testTimeout=30000
       - name: Exercise semantic retrieval budget against pgvector
         env:
@@ -292,16 +285,6 @@ jobs:
           RECOMMENDATION_DB_TEST: "1"
           RECOMMENDATION_DELIVERY_DB_FIXTURE: deterministic
         run: pnpm --filter @forge/admin test -- src/services/recommendations/delivery-retriever.db.test.ts
-      - name: Exercise profile recommendation retrieval against deterministic pgvector
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          RECOMMENDATION_DB_TEST: "1"
-          RECOMMENDATION_PROFILE_DB_FIXTURE: deterministic
-        run: >-
-          pnpm --filter @forge/admin test --
-          src/services/recommendations/candidates/profile-candidate.db.test.ts
-          src/services/recommendations/profiles/profile-projection.service.db.test.ts
-          --no-file-parallelism
       - name: Exercise recommendation admission against Redis
         env:
           RECOMMENDATION_REDIS_TEST: "1"
@@ -663,7 +646,7 @@ jobs:
       # languageId.test.js runs language-id.py's accepted-code rule through uv.
       - name: Setup uv for the mobile language-ID test
         if: matrix.service == '@forge/mobile'
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "0.11.11"
           enable-cache: false

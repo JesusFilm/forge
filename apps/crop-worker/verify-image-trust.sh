@@ -1,6 +1,9 @@
 #!/bin/sh
 # CI only: public transport controls, local synthetic media and isolated HTTP.
 set -eu
+# Debian backports retain upstream 1.0.9; compare the security package revision.
+dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.0.9-2+deb12u1
+printf '%s\n' 'PASS: system Brotli includes the CVE-2026-111497 Debian security fix'
 cd /app/apps/crop-worker
 node --input-type=module - <<'JS'
 import assert from 'node:assert/strict'

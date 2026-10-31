@@ -169,6 +169,47 @@ const headIds = () =>
 const clickedIds = () => clicked.map((entry) => entry.downloadId)
 const text = () => container.textContent ?? ""
 
+it.each(["بداية الخدمة", "English fallback", "Title without metadata"])(
+  "keeps queued authored title %s neutral in English status copy",
+  async (title) => {
+    metadata.mockResolvedValue({
+      ok: true,
+      collection: {
+        slug: "walking-with-jesus-africa",
+        title: "Collection",
+        episodes: EPISODES.map((episode) => ({ ...episode, title })),
+      },
+    })
+    headPlan = () => new Response(null, { status: 404 })
+    await prepared()
+    let release!: (response: Response) => void
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve
+        }),
+    )
+    await press("watch-partner-download-start")
+    const activeTitle = byId("watch-partner-download-status")!.querySelector(
+      "p span",
+    )!
+    expect(activeTitle?.textContent).toBe(title)
+    expect(activeTitle?.getAttribute("lang")).toBe("")
+    expect(activeTitle?.getAttribute("dir")).toBe("auto")
+    await act(async () => release(new Response(null, { status: 404 })))
+    await settle(750 * 4)
+    const pending = byId("watch-partner-download-pending")!
+    expect(pending.textContent).toBe(
+      `English: ${title}English: ${title}English: ${title}`,
+    )
+    for (const authored of pending.querySelectorAll("li span")) {
+      expect(authored.getAttribute("lang")).toBe("")
+      expect(authored.getAttribute("dir")).toBe("auto")
+    }
+    expect(pending.querySelectorAll("li span")).toHaveLength(3)
+  },
+)
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()

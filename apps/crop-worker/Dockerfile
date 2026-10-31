@@ -3,7 +3,8 @@
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS base
 COPY scripts/update-security-ca.sh /usr/local/bin/update-security-ca
 RUN sh /usr/local/bin/update-security-ca \
-    && apt-get install -y --no-install-recommends libgnutls30 libx264-164 curl \
+    && apt-get install -y --no-install-recommends libgnutls30 libx264-164 curl libbrotli1 \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.0.9-2+deb12u1 \
     && rm -rf /var/lib/apt/lists/* \
     && npm install --global pnpm@9.12.3
 ENV SSL_CERT_DIR=/usr/local/share/security-ca/certs

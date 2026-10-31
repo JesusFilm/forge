@@ -3,7 +3,7 @@ id: "feat-796"
 title: "Remove stale Manager notification affordances and preserve legacy reads"
 owner: "vlad"
 priority: "P2"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-24"
 duration: 1
 depends_on: []
@@ -52,16 +52,45 @@ publication. Independent acceptance belongs to the parent.
 
 ## Verification
 
-Run focused Manager parser/state/workflow tests, typecheck, lint, touched-file
-Prettier, roadmap/contract pin checks and normal commit hooks with existing
-dependencies and pinned Node 24.22.1. Individually guard every heavy foreground
-command with `agent-io-guard -- <actual arguments>`. Prove no form caller and
-unchanged active creation, imports, hooks, requests, initialization and render
-structure; static cleanup provides no whole-app performance measurement.
+### 2026-10-31 UTC current-main integration — pending execution
 
-Author validation: 73 focused package tests and 19 offline controls passed;
-removing only the legacy enum literal failed the two expected mixed-list cases
-while 18 other parser tests passed. Manager typecheck and lint passed. The
-preservation audit verified 15 protected main files, static-only table copy,
-unique ticket allocation and byte-preserved April history. Parent-owned fresh
-independent review and any publication remain separate acceptance steps.
+Keep this ticket in progress. The LIGHT source-only pass composes published head
+`667347dfc7c49b46bf4cf4ace5d5e42d60357f66` with pinned main
+`c2e4bd3aec94198fc074ec7c37e546469d6001d1` without a commit. Only
+`apps/manager/src/backend/admin-client.test.ts` changed on main among the ten
+offered paths since original base `5fdcd7fbc10488bed68117e0e052d0564f876d10`.
+Both new main tests and every incoming compatibility case survive the clean
+merge. No new feature ID, dependency edge or test source is added.
+
+Source checks establish no old form caller, strict actual Admin parser wiring,
+unchanged HTTPS `inputUrl` creation and current list/realtime paths, and a
+static-only step description change. The historical `activeJobs` literal is
+absent from both pinned inputs. No requests, hooks, initialization or render
+structure changed relative to pinned main. This does not measure page loading.
+
+No tests, typecheck, lint suites, install, build, server, browser, device, hooks,
+commit or push run in this pass. #2685 native Safari owns the heavy phase; only
+the parent can release executable validation. Retired guard/quota tools must not
+run. The dated plan and parent handoff specify focused actual-package tests
+(maximum two workers), types, lint, format, roadmap checks, and a disposable
+legacy-enum-removal red control followed by exact-byte restore and green rerun.
+Independent review, parser/runtime/loading acceptance, functioning normal hooks
+and current-candidate CI remain pending. Static cleanup does not intrinsically
+require native devices or provider execution. Preserve the draft PR.
+
+### Historical evidence — not current-candidate acceptance
+
+The prior author reported 73 focused package tests and 19 offline controls;
+removing only the legacy enum literal failed two mixed-list cases while 18 other
+parser tests passed. Prior Manager typecheck/lint and the 15-file preservation
+audit were reported on the earlier candidate, not this composition. Published CI
+reported 20 successes and 8 skips; Manager's 1360 passes and 3 skips ran on
+synthetic merge `95ddcbbaf960222e6e2fbe863506c00b4db46910` against original
+base `5fdcd7fbc10488bed68117e0e052d0564f876d10`.
+
+The earlier normal commit exited 0, but lint-staged applying/restaging failed on
+ignored `.context`; this remains a hook qualification. Future publication requires
+functioning normal hooks with every check and no bypass. Hook configuration and
+the three historical completed todo narratives remain unchanged by this
+integration. No production legacy-row occurrence or original human reporter is
+established; direct claim sources are branch-local todo 019 and the PR body.

@@ -16,6 +16,7 @@ watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
   "/packages/studio-contracts/**",
+  "/packages/feature-flags/**",
   "/packages/watch-url-policy/**",
   "/package.json",
   "/pnpm-lock.yaml",

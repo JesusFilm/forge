@@ -28,7 +28,9 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
     let db: PrismaClient
     beforeAll(() => {
       if (
-        url !== "postgresql://tataihono@127.0.0.1:55461/forge_studio_461_test"
+        url !==
+          "postgresql://tataihono@127.0.0.1:55461/forge_studio_461_test" &&
+        url !== "postgresql://tataihono@127.0.0.1:55460/forge_studio_460_fresh"
       )
         throw new Error("Owned calendar database required")
       db = new PrismaClient({
@@ -36,7 +38,7 @@ const url = process.env.STUDIO_CALENDAR_TEST_DATABASE_URL
       })
     })
     afterAll(async () => db?.$disconnect())
-    it("does not authorize a guidance-only pack as source-ready publication", async () => {
+    it("does not authorize a project without selected footage as source-ready publication", async () => {
       await expect(
         calendarPublicationFixture(db, false).then(() => "authorized"),
       ).rejects.toMatchObject({ code: "UNREADY" })

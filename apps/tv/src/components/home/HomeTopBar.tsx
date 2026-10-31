@@ -47,7 +47,7 @@ type HomeTopBarProps = {
   onSearchTabNode?: (node: ViewType | null) => void
   /** Reports the focused tab's node so the screen can re-focus it after a nav
    *  push/pop — subsumes the old back-from-/search restore (last focus = Search tab). */
-  onFocusNode?: (node: ViewType | null) => void
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 export const HomeTopBar = memo(function HomeTopBar({
@@ -206,7 +206,7 @@ type TopBarTabProps = {
   /** Lifts this tab's native node up so the hero can target it via nextFocusUp. */
   nodeRef?: (node: ViewType | null) => void
   /** Reports this tab's node on focus so the screen can re-focus it after a nav push/pop. */
-  onFocusNode?: (node: ViewType | null) => void
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 function TopBarTab({
@@ -271,7 +271,10 @@ function TopBarTab({
   return (
     <Pressable
       ref={setRef}
-      onPress={onPress}
+      onPress={() => {
+        onFocusNode?.(localRef.current, true)
+        onPress()
+      }}
       onFocus={() => {
         setFocused(true)
         onChromeFocus()

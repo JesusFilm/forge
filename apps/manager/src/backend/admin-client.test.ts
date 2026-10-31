@@ -810,3 +810,72 @@ describe("AdminGraphqlClient", () => {
     })
   })
 })
+
+it("uses one bounded catalog batch for a 19-video search without per-video aliases", async () => {
+  const rows = Array.from({ length: 19 }, (_, i) => ({
+    documentId: `film-${i}`,
+    coreId: `core-${i}`,
+  }))
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      Response.json({ data: { managerVideosForEnrichment: rows } }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({
+        data: {
+          watchHomeVideos: rows.map((row) => ({
+            id: row.documentId,
+            coreId: row.coreId,
+            images: [{ thumbnail: `https://images.example/${row.coreId}.jpg` }],
+          })),
+        },
+      }),
+    )
+  const client = new AdminGraphqlClient({
+    graphqlUrl: "https://admin.example/api/graphql",
+    apiKey: "service",
+    fetchImpl: fetcher,
+  })
+  const result = await client.getVideosForEnrichment(
+    rows.map((row) => row.documentId),
+    true,
+  )
+  expect(result.map((row) => row.imageUrl)).toEqual(
+    rows.map((row) => `https://images.example/${row.coreId}.jpg`),
+  )
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  const bodies = fetcher.mock.calls.map(([, init]) =>
+    JSON.parse(String(init?.body)),
+  )
+  expect(bodies[0].query).not.toContain("artwork0")
+  expect(bodies[1].query).toContain("watchHomeVideos(coreIds: $coreIds)")
+  expect(bodies[1].variables).toEqual({
+    coreIds: rows.map((row) => row.coreId),
+  })
+})
+
+it("preserves playable metadata when the catalog artwork lookup fails", async () => {
+  const rows = [
+    {
+      documentId: "film",
+      coreId: "core",
+      variants: [{ muxVideo: { playbackId: "Playback123" } }],
+    },
+  ]
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      Response.json({ data: { managerVideosForEnrichment: rows } }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ errors: [{ message: "Catalog artwork unavailable" }] }),
+    )
+  const client = new AdminGraphqlClient({
+    graphqlUrl: "https://admin.example/api/graphql",
+    apiKey: "service",
+    fetchImpl: fetcher,
+  })
+  expect(await client.getVideosForEnrichment(["film"], true)).toEqual(rows)
+  expect(fetcher).toHaveBeenCalledTimes(2)
+})

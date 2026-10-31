@@ -15,11 +15,9 @@ export function completeRecommendationConsentBootstrap() {
 }
 
 export async function waitForRecommendationConsentBootstrap() {
-  // Recommendations can render before the consent shell sibling. Establish
-  // the barrier here as well so an early waiter cannot interpret a null
-  // promise as an already-completed profile bootstrap.
-  startRecommendationConsentBootstrap()
-  await bootstrapPromise
+  // Compatibility for recommendation clients during retirement. Content-only
+  // delivery has no profile bootstrap dependency.
+  return
 }
 
 export async function withRecommendationConsentLock<T>(

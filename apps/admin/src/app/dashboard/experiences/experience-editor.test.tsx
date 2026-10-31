@@ -23,6 +23,7 @@ import {
   watchLanguageSlugForLocale,
 } from "./experience-editor"
 import type { VideoLibraryItem } from "./experience-editor/block-helpers"
+import { WATCH_AUDIENCE_AUTHORING_DISABLED_MESSAGE } from "./experience-editor/watch-audience-availability"
 
 const { envState, routerPush } = vi.hoisted(() => ({
   envState: {
@@ -119,6 +120,8 @@ function renderEditorElement(
   options: {
     isHomepage?: boolean
     isTemplate?: boolean
+    isDefaultTemplate?: boolean
+    watchAudienceAuthoringEnabled?: boolean
     saveAction?: typeof action
     publishAction?: typeof action
     discardAction?: typeof action
@@ -217,6 +220,12 @@ function renderEditorElement(
         pathSegment: "",
         isHomepage: options.isHomepage ?? false,
         isTemplate: options.isTemplate ?? false,
+        // Independent authority: a generic route template may not own Watch.
+        ...{ isDefaultTemplate: options.isDefaultTemplate },
+        // Server-read release gate; absent is the production default (off).
+        ...{
+          watchAudienceAuthoringEnabled: options.watchAudienceAuthoringEnabled,
+        },
         blocksJson: JSON.stringify(blocks),
       }}
       saveAction={options.saveAction ?? action}
@@ -4416,5 +4425,186 @@ describe("ExperienceEditor", () => {
     expect(templateHtml).toContain("Route Video Hero")
     expect(templateHtml).toContain("Route Video")
     expect(templateHtml).toContain("Route Video Carousel")
+  })
+
+  // Public reads project only the default template's published questionnaire,
+  // so offering the block elsewhere previews content that publish never ships.
+  describe("Watch Audience questionnaire availability", () => {
+    function audienceBlocksIn(container: HTMLElement) {
+      const input = container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      return JSON.parse(input?.value ?? "[]") as Array<{ t?: string }>
+    }
+
+    it.each([
+      ["a standard page", { isTemplate: false }],
+      ["the homepage", { isTemplate: false, isHomepage: true }],
+      [
+        "non-default route template B",
+        { isTemplate: true, isDefaultTemplate: false },
+      ],
+      ["a route template without selected identity", { isTemplate: true }],
+    ])("does not offer the questionnaire on %s", (_label, options) => {
+      const view = renderEditorDom([], options)
+
+      try {
+        act(() => {
+          findButtonByText(view.container, "Browse All Blocks").click()
+        })
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+        expect(view.container.textContent).not.toContain(
+          "Four audience roles with three questions",
+        )
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    it("offers and inserts exactly one questionnaire on the default template", () => {
+      const view = renderEditorDom([], {
+        isTemplate: true,
+        isDefaultTemplate: true,
+        watchAudienceAuthoringEnabled: true,
+      })
+
+      try {
+        act(() => {
+          findButtonByText(view.container, "Browse All Blocks").click()
+          findButtonByText(view.container, "Watch Audience").click()
+        })
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience"])
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    describe("while forge.watch.audience is off", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-1", configuration: {} },
+        { t: "text", sectionKey: "text-1", heading: "Sibling" },
+      ]
+
+      it.each([
+        ["off", false],
+        ["unread (absent)", undefined],
+      ])(
+        "does not offer the questionnaire on the default template when the gate is %s",
+        (_label, watchAudienceAuthoringEnabled) => {
+          const view = renderEditorDom([], {
+            isTemplate: true,
+            isDefaultTemplate: true,
+            watchAudienceAuthoringEnabled,
+          })
+          try {
+            act(() => {
+              findButtonByText(view.container, "Browse All Blocks").click()
+            })
+            expect(() =>
+              findButtonByText(view.container, "Watch Audience"),
+            ).toThrow("Button not found: Watch Audience")
+            // Unrelated blocks stay available.
+            expect(view.container.textContent).toContain("Language Globe")
+            expect(audienceBlocksIn(view.container)).toEqual([])
+          } finally {
+            view.cleanup()
+          }
+        },
+      )
+
+      it("keeps a persisted questionnaire verbatim and hides only its authoring controls", () => {
+        const off = renderEditor(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: false,
+        })
+        const on = renderEditor(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: true,
+        })
+        expect(on).toContain("Watch audience questionnaire")
+        expect(off).not.toContain("Watch audience questionnaire")
+        expect(off).toContain(WATCH_AUDIENCE_AUTHORING_DISABLED_MESSAGE)
+
+        const view = renderEditorDom(existing, {
+          isTemplate: true,
+          isDefaultTemplate: true,
+          watchAudienceAuthoringEnabled: false,
+        })
+        try {
+          expect(audienceBlocksIn(view.container)).toEqual(existing)
+        } finally {
+          view.cleanup()
+        }
+      })
+    })
+
+    it("keeps generic route blocks available on non-default template B", () => {
+      const html = renderEditor([], {
+        isTemplate: true,
+        isDefaultTemplate: false,
+      })
+      expect(html).toContain("Route Video Hero")
+      expect(html).toContain("Route Video")
+      expect(html).toContain("Route Video Carousel")
+    })
+
+    it("preserves B's historical questionnaire and sibling order", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-b" },
+        { t: "text", sectionKey: "text-b", heading: "B sibling" },
+        { t: "videoHero", sectionKey: "hero-b", useRouteVideo: true },
+      ]
+      const view = renderEditorDom(existing, {
+        isTemplate: true,
+        isDefaultTemplate: false,
+      })
+      try {
+        expect(audienceBlocksIn(view.container)).toEqual(existing)
+        act(() => {
+          findButtonByText(view.container, "Add block").click()
+        })
+        expect(() =>
+          findButtonByText(view.container, "Watch Audience"),
+        ).toThrow("Button not found: Watch Audience")
+        expect(audienceBlocksIn(view.container)).toEqual(existing)
+      } finally {
+        view.cleanup()
+      }
+    })
+
+    it("keeps an existing questionnaire and its siblings on a non-template without offering another", () => {
+      const existing = [
+        { t: "watchAudience", sectionKey: "audience-1" },
+        { t: "text", sectionKey: "text-1" },
+      ]
+      const view = renderEditorDom(existing, { isTemplate: false })
+
+      try {
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience", "text"])
+        act(() => {
+          findButtonByText(view.container, "Add block").click()
+        })
+        expect(view.container.textContent).toContain("Language Globe")
+        expect(view.container.textContent).not.toContain(
+          "Four audience roles with three questions",
+        )
+        expect(
+          audienceBlocksIn(view.container).map((block) => block.t),
+        ).toEqual(["watchAudience", "text"])
+      } finally {
+        view.cleanup()
+      }
+    })
   })
 })

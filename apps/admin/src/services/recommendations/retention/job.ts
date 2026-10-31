@@ -1,3 +1,4 @@
+import type { RetentionExecutionContext } from "../retention-operation-diagnostics"
 import { type Prisma, WorkflowRunStatus } from "@prisma/client"
 import type { WorkflowRunStatus as RuntimeWorkflowRunStatus } from "@workflow/world"
 import { start } from "workflow/api"
@@ -123,6 +124,7 @@ export async function runRecommendationRetentionJob(
   input: {
     ledgerRunId?: string
     mode?: RecommendationRetentionMode
+    executionContext?: RetentionExecutionContext
   } = {},
 ): Promise<RecommendationPurgeResult> {
   if (input.ledgerRunId) await markWorkflowRunStarted(input.ledgerRunId)
@@ -132,6 +134,7 @@ export async function runRecommendationRetentionJob(
       new Date(),
       undefined,
       input.mode ?? "scheduled",
+      input.executionContext ?? "worker-job",
     )
     if (input.ledgerRunId) {
       await prisma.workflowRun.update({
@@ -151,8 +154,6 @@ export async function runRecommendationRetentionJob(
             batchLimitReached: result.batchLimitReached,
             continuationRequired:
               recommendationRetentionNeedsContinuation(result),
-            profileVectorSweepSkipped:
-              result.profileVectorSweepSkipped ?? false,
             purgeStatus: result.status,
           },
         },
@@ -185,6 +186,7 @@ export async function runRecommendationRetentionFromScheduler(): Promise<{
   try {
     const result = await runRecommendationRetentionJob({
       ledgerRunId: ledger.id,
+      executionContext: "scheduled-job",
     })
     return { ok: true, ledgerRunId: ledger.id, result }
   } catch (error) {
@@ -283,6 +285,7 @@ export async function runManualRecommendationRetentionOnce() {
   const result = await runRecommendationRetentionJob({
     ledgerRunId: ledger.id,
     mode: "stored-expiry-only",
+    executionContext: "manual-cli",
   })
   return { ledgerRunId: ledger.id, result }
 }

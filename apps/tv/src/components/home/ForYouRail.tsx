@@ -183,13 +183,28 @@ export function ForYouRail({
     }
   }, [nearViewport, visit, audioLanguageSlug, revision, visible, foreground])
   const cards = useMemo(() => (delivery ? cardsFor(delivery) : []), [delivery])
+  useEffect(() => {
+    if (
+      railProps.restoreRequest &&
+      unavailable &&
+      railProps.isRestorePending?.(railProps.restoreCardId ?? "") !== false
+    )
+      railProps.onRestoreUnavailable?.()
+  }, [
+    railProps.restoreRequest,
+    railProps.onRestoreUnavailable,
+    railProps.isRestorePending,
+    railProps.restoreCardId,
+    unavailable,
+  ])
   const tracker = useMemo(createImpressionTracker, [delivery])
   const captureNode = useCallback(
     (card: WatchHomeCard, node: NativeView | null) => {
       if (node) nodes.current.set(card.id, node)
       else nodes.current.delete(card.id)
+      railProps.onCardNode?.(card, node)
     },
-    [],
+    [railProps.onCardNode],
   )
   useEffect(() => {
     if (!visible || !foreground || !delivery) {
@@ -260,9 +275,10 @@ export function ForYouRail({
           eyebrow=""
           title="Recommended for you"
           cards={cards}
-          onCardFocus={(card, node) => {
-            engaged.current = true
-            railProps.onCardFocus(card, node)
+          onCardFocus={(card, node, activation) => {
+            const accepted = railProps.onCardFocus(card, node, activation)
+            if (accepted !== false) engaged.current = true
+            return accepted
           }}
           onCardNode={captureNode}
           onCardPress={(card) => {

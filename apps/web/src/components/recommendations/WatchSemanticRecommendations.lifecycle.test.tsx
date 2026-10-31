@@ -725,17 +725,19 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
   it("fails open to the token-free trusted href on the short selection deadline without double navigation", async () => {
     let resolveSelectionBody!: (body: unknown) => void
+    let selectionSignal: AbortSignal | undefined
     const selectionBody = new Promise<unknown>((resolve) => {
       resolveSelectionBody = resolve
     })
     vi.stubGlobal(
       "fetch",
-      vi.fn((input: RequestInfo | URL) => {
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
         if (url.endsWith("/api/recommendations")) {
           return Promise.resolve(jsonResponse({ delivery }))
         }
         if (url.endsWith("/select")) {
+          selectionSignal = init?.signal ?? undefined
           return Promise.resolve({
             ok: true,
             json: () => selectionBody,
@@ -767,6 +769,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     await act(async () => vi.advanceTimersByTime(800))
     expect(navigate).toHaveBeenCalledOnce()
     expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+    expect(selectionSignal?.aborted).toBe(false)
+    act(() => root.render(<div>replacement</div>))
+    expect(selectionSignal?.aborted).toBe(false)
 
     resolveSelectionBody({
       claimNonce: "late_claim_nonce_1234567890",
