@@ -70,3 +70,26 @@ proxy interference was isolated before capturing six meaningful red failures.
 Healthy guest, sibling retention, concurrency and subject-change controls remain
 required. Fresh independent review, current candidate CI and actual browser/
 loading acceptance are separate gates; local recovery does not close the ticket.
+
+## Current-head CI storyboard test repair
+
+Published `646ddba9f7dfdb0626427c4f3c32a000e4fed12b` retained the independently
+reviewed recovery tree and passed 117 scoped tests and normal hooks under Node
+24.22.1. Its full Web CI found one additional integration failure: the
+no-playback-ID storyboard test treated the new legitimate progress bootstrap
+request as a storyboard request. The same assertion fails in an isolated local
+run with the bootstrap URL as its sole spy call.
+
+Keep the real player/progress behavior unchanged. The storyboard fixture now
+returns a valid anonymous bootstrap envelope separately and records every other
+request in the storyboard spy. Preserve both negative assertions and the exact
+positive storyboard URL/abort-signal assertion. Verify the no-ID test still
+fails when the real playback-ID guard is temporarily removed, then restore the
+runtime bytes exactly before green validation and review. This control prevents
+the harness correction from hiding an actual storyboard regression.
+
+A network spy must distinguish its consumer's request contract from valid
+requests made by mounted sibling consumers. Returning storyboard JSON to the
+bootstrap parser creates an invalid fixture and order-dependent recovery state.
+Current-head CI, independent review of this repair and remaining actual
+auth/progress/device/provider/matched loading acceptance remain separate gates.
