@@ -2,7 +2,7 @@
 
 import { textDirectionForLocale } from "@/lib/locale"
 
-import { Suspense, useId } from "react"
+import { Suspense, useId, useSyncExternalStore } from "react"
 import type { WatchShareFilm } from "@/lib/watch-share-kit"
 import dynamic from "next/dynamic"
 
@@ -236,7 +236,10 @@ export function WatchSectionRenderer({
     block: MergedWatchBlock
     index: number
   }) => (
-    <Suspense key={blockKey(block, index)} fallback={null}>
+    <Suspense
+      key={blockKey(block, index)}
+      fallback={<BodyBlockStreamingFallback />}
+    >
       <WatchBlockEntry
         block={block}
         manifest={surfaceManifests?.[index] ?? undefined}
@@ -670,6 +673,33 @@ function SyntheticBlock({
 }
 
 function noop() {}
+
+// Body blocks stream from the server as separate Suspense segments, and React
+// can reveal the hero a frame or more before them (feat-776). With an empty
+// fallback, the small blocks rendered inline after them (recommendation slot,
+// transcript, footer) painted directly under the hero and were pushed off
+// screen when the blocks landed. While streaming, each pending block reserves
+// a full viewport so later content stays below the fold until it is in its
+// final place. A fallback first rendered on the client stays empty, as before.
+function BodyBlockStreamingFallback() {
+  const streaming = useSyncExternalStore(
+    subscribeNever,
+    () => false,
+    () => true,
+  )
+  if (!streaming) return null
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="watch-body-block-streaming-reserve"
+      className="min-h-screen"
+    />
+  )
+}
+
+function subscribeNever(_onStoreChange: () => void): () => void {
+  return () => {}
+}
 
 function blockKey(block: MergedWatchBlock, index: number): string {
   if (isWatchBlock(block)) return `${block.kind}-${index}`
