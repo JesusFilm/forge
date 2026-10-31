@@ -151,6 +151,14 @@ export function SubtitleTranscript({
   }, [selectedSlug, transcriptSubtitles])
 
   const activeVttSrc = activeSubtitle?.vttSrc ?? null
+  const [manualRetrySources, setManualRetrySources] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
+  const shouldRetryCollapsedTranscript =
+    activeVttSrc !== null &&
+    initialTranscript?.vttSrc === activeVttSrc &&
+    initialTranscript.compactText === null &&
+    !manualRetrySources.has(activeVttSrc)
   const [loadedTranscripts, setLoadedTranscripts] = useState<
     ReadonlyMap<string, SubtitleCue[] | null>
   >(() => new Map())
@@ -172,9 +180,26 @@ export function SubtitleTranscript({
   }, [cues, expanded, serverCompactText])
 
   useEffect(() => {
-    if (!expanded || !activeVttSrc || hasLoadedActiveSource) return
+    if (
+      (!expanded && !shouldRetryCollapsedTranscript) ||
+      !activeVttSrc ||
+      hasLoadedActiveSource
+    )
+      return
 
     const controller = new AbortController()
+    const clientRetryTimeout =
+      shouldRetryCollapsedTranscript && !expanded
+        ? window.setTimeout(() => {
+            controller.abort()
+            setLoadedTranscripts((current) => {
+              if (current.has(activeVttSrc)) return current
+              const next = new Map(current)
+              next.set(activeVttSrc, null)
+              return next
+            })
+          }, 5_000)
+        : undefined
     loadInteractiveTranscriptModule()
       .then(({ loadSubtitleCues }) => {
         if (controller.signal.aborted) return []
@@ -202,8 +227,18 @@ export function SubtitleTranscript({
         })
       })
 
-    return () => controller.abort()
-  }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
+    return () => {
+      if (clientRetryTimeout !== undefined)
+        window.clearTimeout(clientRetryTimeout)
+      controller.abort()
+    }
+  }, [
+    activeVttSrc,
+    durationSeconds,
+    expanded,
+    hasLoadedActiveSource,
+    shouldRetryCollapsedTranscript,
+  ])
 
   const collapsedTextRef = useRef<HTMLDivElement | null>(null)
   // Defaults to faded: a real transcript overflows the clamp far more often
@@ -275,6 +310,11 @@ export function SubtitleTranscript({
     )
 
   const openTranscript = () => {
+    // Once the viewer takes over this source, collapse must still cancel its
+    // request. Do not restart it as a background retry or leave pending UI.
+    if (activeVttSrc && shouldRetryCollapsedTranscript) {
+      setManualRetrySources((current) => new Set(current).add(activeVttSrc))
+    }
     if (activeVttSrc && loadedTranscripts.get(activeVttSrc) === null) {
       setLoadedTranscripts((current) => {
         if (current.get(activeVttSrc) !== null) return current
@@ -286,6 +326,11 @@ export function SubtitleTranscript({
     setInteraction({ expanded: true, initialSlug, selectedSlug })
   }
   const closeTranscript = () => {
+    // The source can change while already expanded. Its request also belongs
+    // to the viewer, so collapse must not restart it as a background retry.
+    if (activeVttSrc && shouldRetryCollapsedTranscript) {
+      setManualRetrySources((current) => new Set(current).add(activeVttSrc))
+    }
     setInteraction({ expanded: false, initialSlug, selectedSlug })
   }
   const handleCollapsedClick = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -305,7 +350,11 @@ export function SubtitleTranscript({
   if (!hasLoadedActiveSource) interactiveStatus = "loading"
   else if (!cues || cues.length === 0) interactiveStatus = "error"
 
-  const collapsedStatus: TranscriptStatus = compactText ? "ready" : "error"
+  const collapsedStatus: TranscriptStatus = compactText
+    ? "ready"
+    : shouldRetryCollapsedTranscript && !hasLoadedActiveSource
+      ? "loading"
+      : "error"
   const status = expanded ? interactiveStatus : collapsedStatus
 
   const loadingContent = (

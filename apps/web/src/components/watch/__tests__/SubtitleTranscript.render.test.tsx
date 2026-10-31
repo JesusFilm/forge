@@ -86,7 +86,7 @@ let root: Root
 type RenderTranscriptOptions = {
   audioSlug?: string | null
   componentKey?: string
-  compactText?: string
+  compactText?: string | null
   playerRef?: RefObject<MuxPlayerRef | null>
   subtitles?: WatchSubtitle[]
   vttSrc?: string
@@ -166,6 +166,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
   act(() => {
@@ -209,6 +210,243 @@ describe("SubtitleTranscript rendering", () => {
     // text container again, so nothing focusable unmounts on expansion.
     expect(container.querySelectorAll("button")).toHaveLength(1)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("retries the compact transcript in the browser when the server deadline expired", async () => {
+    renderTranscript({ compactText: null })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    })
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="watch-subtitle-compact-text"]')
+            ?.textContent,
+        ).toBe(serverCompactText)
+      })
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      englishSubtitle.vttSrc,
+      expect.objectContaining({ credentials: "omit" }),
+    )
+  })
+
+  it("shows a pending state for the bounded retry and lets expansion retry a timeout", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementationOnce(
+      (_url: string, options: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"))
+          })
+        }),
+    )
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain("loading")
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(container.textContent).toContain("unavailable")
+
+    fetchMock.mockResolvedValueOnce({ ok: true, text: async () => serverVtt })
+    await toggleTranscript()
+    expect(
+      container.querySelector('[data-testid="watch-subtitle-cues"]'),
+    ).not.toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not apply the collapsed retry deadline after the viewer expands", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const firstSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal
+    expect(firstSignal).toBeInstanceOf(AbortSignal)
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const expandedSignal = (fetchMock.mock.calls[1]?.[1] as RequestInit).signal
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(firstSignal?.aborted).toBe(true)
+    expect(expandedSignal?.aborted).toBe(false)
+    expect(container.textContent).toContain("loading")
+  })
+
+  it("cancels a manual retry on collapse without another background request or pending state", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const expandedSignal = (fetchMock.mock.calls[1]?.[1] as RequestInit).signal
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+
+    expect(expandedSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(container.textContent).toContain("unavailable")
+    expect(container.textContent).not.toContain("loading")
+  })
+
+  it("keeps manual ownership after an expanded same-language source replacement", async () => {
+    vi.useFakeTimers()
+    const replacement = {
+      ...englishSubtitle,
+      documentId: "subtitle-en-replacement",
+      vttSrc: "https://example.com/en-replacement.vtt",
+    }
+    const replacementRequests: Array<{
+      resolve: (response: { ok: boolean; text: () => Promise<string> }) => void
+    }> = []
+    // Ignore abort deliberately: late completion must not revive collapsed UI.
+    fetchMock.mockImplementation(
+      (url: string) =>
+        new Promise((resolve) => {
+          if (url === replacement.vttSrc) replacementRequests.push({ resolve })
+        }),
+    )
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    renderTranscript({
+      subtitles: [replacement],
+      vttSrc: replacement.vttSrc,
+      compactText: null,
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(getTranscriptToggle().getAttribute("aria-expanded")).toBe("true")
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(replacement.vttSrc)
+    const expandedSignal = (fetchMock.mock.calls[2]?.[1] as RequestInit).signal
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000)
+    })
+    expect(expandedSignal?.aborted).toBe(false)
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    expect(expandedSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(container.textContent).toContain("unavailable")
+    expect(container.textContent).not.toContain("loading")
+
+    await act(async () => {
+      replacementRequests[0]!.resolve({
+        ok: true,
+        text: async () => serverVtt,
+      })
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(container.textContent).not.toContain(serverCues[0]!.text)
+    expect(container.textContent).not.toContain("loading")
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(replacement.vttSrc)
+    const reopenedSignal = (fetchMock.mock.calls[3]?.[1] as RequestInit).signal
+    expect(reopenedSignal).not.toBe(expandedSignal)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000)
+    })
+    expect(reopenedSignal?.aborted).toBe(false)
+  })
+
+  it("discards a late background result and timer after the collapsed source changes", async () => {
+    vi.useFakeTimers()
+    let resolveOldFetch!: (response: {
+      ok: boolean
+      text: () => Promise<string>
+    }) => void
+    // Deliberately ignore abort: stale completions must still be discarded.
+    fetchMock.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveOldFetch = resolve)),
+    )
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const oldSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal
+
+    renderTranscript({
+      audioSlug: "amharic",
+      subtitles: [englishSubtitle, amharicSubtitle],
+      vttSrc: amharicSubtitle.vttSrc,
+      compactText: "Current source text.",
+    })
+    await act(async () => {
+      resolveOldFetch({ ok: true, text: async () => serverVtt })
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+
+    expect(oldSignal?.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain("Current source text.")
+    expect(container.textContent).not.toContain(serverCues[0]!.text)
+    expect(container.textContent).not.toContain("loading")
   })
 
   it("clamps the collapsed transcript to about 60% of the viewport and fades its bottom", () => {

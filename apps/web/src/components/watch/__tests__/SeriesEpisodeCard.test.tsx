@@ -17,9 +17,24 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/image", () => ({
-  default: ({ src, alt }: { src: string; alt: string }) =>
-    // jsx-only: no real Next image optimization in jsdom
-    React.createElement("img", { src, alt }),
+  default: ({
+    src,
+    alt,
+    loader,
+    unoptimized,
+  }: {
+    src: string
+    alt: string
+    loader?: unknown
+    unoptimized?: boolean
+  }) =>
+    // Capture the actual Next image contract; no optimizer/provider traffic.
+    React.createElement("img", {
+      src,
+      alt,
+      "data-custom-loader": String(typeof loader === "function"),
+      "data-unoptimized": String(unoptimized === true),
+    }),
 }))
 
 vi.mock("next/link", () => ({
@@ -530,5 +545,52 @@ describe("SeriesEpisodeCard — alt text fallback", () => {
     })
     const img = container.querySelector("img")
     expect(img?.getAttribute("alt")).toBe("Episode 5")
+  })
+})
+
+describe("SeriesEpisodeCard — provider images with localized fallback", () => {
+  it("keeps the Admin derivative unoptimized with a Spanish fallback label", () => {
+    renderCard({
+      episode: makeEpisode({
+        images: [],
+        muxPlaybackId: "mux-vertical-1",
+        title: null,
+      }),
+      locale: "es",
+      index: 4,
+    })
+    const image = container.querySelector("img")
+    expect(image?.getAttribute("alt")).toBe("Episodio 5")
+    expect(image?.getAttribute("src")).toBe(
+      "https://image.mux.com/mux-vertical-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(image?.getAttribute("data-unoptimized")).toBe("true")
+    expect(image?.getAttribute("data-custom-loader")).toBe("false")
+  })
+
+  it("keeps responsive Mux loading with a Spanish fallback label", () => {
+    const source =
+      "https://image.mux.com/responsive-1/thumbnail.jpg?width=1000&height=500&time=2"
+    renderCard({
+      episode: makeEpisode({
+        title: null,
+        images: [
+          {
+            documentId: "responsive-image",
+            mobileCinematicHigh: source,
+            thumbnail: null,
+            mobileCinematicLow: null,
+            url: source,
+          },
+        ],
+      }),
+      locale: "es",
+      index: 1,
+    })
+    const image = container.querySelector("img")
+    expect(image?.getAttribute("alt")).toBe("Episodio 2")
+    expect(image?.getAttribute("src")).toBe(source)
+    expect(image?.getAttribute("data-unoptimized")).toBe("false")
+    expect(image?.getAttribute("data-custom-loader")).toBe("true")
   })
 })
