@@ -9,7 +9,7 @@ duration: 7
 depends_on:
   - "feat-146"
 blocks:
-  - "feat-537"
+  - "feat-919"
 tags:
   - "platform"
   - "accounts"

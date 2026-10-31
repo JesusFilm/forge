@@ -1,0 +1,125 @@
+{
+  "source": "checkly CLI results for check 54844597-f049-43fd-8808-06a2df8dbdfc (Watch keyword), fetched 2026-10-19 ~16:40 UTC",
+  "results": [
+    {
+      "startedAt": "2026-10-19T16:31:58.844Z",
+      "stoppedAt": "2026-10-19T16:32:31.563Z",
+      "runLocation": "ap-southeast-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 32719,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:31:52.540Z",
+      "stoppedAt": "2026-10-19T16:32:25.391Z",
+      "runLocation": "us-east-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 32851,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:21:59.663Z",
+      "stoppedAt": "2026-10-19T16:22:31.501Z",
+      "runLocation": "ap-southeast-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 31838,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:21:55.379Z",
+      "stoppedAt": "2026-10-19T16:22:28.054Z",
+      "runLocation": "us-east-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 32675,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:07:45.374Z",
+      "stoppedAt": "2026-10-19T16:08:14.312Z",
+      "runLocation": "ap-southeast-1",
+      "attempts": 1,
+      "hasFailures": false,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 28938,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:07:43.248Z",
+      "stoppedAt": "2026-10-19T16:08:14.967Z",
+      "runLocation": "us-east-1",
+      "attempts": 1,
+      "hasFailures": false,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 31719,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:02:22.313Z",
+      "stoppedAt": "2026-10-19T16:02:54.648Z",
+      "runLocation": "ap-southeast-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 32335,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T16:01:53.995Z",
+      "stoppedAt": "2026-10-19T16:02:27.173Z",
+      "runLocation": "us-east-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 33178,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T15:52:04.580Z",
+      "stoppedAt": "2026-10-19T15:52:36.430Z",
+      "runLocation": "ap-southeast-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 31850,
+      "resultType": "FINAL"
+    },
+    {
+      "startedAt": "2026-10-19T15:51:53.647Z",
+      "stoppedAt": "2026-10-19T15:52:27.520Z",
+      "runLocation": "us-east-1",
+      "attempts": 3,
+      "hasFailures": true,
+      "hasErrors": false,
+      "isDegraded": false,
+      "overMaxResponseTime": false,
+      "responseTime": 33873,
+      "resultType": "FINAL"
+    }
+  ]
+}

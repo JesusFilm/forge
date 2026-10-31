@@ -1,8 +1,11 @@
 /**
- * Pure seek/scrubber math, no react-native imports so it's unit-testable. Every
- * helper guards on usable duration: expo-video HLS reports 0/NaN until
- * `sourceLoad`, so an unguarded seek would snap to 0 and progress render NaN.
+ * Seek/scrubber math; only `mayStartScrub` reads react-native. The helpers
+ * guard on usable duration: expo-video HLS reports 0/NaN until `sourceLoad`,
+ * so an unguarded seek would snap to 0 and progress render NaN.
  */
+import { Dimensions } from "react-native"
+
+import { isLayoutRtl } from "../i18n/layoutRtl"
 
 export function clamp(value: number, min: number, max: number): number {
   if (value < min) return min
@@ -76,5 +79,10 @@ export function thumbOutputRange(
 export function mayStartScrub(startX: number, edgeGuardWidth: number): boolean {
   if (!Number.isFinite(startX) || !Number.isFinite(edgeGuardWidth)) return true
   if (edgeGuardWidth <= 0) return true
-  return startX >= edgeGuardWidth
+  // Screen X stays physical in a right-to-left layout, so measure from the
+  // right edge there, as react-native-screens measures the pop's strip.
+  const fromLeadingEdge = isLayoutRtl()
+    ? Dimensions.get("window").width - startX
+    : startX
+  return fromLeadingEdge >= edgeGuardWidth
 }

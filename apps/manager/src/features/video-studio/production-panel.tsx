@@ -19,6 +19,7 @@ import {
   type ProductionRun,
 } from "./production-client"
 import dynamic from "next/dynamic"
+const NarrationAllowance = dynamic(() => import("./narration-allowance"))
 const ExistingVoicePanel = dynamic(() => import("./existing-voice-panel"))
 const ExperimentPanel = dynamic(() => import("./experiment-panel"))
 export default function ProductionPanel({
@@ -334,6 +335,7 @@ export default function ProductionPanel({
         >
           Save speech edits
         </button>
+        <NarrationAllowance session={session} projectId={projectId} />
         <button
           disabled={busy || state.status !== "saved" || !state.editable}
           onClick={() =>

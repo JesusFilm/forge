@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Appen bruker det lokale nettverket ditt til å finne einingar å sende til, slik at du kan spele av videoar på TV-en din."
+  }
+}

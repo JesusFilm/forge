@@ -34,6 +34,35 @@ jest.mock("react/jsx-runtime", () => {
 })
 
 jest.mock("expo-image", () => ({ Image: () => null }))
+// The root stack's navigation object, which the slot reaches through
+// `getParent()`. A case fires its transitionEnd through these listeners.
+const mockParentListeners = new Map<string, Set<(event: unknown) => void>>()
+// The slot's own screen: its focus, and the events a push and a pop send.
+const mockOwnListeners = new Map<string, Set<(event: unknown) => void>>()
+const mockFocus = { focused: true }
+function mockListen(
+  listeners: Map<string, Set<(event: unknown) => void>>,
+  name: string,
+  listener: (event: unknown) => void,
+) {
+  const set = listeners.get(name) ?? new Set()
+  set.add(listener)
+  listeners.set(name, set)
+  return () => set.delete(listener)
+}
+jest.mock("expo-router", () => {
+  // One object, as the router gives one screen.
+  const navigation = {
+    isFocused: () => mockFocus.focused,
+    addListener: (name: string, listener: (event: unknown) => void) =>
+      mockListen(mockOwnListeners, name, listener),
+    getParent: () => ({
+      addListener: (name: string, listener: (event: unknown) => void) =>
+        mockListen(mockParentListeners, name, listener),
+    }),
+  }
+  return { useNavigation: () => navigation }
+})
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
     debug: jest.fn(),
@@ -50,7 +79,10 @@ import { View } from "react-native"
 
 import { PlayerPoster } from "../PlayerPoster"
 import { MEASURE_RETRY_FRAMES, PlayerSlot } from "../PlayerSlot"
-import { getPlaybackRequestStore } from "../../../lib/miniPlayer/playbackRequest"
+import {
+  getPlaybackRequestStore,
+  type ProgressHold,
+} from "../../../lib/miniPlayer/playbackRequest"
 import { getMiniPlayerStore } from "../../../lib/miniPlayer/store"
 import {
   TestRenderer,
@@ -79,16 +111,28 @@ const SESSION_A = {
 
 const POSTER = "https://images.example/a.jpg"
 
-function slot(props: { session?: typeof SESSION_A | null } = {}): ReactElement {
+function slot(
+  props: {
+    session?: typeof SESSION_A | null
+    progressHold?: ProgressHold | null
+  } = {},
+): ReactElement {
   return (
     <PlayerSlot
+      page="watch"
       streamingUrl={URL_A}
       posterUrl={POSTER}
       autostart
       progressIdentity={{ videoId: "video-a", languageSlug: "english" }}
       session={props.session === undefined ? SESSION_A : props.session}
+      progressHold={props.progressHold}
     />
   )
+}
+
+const HOLD: ProgressHold = {
+  id: "keep-watching:video-a-slug:1",
+  durationMs: 6000,
 }
 
 let mounted: TestInstance | null = null
@@ -179,6 +223,9 @@ async function measureRect(): Promise<void> {
 beforeEach(() => {
   requestStore.reset()
   sessionStore.end("abandoned")
+  mockParentListeners.clear()
+  mockOwnListeners.clear()
+  mockFocus.focused = true
   datadog.datadogLog.warn.mockClear()
   // Back to dropping the callback, which is both the mock's own default and
   // the cold open this component defends against.
@@ -259,6 +306,7 @@ describe("PlayerSlot", () => {
     // paints over this screen — and its unmount reads as a back press.
     const renderer = await render(
       <PlayerSlot
+        page="watch"
         streamingUrl={null}
         posterUrl={POSTER}
         autostart
@@ -412,5 +460,224 @@ describe("PlayerSlot", () => {
     )
     // The pump gave up rather than running forever.
     expect(scheduled).toHaveLength(MEASURE_RETRY_FRAMES)
+  })
+
+  it("publishes no progress hold unless the screen passes one", async () => {
+    await render(slot())
+
+    expect(requestStore.getSnapshot().request?.progressHold ?? null).toBeNull()
+  })
+
+  it("puts the screen's progress hold on the request it publishes (KTD12)", async () => {
+    await render(slot({ progressHold: HOLD }))
+
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+  })
+
+  it("republishes without the hold when the screen drops it", async () => {
+    // An offer choice ends the hold by publishing a request without it.
+    const renderer = await render(slot({ progressHold: HOLD }))
+    expect(requestStore.getSnapshot().request?.progressHold).toEqual(HOLD)
+
+    await act(async () => {
+      renderer.update(slot({ progressHold: null }))
+    })
+
+    expect(requestStore.getSnapshot().request?.progressHold ?? null).toBeNull()
+  })
+})
+
+// feat-553 KTD10: a reader route covers the slot without detaching it.
+describe("PlayerSlot under the reader cover", () => {
+  function transitionEndListeners() {
+    return [...(mockParentListeners.get("transitionEnd") ?? [])]
+  }
+
+  async function fireTransitionEnd(closing: boolean) {
+    await act(async () => {
+      for (const listener of transitionEndListeners())
+        listener({ data: { closing } })
+    })
+  }
+
+  it("paints its poster while a reader covers it, and drops it on the return", async () => {
+    // The owner must have played, or the cover refuses; both keep the poster.
+    requestStore.setPlaybackFactsSource({
+      hasPlaybackStarted: () => true,
+      hasReachedEnd: () => false,
+      readPosition: () => 10,
+      readDuration: () => 600,
+    })
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+    expect(posters(renderer)).toHaveLength(0)
+
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+
+    // The iOS back swipe shows this screen under the reader: the video is in
+    // the window, so the slot's own poster is what the viewer sees here.
+    expect(requestStore.getSnapshot().cover).toBe("admitted")
+    expect(requestStore.getSnapshot().rect).toEqual(GOOD_RECT)
+    expect(posters(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      requestStore.uncoverSlot(id)
+    })
+    expect(posters(renderer)).toHaveLength(0)
+  })
+
+  it("paints its poster under a refused cover too", async () => {
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+
+    expect(requestStore.getSnapshot().cover).toBe("refused")
+    expect(posters(renderer)).toHaveLength(1)
+  })
+
+  it("measures once more when the root stack's pop transition ends", async () => {
+    const renderer = await render(slot())
+    await measureRect()
+    const id = requestStore.getSnapshot().slotId as number
+    expect(measure).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      requestStore.coverSlot(id)
+    })
+    // A rotation while covered: the kept rect is stale, and the native node
+    // may drop a measure while it sits under the reader.
+    const ROTATED = { x: 0, y: 24, width: 820, height: 461 }
+    armMeasure(ROTATED)
+
+    // The reader's push ending hides this screen: no measure then.
+    await fireTransitionEnd(true)
+    expect(measure).toHaveBeenCalledTimes(1)
+
+    // The pop: the cover ends at its dispatch, the transition ends later.
+    await act(async () => {
+      requestStore.uncoverSlot(id)
+    })
+    await fireTransitionEnd(false)
+
+    expect(measure).toHaveBeenCalledTimes(2)
+    expect(requestStore.getSnapshot().rect).toEqual(ROTATED)
+    expect(posters(renderer)).toHaveLength(0)
+
+    // Once only: a later transition with no cover measures nothing more.
+    await fireTransitionEnd(false)
+    expect(measure).toHaveBeenCalledTimes(2)
+  })
+
+  // Off the reader routes nothing changes: the pre-U13 slot has no listener.
+  it("measures nothing more at a transition end that no cover came before", async () => {
+    await render(slot())
+    await measureRect()
+    expect(measure).toHaveBeenCalledTimes(1)
+    armMeasure({ x: 0, y: 24, width: 820, height: 461 })
+
+    await fireTransitionEnd(false)
+
+    expect(measure).toHaveBeenCalledTimes(1)
+    expect(requestStore.getSnapshot().rect).toEqual(GOOD_RECT)
+  })
+
+  it("holds one transition listener through StrictMode's effect cycle", async () => {
+    await render(<StrictMode>{slot()}</StrictMode>)
+
+    expect(transitionEndListeners()).toHaveLength(1)
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+    expect(transitionEndListeners()).toHaveLength(0)
+  })
+})
+
+// 2026-10-20: a screen pushed over this one keeps it mounted, so the slot
+// tells the host. A pop also blurs the screen, and must never read as a push.
+describe("PlayerSlot under another screen", () => {
+  function ownListeners(name: string) {
+    return [...(mockOwnListeners.get(name) ?? [])]
+  }
+
+  /** The router's order: the state changes, THEN the event fires. */
+  async function emit(
+    name: "beforeRemove" | "blur" | "focus",
+    focused: boolean,
+  ) {
+    mockFocus.focused = focused
+    await act(async () => {
+      for (const listener of ownListeners(name)) listener({})
+    })
+  }
+
+  it("publishes a screen pushed over it, and clears it on the return", async () => {
+    await render(slot())
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await emit("focus", true)
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+  })
+
+  it("never reads a pop as a screen above: the removal comes before the blur", async () => {
+    await render(slot())
+
+    // `beforeRemove` fires while the screen still has focus.
+    await emit("beforeRemove", true)
+    await emit("blur", false)
+
+    expect(requestStore.getSnapshot().underScreen).toBe(false)
+  })
+
+  // dismissTo("/(tabs)") from Downloads removes the covered page with it. The
+  // page keeps its cover until it unmounts, so its detach decides the window.
+  it("keeps a covered page under its screen while it leaves", async () => {
+    await render(slot())
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await emit("beforeRemove", false)
+    await emit("focus", true)
+
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+  })
+
+  it("names the page that mounts it", async () => {
+    await render(slot())
+
+    expect(requestStore.getSnapshot().slotPage).toBe("watch")
+  })
+
+  it("publishes a screen that mounts without focus as under one", async () => {
+    mockFocus.focused = false
+    await render(slot())
+
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+  })
+
+  it("holds one listener per event through StrictMode's effect cycle", async () => {
+    await render(<StrictMode>{slot()}</StrictMode>)
+
+    for (const name of ["beforeRemove", "blur", "focus"])
+      expect(ownListeners(name)).toHaveLength(1)
+    // The re-attached slot is the one that hears the push.
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await act(async () => {
+      mounted?.unmount()
+    })
+    mounted = null
+    for (const name of ["beforeRemove", "blur", "focus"])
+      expect(ownListeners(name)).toHaveLength(0)
   })
 })

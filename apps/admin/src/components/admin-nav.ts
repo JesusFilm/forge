@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Layers3,
   ListTree,
+  Megaphone,
   Search,
   Settings,
   Shield,
@@ -109,6 +110,12 @@ export const adminNavItems: AdminNavItem[] = [
     icon: KeyRound,
   },
   {
+    id: "pushCampaigns",
+    href: "/dashboard/push-campaigns",
+    section: "system",
+    icon: Megaphone,
+  },
+  {
     id: "mcp",
     href: "/dashboard/mcp",
     section: "system",
@@ -143,6 +150,12 @@ export function isNavItemVisible(principal: Principal, item: AdminNavItem) {
 
   if (item.id === "recommendations") {
     return hasPermission(principal, "read:recommendation-aggregates")
+  }
+
+  // R28 — the campaign pages sit at the viewer tier, not behind the ADMIN
+  // list above, so the nav entry reads the same key the pages read.
+  if (item.id === "pushCampaigns") {
+    return hasPermission(principal, "write:push-campaigns")
   }
 
   return true

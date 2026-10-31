@@ -7,6 +7,7 @@
  * component and the styles, and re-exports the signal type for its producers.
  */
 
+import type { UiT } from "../i18n/useT"
 import {
   STATUS_DONE_COLOR,
   STATUS_FAILED_COLOR,
@@ -14,6 +15,12 @@ import {
   WARNING_COLOR,
 } from "./color"
 import type { ExportOutcome } from "./exportSession"
+import type { ExportBlock } from "./rawExport"
+
+export type ExportReportT = UiT<"ExportReport">
+
+/** Which gate blocked an export. The view names it at render (KTD15). */
+export type ExportBlockReason = ExportBlock["reason"]
 
 /** How long a report that needs no viewer action stays on screen. */
 export const EXPORT_REPORT_AUTO_DISMISS_MS = 6000
@@ -53,8 +60,8 @@ export type ExportReportSignal = {
   title?: string | null
   /** What the confirmation calls the folder the viewer picked. */
   folderName?: string | null
-  /** A reason the fold cannot derive, such as which gate blocked the export. */
-  detail?: string | null
+  /** A reason the fold cannot derive: which gate blocked the export. */
+  blockReason?: ExportBlockReason | null
 }
 
 export type ExportReportRecord = {
@@ -68,7 +75,7 @@ export type ExportReportRecord = {
    */
   outcomes: Readonly<Record<string, ExportOutcome>>
   folderName: string | null
-  detail: string | null
+  blockReason: ExportBlockReason | null
   /** When the host may drop the card. A run still going keeps its card past it. */
   expiresAt: number
 }
@@ -129,7 +136,7 @@ export function foldSignal(
     runSize,
     outcomes,
     folderName: signal.folderName ?? existing?.folderName ?? null,
-    detail: signal.detail ?? existing?.detail ?? null,
+    blockReason: signal.blockReason ?? existing?.blockReason ?? null,
     expiresAt:
       now +
       (runIsOver(outcomes, runSize)
@@ -155,24 +162,46 @@ function singleOutcome(counts: Record<ExportOutcome, number>): ExportOutcome {
   return SINGLE_PRIORITY.find((outcome) => counts[outcome] > 0) ?? "saved"
 }
 
-function savedHeadline(folderName: string | null): string {
+function savedHeadline(folderName: string | null, t: ExportReportT): string {
   // The folder name is read back from the uri the picker returned, so an
   // unreadable one names the app that owns every destination instead.
-  return folderName ? `Saved to ${folderName}.` : "Saved to Files."
+  return folderName
+    ? t("savedToFolder", { folder: folderName })
+    : t("savedToFiles")
+}
+
+function blockText(
+  reason: ExportBlockReason | null,
+  t: ExportReportT,
+): string | null {
+  switch (reason) {
+    case "insufficient-storage":
+      return t("insufficientStorage")
+    case "unreadable-free":
+      return t("unreadableFree")
+    case "wifi-only-on-cellular":
+      return t("wifiOnlyOnCellular")
+    case "invalid-url":
+      return t("invalidUrl")
+    default:
+      return null
+  }
 }
 
 function singleView(
   record: ExportReportRecord,
   counts: Record<ExportOutcome, number>,
+  t: ExportReportT,
 ): ExportReportView {
   const outcome = singleOutcome(counts)
-  const detail = (fallback: string | null) => record.detail ?? fallback
+  const detail = (fallback: string | null) =>
+    blockText(record.blockReason, t) ?? fallback
 
   switch (outcome) {
     case "blocked":
       return {
         title: record.title,
-        headline: "The export did not start.",
+        headline: t("notStarted"),
         detail: detail(null),
         icon: "alert-circle",
         iconColor: WARNING_COLOR,
@@ -180,7 +209,7 @@ function singleView(
     case "failed":
       return {
         title: record.title,
-        headline: "The video did not save.",
+        headline: t("notSaved"),
         detail: detail(null),
         icon: "alert-circle",
         iconColor: STATUS_FAILED_COLOR,
@@ -188,15 +217,15 @@ function singleView(
     case "abandoned":
       return {
         title: record.title,
-        headline: "The export did not finish.",
-        detail: detail("Start it again to keep a copy."),
+        headline: t("notFinished"),
+        detail: detail(t("startAgain")),
         icon: "alert-circle",
         iconColor: STATUS_FAILED_COLOR,
       }
     case "cancelled":
       return {
         title: record.title,
-        headline: "Export cancelled.",
+        headline: t("cancelled"),
         detail: detail(null),
         icon: "close-circle",
         iconColor: TEXT_SECONDARY,
@@ -204,7 +233,7 @@ function singleView(
     default:
       return {
         title: record.title,
-        headline: savedHeadline(record.folderName),
+        headline: savedHeadline(record.folderName, t),
         detail: detail(null),
         icon: "checkmark-circle",
         iconColor: STATUS_DONE_COLOR,
@@ -215,13 +244,19 @@ function singleView(
 function seriesView(
   record: ExportReportRecord,
   counts: Record<ExportOutcome, number>,
+  t: ExportReportT,
 ): ExportReportView {
   const notes: string[] = []
-  if (counts.cancelled > 0) notes.push("Export cancelled.")
-  if (counts.failed > 0) notes.push(`${counts.failed} did not save.`)
-  if (counts.blocked > 0) notes.push(`${counts.blocked} did not start.`)
-  if (counts.abandoned > 0) notes.push(`${counts.abandoned} did not finish.`)
-  if (record.detail) notes.push(record.detail)
+  if (counts.cancelled > 0) notes.push(t("cancelled"))
+  if (counts.failed > 0) notes.push(t("failedCount", { count: counts.failed }))
+  if (counts.blocked > 0) {
+    notes.push(t("blockedCount", { count: counts.blocked }))
+  }
+  if (counts.abandoned > 0) {
+    notes.push(t("abandonedCount", { count: counts.abandoned }))
+  }
+  const block = blockText(record.blockReason, t)
+  if (block) notes.push(block)
 
   // The icon answers "did anything go wrong", never "has the run finished".
   // A run mid-flight has saved fewer than `runSize` while every episode in it
@@ -235,16 +270,22 @@ function seriesView(
     title: record.title,
     // R21: saved against the resolved set, always — a cancelled run still tells
     // the viewer how many episodes reached the folder.
-    headline: `Saved ${counts.saved} of ${record.runSize} episodes.`,
+    headline: t("seriesSaved", {
+      saved: counts.saved,
+      total: record.runSize,
+    }),
     detail: notes.length > 0 ? notes.join(" ") : null,
     icon: clean ? "checkmark-circle" : "alert-circle",
     iconColor: clean ? STATUS_DONE_COLOR : WARNING_COLOR,
   }
 }
 
-export function viewFor(record: ExportReportRecord): ExportReportView {
+export function viewFor(
+  record: ExportReportRecord,
+  t: ExportReportT,
+): ExportReportView {
   const counts = countOutcomes(record)
   return record.runSize > 1
-    ? seriesView(record, counts)
-    : singleView(record, counts)
+    ? seriesView(record, counts, t)
+    : singleView(record, counts, t)
 }

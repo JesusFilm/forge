@@ -1,5 +1,4 @@
 import { type SearchResult } from "./queries"
-import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 
 /** Action name shared with web and TV so cross-app dashboards join on it. */
 export const WATCH_SEARCH_RESULT_CLICKED_ACTION = "watch_search.result_clicked"
@@ -11,6 +10,8 @@ export type WatchSearchResultClickOptions = {
   position: number
   /** Client-generated correlation id shared with the per-search log. */
   searchRequestId: string
+  /** The display slug the search sent (U7). */
+  searchLanguageSlug: string
 }
 
 /**
@@ -21,7 +22,11 @@ export type WatchSearchResultClickOptions = {
  */
 export function buildWatchSearchResultClickContext(
   result: SearchResult,
-  { position, searchRequestId }: WatchSearchResultClickOptions,
+  {
+    position,
+    searchRequestId,
+    searchLanguageSlug,
+  }: WatchSearchResultClickOptions,
 ): Record<string, number | string> {
   return {
     "watch_search.result_position": Math.max(1, Math.floor(position)),
@@ -32,7 +37,7 @@ export function buildWatchSearchResultClickContext(
     "watch_search.search_request_id": searchRequestId,
     // route_language_slug is deliberately absent: buildWatchSearchInput never
     // sends routeLanguageSlug, so reporting one would fabricate a request field.
-    "watch_search.search_language_slug": SEARCH_LANGUAGE_SLUG,
+    "watch_search.search_language_slug": searchLanguageSlug,
   }
 }
 

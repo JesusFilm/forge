@@ -1,0 +1,82 @@
+{
+  "probe": "forge_owner_stop_footprint_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "sqlSha256": "999dc58ec37a56fecc3c613d6c29d44d334a222c7d15c4b0c8ea5b5ff67fe8e4",
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "nodeWallTimeoutMs": 15000,
+  "transportWallTimeoutMs": 20000,
+  "activationNotPerformed": true,
+  "environment": "production",
+  "startedAt": "2026-09-29T22:16:06.333394+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "read_complete",
+  "runtimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "requiredIndexesUsable": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_owner_bootstrap_stop_footprint",
+    "scope": {
+      "noOwnerRelease": true,
+      "soleMatchingBootstrap": true,
+      "matchingExperimentLimit": 2,
+      "matchingExperimentCapReached": false,
+      "matchingStartedActiveWatchExperimentsCapped": 1
+    },
+    "checks": {
+      "requiredIndexesUsable": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "pointer": {
+      "found": true,
+      "stage": "control",
+      "generation": 1,
+      "killSwitchEnabled": false,
+      "ownerReleasePresent": false
+    },
+    "bootstrap": {
+      "found": true,
+      "state": "active",
+      "generation": 1,
+      "knownExperiment": "semantic-aa-v1"
+    },
+    "footprint": {
+      "requestLimit": 10001,
+      "assignmentLimit": 1001,
+      "requestCapReached": false,
+      "assignmentsObserved": 0,
+      "assignmentCapReached": false,
+      "newSlateFencesObserved": 0,
+      "activeAssignmentsObserved": 0,
+      "fencedAssignmentsObserved": 0,
+      "unexpiredRequestsObserved": 0,
+      "bootstrapFootprintComplete": true,
+      "linkedRetainedRequestsObserved": 0,
+      "unexpiredAlreadyFencedObserved": 0
+    },
+    "lockTimeout": "1s",
+    "stopAdmitted": false,
+    "statementTimeout": "3s",
+    "stopSafetyProven": false,
+    "mutationPerformed": false,
+    "sourceRowsQueried": false,
+    "transactionReadOnly": "on",
+    "inabilityToAdmitStop": false,
+    "otherWorkNotMeasured": "pending evaluation and promotion runs, trigger dependency fanout, lock contention and transaction wall time"
+  },
+  "endedAt": "2026-09-29T22:16:10.176776+00:00"
+}

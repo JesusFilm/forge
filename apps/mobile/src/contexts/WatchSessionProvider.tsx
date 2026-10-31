@@ -17,6 +17,8 @@ import {
 } from "../lib/normalizeVideo"
 import { datadogLog } from "../lib/datadog"
 import { ensureDubMedia } from "../lib/dubMediaFetch"
+import type { WatchSessionIntent } from "../lib/explore/watchIntent"
+import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import { GET_VIDEO_DUB } from "../lib/queries"
 import {
   INITIAL_RECONCILER_STATE,
@@ -25,6 +27,11 @@ import {
   resetReconciler,
 } from "../lib/preferenceReconciler"
 import { subtitleNameToCache } from "../lib/subtitleSelection"
+import {
+  cachedSubtitleName,
+  languageIso3ForSlug,
+} from "../lib/watchPreferences"
+import { useDownloads } from "./DownloadsProvider"
 import { useWatchPreferences } from "./WatchPreferencesProvider"
 
 /**
@@ -75,6 +82,7 @@ type WatchSessionContextValue = {
    */
   snackbarMessage: string | null
   setSnackbarMessage: (message: string | null) => void
+  setSessionIntent: (intent: WatchSessionIntent | null) => void
 }
 
 const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
@@ -82,15 +90,19 @@ const WatchSessionContext = createContext<WatchSessionContextValue | null>(null)
 export function WatchSessionProvider({ children }: { children: ReactNode }) {
   const {
     audioLanguageSlug: preferredAudioSlug,
+    audioLanguageIso3: preferredAudioIso3,
     subtitleLanguageSlug: preferredSubtitleSlug,
-    subtitleLanguageName: preferredSubtitleName,
+    subtitleLanguageName,
+    subtitleLanguageNameLocale,
     subtitlesEnabled,
     isReady: preferencesReady,
     setPreferredAudioLanguage,
+    backfillAudioLanguageIso3,
     setPreferredSubtitleLanguage,
     setPreferredSubtitleName,
     setSubtitlesEnabled,
   } = useWatchPreferences()
+  const { isReady: downloadsReady, committedCopyFor } = useDownloads()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
   // Null = unresolved, matching SeriesSessionProvider's null-before-resolution.
@@ -105,10 +117,17 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     string | null
   >(null)
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null)
+  const [sessionIntent, setSessionIntent] = useState<WatchSessionIntent | null>(
+    null,
+  )
+  const intentAudioSlug = sessionIntent?.audioLanguageSlug ?? null
+  const intentSubtitleSlug = sessionIntent?.subtitleLanguageSlug ?? null
 
   // Subtitles on/off is an app-wide preference, not per-session state — read it
   // straight from the persisted store so it carries across videos and restarts.
-  const subtitleEnabled = subtitlesEnabled
+  // A "Keep watching" intent can turn it on for this session only (R43).
+  const subtitleEnabled =
+    subtitlesEnabled || sessionIntent?.subtitlesOn === true
 
   // Latest-render video snapshot so the audio setter reads the chosen variant's
   // language slug without taking `video` as a dep (which would re-create the
@@ -129,8 +148,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     (index: number) => {
       audioReconcilerRef.current = markUserChoice(audioReconcilerRef.current)
       setActiveVariantIndexState(index)
-      const slug = videoRef.current?.variants[index]?.languageSlug ?? null
-      if (slug) setPreferredAudioLanguage(slug)
+      const picked = videoRef.current?.variants[index]
+      const slug = picked?.languageSlug ?? null
+      if (slug) setPreferredAudioLanguage(slug, picked?.languageIso3 ?? null)
       // User-intent seam only — the reconciler uses the raw setter (R32).
       datadogLog.info("content.language_change", { language_slug: slug })
     },
@@ -140,6 +160,10 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     (enabled: boolean) => {
       subtitleReconcilerRef.current = markUserChoice(
         subtitleReconcilerRef.current,
+      )
+      // The viewer's own toggle ends the session-only override.
+      setSessionIntent((prev) =>
+        prev?.subtitlesOn ? { ...prev, subtitlesOn: false } : prev,
       )
       setSubtitlesEnabled(enabled)
     },
@@ -191,6 +215,15 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     ? (errorIds[activeVariantId] ?? false)
     : false
 
+  // The Admin forms the screen's record was read with (KTD16): the subtitle
+  // names follow them, never the store, so a live change leaves them alone.
+  const screenForms = video?.adminForms
+  const screenCatalogTag = screenForms?.catalogTag
+  const preferredSubtitleName = cachedSubtitleName(
+    { subtitleLanguageName, subtitleLanguageNameLocale },
+    screenCatalogTag,
+  )
+
   const ensureActiveVariantMedia = useCallback(() => {
     ensureDubMedia(
       activeVariant?.documentId,
@@ -203,7 +236,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
           // switching back to this language) reads the warm cache, no refetch.
           fetchPolicy: "cache-first",
         })
-        return normalizeDubMedia(res.data?.videoDub ?? null)
+        return normalizeDubMedia(res.data?.videoDub ?? null, screenForms)
       },
       {
         onStart: (id) => {
@@ -233,7 +266,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
           }),
       },
     )
-  }, [activeVariant?.documentId, client])
+  }, [activeVariant?.documentId, client, screenForms])
 
   // New video identity → reset choice tracking + subtitle state. Declared
   // before the resolution effects so their guards see a clean slate.
@@ -255,9 +288,29 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     requestedRef.current.clear()
   }, [video?.documentId])
 
+  // A download is one dub: it outranks the preference so the pill names the
+  // audio on disk, which is why the default below waits for the downloads store.
+  const downloadedDubId =
+    downloadsReady && video
+      ? (committedCopyFor(video.slug)?.dubDocumentId ?? null)
+      : null
+  const downloadedAudioSlug =
+    downloadedDubId == null
+      ? null
+      : (video?.variants.find((v) => v.documentId === downloadedDubId)
+          ?.languageSlug ?? null)
+  // A screen that remounts onto this video's floating session (an expand)
+  // starts a fresh provider: the dub the viewer picked lives only in that
+  // session now, and it outranks the download, or the expand undoes the pick.
+  const floatingSession = getMiniPlayerStore().getSnapshot().session
+  const floatingAudioSlug =
+    video && floatingSession?.videoSlug === video.slug
+      ? floatingSession.languageSlug
+      : null
+
   // Default the dubbing language once per video as variants arrive (may land
   // after documentId via partial data), unless the user chose. The reconciler
-  // gates on preferencesReady so the persisted choice applies first (no snap).
+  // gates on both stores so the download or persisted choice applies first.
   useEffect(() => {
     const options =
       video?.variants.map((v) => ({
@@ -266,11 +319,16 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         languageSlug: v.languageSlug,
       })) ?? []
     const { nextState, apply } = reconcileDefault(audioReconcilerRef.current, {
-      ready: preferencesReady,
+      ready: preferencesReady && downloadsReady,
       identity: video?.documentId ?? null,
       options,
       primaryBcp47: video?.primaryLanguageBcp47 ?? null,
-      preferredSlug: preferredAudioSlug,
+      // The intent names the dub the viewer just heard in the clip.
+      preferredSlug:
+        intentAudioSlug ??
+        floatingAudioSlug ??
+        downloadedAudioSlug ??
+        preferredAudioSlug,
     })
     audioReconcilerRef.current = nextState
     if (apply && video) {
@@ -284,7 +342,26 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     video?.variants.length,
     video?.primaryLanguageBcp47,
     preferencesReady,
+    downloadsReady,
+    downloadedAudioSlug,
     preferredAudioSlug,
+    intentAudioSlug,
+  ])
+
+  // A language picked before the ISO 639-3 code was stored has a slug only.
+  // Fill the code from this video's dub in that language, so the Bible reader
+  // gets its default translation (R22) without a new pick.
+  useEffect(() => {
+    if (!preferencesReady || !preferredAudioSlug || preferredAudioIso3) return
+    const iso3 = languageIso3ForSlug(video?.variants ?? [], preferredAudioSlug)
+    if (iso3 != null) backfillAudioLanguageIso3(preferredAudioSlug, iso3)
+  }, [
+    video?.documentId,
+    video?.variants.length,
+    preferencesReady,
+    preferredAudioSlug,
+    preferredAudioIso3,
+    backfillAudioLanguageIso3,
   ])
 
   // Pre-select the subtitle language once per variant unless the user chose,
@@ -305,16 +382,18 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
         identity: activeVariant?.documentId ?? null,
         options,
         primaryBcp47: video?.primaryLanguageBcp47 ?? null,
-        preferredSlug: preferredSubtitleSlug,
+        preferredSlug: intentSubtitleSlug ?? preferredSubtitleSlug,
       },
     )
     subtitleReconcilerRef.current = nextState
+    // The raw setter: an intent's subtitle never becomes the saved choice.
     if (apply?.slug) setActiveSubtitleSlugState(apply.slug)
   }, [
     activeVariant?.documentId,
     activeVariantMedia,
     preferencesReady,
     preferredSubtitleSlug,
+    intentSubtitleSlug,
   ])
 
   // Cache the preferred subtitle's display NAME once a dub's media lands, so the
@@ -328,13 +407,16 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       activeVariantMedia.subtitles,
       preferredSubtitleName,
     )
-    if (next != null) setPreferredSubtitleName(next)
+    // KTD16: the names are in the screen's captured language, which a live
+    // change does not move, so the cache records that tag, not the current one.
+    if (next != null) setPreferredSubtitleName(next, screenCatalogTag)
   }, [
     preferencesReady,
     preferredSubtitleSlug,
     preferredSubtitleName,
     activeVariantMedia,
     setPreferredSubtitleName,
+    screenCatalogTag,
   ])
 
   const value = useMemo<WatchSessionContextValue>(
@@ -355,6 +437,7 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
       ensureActiveVariantMedia,
       snackbarMessage,
       setSnackbarMessage,
+      setSessionIntent,
     }),
     [
       video,

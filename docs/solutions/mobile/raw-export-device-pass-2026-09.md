@@ -48,7 +48,9 @@ an iOS result.
 2. A development build defaults to LOCAL admin and refuses production admin at
    module scope. If you use one, edit the LAN admin URL into
    `apps/mobile/.env.development.local` — the shell environment is ignored —
-   then restart Metro with a cleared cache.
+   then restart Metro with a cleared cache. (Corrected 2026-10-19: a shell
+   value reaches the bundle but cannot override a key that this file sets; see
+   `docs/solutions/developer-experience/expo-dev-bundle-env-file-beats-shell-override.md`.)
 3. This feature needs a NATIVE build. `apps/mobile/app.json` uses the
    fingerprint runtime-version policy, and U1 changed both `package.json` and
    `app.json`, so an over-the-air update cannot deliver it.

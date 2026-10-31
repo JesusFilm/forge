@@ -10,6 +10,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { fetchWatchProgressForUser } from "@/lib/watch-progress-server"
+import { safeErrorName as errorName } from "@/lib/safe-error-name"
 
 const WATCH_HISTORY_VIDEO = adminGraphql(`
   query WatchHistoryVideo($id: ID!, $locale: String!, $languageSlug: String) {
@@ -189,8 +190,8 @@ function sanitizeLogValue(value: string): string {
  * A sliding-window pool under one shared deadline: each worker takes the next
  * index as soon as it is free, so one slow video cannot stall the rest of its
  * cohort the way a chunked wave would, and no worker claims new work once
- * `signal` aborts. The same signal is handed to each task so in-flight calls
- * are cancelled rather than left running past the deadline. Unclaimed indices
+ * `signal` aborts. The same signal asks each in-flight task to cancel; the
+ * race bounds the pool's wait even if upstream ignores it. Unclaimed indices
  * stay holes, which the caller's null filter drops — a spent budget costs the
  * cards that did not resolve, never the ones that did.
  */
@@ -203,19 +204,16 @@ async function mapWithConcurrency<TInput, TOutput>(
   signal: AbortSignal,
 ): Promise<TOutput[]> {
   const results = new Array<TOutput>(inputs.length)
+  if (inputs.length === 0 || signal.aborted) return results
   let nextIndex = 0
 
   // One listener for the whole pool, not one per item: a per-task listener on
   // a 200-item batch would pile up on the same signal and trip Node's
   // max-listeners warning.
+  let onAbort: (() => void) | undefined
   const deadlineReached = new Promise<typeof DEADLINE_REACHED>((resolve) => {
-    if (signal.aborted) {
-      resolve(DEADLINE_REACHED)
-      return
-    }
-    signal.addEventListener("abort", () => resolve(DEADLINE_REACHED), {
-      once: true,
-    })
+    onAbort = () => resolve(DEADLINE_REACHED)
+    signal.addEventListener("abort", onAbort, { once: true })
   })
 
   async function worker(): Promise<void> {
@@ -239,10 +237,14 @@ async function mapWithConcurrency<TInput, TOutput>(
   // `Math.max(1, ...)` keeps a degenerate cap from spawning zero workers,
   // which would return an all-holes array the null filter silently empties.
   const workers = Math.max(1, Math.min(concurrency, inputs.length))
-  await Promise.all(
-    Array.from({ length: inputs.length === 0 ? 0 : workers }, worker),
-  )
-  return results
+  try {
+    await Promise.all(Array.from({ length: workers }, worker))
+    return results
+  } finally {
+    // A caller can reuse a nonaborting signal across completed pools. Once
+    // only handles the abort path; successful pools must also release it.
+    if (onAbort) signal.removeEventListener("abort", onAbort)
+  }
 }
 
 /**
@@ -251,9 +253,7 @@ async function mapWithConcurrency<TInput, TOutput>(
  * `/api/watch-progress` route logs its own degraded fan-out through the same
  * invariant rather than re-deriving it.
  */
-export function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error
-}
+export { errorName }
 
 // Premise this whole module's error handling rests on, verified by hand
 // 2026-09-22 against the installed @apollo/client 4.1.9: `errorPolicy`
@@ -363,9 +363,10 @@ export async function fetchWatchHistoryVideoDetails(
   const timedOut = deadline.aborted
   if (failed > 0 || notFound > 0 || timedOut) {
     // Plain `event=` string, never JSON.stringify: Railway logsV2 silences
-    // stringified payloads from Next.js route handlers. `timedOut` is what
-    // separates "Admin is sick" from "this history was too big for the
-    // budget" — both degrade, but only one is an incident.
+    // stringified payloads from Next.js route handlers. `timedOut` means only
+    // that the shared deadline was reached; it cannot identify its cause.
+    // Counters describe task outcomes observed by this return, not work that
+    // a signal-ignoring upstream may finish later.
     console.warn(
       `[watch-history] event=history_fanout_degraded requested=${uniqueRequests.length} returned=${details.length} failed=${failed} notFound=${notFound} timedOut=${timedOut}`,
     )

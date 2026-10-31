@@ -1,12 +1,13 @@
+import { setTimeout } from "node:timers"
 import { VmInvariantError } from "./errors.mjs"
 import { mkdir, readFile, writeFile, stat } from "node:fs/promises"
+import { executionProfile } from "./execution-profile.mjs"
 import { jobIdentity } from "./profile.mjs"
 import { runHostCommand } from "./host-command.mjs"
 const boot = async () =>
   (await readFile("/proc/sys/kernel/random/boot_id", "utf8")).trim()
 const now = () => Number(process.hrtime.bigint() / 1000000n)
-const unitBody =
-  "[Unit]\nDescription=Studio immutable bounded execution\nStopWhenUnneeded=no\n[Slice]\nCPUQuota=200%\nMemoryMax=2147483648\nMemorySwapMax=0\nTasksMax=128\n"
+const unitBody = `[Unit]\nDescription=Studio immutable bounded execution\nStopWhenUnneeded=no\n[Slice]\nCPUQuota=${executionProfile.cpu * 100}%\nMemoryMax=${executionProfile.memoryBytes}\nMemorySwapMax=0\nTasksMax=${executionProfile.aggregatePids}\n`
 const system = (args, absoluteDeadlineMs) =>
   runHostCommand("/usr/bin/systemctl", args, {
     timeoutMs: 10000,

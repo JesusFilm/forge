@@ -1,0 +1,31 @@
+{
+  "measuredAt": "2026-09-29T22:55:33.305983+00:00",
+  "availableBytes": 11037495296,
+  "reserves": {
+    "graphBytes": 68231168,
+    "ownerReleaseBytes": 32768,
+    "additionalResidentWalReserveBytes": 268435456,
+    "temporaryBytes": 45371302,
+    "concurrentMarginBytes": 134217728
+  },
+  "projectedAvailableAtPeakBytes": 10521206874,
+  "ordinaryDailyGrowthBytes": 1191328353,
+  "requestsPer24h": 7180,
+  "allRequestsChargedDirectIncrementBytes": 102932480,
+  "projectedDailyGrowthBytes": 1294260833,
+  "projectedRunwayDays": 8.129124057329795,
+  "peakMinimum5GBMet": true,
+  "priorSevenDayProjectionMet": true,
+  "futureSavingsCredit": 0,
+  "claimedStorageOwnerApproval": false,
+  "runtime": "8ecca9c7db8a29bc728c95238ca62a4f6a61e51b",
+  "packedFormatDefaultReviewed": true,
+  "graphSourceAndPublisher16PinsUnchanged": true,
+  "limitations": [
+    "One point-in-time observation; recheck if deployment/operation materially delays publication.",
+    "Serving increment is a measured matched fixture with one profile lineage source, not a universal upper bound.",
+    "No future purge, conversion or packed-format savings credited.",
+    "Storage task retains ownership of loaded-retention proof."
+  ],
+  "admission": "capacity acceptable; graph diagnostic and single-use batch remain pending"
+}

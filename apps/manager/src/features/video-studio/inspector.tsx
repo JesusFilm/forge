@@ -1,11 +1,16 @@
 "use client"
-import type {
-  StudioTimelineItem,
-  StudioDocument,
+import {
+  studioDocumentSchema,
+  type StudioTimelineItem,
+  type StudioDocument,
 } from "@forge/studio-contracts"
 import { Trash2, Copy } from "lucide-react"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
-import { itemLabel } from "./timeline"
+import { isTextComponent } from "./item-presentation"
+import { NumberField } from "./number-field"
+import { TransitionControls } from "./transition-controls"
+import { TextControls } from "./text-controls"
+import { componentFieldLabel } from "./component-field-label"
 export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   x: 0,
   y: 0,
@@ -14,50 +19,16 @@ export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   rotation: 0,
   opacity: 1,
 }
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-}: {
-  label: string
-  value: number
-  onChange: (n: number) => void
-  min?: number
-  max?: number
-  step?: number
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        key={value}
-        type="number"
-        defaultValue={value}
-        min={min}
-        max={max}
-        step={step}
-        onBlur={(e) => {
-          const n = Number(e.target.value)
-          if (Number.isFinite(n) && n !== value) onChange(n)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur()
-        }}
-      />
-    </label>
-  )
-}
 export function Inspector({
   session,
   state,
   onError,
+  onPreview,
 }: {
   session: EditorSession
   state: EditorSnapshot
   onError: (s: string) => void
+  onPreview?: (document: StudioDocument | null) => void
 }) {
   const doc = state.document,
     item = doc.items.find((i) => i.id === state.selection)
@@ -74,66 +45,56 @@ export function Inspector({
       items: d.items.map((i) => (i.id === item?.id ? fn(i) : i)),
     }))
   }
+  function numeric(
+    changeDocument: (d: StudioDocument, n: number) => StudioDocument,
+    validate?: (n: number) => string | undefined,
+  ) {
+    return {
+      onChange: (n: number) => {
+        const error = validate?.(n)
+        if (error) return onError(error)
+        change((d) => changeDocument(d, n))
+      },
+      onPreview: (n: number | null) => {
+        if (n !== null && validate?.(n)) return
+        preview(n === null ? null : (d) => changeDocument(d, n))
+      },
+    }
+  }
+  function preview(fn: ((d: StudioDocument) => StudioDocument) | null) {
+    if (!onPreview) return
+    if (!fn) return onPreview(null)
+    const next = studioDocumentSchema.safeParse(fn(doc))
+    if (state.editable && next.success) onPreview(next.data)
+  }
+  function previewPatch(
+    fn: ((i: StudioTimelineItem) => StudioTimelineItem) | null,
+  ) {
+    preview(
+      fn
+        ? (d) => ({
+            ...d,
+            items: d.items.map((i) => (i.id === item?.id ? fn(i) : i)),
+          })
+        : null,
+    )
+  }
+  function numericPatch(
+    changeItem: (i: StudioTimelineItem, n: number) => StudioTimelineItem,
+    validate?: (n: number) => string | undefined,
+  ) {
+    return numeric(
+      (d, n) => ({
+        ...d,
+        items: d.items.map((i) => (i.id === item?.id ? changeItem(i, n) : i)),
+      }),
+      validate,
+    )
+  }
   if (!item)
     return (
       <aside className="nle-inspector">
-        <h2>Project</h2>
-        <label>
-          Title
-          <input
-            key={doc.title}
-            defaultValue={doc.title}
-            onBlur={(e) => {
-              if (e.target.value.trim())
-                change((d) => ({ ...d, title: e.target.value.trim() }))
-            }}
-          />
-        </label>
-        <div className="nle-row">
-          <NumberField
-            label="Width"
-            value={doc.width}
-            min={16}
-            max={7680}
-            onChange={(width) => change((d) => ({ ...d, width }))}
-          />
-          <NumberField
-            label="Height"
-            value={doc.height}
-            min={16}
-            max={7680}
-            onChange={(height) => change((d) => ({ ...d, height }))}
-          />
-        </div>
-        <NumberField
-          label="Duration (seconds)"
-          value={doc.durationInFrames / doc.fps}
-          min={1 / doc.fps}
-          step={0.1}
-          onChange={(n) =>
-            change((d) => ({ ...d, durationInFrames: Math.round(n * d.fps) }))
-          }
-        />
-        <p className="nle-muted">
-          Select a canvas element or timeline clip to inspect it.
-        </p>
-        <h3>Cards & elements</h3>
-        {doc.items.map((i) => (
-          <button
-            className="nle-card-row"
-            key={i.id}
-            onClick={() => {
-              session.select(i.id)
-              session.seek(i.startFrame)
-            }}
-          >
-            <strong>{itemLabel(i).slice(0, 100)}</strong>
-            <span>
-              {(i.startFrame / doc.fps).toFixed(1)}s ·{" "}
-              {(i.durationInFrames / doc.fps).toFixed(1)}s
-            </span>
-          </button>
-        ))}
+        <p className="nle-muted">Nothing to inspect</p>
       </aside>
     )
   const transform = item.transform ?? defaultTransform,
@@ -172,7 +133,7 @@ export function Inspector({
           <Trash2 size={14} />
         </button>
       </header>
-      <fieldset disabled={!state.editable}>
+      <fieldset key={item.id} disabled={!state.editable}>
         {item.kind === "text" && (
           <>
             <label>
@@ -193,13 +154,11 @@ export function Inspector({
               value={item.properties.fontSize ?? 72}
               min={1}
               max={1000}
-              onChange={(n) =>
-                patch((i) =>
-                  i.kind === "text"
-                    ? { ...i, properties: { ...i.properties, fontSize: n } }
-                    : i,
-                )
-              }
+              {...numericPatch((i, n) =>
+                i.kind === "text"
+                  ? { ...i, properties: { ...i.properties, fontSize: n } }
+                  : i,
+              )}
             />
             <label>
               Text color
@@ -221,6 +180,29 @@ export function Inspector({
                 }
               />
             </label>
+            <TextControls
+              item={item}
+              onPreview={(properties) =>
+                previewPatch(
+                  properties === null
+                    ? null
+                    : (i) =>
+                        i.kind === "text"
+                          ? {
+                              ...i,
+                              properties: { ...i.properties, ...properties },
+                            }
+                          : i,
+                )
+              }
+              onChange={(properties) =>
+                patch((i) =>
+                  i.kind === "text"
+                    ? { ...i, properties: { ...i.properties, ...properties } }
+                    : i,
+                )
+              }
+            />
             <label>
               Alignment
               <select
@@ -249,11 +231,110 @@ export function Inspector({
             </label>
           </>
         )}
+        {item.kind === "video" && (
+          <NumberField
+            label="Clip speed"
+            value={item.playbackRate ?? 1}
+            min={0.25}
+            max={4}
+            step={0.05}
+            {...numeric((d, playbackRate) => {
+              if (playbackRate < 0.25 || playbackRate > 4) return d
+              const durationInFrames = Math.max(
+                1,
+                Math.round(
+                  ((item.source.endMs - item.source.startMs) * d.fps) /
+                    (1000 * playbackRate),
+                ),
+              )
+              return {
+                ...d,
+                durationInFrames: Math.max(
+                  d.durationInFrames,
+                  item.startFrame + durationInFrames,
+                ),
+                items: d.items.map((i) =>
+                  i.id === item.id
+                    ? { ...item, playbackRate, durationInFrames }
+                    : i,
+                ),
+              }
+            })}
+          />
+        )}
+        {component && (
+          <>
+            <label>
+              Component name
+              <input
+                aria-label="Component name"
+                maxLength={200}
+                key={component.versionId + (component.name ?? "")}
+                defaultValue={component.name ?? component.versionId}
+                onBlur={(e) => {
+                  const name = e.target.value.trim()
+                  if (name)
+                    change((d) => ({
+                      ...d,
+                      components: d.components.map((c) =>
+                        c.versionId === component.versionId
+                          ? { ...c, name }
+                          : c,
+                      ),
+                    }))
+                }}
+              />
+            </label>
+            <label>
+              Component type
+              <select
+                aria-label="Component type"
+                value={isTextComponent(item, doc) ? "text" : "video"}
+                onChange={(e) => {
+                  const category = e.target.value as "text" | "video"
+                  change((d) => ({
+                    ...d,
+                    components: d.components.map((c) =>
+                      c.versionId === component.versionId
+                        ? { ...c, category }
+                        : c,
+                    ),
+                  }))
+                }}
+              >
+                <option value="text">Text</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+          </>
+        )}
+        {item.kind === "video" && (
+          <TransitionControls
+            item={item}
+            document={doc}
+            onPreview={(transition) =>
+              previewPatch(
+                transition === null
+                  ? null
+                  : (i) => (i.kind === "video" ? { ...i, transition } : i),
+              )
+            }
+            onChange={(transition) =>
+              patch((i) => {
+                if (i.kind !== "video") return i
+                const next = { ...i }
+                if (transition) next.transition = transition
+                else delete next.transition
+                return next
+              })
+            }
+          />
+        )}
         {component &&
           item.kind === "component" &&
           Object.entries(component.controls).map(([key, control]) => (
             <label key={key}>
-              {key}
+              {componentFieldLabel(key)}
               {control.type === "boolean" ? (
                 <input
                   type="checkbox"
@@ -325,240 +406,134 @@ export function Inspector({
               )}
             </label>
           ))}
-        <h3>Timing</h3>
-        <label>
-          Track
-          <select
-            aria-label="Track"
-            value={item.trackId}
-            onChange={(e) => patch((i) => ({ ...i, trackId: e.target.value }))}
-          >
-            {doc.tracks.map((t, i) => (
-              <option key={t.id} value={t.id}>
-                {t.kind} {i + 1}
-              </option>
-            ))}
-          </select>
-        </label>
-        <NumberField
-          label="Start (frames)"
-          value={item.startFrame}
-          min={0}
-          onChange={(n) => patch((i) => ({ ...i, startFrame: n }))}
-        />
-        <NumberField
-          label="Duration (frames)"
-          value={item.durationInFrames}
-          min={1}
-          onChange={(n) =>
-            patch((i) =>
-              i.kind === "video"
-                ? {
-                    ...i,
-                    durationInFrames: n,
-                    source: {
-                      ...i.source,
-                      endMs:
-                        i.source.startMs + Math.round((n * 1000) / doc.fps),
-                    },
-                  }
-                : { ...i, durationInFrames: n },
-            )
-          }
-        />
         {item.kind === "video" && (
           <>
-            <NumberField
-              label="Source in (seconds)"
-              value={item.source.startMs / 1000}
-              min={0}
-              step={0.001}
-              onChange={(n) =>
-                patch((i) =>
+            <h3>Source focus</h3>
+            <p className="nle-muted">
+              Choose which part of the source fills the frame.
+            </p>
+            {(["x", "y"] as const).map((axis) => (
+              <NumberField
+                key={axis}
+                label={`Focus ${axis === "x" ? "horizontal" : "vertical"} (%)`}
+                value={(item.focus?.[axis] ?? 0.5) * 100}
+                min={0}
+                max={100}
+                step={1}
+                {...numericPatch((i, value) =>
                   i.kind === "video"
                     ? {
                         ...i,
-                        source: {
-                          ...i.source,
-                          startMs: Math.round(n * 1000),
-                          endMs: Math.round(
-                            n * 1000 + (i.durationInFrames * 1000) / doc.fps,
-                          ),
+                        focus: {
+                          x: i.focus?.x ?? 0.5,
+                          y: i.focus?.y ?? 0.5,
+                          [axis]: value / 100,
                         },
                       }
                     : i,
-                )
-              }
-            />
-            <NumberField
-              label="Source out (seconds)"
-              value={item.source.endMs / 1000}
-              min={item.source.startMs / 1000}
-              step={0.001}
-              onChange={(n) =>
-                patch((i) =>
-                  i.kind === "video"
-                    ? {
-                        ...i,
-                        durationInFrames: Math.round(
-                          ((n * 1000 - i.source.startMs) * doc.fps) / 1000,
-                        ),
-                        source: { ...i.source, endMs: Math.round(n * 1000) },
-                      }
-                    : i,
-                )
-              }
-            />
-          </>
-        )}
-        {(item.kind === "audio" || item.kind === "video") && (
-          <>
-            <NumberField
-              label="Volume"
-              value={item.volume}
-              min={0}
-              max={2}
-              step={0.05}
-              onChange={(n) =>
-                patch((i) =>
-                  i.kind === "audio" || i.kind === "video"
-                    ? { ...i, volume: n }
-                    : i,
-                )
-              }
-            />
-            {item.kind === "audio" && (
-              <NumberField
-                label="Audio in (seconds)"
-                value={item.sourceStartMs / 1000}
-                min={0}
-                step={0.01}
-                onChange={(n) =>
-                  patch((i) =>
-                    i.kind === "audio"
-                      ? { ...i, sourceStartMs: Math.round(n * 1000) }
-                      : i,
-                  )
-                }
+                )}
               />
-            )}
+            ))}
           </>
         )}
         <h3>Transform</h3>
         <div className="nle-row">
           <NumberField
             label="X"
+            decimalPlaces={2}
             value={transform.x}
-            onChange={(x) =>
-              patch((i) => ({ ...i, transform: { ...transform, x } }))
-            }
+            {...numericPatch((i, x) => ({
+              ...i,
+              transform: { ...transform, x },
+            }))}
           />
           <NumberField
             label="Y"
+            decimalPlaces={2}
             value={transform.y}
-            onChange={(y) =>
-              patch((i) => ({ ...i, transform: { ...transform, y } }))
-            }
+            {...numericPatch((i, y) => ({
+              ...i,
+              transform: { ...transform, y },
+            }))}
           />
         </div>
         <NumberField
           label="Scale"
+          decimalPlaces={2}
           value={transform.scaleX}
           min={0.01}
           max={100}
           step={0.05}
-          onChange={(n) =>
-            patch((i) => ({
-              ...i,
-              transform: { ...transform, scaleX: n, scaleY: n },
-            }))
-          }
+          {...numericPatch((i, n) => ({
+            ...i,
+            transform: { ...transform, scaleX: n, scaleY: n },
+          }))}
         />
         <NumberField
           label="Rotation"
+          decimalPlaces={2}
           value={transform.rotation}
           min={-360}
           max={360}
-          onChange={(rotation) =>
-            patch((i) => ({ ...i, transform: { ...transform, rotation } }))
-          }
+          {...numericPatch((i, rotation) => ({
+            ...i,
+            transform: { ...transform, rotation },
+          }))}
         />
         <NumberField
           label="Opacity"
+          decimalPlaces={2}
           value={transform.opacity}
           min={0}
           max={1}
           step={0.05}
-          onChange={(opacity) =>
-            patch((i) => ({ ...i, transform: { ...transform, opacity } }))
-          }
+          {...numericPatch((i, opacity) => ({
+            ...i,
+            transform: { ...transform, opacity },
+          }))}
         />
         {(item.kind === "video" || item.kind === "image") && (
           <>
             <h3>Crop</h3>
-            {(["left", "right", "top", "bottom"] as const).map((side) => (
-              <NumberField
-                key={side}
-                label={`Crop ${side} (%)`}
-                value={Math.round(crop[side] * 100)}
-                min={0}
-                max={99}
-                onChange={(n) => {
-                  const next = { ...crop, [side]: n / 100 }
-                  if (
-                    next.left + next.right >= 1 ||
-                    next.top + next.bottom >= 1
-                  ) {
-                    onError("Crop must leave a visible area")
-                    return
-                  }
-                  patch((i) => ({
-                    ...i,
-                    transform: { ...transform, crop: next },
-                  }))
-                }}
-              />
-            ))}
+            <div className="nle-crop-controls">
+              <div className="nle-crop-frame" aria-hidden="true">
+                <div
+                  style={{
+                    inset: `${crop.top * 100}% ${crop.right * 100}% ${crop.bottom * 100}% ${crop.left * 100}%`,
+                  }}
+                />
+              </div>
+              {(["left", "right", "top", "bottom"] as const).map((side) => (
+                <div className={`nle-crop-${side}`} key={side}>
+                  <NumberField
+                    hideLabel
+                    unit="%"
+                    label={`Crop ${side} (%)`}
+                    value={Math.round(crop[side] * 100)}
+                    min={0}
+                    max={99}
+                    {...numericPatch(
+                      (i, n) => ({
+                        ...i,
+                        transform: {
+                          ...transform,
+                          crop: { ...crop, [side]: n / 100 },
+                        },
+                      }),
+                      (n) => {
+                        const next = { ...crop, [side]: n / 100 }
+                        return next.left + next.right >= 1 ||
+                          next.top + next.bottom >= 1
+                          ? "Crop must leave a visible area"
+                          : undefined
+                      },
+                    )}
+                  />
+                </div>
+              ))}
+            </div>
           </>
         )}
-        <label>
-          Linked timing target
-          <select
-            disabled={item.kind === "audio" && !!item.narrationFor}
-            value={item.linkedTo ?? ""}
-            onChange={(event) =>
-              patch((current) => {
-                const next = { ...current }
-                if (event.target.value) next.linkedTo = event.target.value
-                else delete next.linkedTo
-                return next
-              })
-            }
-          >
-            <option value="">Independent timing</option>
-            {doc.items
-              .filter(
-                (candidate) =>
-                  candidate.id !== item.id &&
-                  !(candidate.kind === "audio" && candidate.narrationFor),
-              )
-              .map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.id}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={item.timingLocked ?? false}
-            onChange={(e) =>
-              patch((i) => ({ ...i, timingLocked: e.target.checked }))
-            }
-          />
-          Lock linked timing
-        </label>
       </fieldset>
     </aside>
   )

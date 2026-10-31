@@ -117,19 +117,52 @@ describe("projectGlobalLanguageOptions", () => {
         aliasOwnerSlug: "english",
         englishName: "English",
         nativeName: "English",
+        bcp47: "en",
       },
       {
         slug: "mandarin-china",
         aliasOwnerSlug: null,
         englishName: "Mandarin inferred from locale",
         nativeName: null,
+        bcp47: "zh",
       },
       {
         slug: "spanish-latin-american",
         aliasOwnerSlug: "spanish-latin-american",
         englishName: "Spanish, Latin American",
         nativeName: "Español",
+        bcp47: "es-419",
       },
     ])
+  })
+
+  it("carries nativeNameLang only when the provider proved it", () => {
+    const projected = projectGlobalLanguageOptions([
+      {
+        englishName: "Spanish, Latin American",
+        nativeName: "Español",
+        nativeNameLang: "es",
+        bcp47: "es-419",
+        publicSlug: "spanish-latin-american",
+        aliasOwnerSlug: null,
+        regionNames: [],
+      },
+      {
+        englishName: "French",
+        nativeName: "Français",
+        bcp47: null,
+        publicSlug: "french",
+        aliasOwnerSlug: null,
+        regionNames: [],
+      },
+    ])
+    expect(
+      projected.find((o) => o.slug === "spanish-latin-american"),
+    ).toMatchObject({
+      nativeNameLang: "es",
+    })
+    const french = projected.find((o) => o.slug === "french")
+    expect(french).not.toHaveProperty("nativeNameLang")
+    expect(french).not.toHaveProperty("bcp47")
   })
 })

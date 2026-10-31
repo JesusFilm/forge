@@ -19,6 +19,23 @@ export default defineConfig(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["apps/manager/**/*.{ts,tsx}", "apps/web/**/*.{ts,tsx}"],
+    // Match the apps' Next lint passes so their intentional full-navigation
+    // directives also work when lint-staged runs from the repository root.
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        location: "readonly",
+        document: "readonly",
+        self: "readonly",
+      },
+    },
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      "@next/next/no-location-assign-relative-destination": "warn",
+    },
+  },
+  {
     files: ["apps/manager/**/*.tsx", "apps/manager/**/*.ts"],
     plugins: {
       "react-hooks": reactHooksPlugin,
@@ -38,6 +55,26 @@ export default defineConfig(
     rules: {
       "react-hooks/set-state-in-effect": "warn",
       "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    files: ["apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] JSXExpressionContainer > TemplateLiteral TemplateElement[value.raw=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+      ],
     },
   },
   {

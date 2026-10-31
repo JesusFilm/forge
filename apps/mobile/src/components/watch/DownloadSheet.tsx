@@ -14,7 +14,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
+import { INLINE_MARK, splitAtMarker } from "../../i18n/splitAtMarker"
+import { useT, type UiT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { nameComparator } from "../../lib/collation"
 import {
   ACCENT,
   TEXT_BODY,
@@ -23,9 +27,17 @@ import {
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
-import { TERMS_OF_USE_PARAGRAPHS } from "../../lib/terms-of-use"
+import { rawModeLabel } from "../../lib/rawModeLabel"
+import {
+  TERMS_OF_USE_LANGUAGE,
+  TERMS_OF_USE_PARAGRAPHS,
+} from "../../lib/terms-of-use"
+import { GlassSurface } from "../ui/GlassSurface"
+
+type SheetT = UiT<"DownloadSheet">
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null || seconds <= 0) return "0:00"
@@ -45,6 +57,7 @@ export function TermsModal({
 }) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const t = useT("DownloadSheet")
 
   return (
     <Modal
@@ -55,8 +68,13 @@ export function TermsModal({
       onRequestClose={onCancel}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
-        <View
+      <View
+        style={[
+          styles.modalOverlay,
+          !canUseLiquidGlass() && styles.overlayFill,
+        ]}
+      >
+        <GlassSurface
           style={[
             styles.termsContainer,
             {
@@ -65,11 +83,14 @@ export function TermsModal({
               paddingBottom: insets.bottom + 16,
             },
           ]}
+          fallback={{ kind: "fill", style: styles.termsFill }}
         >
           <Text style={[styles.termsTitle, typography.titleLarge]}>
-            Terms of Use
+            {t("termsTitle")}
           </Text>
           <ScrollView style={styles.termsScroll}>
+            {/* KTD17: the terms stay English, so a screen reader reads them
+                as English and they run left to right in every UI language. */}
             {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
               <Text
                 key={index}
@@ -78,6 +99,7 @@ export function TermsModal({
                   typography.body,
                   index > 0 && styles.termsParagraphGap,
                 ]}
+                accessibilityLanguage={TERMS_OF_USE_LANGUAGE}
               >
                 {paragraph}
               </Text>
@@ -91,10 +113,11 @@ export function TermsModal({
               ]}
               onPress={onCancel}
               accessibilityRole="button"
-              accessibilityLabel="Cancel"
+              accessibilityLabel={t("cancel")}
+              {...{ "dd-action-name": "download-terms-cancel" }}
             >
               <Text style={[styles.termsCancelText, typography.body]}>
-                Cancel
+                {t("cancel")}
               </Text>
             </Pressable>
             <Pressable
@@ -104,14 +127,15 @@ export function TermsModal({
               ]}
               onPress={onAccept}
               accessibilityRole="button"
-              accessibilityLabel="Accept terms of use"
+              accessibilityLabel={t("acceptTermsAriaLabel")}
+              {...{ "dd-action-name": "download-terms-accept" }}
             >
               <Text style={[styles.termsAcceptText, typography.body]}>
-                Accept
+                {t("accept")}
               </Text>
             </Pressable>
           </View>
-        </View>
+        </GlassSurface>
       </View>
     </Modal>
   )
@@ -143,6 +167,7 @@ export function Dropdown({
   open,
   onToggle,
   onSelect,
+  actionName,
 }: {
   sectionLabel: string
   options: DropdownOption[]
@@ -150,8 +175,12 @@ export function Dropdown({
   open: boolean
   onToggle: () => void
   onSelect: (key: string) => void
+  /** Stem of the RUM tap names (`<stem>-toggle`, `<stem>-option`). The labels
+   *  hold catalog text, which would split the tap series by language (KTD15). */
+  actionName: string
 }) {
   const typography = useTypography()
+  const t = useT("DownloadSheet")
   const selected = options.find((o) => o.key === selectedKey) ?? options[0]
 
   return (
@@ -171,6 +200,7 @@ export function Dropdown({
         accessibilityLabel={
           selected != null ? `${sectionLabel}, ${selected.label}` : sectionLabel
         }
+        {...{ "dd-action-name": `${actionName}-toggle` }}
       >
         <Text style={[styles.dropdownValue, typography.body]} numberOfLines={1}>
           {selected?.label}
@@ -194,7 +224,9 @@ export function Dropdown({
             style={styles.dropdownPanelScroll}
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
-            accessibilityLabel={`${sectionLabel} options`}
+            accessibilityLabel={t("optionsAriaLabel", {
+              section: sectionLabel,
+            })}
           >
             <View accessibilityRole="radiogroup">
               {options.map((opt) => {
@@ -217,6 +249,7 @@ export function Dropdown({
                     accessibilityLabel={
                       opt.note != null ? `${opt.label}, ${opt.note}` : opt.label
                     }
+                    {...{ "dd-action-name": `${actionName}-option` }}
                   >
                     <Text
                       style={[
@@ -291,51 +324,26 @@ export function Dropdown({
 export type DownloadMode = "offline" | "raw"
 
 /**
- * Both platforms open a folder picker, so both labels name the same act. The
- * noun follows the platform: Apple's app is called Files, and Android's picker
- * is the system file chooser whatever the OEM ships.
- *
- * A function of the OS, not a `Platform.OS` conditional read inline, because
- * jest runs this app as iOS ONLY — an inline read would leave the Android
- * wording permanently unexercised.
- */
-export function rawModeLabel(platformOS: string): string {
-  return platformOS === "ios" ? "Save to Files" : "Save to Device"
-}
-
-/**
  * The label carries the whole choice — there is no description beside it — so
  * each one names its destination. Short enough to sit on ONE line in a
  * half-width card; lengthening either one wraps both.
  */
-export const DOWNLOAD_MODE_LABELS: Record<DownloadMode, string> = {
-  offline: "Offline Watching",
-  raw: rawModeLabel(Platform.OS),
+function modeLabel(mode: DownloadMode, t: SheetT): string {
+  return mode === "raw" ? rawModeLabel(Platform.OS, t) : t("offlineWatching")
 }
 
 /**
  * Screen-reader only. The visible descriptions are gone, but a hint costs a
  * sighted viewer nothing and still explains where the file ends up.
  */
-const DOWNLOAD_MODE_HINTS: Record<DownloadMode, string> = {
-  offline: "Watch it in the app without a network.",
-  raw: "Choose a folder to keep it in, outside the app.",
+function modeHint(mode: DownloadMode, t: SheetT): string {
+  return mode === "raw" ? t("rawAriaHint") : t("offlineAriaHint")
 }
 
-const DOWNLOAD_MODE_ANNOUNCEMENTS: Record<DownloadMode, string> = {
-  offline: "Offline copy selected. The subtitle choice is available.",
-  raw: "Device file selected. The subtitle choice is hidden. A saved file carries no subtitles.",
-}
-
-/** R37, series sheet: a count at the selected quality, not one named quality. */
-export function formatSeriesReuseNote(
-  reusableCount: number,
-  totalCount: number,
-): string {
-  const head = `${reusableCount} of ${totalCount} episodes reuse an offline copy at this quality.`
-  return reusableCount >= totalCount
-    ? head
-    : `${head} The other episodes download again.`
+function modeAnnouncement(mode: DownloadMode, t: SheetT): string {
+  return mode === "raw"
+    ? t("rawSelectedAriaAnnouncement")
+    : t("offlineSelectedAriaAnnouncement")
 }
 
 /**
@@ -367,6 +375,9 @@ export function SubtitlePicker({
   onToggle: () => void
   onSelect: (slug: string | null) => void
 }) {
+  const tSubtitles = useT("Subtitles")
+  const t = useT("DownloadSheet")
+  const uiTag = useUiTag()
   const options = useMemo<DropdownOption[]>(() => {
     // Only a saved subtitle LANGUAGE is "already downloaded" — the "No subtitles"
     // row is never disabled (re-downloading "no subtitle" isn't a thing).
@@ -374,27 +385,27 @@ export function SubtitlePicker({
       typeof downloadedSlug === "string" ? downloadedSlug : null
     const mark = (opt: DropdownOption): DropdownOption =>
       opt.key === disabledKey
-        ? { ...opt, disabled: true, note: "Already downloaded" }
+        ? { ...opt, disabled: true, note: t("alreadyDownloadedNote") }
         : opt
     const base: DropdownOption[] = [
-      mark({ key: NO_SUBTITLE_KEY, label: "No subtitles" }),
+      mark({ key: NO_SUBTITLE_KEY, label: tSubtitles("noSubtitles") }),
     ]
-    const sorted = [...union.entries()].sort((a, b) =>
-      a[1].toLowerCase().localeCompare(b[1].toLowerCase()),
-    )
+    const compareNames = nameComparator(uiTag)
+    const sorted = [...union.entries()].sort((a, b) => compareNames(a[1], b[1]))
     for (const [slug, name] of sorted)
       base.push(mark({ key: slug, label: name }))
     return base
-  }, [union, downloadedSlug])
+  }, [union, downloadedSlug, tSubtitles, t, uiTag])
 
   return (
     <Dropdown
-      sectionLabel="Subtitles"
+      sectionLabel={t("subtitlesHeading")}
       options={options}
       selectedKey={selectedSlug ?? NO_SUBTITLE_KEY}
       open={open}
       onToggle={onToggle}
       onSelect={(key) => onSelect(key === NO_SUBTITLE_KEY ? null : key)}
+      actionName="download-subtitles"
     />
   )
 }
@@ -438,15 +449,14 @@ export function DownloadModeControl({
   onChange: (mode: DownloadMode) => void
 }) {
   const typography = useTypography()
+  const t = useT("DownloadSheet")
   if (!RAW_EXPORT_ENABLED) return null
 
   const select = (next: DownloadMode) => {
     if (next === mode) return
     onChange(next)
     // The subtitle region leaves with the mode, so a screen reader hears why.
-    AccessibilityInfo.announceForAccessibility(
-      DOWNLOAD_MODE_ANNOUNCEMENTS[next],
-    )
+    AccessibilityInfo.announceForAccessibility(modeAnnouncement(next, t))
   }
 
   return (
@@ -465,8 +475,9 @@ export function DownloadModeControl({
               onPress={() => select(option)}
               accessibilityRole="radio"
               accessibilityState={{ checked }}
-              accessibilityLabel={DOWNLOAD_MODE_LABELS[option]}
-              accessibilityHint={DOWNLOAD_MODE_HINTS[option]}
+              accessibilityLabel={modeLabel(option, t)}
+              accessibilityHint={modeHint(option, t)}
+              {...{ "dd-action-name": `download-mode-${option}` }}
             >
               {/* The filled dot carries the choice too, so the selected row
                   never rests on colour alone. */}
@@ -483,7 +494,7 @@ export function DownloadModeControl({
                     checked && styles.modeLabelSelected,
                   ]}
                 >
-                  {DOWNLOAD_MODE_LABELS[option]}
+                  {modeLabel(option, t)}
                 </Text>
               </View>
             </Pressable>
@@ -516,6 +527,11 @@ export function TermsAcceptanceRow({
   onOpenTerms: () => void
 }) {
   const typography = useTypography()
+  const t = useT("DownloadSheet")
+  const [before, after] = splitAtMarker(
+    t("agreeToTerms", { terms: INLINE_MARK }),
+    INLINE_MARK,
+  )
   return (
     <View style={styles.touRow}>
       <Pressable
@@ -523,24 +539,31 @@ export function TermsAcceptanceRow({
         hitSlop={8}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: accepted }}
-        accessibilityLabel="I agree to the Terms of Use"
+        accessibilityLabel={t("agreeAriaLabel")}
         style={({ pressed }) => pressed && feedback.pressed}
+        {...{ "dd-action-name": "download-terms-agree" }}
       >
         <View style={[styles.checkbox, accepted && styles.checkboxChecked]}>
           {accepted && <Ionicons name="checkmark" size={16} color="#ffffff" />}
         </View>
       </Pressable>
-      <Text style={[styles.touText, typography.bodySmall]}>
-        I agree to the{" "}
-      </Text>
+      {before !== "" && (
+        <Text style={[styles.touText, typography.bodySmall]}>{before}</Text>
+      )}
       <Pressable
         onPress={onOpenTerms}
         hitSlop={4}
         accessibilityRole="link"
-        accessibilityLabel="Read Terms of Use"
+        accessibilityLabel={t("readTermsAriaLabel")}
+        {...{ "dd-action-name": "download-terms-read" }}
       >
-        <Text style={[styles.touLink, typography.bodySmall]}>Terms of Use</Text>
+        <Text style={[styles.touLink, typography.bodySmall]}>
+          {t("termsLink")}
+        </Text>
       </Pressable>
+      {after !== "" && (
+        <Text style={[styles.touText, typography.bodySmall]}>{after}</Text>
+      )}
     </View>
   )
 }
@@ -586,6 +609,7 @@ export type DownloadSheetProps = {
     mode: DownloadMode,
     subtitleSlug: string | null,
   ) => void
+  testID?: string
 }
 
 export function DownloadSheetContent({
@@ -599,9 +623,13 @@ export function DownloadSheetContent({
   offlineCopySubtitleSlug = undefined,
   initialMode = "offline",
   onStartDownload,
+  testID,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const tQuality = useT("DownloadQuality")
+  const tSubtitles = useT("Subtitles")
+  const t = useT("DownloadSheet")
 
   const tiered = useMemo(() => tierDownloads(downloads), [downloads])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -657,19 +685,19 @@ export function DownloadSheetContent({
 
   const qualityOptions = useMemo<DropdownOption[]>(
     () =>
-      tiered.map((t, index) => ({
+      tiered.map((tier, index) => ({
         key: String(index),
-        label: t.tier,
-        trailing: formatFileSize(t.size),
+        label: tQuality(tier.tier),
+        trailing: formatFileSize(tier.size, t),
         // Only in raw mode: the held copy exports instantly, every other
         // quality has to come down the wire first. In offline mode the same
         // row means a swap, which the sheet already frames as a swap.
         note:
           rawMode && heldIndex >= 0 && index !== heldIndex
-            ? "Downloads again"
+            ? t("downloadsAgainNote")
             : undefined,
       })),
-    [tiered, rawMode, heldIndex],
+    [tiered, rawMode, heldIndex, tQuality, t],
   )
   const selectedQualityKey = String(selectedIndex)
 
@@ -716,14 +744,14 @@ export function DownloadSheetContent({
 
   if (downloads.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="cloud-download-outline"
           size={48}
           color={TEXT_SECONDARY}
         />
         <Text style={[styles.emptyText, typography.body]}>
-          No downloads available
+          {t("noDownloads")}
         </Text>
       </View>
     )
@@ -732,6 +760,7 @@ export function DownloadSheetContent({
   return (
     <>
       <ScrollView
+        testID={testID}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 24 },
@@ -787,7 +816,7 @@ export function DownloadSheetContent({
                 <Text style={[styles.metaPillText, typography.bodySmall]}>
                   {(subtitleSlug != null
                     ? subtitleUnion.get(subtitleSlug)
-                    : null) ?? "No subtitles"}
+                    : null) ?? tSubtitles("noSubtitles")}
                 </Text>
               </View>
             )}
@@ -797,7 +826,7 @@ export function DownloadSheetContent({
         <DownloadModeControl mode={mode} onChange={setMode} />
 
         <Dropdown
-          sectionLabel="Select a file size"
+          sectionLabel={t("fileSizeHeading")}
           options={qualityOptions}
           selectedKey={selectedQualityKey}
           open={qualityOpen}
@@ -807,6 +836,7 @@ export function DownloadSheetContent({
             setSelectedIndex(Number(key))
             setQualityOpen(false)
           }}
+          actionName="download-quality"
         />
 
         {/* R5: only an offline copy can carry a subtitle, so the picker leaves
@@ -845,13 +875,14 @@ export function DownloadSheetContent({
           disabled={!termsSatisfied}
           accessibilityRole="button"
           accessibilityLabel={
-            rawMode ? "Save video to the device" : "Download video"
+            rawMode ? t("saveVideoAriaLabel") : t("downloadVideoAriaLabel")
           }
           accessibilityState={{ disabled: !termsSatisfied }}
+          {...{ "dd-action-name": "download-confirm" }}
         >
           <Ionicons name="download-outline" size={20} color="#ffffff" />
           <Text style={[styles.downloadButtonText, typography.body]}>
-            {rawMode ? "Save to device" : "Download"}
+            {rawMode ? t("saveToDeviceButton") : t("downloadButton")}
           </Text>
         </Pressable>
       </ScrollView>
@@ -882,7 +913,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
   header: {
@@ -891,7 +921,6 @@ const styles = StyleSheet.create({
   videoTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 8,
   },
   metaRow: {
@@ -914,7 +943,6 @@ const styles = StyleSheet.create({
   },
   metaPillText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   dropdownSection: {
     marginBottom: 24,
@@ -953,19 +981,16 @@ const styles = StyleSheet.create({
   },
   modeLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   modeLabelSelected: {
     fontWeight: "600",
   },
   sheetNote: {
     color: TEXT_BODY,
-    fontFamily: "System",
     marginBottom: 16,
   },
   dropdownSectionLabel: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginBottom: 12,
   },
   dropdownPanelScroll: {
@@ -988,7 +1013,6 @@ const styles = StyleSheet.create({
   dropdownValue: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -999,7 +1023,6 @@ const styles = StyleSheet.create({
   },
   dropdownTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownPanel: {
     backgroundColor: "rgba(255, 255, 255, 0.04)",
@@ -1022,7 +1045,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -1032,7 +1054,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownOptionLabelDisabled: {
     color: TEXT_SECONDARY,
@@ -1041,7 +1062,6 @@ const styles = StyleSheet.create({
   dropdownOptionNote: {
     color: TEXT_SECONDARY,
     opacity: 0.75,
-    fontFamily: "System",
     fontStyle: "italic",
   },
   touRow: {
@@ -1065,12 +1085,10 @@ const styles = StyleSheet.create({
   },
   touText: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   touLink: {
     color: ACCENT,
     fontWeight: "600",
-    fontFamily: "System",
     textDecorationLine: "underline",
   },
   downloadButton: {
@@ -1090,29 +1108,31 @@ const styles = StyleSheet.create({
   downloadButtonText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
   modalOverlay: {
     flex: 1,
+  },
+  overlayFill: {
     backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   termsContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.95)",
     paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  termsFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
   },
   termsTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 16,
   },
   termsScroll: {
     flex: 1,
   },
   termsText: {
+    writingDirection: "ltr",
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   termsParagraphGap: {
     marginTop: 16,
@@ -1135,7 +1155,6 @@ const styles = StyleSheet.create({
   termsCancelText: {
     color: TEXT_SECONDARY,
     fontWeight: "600",
-    fontFamily: "System",
   },
   termsAcceptButton: {
     backgroundColor: ACCENT,
@@ -1148,6 +1167,5 @@ const styles = StyleSheet.create({
   termsAcceptText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

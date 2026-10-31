@@ -390,6 +390,35 @@ describe("arrival origin", () => {
     expect(consumeDeepLinkArrival("")).toBeNull()
   })
 
+  it("carries the campaign identifier on a campaign arrival (KTD8)", () => {
+    // The watch route marks the acquisition source from this, so the nonce has
+    // to survive the hop from the tap handler to the route.
+    registerDeepLinkSlug("jesus", "cold", "campaign", 0, "nonce-abc")
+
+    expect(consumeDeepLinkArrival("jesus", 1_000)).toEqual({
+      entry: "cold",
+      origin: "campaign",
+      campaign: "nonce-abc",
+    })
+  })
+
+  it("carries no campaign key on any other origin", () => {
+    // Every other arrival keeps its shape, so a reader cannot mistake an
+    // absent nonce for an empty one.
+    registerDeepLinkSlug("rivka", "warm", "reminder")
+
+    expect(consumeDeepLinkArrival("rivka")).toEqual({
+      entry: "warm",
+      origin: "reminder",
+    })
+  })
+
+  it("expires a campaign arrival on the same TTL", () => {
+    registerDeepLinkSlug("jesus", "cold", "campaign", 0, "nonce-abc")
+
+    expect(consumeDeepLinkArrival("jesus", 31_000)).toBeNull()
+  })
+
   it("expires a reminder arrival on the same TTL", () => {
     registerDeepLinkSlug("jesus", "cold", "reminder", 0)
 

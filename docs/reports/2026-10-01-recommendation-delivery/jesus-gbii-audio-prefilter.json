@@ -1,0 +1,17 @@
+[
+  [
+    {
+      "set_config": "20000"
+    }
+  ],
+  [
+    {
+      "seed_chunks": "176",
+      "nearest_chunks": "16",
+      "nearest_transcripts": "2",
+      "eligible_chunks": "16",
+      "eligible_videos": "2",
+      "returned_candidates": "2"
+    }
+  ]
+]

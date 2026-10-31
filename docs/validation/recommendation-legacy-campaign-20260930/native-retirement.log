@@ -1,0 +1,12 @@
+(node:3506903) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v3.2.4 /home/nisal/.codex/worktrees/legacy-reclamation-finish-20260930/forge/apps/admin
+
+ ✓ src/services/recommendations/admin-ops/detail.db.test.ts (11 tests | 2 skipped) 2074ms
+   ✓ protected legacy detail retirement PostgreSQL proof > converts held full detail, retires unprotected detail, and preserves issuance, items, expiry and audit  541ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed | 2 skipped (11)
+   Start at  13:54:07
+   Duration  3.98s (transform 820ms, setup 16ms, collect 1.43s, tests 2.07s, environment 0ms, prepare 106ms)

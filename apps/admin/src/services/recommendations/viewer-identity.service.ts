@@ -6,13 +6,10 @@ import {
   RecommendationInputError,
 } from "./errors"
 import { assertWebRecommendationCaller } from "./caller"
-import { RECOMMENDATION_PROFILE_CONTRACT } from "./contracts"
 import {
-  createRecommendationProfileService,
-  RecommendationProfileService,
-  RECOMMENDATION_CONSENT_CONTRACT,
-} from "./profile.service"
-import { dispatchRecommendationProfileProjection } from "./profiles/job"
+  unlinkPushViewerIdentities,
+  type PushIdentityUnlinkResult,
+} from "@/services/push/identity-unlink.service"
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
 const digest = (token: string) =>
@@ -26,7 +23,7 @@ function consumer(caller: Principal | null): Principal {
   return { ...caller, recommendationViewerVerified: true }
 }
 
-/** The handle proves possession of this installation's server-owned profile.
+/** The handle proves possession of this installation's operational identity.
  * A separate random session token keeps operational playback sessions bounded;
  * clients retain it through playback and rotate it after 24 hours of inactivity.
  * Neither credential is an account ID or a device fingerprint.
@@ -51,51 +48,31 @@ export class RecommendationViewerService {
     return {
       caller: verifiedCaller,
       sessionDigest: digest(sessionToken),
-      profileTokenDigest: viewer.profileDigest,
-      consentReceiptDigest: viewer.consentReceiptDigest,
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
       viewer,
     }
   }
 
   async bootstrap(caller: Principal | null) {
-    const verifiedCaller = consumer(caller)
+    consumer(caller)
     const viewerToken = mint()
     const sessionToken = mint()
-    const consentReceiptDigest = digest(mint())
-    const profileDigest = digest(mint())
     const expiresAt = new Date(Date.now() + 180 * 86_400_000)
-    // The identity and its initial profile commit together. A failed response
-    // cannot expose an orphan handle with authority over a partial profile.
-    await this.prisma.$transaction(async (tx) => {
-      const service = new RecommendationProfileService({
-        prisma: this.prisma,
-        transaction: tx,
-      })
-      await service.transition({
-        caller: verifiedCaller,
-        contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-        consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-        action: "grant",
-        consentChoice: "personalization",
-        sessionDigest: digest(sessionToken),
-        existingProfileDigest: null,
-        proposedProfileDigest: profileDigest,
-        proposedConsentReceiptDigest: consentReceiptDigest,
-      })
-      await tx.recommendationViewer.create({
-        data: {
-          tokenDigest: digest(viewerToken),
-          profileDigest,
-          consentReceiptDigest,
-          expiresAt,
-        },
-      })
+    await this.prisma.recommendationViewer.create({
+      data: {
+        tokenDigest: digest(viewerToken),
+        profileDigest: null,
+        // Legacy non-null column; no consent receipt is created or used.
+        consentReceiptDigest: digest(mint()),
+        expiresAt,
+      },
     })
     return {
       viewerToken,
       sessionToken,
       expiresAt: expiresAt.toISOString(),
-      personalization: true,
+      personalization: false,
     }
   }
 
@@ -117,79 +94,41 @@ export class RecommendationViewerService {
       input.viewerToken,
       input.sessionToken,
     )
-    const service = createRecommendationProfileService(this.prisma)
-    const receipt =
-      input.action === "status"
-        ? await service.status({
-            caller: identity.caller,
-            contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-            sessionDigest: identity.sessionDigest,
-            consentReceiptDigest: identity.consentReceiptDigest,
-            profileDigest: identity.profileTokenDigest,
-          })
-        : await this.prisma.$transaction(async (tx) => {
-            // Serialize pointer changes across all sessions for this installation.
-            await tx.$executeRaw`SELECT token_digest FROM recommendation_viewer WHERE token_digest = ${identity.viewer.tokenDigest} FOR UPDATE`
-            const current = await tx.recommendationViewer.findUniqueOrThrow({
-              where: { tokenDigest: identity.viewer.tokenDigest },
-            })
-            const proposedProfileDigest = digest(mint())
-            const proposedConsentReceiptDigest = digest(mint())
-            const result = await new RecommendationProfileService({
-              prisma: this.prisma,
-              transaction: tx,
-            }).transition({
-              caller: identity.caller,
-              contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-              consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-              action: input.action as "grant" | "reset" | "withdraw" | "delete",
-              consentChoice:
-                input.action === "withdraw" || input.action === "delete"
-                  ? "essential_only"
-                  : "personalization",
-              sessionDigest: identity.sessionDigest,
-              existingProfileDigest: current.profileDigest,
-              existingConsentReceiptDigest: current.consentReceiptDigest,
-              proposedProfileDigest,
-              proposedConsentReceiptDigest,
-            })
-            await tx.recommendationViewer.update({
-              where: { tokenDigest: current.tokenDigest },
-              data: {
-                profileDigest:
-                  result.cookieDisposition === "set"
-                    ? proposedProfileDigest
-                    : result.cookieDisposition === "clear"
-                      ? null
-                      : current.profileDigest,
-                consentReceiptDigest: proposedConsentReceiptDigest,
-              },
-            })
-            return result
-          })
-    if (receipt.profileId && receipt.erasureGeneration != null) {
-      void service
-        .completeErasure({
-          profileId: receipt.profileId,
-          privacyGeneration: receipt.erasureGeneration,
+    let pushUnlink: PushIdentityUnlinkResult | null = null
+    if (input.action !== "status") {
+      await this.prisma.$transaction(async (tx) => {
+        // Serialize pointer changes across all sessions for this installation.
+        await tx.$executeRaw`SELECT token_digest FROM recommendation_viewer WHERE token_digest = ${identity.viewer.tokenDigest} FOR UPDATE`
+        const current = await tx.recommendationViewer.findUniqueOrThrow({
+          where: { tokenDigest: identity.viewer.tokenDigest },
         })
-        .catch(() => undefined)
+        await tx.recommendationViewer.update({
+          where: { tokenDigest: current.tokenDigest },
+          data: {
+            profileDigest: null,
+            consentReceiptDigest: digest(mint()),
+          },
+        })
+        // A deletion is an erasure, so the push link ends with it. A
+        // withdrawal is a consent choice and leaves every push row alone.
+        if (input.action === "delete") {
+          pushUnlink = await unlinkPushViewerIdentities(tx, [
+            current.tokenDigest,
+          ])
+        }
+      })
     }
-    if (
-      receipt.profileId &&
-      receipt.privacyGeneration != null &&
-      receipt.state === "active" &&
-      receipt.erasureGeneration == null
-    ) {
-      void dispatchRecommendationProfileProjection({
-        sessionDigest: identity.sessionDigest,
-        profileId: receipt.profileId,
-        privacyGeneration: receipt.privacyGeneration,
-      }).catch(() => undefined)
+    // Logged after the transaction commits, and with counts only: a digest is
+    // an identifier and never reaches a log line.
+    if (pushUnlink) {
+      const unlinked: PushIdentityUnlinkResult = pushUnlink
+      console.info(
+        `[push] event=identity_unlinked reason=viewer_delete registrations=${unlinked.registrationsUnlinked} opens=${unlinked.opensDeleted} attributions=${unlinked.attributionsDeleted}`,
+      )
     }
     return {
-      state: receipt.state,
-      personalization: receipt.consentChoice === "personalization",
+      state: "session_only",
+      personalization: false,
     }
   }
 }

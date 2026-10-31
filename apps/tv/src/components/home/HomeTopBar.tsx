@@ -6,7 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { useFocusVisual } from "../focus/useFocusVisual"
@@ -36,6 +36,7 @@ type HomeTopBarProps = {
   /** Renders the Profile tab when provided — the flag decision (feat-322,
    *  isProfileSurfaceEnabled) stays with the caller, keeping this bar pure. */
   onProfilePress?: () => void
+  onFeedbackPress?: () => void
   /** Any tab gaining focus pins the screen to its "top" state. */
   onChromeFocus: () => void
   /**
@@ -46,7 +47,7 @@ type HomeTopBarProps = {
   onSearchTabNode?: (node: ViewType | null) => void
   /** Reports the focused tab's node so the screen can re-focus it after a nav
    *  push/pop — subsumes the old back-from-/search restore (last focus = Search tab). */
-  onFocusNode?: (node: ViewType | null) => void
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 export const HomeTopBar = memo(function HomeTopBar({
@@ -54,6 +55,7 @@ export const HomeTopBar = memo(function HomeTopBar({
   onSearchPress,
   onSettingsPress,
   onProfilePress,
+  onFeedbackPress,
   onChromeFocus,
   onSearchTabNode,
   onFocusNode,
@@ -138,7 +140,7 @@ export const HomeTopBar = memo(function HomeTopBar({
         {onProfilePress != null ? (
           <TopBarTab
             testID="home-topbar-profile-tab"
-            iconName="person-outline"
+            label="Profile"
             accessibilityLabel="Profile"
             accessibilityHint="Opens your profile"
             onPress={onProfilePress}
@@ -149,7 +151,7 @@ export const HomeTopBar = memo(function HomeTopBar({
         ) : null}
         <TopBarTab
           testID="home-topbar-settings-tab"
-          iconName="settings-outline"
+          label="Settings"
           accessibilityLabel="Settings"
           accessibilityHint="Opens the settings screen"
           onPress={onSettingsPress}
@@ -157,6 +159,18 @@ export const HomeTopBar = memo(function HomeTopBar({
           focusable={!hidden}
           onFocusNode={onFocusNode}
         />
+        {onFeedbackPress != null ? (
+          <TopBarTab
+            testID="home-topbar-feedback-tab"
+            label="Feedback"
+            accessibilityLabel="Feedback"
+            accessibilityHint="Opens beta testing feedback"
+            onPress={onFeedbackPress}
+            onChromeFocus={onChromeFocus}
+            focusable={!hidden}
+            onFocusNode={onFocusNode}
+          />
+        ) : null}
       </View>
 
       <View style={styles.sideRight} pointerEvents="none">
@@ -192,7 +206,7 @@ type TopBarTabProps = {
   /** Lifts this tab's native node up so the hero can target it via nextFocusUp. */
   nodeRef?: (node: ViewType | null) => void
   /** Reports this tab's node on focus so the screen can re-focus it after a nav push/pop. */
-  onFocusNode?: (node: ViewType | null) => void
+  onFocusNode?: (node: ViewType | null, activation?: boolean) => void
 }
 
 function TopBarTab({
@@ -257,7 +271,10 @@ function TopBarTab({
   return (
     <Pressable
       ref={setRef}
-      onPress={onPress}
+      onPress={() => {
+        onFocusNode?.(localRef.current, true)
+        onPress()
+      }}
       onFocus={() => {
         setFocused(true)
         onChromeFocus()
@@ -340,14 +357,14 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: "System",
-    fontSize: Math.round(scale(23)),
+    fontSize: readableFontSize(23),
     fontWeight: "600",
   },
 
   // ── Clock ──
   clock: {
     fontFamily: "System",
-    fontSize: Math.round(scale(22)),
+    fontSize: readableFontSize(22),
     fontWeight: "600",
     color: "rgba(255,255,255,0.6)",
     fontVariant: ["tabular-nums"],

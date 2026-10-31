@@ -9,6 +9,29 @@
  * feed's own children stay mocked out.
  */
 
+// feat-517: HomeScreen now hosts the recommendations controller, which reads
+// the watch-preferences provider; that module pulls AsyncStorage in.
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+  },
+}))
+jest.mock("../../../hooks/useHomeRecommendations", () => ({
+  useHomeRecommendations: () => ({
+    status: "idle",
+    slate: null,
+    reportShelfMounted: jest.fn(),
+    reportShelfVisible: jest.fn(),
+    reportVisibleCards: jest.fn(),
+    reportShelfDetached: jest.fn(),
+    recordRender: jest.fn(),
+    select: jest.fn(async () => null),
+    refresh: jest.fn(),
+  }),
+}))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -25,7 +48,13 @@ jest.mock("expo-linear-gradient", () => ({
 }))
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
-  useNavigation: () => ({ addListener: () => () => {} }),
+  // `isFocused` seeds Home's focus flag; these suites all run focused.
+  useNavigation: () => ({
+    addListener: () => () => {},
+    isFocused: () => true,
+  }),
+  // Home's return-from-watch effect reads this (feat-517 KTD5).
+  useSegments: () => ["(tabs)", "index"],
 }))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),

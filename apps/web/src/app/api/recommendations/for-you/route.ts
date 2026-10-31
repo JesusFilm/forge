@@ -1,3 +1,9 @@
+import {
+  classifyRecommendationTraffic,
+  recommendationTrafficExcluded,
+  recommendationDeliveryDisposition,
+} from "@/lib/recommendation-human-admission"
+import { CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY } from "@/lib/recommendation-contracts"
 import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
 import { z } from "zod"
 import { getUserRecommendations } from "@/lib/user-recommendations"
@@ -16,11 +22,8 @@ import {
 } from "@/lib/recommendation-route-response"
 import {
   ensureRecommendationSession,
-  readRecommendationProfileCookie,
   attachRecommendationSession,
 } from "@/lib/recommendation-session"
-import { readRecommendationConsentCookie } from "@/lib/recommendation-consent"
-import { requestHasRecommendationWithdrawalPending } from "@/lib/recommendation-withdrawal-pending"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -31,6 +34,9 @@ const Input = z
   })
   .strict()
 export async function POST(request: Request) {
+  const trafficCategory = classifyRecommendationTraffic(request)
+  const excluded = recommendationTrafficExcluded(trafficCategory)
+  const deliveryDisposition = recommendationDeliveryDisposition(trafficCategory)
   try {
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
@@ -41,30 +47,44 @@ export async function POST(request: Request) {
     if (!(await homepageRecommendationsEnabled(request)))
       throw new RecommendationRouteError(403, "feature_disabled")
     await assertRecommendationMutationAdmission(request.headers, "delivery")
-    const session = ensureRecommendationSession(request),
-      profile = readRecommendationProfileCookie(request),
-      consent = readRecommendationConsentCookie(request)
-    const consentReceiptDigest =
-      !requestHasRecommendationWithdrawalPending(request) &&
-      consent.kind === "valid"
-        ? consent.digest
-        : null
-    const delivery = await getUserRecommendations({
+    const session = excluded ? null : ensureRecommendationSession(request)
+    const upstreamDelivery = await getUserRecommendations({
+      trafficCategory,
       ...parsed.data,
-      sessionDigest: session.digest,
-      consentReceiptDigest,
-      profileTokenDigest:
-        consentReceiptDigest && profile.kind === "valid"
-          ? profile.digest
-          : null,
+      sessionDigest: session?.digest ?? "0".repeat(64),
+      consentReceiptDigest: null,
+      profileTokenDigest: null,
     })
-    const serialized = JSON.stringify({ delivery })
+    const delivery = excluded
+      ? {
+          ...upstreamDelivery,
+          requestId: null,
+          expiresAt: null,
+          personalization: null,
+          items:
+            deliveryDisposition === "deferred"
+              ? []
+              : upstreamDelivery.items.map((item) => ({
+                  ...item,
+                  capability: CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+                })),
+        }
+      : upstreamDelivery
+    const serialized = JSON.stringify({ delivery, deliveryDisposition })
     if (Buffer.byteLength(serialized) > RECOMMENDATION_DELIVERY_RESPONSE_BYTES)
       throw new RecommendationRouteError(502, "invalid_admin_response")
     const response = recommendationSerializedJson(serialized)
-    attachRecommendationSession(response, session)
+    if (session) attachRecommendationSession(response, session)
     observeRecommendationDelivery({
       endpoint: "for_you",
+      trafficCategory,
+      persistenceDisposition: excluded
+        ? upstreamDelivery.requestId
+          ? "unexpected_commit"
+          : "avoided"
+        : upstreamDelivery.requestId
+          ? "committed"
+          : "not_committed",
       httpStatus: response.status,
       delivery,
       upstreamResult: delivery.result,
@@ -74,6 +94,8 @@ export async function POST(request: Request) {
     const response = recommendationError(error)
     observeRecommendationDelivery({
       endpoint: "for_you",
+      trafficCategory,
+      persistenceDisposition: "not_observed",
       httpStatus: response.status,
       error,
     })

@@ -325,6 +325,27 @@ function typesenseDouble() {
 }
 
 describe("Typesense Watch candidate index CLI", () => {
+  it("builds a complete automatic catalog without moving either operator pointer", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const result = await publishTypesenseWatchSearchCandidate({
+      prisma: {} as PrismaClient,
+      typesense: typesense.client as never,
+      generations: generation.lifecycle as never,
+      generationId: generation.generationId,
+      indexContractRevision: "app-sha-1",
+      sourceEpoch: "source-42",
+      transcript: { ...transcriptIdentity },
+      loadSnapshot: async () => snapshot,
+      publishEvaluation: false,
+    })
+    expect(result.state).toBe("READY")
+    expect(generation.lifecycle.getPointer).not.toHaveBeenCalled()
+    expect(
+      generation.lifecycle.publishEvaluationGeneration,
+    ).not.toHaveBeenCalled()
+  })
+
   it("publishes only candidate-owned projections and reuses transcript identity", async () => {
     const generation = lifecycleDouble()
     const typesense = typesenseDouble()

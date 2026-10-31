@@ -1,4 +1,21 @@
-import { chunk, fetchTopUpVideos } from "./topUpFetch"
+import {
+  chunk,
+  fetchTopUpVideos,
+  homeFetchPolicy,
+  type HomeQueryContext,
+} from "./topUpFetch"
+
+describe("Home fetch policy", () => {
+  it("avoids a second normalized Android cache alongside the persisted snapshot", () => {
+    expect(homeFetchPolicy("android", "initial")).toBe("no-cache")
+    expect(homeFetchPolicy("android", "refresh")).toBe("no-cache")
+  })
+
+  it("preserves Apple TV cache-first entry and network-only retry", () => {
+    expect(homeFetchPolicy("ios", "initial")).toBe("cache-first")
+    expect(homeFetchPolicy("ios", "refresh")).toBe("network-only")
+  })
+})
 
 describe("chunk", () => {
   it("splits into <=size chunks", () => {
@@ -25,6 +42,29 @@ describe("fetchTopUpVideos", () => {
     const out = await fetchTopUpVideos({ query } as never, ["x"], "cache-first")
     expect(query).toHaveBeenCalledTimes(1)
     expect(out).toEqual([{ coreId: "x" }])
+    expect(query.mock.calls[0][0]).not.toHaveProperty("context")
+  })
+
+  it("keeps every chunk in the refresh owner's cancellation and deduplication context", async () => {
+    const controller = new AbortController()
+    const context: HomeQueryContext = {
+      queryDeduplication: false,
+      fetchOptions: { signal: controller.signal },
+    }
+    const query = jest.fn().mockResolvedValue({ data: { watchHomeVideos: [] } })
+    await fetchTopUpVideos(
+      { query } as never,
+      Array.from({ length: 150 }, (_, index) => `id-${index}`),
+      "network-only",
+      context,
+    )
+    expect(query).toHaveBeenCalledTimes(2)
+    for (const [options] of query.mock.calls)
+      expect(options.context).toBe(context)
+    controller.abort()
+    expect(query.mock.calls[0][0].context.fetchOptions.signal.aborted).toBe(
+      true,
+    )
   })
 
   it("chunks a >100-id set into multiple calls and merges the results (R4)", async () => {

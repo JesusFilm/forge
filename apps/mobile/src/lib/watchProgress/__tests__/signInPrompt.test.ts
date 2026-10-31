@@ -1,7 +1,6 @@
 import {
   PROMPT_DISMISS_COOLDOWN_MS,
   PROMPT_MIN_WATCHED_SECONDS,
-  SIGN_IN_PROMPT_COPY,
   __resetSignInPromptSession,
   isPromptCooldownActive,
   markSignInPromptShown,
@@ -13,7 +12,10 @@ import {
   subscribeToSignInPrompt,
 } from "../signInPrompt"
 
+import { getT } from "../../../i18n/useT"
+
 const NOW = Date.parse("2026-08-04T00:00:00.000Z")
+const SIGN_IN_PROMPT_COPY = getT("Auth")("signInPromptMessage")
 
 beforeEach(() => {
   __resetSignInPromptSession()

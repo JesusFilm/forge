@@ -6,10 +6,13 @@ import {
   studioIdSchema,
   studioDigestSchema,
 } from "@forge/studio-contracts"
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import {
+  STUDIO_RENDER_PROFILE,
+  studioRenderExecutionProfileSchema,
+} from "@forge/studio-contracts/render"
 import { retainStudioRenderOutput } from "./studio-render-retention"
 import { studioRenderClient } from "./studio-render-transport"
-import { prepareStudioRenderInput } from "./studio-render-input"
+import { prepareStudioDraftRenderInput } from "./studio-render-input"
 import { executeStudioRenderRequest } from "./studio-render-execution"
 import {
   runStudioRenderJob,
@@ -23,17 +26,7 @@ const contextSchema = z.object({
     revision: z.number().int().positive(),
     inputHash: studioDigestSchema,
     document: studioDocumentSchema,
-    executionProfile: z
-      .record(z.string(), z.union([z.string(), z.number()]))
-      .refine(
-        (value) =>
-          Object.keys(value).length ===
-            Object.keys(STUDIO_RENDER_PROFILE).length &&
-          Object.entries(STUDIO_RENDER_PROFILE).every(
-            ([key, expected]) => value[key] === expected,
-          ),
-        "Unsupported immutable render profile",
-      ),
+    executionProfile: studioRenderExecutionProfileSchema,
   }),
 })
 const claimSchema = z.discriminatedUnion("execute", [
@@ -69,12 +62,19 @@ function renderPort(parent: AbortSignal): StudioRenderRunPort {
       const { snapshot } = contextSchema.parse(
         await client.call("context", attemptId),
       )
-      const prepared = await prepareStudioRenderInput(
+      if (snapshot.executionProfile.id !== STUDIO_RENDER_PROFILE.id)
+        throw new Error("Legacy render execution refused")
+      const prepared = await prepareStudioDraftRenderInput(
         client.assets,
         snapshot.projectId,
         snapshot.document,
         env.STUDIO_PREVIEW_API_KEY ?? "",
         signal,
+        {
+          read: () => client.call("preparation", { attemptId, leaseId }),
+          save: (document) =>
+            client.call("prepare", { attemptId, leaseId, document }),
+        },
       )
       if (!env.STUDIO_RENDER_SERVICE_URL || !env.STUDIO_RENDER_PRIVATE_KEY)
         throw new StudioRenderRunError("Render service configuration required")

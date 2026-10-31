@@ -1,0 +1,376 @@
+{
+  "probe": "forge_owner_migrations_0111_0112_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+  "sqlSha256": "99751210c60f17c82407f93708da3693b2cf5e8b4276ea451c876746799d574f",
+  "specSha256": "5319ff8d4b78a2688f1663d2f15fdb32987b617b5e09b522ff63e94103bf9944",
+  "expectedMigrationChecksums": [
+    {
+      "checksum": "b2eecd95e803c9fa4830aaefecdcc88f83a4c6bf3144521dc6fcee2f8c192903",
+      "name": "0111_recommendation_owner_release_stage"
+    },
+    {
+      "checksum": "4ec2ae6ae9c8ee876382789763dedf51d049eda53207690406355eb98df1feb7",
+      "name": "0112_recommendation_owner_release"
+    }
+  ],
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "nodeWallTimeoutMs": 15000,
+  "transportWallTimeoutMs": 20000,
+  "activationNotPerformed": true,
+  "environment": "production",
+  "startedAt": "2026-09-29T21:20:01.774617+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "metadata_pass",
+  "runtimeCommit": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "ownerManifestExact": true,
+    "promotionEnumExact": true,
+    "ownerTableShapeExact": true,
+    "noUnfinishedMigrations": true,
+    "migrationChecksumsExact": true,
+    "functionDefinitionsSha256Exact": true,
+    "indexesDefinitionsValidReadyLive": true,
+    "triggerDefinitionsAndEnabledExact": true,
+    "requestOwnerColumnsHaveNoForeignKey": true,
+    "columnsTypesNullabilityDefaultsExact": true,
+    "serverMajorMatchesCanonicalDefinitions": true,
+    "constraintsDefinitionsAndValidationExact": true,
+    "requestPairEnforcedDeliberatelyNotValidated": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_owner_live_migrations_0111_0112",
+    "checks": {
+      "ownerManifestExact": true,
+      "promotionEnumExact": true,
+      "ownerTableShapeExact": true,
+      "noUnfinishedMigrations": true,
+      "migrationChecksumsExact": true,
+      "functionDefinitionsSha256Exact": true,
+      "indexesDefinitionsValidReadyLive": true,
+      "triggerDefinitionsAndEnabledExact": true,
+      "requestOwnerColumnsHaveNoForeignKey": true,
+      "columnsTypesNullabilityDefaultsExact": true,
+      "serverMajorMatchesCanonicalDefinitions": true,
+      "constraintsDefinitionsAndValidationExact": true,
+      "requestPairEnforcedDeliberatelyNotValidated": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "catalog": {
+      "columns": [
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_trial_authority.owner_influence_floor_generation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.approved_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.approved_by_id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.binding"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.binding_digest"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.dependency_expires_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.expires_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.graph_generation_id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.manifest_digest"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.manifest_id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.pointer_generation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.qualified_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.raw_population_expires_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.revocation_reason"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.revoked_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.valid_until"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.active_owner_release_id"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.owner_influence_floor_generation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_request.owner_release_generation"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_request.owner_release_id"
+        }
+      ],
+      "indexes": [
+        {
+          "ok": true,
+          "name": "recommendation_owner_release_expiry_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release_graph_key"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release_pkey"
+        }
+      ],
+      "triggers": [
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_contribution.cowatch_pair_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_edge.cowatch_edge_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.owner_release_graph_invalidated"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_generation.owner_release_graph_removed"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_source_contribution.cowatch_source_appended"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.owner_release_immutable"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.owner_influence_floor_monotonic"
+        }
+      ],
+      "functions": [
+        {
+          "ok": true,
+          "name": "cowatch_graph_appended"
+        },
+        {
+          "ok": true,
+          "name": "fence_owner_release_graph"
+        },
+        {
+          "ok": true,
+          "name": "guard_owner_influence_floor"
+        },
+        {
+          "ok": true,
+          "name": "protect_owner_release"
+        }
+      ],
+      "migrations": [
+        {
+          "ok": true,
+          "name": "0111_recommendation_owner_release_stage"
+        },
+        {
+          "ok": true,
+          "name": "0112_recommendation_owner_release"
+        }
+      ],
+      "constraints": [
+        {
+          "ok": true,
+          "name": "recommendation_cowatch_trial_authority.recommendation_cowatch_trial_owner_influence_floor_genera_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_approved_by_id_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_binding_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_binding_digest_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_expiry_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_graph_key",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_manifest_digest_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_manifest_id_fkey",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_pkey",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_pointer_generation_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_owner_release.recommendation_owner_release_revocation_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.recommendation_promotion_pointer_active_owner_release_id_fkey",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.recommendation_promotion_pointer_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_promotion_pointer.recommendation_promotion_pointer_stage_check",
+          "observedEnforced": true,
+          "expectedValidated": true,
+          "observedValidated": true
+        },
+        {
+          "ok": true,
+          "name": "recommendation_request.recommendation_request_owner_release_check",
+          "observedEnforced": true,
+          "expectedValidated": false,
+          "observedValidated": false
+        }
+      ]
+    },
+    "lockTimeout": "1s",
+    "serverMajor": 18,
+    "deploymentState": {
+      "pointerMissing": false,
+      "ownerPathInactive": true,
+      "noOwnerReleasesYet": true,
+      "manifestRegistryEnabledIsNotActivation": true,
+      "authorityLineagePrivacyCapacityAndServingNotProven": true
+    },
+    "statementTimeout": "3s",
+    "configuredPointer": {
+      "stage": "control",
+      "present": true,
+      "generation": 1,
+      "activeManifestId": "semantic-transcript-pgvector-v1",
+      "killSwitchEnabled": false,
+      "exposureCeilingBps": 0,
+      "ownerReleaseRevoked": null,
+      "ownerReleaseRowFound": false,
+      "hasOwnerReleaseReference": false,
+      "configuredForOwnerRelease": false,
+      "ownerReleaseMatchesPointer": false,
+      "servingReadinessNotEvaluated": true,
+      "hasPromotionApprovalReference": false,
+      "ownerInfluenceFloorGeneration": 0,
+      "ownerReleaseTimeBoundsCurrent": null
+    },
+    "ownerReleaseCount": {
+      "empty": true,
+      "atLeast": null,
+      "rowLimit": 1001,
+      "countIsExact": true,
+      "rowsObservedCapped": 0
+    },
+    "transactionReadOnly": "on"
+  },
+  "endedAt": "2026-09-29T21:20:06.127907+00:00"
+}

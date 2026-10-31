@@ -1,0 +1,48 @@
+{
+  "declaration": {
+    "declaredBeforeRead": "2026-10-01T02:55:10.387Z",
+    "sourceWindow": {
+      "version": "episode-event-window-v1",
+      "windowStart": "2026-09-23T19:00:00.000Z",
+      "windowEnd": "2026-09-30T19:00:00.000Z",
+      "evaluationAsOf": "2026-10-01T02:00:00.000Z"
+    },
+    "runtimeCommit": "63511a87ff949e36885488346edf7fafb7566c27"
+  },
+  "transportExitCode": 0,
+  "receipt": {
+    "generation": "b5a47a2824cdf8adb9af02ec4c128ad80f430336199871313cfb1461afc89a8f",
+    "rawSourceCount": 40490,
+    "rawSourceCountIsLowerBound": false,
+    "sourceCount": 6768,
+    "attemptedPairCount": 46737,
+    "contributionCount": 40295,
+    "edgeCount": 9006,
+    "publicationRowCount": 56070,
+    "sourceWindow": {
+      "version": "episode-event-window-v1",
+      "windowStart": "2026-09-23T19:00:00.000Z",
+      "windowEnd": "2026-09-30T19:00:00.000Z",
+      "evaluationAsOf": "2026-10-01T02:00:00.000Z"
+    },
+    "publishedAt": null,
+    "terminalDecision": "no_promotion",
+    "decisionReason": "complete_bounded_population_preflight",
+    "status": "ready",
+    "supportedEdgeCount": 834,
+    "graphRowJsonBytes": {
+      "sources": {
+        "total": 5536915,
+        "maximum": 863
+      },
+      "contributions": {
+        "total": 21135641,
+        "maximum": 541
+      },
+      "edges": {
+        "total": 4400869,
+        "maximum": 507
+      }
+    }
+  }
+}

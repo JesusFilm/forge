@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { createWatchAudienceConfiguration } from "@forge/experience-schema"
 import {
   BlockSchema,
   BlocksSchema,
@@ -93,6 +94,14 @@ describe("BlockSchema — all top-level types validate", () => {
     {
       name: "homepageRecommendations",
       value: { t: "homepageRecommendations" },
+    },
+    {
+      name: "watchAudience",
+      value: {
+        t: "watchAudience",
+        sectionKey: "audience",
+        configuration: createWatchAudienceConfiguration(),
+      },
     },
     {
       name: "watchHomeCategoryRail",

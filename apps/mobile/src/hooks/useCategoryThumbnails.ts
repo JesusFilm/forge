@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 
+import { currentAdminForms } from "../i18n/adminLanguage"
 import { getApolloClient } from "../lib/apolloClient"
 import { WATCH_SEARCH } from "../lib/queries"
 import { BROWSE_TOPICS } from "../lib/browseTopics"
@@ -7,6 +8,7 @@ import { pickThumbnailUrl } from "../lib/categoryThumbnail"
 import {
   buildWatchSearchInput,
   mapWatchSearchResponse,
+  searchLanguageFor,
 } from "../lib/watchSearch"
 
 /** Scanned for the first result with artwork; the top hit can be imageless. */
@@ -93,6 +95,8 @@ export function useCategoryThumbnails(
                 query: term,
                 limit: THUMBNAIL_SCAN_LIMIT,
                 offset: 0,
+                // A topic term: English query words, the UI's display slug.
+                language: searchLanguageFor(currentAdminForms(), term),
               }),
             },
             fetchPolicy: "cache-first",

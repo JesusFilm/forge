@@ -1,7 +1,7 @@
 ---
 title: Mux Player + custom React-rendered chrome (HeroPlayerControls pattern)
 date: 2026-04-30
-last_updated: 2026-07-14
+last_updated: 2026-10-14
 category: docs/solutions/design-patterns
 module: apps/web, packages/video-player
 problem_type: design_pattern
@@ -159,6 +159,17 @@ Stack the chrome layers explicitly. Inside the player wrapper:
 | Chrome (`<div data-visible={...}>`)                  | `z-10`  | auto (always)  | Play / timeline / time / volume / fullscreen      |
 
 Do **not** flip the chrome to `pointer-events-none` when auto-hiding. Doing so blocks agent `.click()` and keyboard interactions even though the user can still see roughly where the controls were. Keep `pointer-events: auto` always; toggle only `opacity` (and let the reveal listeners — see section 5 below for the dual-target binding rule once chrome is portaled — bring it back to opacity-100 on the next interaction).
+
+#### 4a. When copy sits above the media, delegate the click from the frame (added 2026-10-14)
+
+The transparent click-surface button only works when nothing click-catching sits above it. The Watch home intro (`WatchHomeTvCarousel`) stacks the title copy, Watch Now, mute button, and timeline in a `z-10` overlay band over the video. A surface layered under that band never sees clicks on the title or the band's empty space. Making the band `pointer-events-none` and re-enabling each control is fragile.
+
+Instead, the intro puts one `onClick` on the hero frame. The click runs only while muted, so a stray click can never mute an unmuted intro. It skips any click whose `event.target.closest(...)` matches an interactive element (`a[href]`, `button`, form fields, `[role=button]`, `[role=link]`), so controls keep their own click. It unmutes through the same `toggleMuted` the mute button uses. Keyboard users keep the real mute button, so the frame needs no role or tab stop.
+
+Two rules come with it:
+
+- Give each selector branch a test that only it can catch. Click a **different** slide's circle, not the current one. The current circle is `aria-disabled` and its handler is a no-op, so it passes even when the `button` branch is deleted.
+- An interactive child that is not a link, button, or form field (for example a `tabindex` div or `role="tab"`) unmutes on click until it is added to the selector. A portal rendered from inside the frame bubbles through the React tree too.
 
 ### 5. Sticky-hero scroll-over-video layout (added 2026-05-01)
 

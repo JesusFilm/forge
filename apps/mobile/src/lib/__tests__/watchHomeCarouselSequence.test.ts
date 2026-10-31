@@ -3,6 +3,7 @@ import {
   type WatchHomeMuxInsertConfig,
 } from "../watchHome/config"
 import {
+  WATCH_HOME_DEFAULT_SESSION_SEED,
   WATCH_HOME_TV_ADVANCE_THRESHOLD,
   buildWatchHomeHeroQueue,
   buildWatchHomeVideoQueue,
@@ -220,6 +221,8 @@ describe("mergeWatchHomeMuxInserts", () => {
         },
       ],
       morningNow,
+      WATCH_HOME_DEFAULT_SESSION_SEED,
+      "en",
     )
 
     expect(slides.map((slide) => slide.id)).toEqual([
@@ -249,6 +252,7 @@ describe("mergeWatchHomeMuxInserts", () => {
         [joinInsert],
         morningNow,
         "seed-1",
+        "en",
       )
 
     const first = run()[1]
@@ -269,6 +273,8 @@ describe("mergeWatchHomeMuxInserts", () => {
         [video("video-1")],
         [{ ...muxInsert, enabled: false }],
         morningNow,
+        WATCH_HOME_DEFAULT_SESSION_SEED,
+        "en",
       ).map((slide) => slide.id),
     ).toEqual(["video-1"])
 
@@ -277,6 +283,8 @@ describe("mergeWatchHomeMuxInserts", () => {
         [video("video-1")],
         [{ ...muxInsert, playbackIds: [] }],
         morningNow,
+        WATCH_HOME_DEFAULT_SESSION_SEED,
+        "en",
       ).map((slide) => slide.id),
     ).toEqual(["video-1"])
   })
@@ -313,6 +321,8 @@ describe("overlayForInsert (display-time Eastern-hour rule)", () => {
       [video("video-1")],
       [welcomeInsert],
       morningNow,
+      WATCH_HOME_DEFAULT_SESSION_SEED,
+      "en",
     )
     const slide = slides[0]
     if (slide?.kind !== "mux") throw new Error("expected the welcome mux slide")
@@ -321,7 +331,7 @@ describe("overlayForInsert (display-time Eastern-hour rule)", () => {
     expect(slide.title).toBe(
       "Jun 4: Good Morning! Today's Bible Moments Await.",
     )
-    expect(muxSlideDisplayCopy(slide, eveningNow).title).toBe(
+    expect(muxSlideDisplayCopy(slide, eveningNow, "en").title).toBe(
       "Jun 4: Good Evening! Wind Down with Bible Moments.",
     )
   })
@@ -339,6 +349,7 @@ describe("buildWatchHomeHeroQueue", () => {
       inserts: WATCH_HOME_MUX_INSERTS,
       targetVideoCount: 4,
       now: morningNow,
+      uiTag: "en",
     })
 
     expect(result.videos).toHaveLength(4)
@@ -363,6 +374,7 @@ describe("buildWatchHomeHeroQueue", () => {
       inserts: [],
       playedIds: new Set(["video-a", "video-b"]),
       now: morningNow,
+      uiTag: "en",
     })
 
     expect(result.wrapped).toBe(true)
@@ -378,6 +390,7 @@ describe("buildWatchHomeHeroQueue", () => {
       inserts: [],
       playedIds: new Set(["video-a"]),
       now: morningNow,
+      uiTag: "en",
     })
 
     expect(result.wrapped).toBe(false)
@@ -393,6 +406,7 @@ describe("buildWatchHomeHeroQueue", () => {
       playedIds: new Set(["video-a", "video-b", "video-c"]),
       targetVideoCount: 4,
       now: morningNow,
+      uiTag: "en",
     })
 
     expect(result.wrapped).toBe(false)
@@ -413,6 +427,7 @@ describe("buildWatchHomeHeroQueue", () => {
       playedIds: new Set(["video-a"]),
       targetVideoCount: 7,
       now: morningNow,
+      uiTag: "en",
     })
 
     expect(result.videos).toHaveLength(2)
@@ -460,6 +475,7 @@ describe("watchHome modules are Hermes-safe (no storage access)", () => {
       inserts: WATCH_HOME_MUX_INSERTS,
       playedIds: new Set<string>(),
       now,
+      uiTag: "en",
     })
     expect(queue.slides.length).toBeGreaterThan(0)
     for (const insert of WATCH_HOME_MUX_INSERTS) {

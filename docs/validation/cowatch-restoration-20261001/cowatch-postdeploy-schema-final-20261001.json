@@ -1,0 +1,34 @@
+[
+  [],
+  [],
+  [],
+  [
+    {
+      "status": {
+        "readOnly": "on",
+        "scheduler": {
+          "status": "running",
+          "nextRunAt": "2026-10-01T03:13:02.857Z",
+          "startedAt": "2026-10-01T02:52:47.171",
+          "updatedAt": "2026-10-01T03:08:02.858",
+          "lastBatchStatus": "completed"
+        },
+        "grantTable": "recommendation_cowatch_refresh_grant",
+        "migrations": [
+          {
+            "name": "0126_recommendation_cowatch_refresh",
+            "finishedAt": "2026-10-01T02:51:03.749742+00:00",
+            "rolledBackAt": null
+          },
+          {
+            "name": "0126_recommendation_delivery_diagnostics",
+            "finishedAt": "2026-10-01T02:54:38.467108+00:00",
+            "rolledBackAt": null
+          }
+        ],
+        "observedAt": "2026-10-01T03:08:25.912616+00:00",
+        "attemptTable": "recommendation_cowatch_refresh_attempt"
+      }
+    }
+  ]
+]

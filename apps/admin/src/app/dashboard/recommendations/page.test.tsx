@@ -6,6 +6,8 @@ const requireSessionMock = vi.fn()
 const loadOverviewMock = vi.fn()
 const loadTracePageMock = vi.fn()
 const loadDetailMock = vi.fn()
+const loadSignedExposureMock = vi.fn()
+const loadAnonymousExposureMock = vi.fn()
 const redirectMock = vi.fn((destination: string) => {
   throw new Error(`REDIRECT:${destination}`)
 })
@@ -15,6 +17,13 @@ vi.mock("@/auth/session", () => ({
 }))
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
+
+vi.mock("@/services/recommendations/admin-ops/watch-exposure.service", () => ({
+  loadWatchExposureBreakdown: (...args: unknown[]) =>
+    loadSignedExposureMock(...args),
+  loadAnonymousWatchExposureBreakdown: (...args: unknown[]) =>
+    loadAnonymousExposureMock(...args),
+}))
 
 vi.mock("@/config/env", () => ({
   env: {
@@ -304,6 +313,8 @@ const overview = {
 describe("Admin Recommendations pages", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadSignedExposureMock.mockResolvedValue([])
+    loadAnonymousExposureMock.mockResolvedValue({ rows: [], truncated: false })
     loadOverviewMock.mockResolvedValue(overview)
     loadTracePageMock.mockResolvedValue({
       window: overview.window,
@@ -346,7 +357,165 @@ describe("Admin Recommendations pages", () => {
     await expect(RecommendationsPage()).rejects.toThrow("REDIRECT:/dashboard")
     expect(loadOverviewMock).not.toHaveBeenCalled()
     expect(loadTracePageMock).not.toHaveBeenCalled()
+    expect(loadSignedExposureMock).not.toHaveBeenCalled()
+    expect(loadAnonymousExposureMock).not.toHaveBeenCalled()
   })
+
+  it("scopes both exposure readers without changing overview or trace windows", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    const html = renderToStaticMarkup(
+      await RecommendationsPage({
+        searchParams: Promise.resolve({
+          window: "7d",
+          exposure: "watch-home:hero:hero-card",
+          exposurePlacement: "primary",
+          exposurePolicy: "watch-exposure-v2",
+        }),
+      }),
+    )
+    const filter = {
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+      placement: "primary",
+      policyVersion: "watch-exposure-v2",
+    }
+    expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "7d", filter)
+    expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "7d", filter)
+    expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "7d" })
+    expect(html).toContain('name="exposure"')
+    expect(html).toContain('name="exposurePlacement"')
+    expect(html).toContain('name="exposurePolicy"')
+    expect(html).toContain('value="watch-exposure-v2" selected=""')
+    expect(html).toContain("and policy watch-exposure-v2")
+    expect(html).toContain("Exposure rows are scoped")
+  })
+
+  it.each(["24h", "7d", "29d"])(
+    "labels the shorter anonymous history honestly for %s",
+    async (window) => {
+      requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
+      loadOverviewMock.mockResolvedValue({
+        ...overview,
+        window: { ...overview.window, preset: window },
+      })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({ window }),
+        }),
+      )
+      expect(html).toContain(
+        "New anonymous Watch exposure facts expire after 14 days",
+      )
+      if (window === "29d") {
+        expect(html).toContain("Partial anonymous history")
+        expect(html).toContain("cannot describe the complete 29-day window")
+        expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+        expect(loadTracePageMock).toHaveBeenCalledWith(
+          {},
+          expect.objectContaining({ window: "29d" }),
+        )
+      } else {
+        expect(html).not.toContain("Partial anonymous history")
+      }
+    },
+  )
+
+  it.each([
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-exposure-v1",
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-for-you-v1",
+      surface: "watch-home",
+      block: "for-you",
+      presentation: "recommendation-list",
+    },
+    {
+      exposure: "watch-video:below-player:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+      surface: "watch-video",
+      block: "below-player",
+      presentation: "recommendation-list",
+    },
+  ])(
+    "forwards compatible policy selection %j",
+    async ({ exposure, exposurePolicy, surface, block, presentation }) => {
+      requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({
+            window: "29d",
+            exposure,
+            exposurePolicy,
+          }),
+        }),
+      )
+      const filter = {
+        surface,
+        block,
+        presentation,
+        policyVersion: exposurePolicy,
+      }
+      expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+      expect(html).toContain(
+        "Overview and replay counts retain the selected time window",
+      )
+    },
+  )
+
+  it.each([
+    { exposurePolicy: "watch-exposure-v2" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: ["watch-exposure-v1", "watch-exposure-v2"],
+    },
+    { exposure: "watch-home:hero:hero-card", exposurePolicy: "unknown-policy" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-for-you-v1",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-exposure-v2",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+    },
+    { exposure: "watch-home:unknown:hero-card" },
+    {
+      exposure: [
+        "watch-home:hero:hero-card",
+        "watch-search:results:result-list",
+      ],
+    },
+    { exposurePlacement: "primary" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePlacement: "invalid placement",
+    },
+  ])(
+    "withholds exposure on invalid or ambiguous filters %j",
+    async (params) => {
+      requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({ searchParams: Promise.resolve(params) }),
+      )
+      expect(loadSignedExposureMock).not.toHaveBeenCalled()
+      expect(loadAnonymousExposureMock).not.toHaveBeenCalled()
+      expect(html).toContain("Choose a registered entry")
+      expect(html).toContain("Counts are withheld")
+      expect(loadOverviewMock).toHaveBeenCalledOnce()
+    },
+  )
 
   it("renders aggregate truth for EDITOR without requesting or leaking trace data", async () => {
     requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
@@ -378,7 +547,7 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("Raw cookies, digests, session links")
     expect(html).toContain("Promotion decision")
     expect(html).toContain("50% of eligible assignments")
-    expect(html).toContain("Read-only evidence")
+    expect(html).toContain("Historical evidence only")
     expect(html).toContain("Activation Effective")
     expect(html).toContain("Profile candidate shadow")
     expect(html).toContain("MULTI-INTEREST")
@@ -433,12 +602,12 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("request-private-1")
     expect(html).toContain("/dashboard/recommendations/request-private-1")
     expect(html).toContain("cursor=opaque-private-cursor")
-    expect(html).toContain("Confirm permanent default")
-    expect(html).toContain("Restore last-known-good")
-    expect(html).toContain("Emergency stop")
+    expect(html).not.toContain("Confirm permanent default")
+    expect(html).not.toContain("Restore last-known-good")
+    expect(html).not.toContain("Emergency stop")
   })
 
-  it("shows rollback only for a historical profile-only promotion pointer", async () => {
+  it("shows historical profile promotion without active controls", async () => {
     requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
     loadOverviewMock.mockResolvedValue({
       ...overview,
@@ -466,8 +635,8 @@ describe("Admin Recommendations pages", () => {
     expect(html).not.toContain("Approve exact manifest")
     expect(html).not.toContain("Increase bounded stage")
     expect(html).not.toContain("Confirm permanent default")
-    expect(html).toContain("Restore last-known-good")
-    expect(html).toContain("Emergency stop")
+    expect(html).not.toContain("Restore last-known-good")
+    expect(html).not.toContain("Emergency stop")
   })
 
   it("denies the overview before any recommendation reader runs", async () => {

@@ -1,0 +1,11 @@
+{
+  "videoId": "example-video",
+  "dubId": "example-dub",
+  "editionId": "example-edition",
+  "language": "english",
+  "trackId": "example-subtitle",
+  "downloadId": "example-download",
+  "startMs": 0,
+  "endMs": 15000,
+  "idempotencyKey": "example-capture-1"
+}

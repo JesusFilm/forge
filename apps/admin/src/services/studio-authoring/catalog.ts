@@ -14,8 +14,7 @@ import { ForbiddenError, NotFoundError } from "../errors"
 import { studioActor, studioHash, lockProject, assertEditable } from "./state"
 import { StudioCommandError } from "./errors"
 import { StudioAssetService, resolveAssetVersion } from "./assets"
-import { assertStudioRenderSources } from "./sources"
-import { resolveStudioPackSources } from "./packs"
+import { assertStudioCompletedRenderSources } from "./render-preparation"
 
 /** Registers completed render evidence only. It neither calls Mux nor publishes. */
 export class StudioCatalogService {
@@ -26,7 +25,6 @@ export class StudioCatalogService {
       where: { id: studioIdSchema.parse(rawId) },
       include: {
         derivations: { include: { sourceSnapshot: true } },
-        packs: true,
       },
     })
     if (!row) throw new NotFoundError("ShortRelease")
@@ -139,18 +137,13 @@ export class StudioCatalogService {
           where: { slug: document.language, deletedAt: null },
         })
         if (!language) throw new NotFoundError("Exact author language")
-        const sources = await assertStudioRenderSources(tx, document)
-        const packs = await resolveStudioPackSources(
+        const sources = await assertStudioCompletedRenderSources(
           tx,
-          document.packRevisionIds,
+          document,
+          input.renderAttemptId,
         )
         const restrictions = [
-          ...new Set([
-            ...sources.flatMap((s) => s.eligibility.restrictions),
-            ...packs.flatMap((p) =>
-              p.sources.flatMap((s) => s.eligibility.restrictions),
-            ),
-          ]),
+          ...new Set(sources.flatMap((s) => s.eligibility.restrictions)),
         ].sort()
         await resolveAssetVersion(tx, manifest.output)
         await resolveAssetVersion(tx, result.manifest!)
@@ -214,12 +207,6 @@ export class StudioCatalogService {
                 catalogDigest: s.snapshot.catalogDigest,
                 currentRestrictions: s.eligibility.restrictions,
               })),
-              packs: packs.map((p) => ({
-                revisionId: p.revisionId,
-                packId: p.packId,
-                number: p.number,
-                document: p.document,
-              })),
             },
             derivations: {
               create: sources.map((s) => ({
@@ -231,9 +218,6 @@ export class StudioCatalogService {
                 durationInFrames: document.items.find((i) => i.id === s.itemId)!
                   .durationInFrames,
               })),
-            },
-            packs: {
-              create: packs.map((p) => ({ packRevisionId: p.revisionId })),
             },
           },
         })

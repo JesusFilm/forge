@@ -1,6 +1,7 @@
 ---
 title: "Expo dev client can relaunch on a cached bundle — verify an edit reached the device by grepping the served bundle"
 date: "2026-08-13"
+last_updated: "2026-10-01"
 category: "developer-experience"
 module: "apps/mobile"
 problem_type: developer_experience
@@ -45,11 +46,13 @@ Never treat a force-stop + relaunch as proof that the device runs current code. 
 
    The reload endpoint makes every connected dev client fetch the current bundle and rebuild the React tree — unlike a cold app relaunch, which may serve from the client's cache.
 
+   **A 200 from `/reload` does not prove a reload (added 2026-10-01).** In one session, `curl -s -X POST http://localhost:8123/reload` returned 200. Metro logged no new `Bundled` line, and the iOS dev client kept its old code. The cause was not established. After each `/reload`, look for a new `Bundled` line in Metro's log. If none appears, relaunch the app cold: run `xcrun simctl terminate <udid> org.jesusfilm.forgewatch`, then re-send the deep link in the next paragraph. Tap **Open** if iOS asks. Without a Metro restart, the new line can read `(1 module)` and still carry the current code. The new line is the proof, not its module count.
+
 A related trap with the same shape: `expo run:android` / `run:ios` deep-link the dev client at their own default Metro port. After a build, re-deep-link the client at the Metro you intend, or the device runs a different checkout's code entirely. Either registered form works for this app: `forgemobile://expo-development-client/?url=http%3A%2F%2F<host>%3A<port>`, or the same path under `exp+jesus-film-forge-v2://`. The `exp+` prefix takes the **slug**, never the `scheme` — `apps/mobile/app.json` sets slug `jesus-film-forge-v2` and scheme `forgemobile`, and the built `Info.plist` registers `forgemobile` and `exp+jesus-film-forge-v2`. So `exp+forgemobile://` is unregistered and opens nothing, which reads as "the deep link does not work".
 
 ## Why This Matters
 
-Judging a fix against stale code produces confident, wrong conclusions in both directions: a real fix "fails" (invites reverting correct code) or removed code "still works" (masks a break). Both cost re-diagnosis loops that the two curl probes close in seconds. Native-prop edits are the worst case: some (like expo-video's surfaceType) only apply at view mount, so even a delivered update needs a remount — the reload endpoint provides both.
+Judging a fix against stale code produces confident, wrong conclusions in both directions: a real fix "fails" (invites reverting correct code) or removed code "still works" (masks a break). Both cost re-diagnosis loops that the two curl probes close in seconds. Native-prop edits are the worst case: some (like expo-video's surfaceType) only apply at view mount, so even a delivered update needs a remount — the reload endpoint provides both, when the reload lands (see step 2).
 
 ## When to Apply
 
@@ -66,3 +69,4 @@ From the incident: an import repair was pushed via file save; the app was force-
 - `docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md` — the publish-time sibling: stale Metro cache at export time.
 - `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md` — the native half. This doc proves the JS Metro serves; that one proves the installed binary came from your tree, which a bundle grep cannot see.
 - `docs/solutions/developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md` — the worktree-and-Metro context the port in these commands assumes.
+- `docs/solutions/ui-bugs/nested-scrollview-in-panresponder-pager-slow-drag-moves-feed.md` — the 2026-10-01 session where `/reload` returned 200 without a reload, and Fast Refresh kept a stale ref-held engine.

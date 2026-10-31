@@ -27,21 +27,7 @@ export function WatchProgressBar({
   )
 }
 
-/**
- * Fold progress into the card's accessibilityLabel (mobile a11y
- * convention — a deliberate divergence from web's silent bar).
- */
-export function progressAccessibilityText(
-  entry:
-    | { positionSeconds: number; durationSeconds: number }
-    | null
-    | undefined,
-): string | null {
-  const state = progressBarState(entry)
-  if (!state.visible) return null
-  if (state.completed) return "watched"
-  return `${Math.round(state.fillRatio * 100)}% watched`
-}
+export { progressAccessibilityText } from "./progressAccessibilityText"
 
 const styles = StyleSheet.create({
   track: {

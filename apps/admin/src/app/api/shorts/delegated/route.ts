@@ -7,7 +7,7 @@ import {
   executeStudioProduction,
   studioProductionRpcSchema,
 } from "@/services/studio-authoring/production-rpc"
-import { prisma } from "@/db/client"
+import { prisma, studioRenderPrisma } from "@/db/client"
 import { env } from "@/config/env"
 import {
   verifyStudioRequest,
@@ -18,10 +18,8 @@ import {
   executeStudioDelegated,
   studioFinishSchema,
 } from "@/services/studio-authoring/delegated"
-import {
-  StudioAuthoringService,
-  StudioCommandError,
-} from "@/services/studio-authoring"
+import { StudioAuthoringService } from "@/services/studio-authoring"
+import { studioDelegatedError } from "@/services/studio-authoring/delegated-errors"
 export async function POST(request: Request) {
   try {
     const body = await readStudioBytes(request)
@@ -55,7 +53,12 @@ export async function POST(request: Request) {
             finish.data.input,
           )
     } else if (studioRenderRpcSchema.safeParse(raw).success)
-      result = await executeStudioRender(prisma, caller, raw)
+      result = await executeStudioRender(
+        studioRenderPrisma,
+        caller,
+        raw,
+        request.signal,
+      )
     else if (studioProductionRpcSchema.safeParse(raw).success)
       result = await executeStudioProduction(prisma, caller, raw)
     else result = await executeStudioDelegated(prisma, caller, raw)
@@ -64,24 +67,10 @@ export async function POST(request: Request) {
       { headers: { "cache-control": "no-store" } },
     )
   } catch (error) {
-    const conflict =
-      error instanceof StudioCommandError && error.code === "CONFLICT"
+    const failure = studioDelegatedError(error)
     return Response.json(
-      {
-        error:
-          error instanceof StudioCommandError
-            ? error.code
-            : error instanceof StudioBoundaryError
-              ? error.message
-              : "Studio command rejected",
-      },
-      {
-        status: conflict
-          ? 409
-          : error instanceof StudioBoundaryError
-            ? error.status
-            : 400,
-      },
+      { error: failure.error },
+      { status: failure.status, headers: { "cache-control": "no-store" } },
     )
   }
 }

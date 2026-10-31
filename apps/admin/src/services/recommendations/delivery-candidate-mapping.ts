@@ -1,4 +1,5 @@
 import type { SceneRecommendation } from "@/services/scene-recommendations.service"
+import type { CompositionInputDiagnostic } from "./composition/live-structure"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import {
   CANDIDATE_CONTEXT_VERSION,
@@ -13,6 +14,10 @@ import {
   type SemanticCandidatePoolItem,
 } from "./candidate"
 import type { RecommendationShortfallReason } from "./contracts"
+import {
+  recentVideoReasonCodes,
+  type RecommendationSlateComposition,
+} from "./slate"
 import type {
   CandidatePlatformResult,
   CandidateStageEvidence,
@@ -61,6 +66,36 @@ export function mergeBoundedHybridNominations(
   return merged
 }
 
+/** Exact trial manifest budget: retain the semantic reserve and bound graph fanout. */
+export function mergeBoundedCowatchNominations(
+  semantic: readonly CandidateNomination[],
+  profile: readonly CandidateNomination[],
+  cowatch: readonly CandidateNomination[],
+): CandidateNomination[] {
+  const semanticReserve = semantic.slice(0, 36)
+  const graphReserve = cowatch.slice(0, 12)
+  const profileReserve = profile.slice(
+    0,
+    MAX_CANDIDATE_NOMINATIONS - semanticReserve.length - graphReserve.length,
+  )
+  const merged: CandidateNomination[] = []
+  for (
+    let index = 0;
+    index <
+    Math.max(
+      semanticReserve.length,
+      profileReserve.length,
+      graphReserve.length,
+    );
+    index++
+  ) {
+    for (const source of [semanticReserve, profileReserve, graphReserve]) {
+      if (source[index]) merged.push(source[index])
+    }
+  }
+  return merged
+}
+
 export function preparedCandidatesFromPlatform(
   platform: CandidatePlatformResult,
 ): PreparedCandidate[] {
@@ -90,8 +125,10 @@ export function preparedCandidatesFromPlatform(
 
 export function selectedCandidateGenerator(
   sources: PreparedCandidate["sources"],
-): "semantic" | "multi-interest-profile" | "curated" {
+): "semantic" | "multi-interest-profile" | "directional-cowatch" | "curated" {
   if (sources.some((source) => source.generator === "curated")) return "curated"
+  if (sources.some((source) => source.generator === "directional-cowatch"))
+    return "directional-cowatch"
   return sources.some((source) => source.generator === "multi-interest-profile")
     ? "multi-interest-profile"
     : "semantic"
@@ -120,6 +157,7 @@ export function lastKnownGoodSemanticCandidates(
   context: { locale: string; audioLanguageSlug: string },
   limit: number,
   currentVideoId?: string,
+  recentVideos: RecommendationSlateComposition["recentVideos"] = [],
 ): PreparedCandidate[] {
   const eligible = candidates
     .filter(
@@ -140,7 +178,17 @@ export function lastKnownGoodSemanticCandidates(
         left.videoId.localeCompare(right.videoId) ||
         left.sceneIndex - right.sceneIndex,
     )
-  return dedupeByVideoIdentity(eligible, limit).map((candidate, index) => {
+  const fresh: SemanticCandidatePoolItem[] = []
+  const recent: SemanticCandidatePoolItem[] = []
+  for (const candidate of dedupeByVideoIdentity(eligible, eligible.length)) {
+    const pool =
+      recentVideoReasonCodes(candidate.videoId, candidate, recentVideos)
+        .length > 0
+        ? recent
+        : fresh
+    pool.push(candidate)
+  }
+  return [...fresh, ...recent].slice(0, limit).map((candidate, index) => {
     const presentation = toBoundedCandidatePresentation(candidate, context)
     return {
       candidate: {
@@ -197,6 +245,7 @@ export function appendSourceFailureEvidence(
   platform: CandidatePlatformResult,
   reasonCode: string,
   sourceGenerator = "semantic",
+  compositionInputDiagnostic?: CompositionInputDiagnostic,
 ): CandidatePlatformResult {
   const rejection: CandidateStageEvidence = {
     stage: "rejected",
@@ -211,7 +260,29 @@ export function appendSourceFailureEvidence(
     deterministicScore: null,
     finalPosition: null,
     reasonCodes: [reasonCode],
-    sourceEvidence: [],
+    sourceEvidence: compositionInputDiagnostic
+      ? [
+          {
+            // Rejected aggregate observation, never a candidate nomination.
+            generator: "mmr-composition-inputs",
+            generatorVersion: compositionInputDiagnostic.version,
+            rank: 0,
+            score: 0,
+            evidence: {
+              version: compositionInputDiagnostic.version,
+              missingSource: compositionInputDiagnostic.missingSource,
+              missingInterest: compositionInputDiagnostic.missingInterest,
+              missingTheme: compositionInputDiagnostic.missingTheme,
+              missingHistory: compositionInputDiagnostic.missingHistory,
+              candidateCount: compositionInputDiagnostic.candidateCount,
+              selectedCount: compositionInputDiagnostic.selectedCount,
+              themedSelectedCount:
+                compositionInputDiagnostic.themedSelectedCount,
+            },
+            rejectionReason: reasonCode,
+          },
+        ]
+      : [],
   }
   return {
     ...platform,

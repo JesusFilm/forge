@@ -18,7 +18,6 @@ const blank = {
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   },
   media: {},
   code: {},

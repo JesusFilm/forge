@@ -34,12 +34,18 @@ jest.mock("../authSession", () => ({
 jest.mock("../datadog", () => ({ reportDatadogAction: jest.fn() }))
 
 import { clearNewAccountNotice, getNewAccountNotice } from "../newAccountNotice"
+import {
+  clearAccountDeletedNotice,
+  getAccountDeletedNotice,
+  noteAccountDeleted,
+} from "../accountDeletedNotice"
 import { reportDatadogAction } from "../datadog"
 import { deleteAccount, signInWithHostedPage, signOut } from "../authActions"
 
 beforeEach(() => {
   jest.clearAllMocks()
   clearNewAccountNotice()
+  clearAccountDeletedNotice()
   mockSessionStore.getSnapshot.mockReturnValue({
     status: "signedOut",
     user: null,
@@ -279,6 +285,28 @@ describe("signInWithHostedPage", () => {
     expect(getNewAccountNotice()).toBeNull()
   })
 
+  it("clears the account-deleted notice when a sign-in completes (R20)", async () => {
+    noteAccountDeleted()
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-new" })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(getAccountDeletedNotice()).toBe(false)
+  })
+
+  it("keeps the account-deleted notice when the sign-in is cancelled", async () => {
+    noteAccountDeleted()
+    mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.readSession.mockResolvedValue(null)
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "cancelled",
+    })
+    expect(getAccountDeletedNotice()).toBe(true)
+  })
+
   it("does not substitute the device clock when the session stamp is missing", async () => {
     mockAuthClient.signIn.social.mockResolvedValue(OAUTH_OK)
     // createdAt is fresh relative to the DEVICE clock; without a session
@@ -398,6 +426,81 @@ describe("deleteAccount", () => {
 
     await expect(deleteAccount()).resolves.toEqual({ status: "error" })
     expect(mockSessionStore.signOut).not.toHaveBeenCalled()
+  })
+
+  describe("the account-deleted notice (KTD8, R20)", () => {
+    it("raises the notice before the sign-out commits on the success path (AE8)", async () => {
+      mockAuthClient.deleteUser.mockResolvedValue({})
+      let noticeAtSignOut: boolean | null = null
+      mockSessionStore.signOut.mockImplementationOnce(async () => {
+        noticeAtSignOut = getAccountDeletedNotice()
+      })
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(noticeAtSignOut).toBe(true)
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it("still raises the notice when the post-delete signOut throws", async () => {
+      mockAuthClient.deleteUser.mockResolvedValue({})
+      mockSessionStore.signOut.mockRejectedValueOnce(
+        new Error("subscriber threw"),
+      )
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it("raises the notice once the timeout-path probe finds no session", async () => {
+      mockAuthClient.deleteUser.mockRejectedValue(
+        Object.assign(new Error("aborted"), { name: "AbortError" }),
+      )
+      mockSessionStore.readSession.mockResolvedValue(null)
+      let noticeAtSignOut: boolean | null = null
+      mockSessionStore.signOut.mockImplementationOnce(async () => {
+        noticeAtSignOut = getAccountDeletedNotice()
+      })
+
+      await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+      expect(noticeAtSignOut).toBe(true)
+      expect(getAccountDeletedNotice()).toBe(true)
+    })
+
+    it.each([
+      [
+        "fresh-session-required",
+        () =>
+          mockAuthClient.deleteUser.mockResolvedValue({
+            error: { code: "SESSION_EXPIRED" },
+          }),
+      ],
+      [
+        "error",
+        () =>
+          mockAuthClient.deleteUser.mockResolvedValue({
+            error: { code: "INTERNAL_SERVER_ERROR" },
+          }),
+      ],
+      [
+        "error",
+        () => {
+          mockAuthClient.deleteUser.mockRejectedValue(new Error("timeout"))
+          mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+        },
+      ],
+      [
+        "unconfirmed",
+        () => {
+          mockAuthClient.deleteUser.mockRejectedValue(new Error("timeout"))
+          mockSessionStore.readSession.mockRejectedValue(new Error("offline"))
+        },
+      ],
+    ])("raises no notice on a %s outcome", async (status, arrange) => {
+      arrange()
+
+      await expect(deleteAccount()).resolves.toEqual({ status })
+      expect(getAccountDeletedNotice()).toBe(false)
+    })
   })
 })
 

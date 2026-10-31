@@ -238,13 +238,16 @@ describe("daily support research workflow", () => {
     expect(dailySupportResearchWorkflow.committed).toBe(true)
   })
 
-  it("records a disabled report without reading Help Scout or Linear", async () => {
+  it("returns disabled before database, Help Scout, model, or Linear access", async () => {
     const repository = new MemoryRepository()
     const helpScout = helpScoutWith()
     const linear = {
       findIssueByMarker: vi.fn(),
       createIssue: vi.fn(),
     }
+    const analyzer = { generate: vi.fn() }
+    repository.getCursor = vi.fn(repository.getCursor)
+    repository.claimRun = vi.fn(repository.claimRun)
 
     const report = await executeDailySupportResearch(
       { dryRun: false },
@@ -253,7 +256,7 @@ describe("daily support research workflow", () => {
         repository,
         helpScout,
         linear,
-        analyzer: { generate: vi.fn() },
+        analyzer,
         now: () => now,
         randomId: () => "fixed-id",
       },
@@ -263,8 +266,63 @@ describe("daily support research workflow", () => {
     expect(report.errors).toContain("feature_disabled")
     expect(helpScout.listNewConversations).not.toHaveBeenCalled()
     expect(linear.createIssue).not.toHaveBeenCalled()
-    expect(repository.reports).toHaveLength(1)
+    expect(analyzer.generate).not.toHaveBeenCalled()
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.claimRun).not.toHaveBeenCalled()
+    expect(repository.reports).toHaveLength(0)
+    expect(repository.purgeCalls).toBe(0)
+  })
+
+  it("rejects invalid input before database access", async () => {
+    const repository = new MemoryRepository()
+    repository.getCursor = vi.fn(repository.getCursor)
+    repository.claimRun = vi.fn(repository.claimRun)
+
+    const report = await executeDailySupportResearch(
+      { dryRun: false, unexpected: true },
+      {
+        config,
+        repository,
+        helpScout: helpScoutWith(),
+        linear: { findIssueByMarker: vi.fn(), createIssue: vi.fn() },
+        analyzer: { generate: vi.fn() },
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      errors: ["invalid_input"],
+    })
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.claimRun).not.toHaveBeenCalled()
+  })
+
+  it("persists an enabled run that fails later readiness checks", async () => {
+    const repository = new MemoryRepository()
+    const helpScout = helpScoutWith()
+
+    const report = await executeDailySupportResearch(
+      { dryRun: false },
+      {
+        config: { ...config, providerApproved: false },
+        repository,
+        helpScout,
+        linear: { findIssueByMarker: vi.fn(), createIssue: vi.fn() },
+        analyzer: { generate: vi.fn() },
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      errors: expect.arrayContaining(["model_provider_not_approved"]),
+    })
+    expect(repository.reports).toEqual([report])
     expect(repository.purgeCalls).toBe(1)
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
   })
 
   it("dry-runs analysis and proposed actions with zero Linear mutations", async () => {
@@ -376,7 +434,7 @@ describe("daily support research workflow", () => {
       executeDailySupportResearch(
         { dryRun: false },
         {
-          config: { ...config, enabled: false },
+          config: { ...config, providerApproved: false },
           repository,
           helpScout: helpScoutWith(),
           linear: { findIssueByMarker: vi.fn(), createIssue: vi.fn() },

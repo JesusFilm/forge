@@ -1,3 +1,4 @@
+import { getEventListeners } from "node:events"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { query } = vi.hoisted(() => ({ query: vi.fn() }))
@@ -299,6 +300,73 @@ describe("fetchWatchHistoryVideoDetails", () => {
     expect(query).not.toHaveBeenCalled()
   })
 
+  it.each([
+    { kind: "healthy", count: 2 },
+    { kind: "empty", count: 0 },
+  ])(
+    "releases its abort listener after each $kind history on a reused signal",
+    async ({ count }) => {
+      const controller = new AbortController()
+      const callerListener = vi.fn()
+      controller.signal.addEventListener("abort", callerListener, {
+        once: true,
+      })
+
+      for (let iteration = 0; iteration < 12; iteration += 1) {
+        const items = await fetchWatchHistoryVideoDetails(requests(count), {
+          signal: controller.signal,
+        })
+        expect(items).toHaveLength(count)
+        expect(getEventListeners(controller.signal, "abort")).toEqual([
+          callerListener,
+        ])
+      }
+
+      expect(query).toHaveBeenCalledTimes(count * 12)
+      controller.abort()
+      expect(callerListener).toHaveBeenCalledTimes(1)
+      expect(getEventListeners(controller.signal, "abort")).toEqual([])
+    },
+  )
+
+  it("starts no queries and adds no listener for an already aborted signal", async () => {
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(
+      fetchWatchHistoryVideoDetails(requests(20), {
+        signal: controller.signal,
+      }),
+    ).resolves.toEqual([])
+
+    expect(query).not.toHaveBeenCalled()
+    expect(getEventListeners(controller.signal, "abort")).toEqual([])
+  })
+
+  it("releases the listener at abort while still handling late task rejections", async () => {
+    const controller = new AbortController()
+    const rejectTasks: Array<(reason: Error) => void> = []
+    query.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectTasks.push(reject)
+        }),
+    )
+
+    const result = fetchWatchHistoryVideoDetails(requests(20), {
+      signal: controller.signal,
+    })
+    expect(query).toHaveBeenCalledTimes(WATCH_HISTORY_FANOUT_CONCURRENCY)
+    expect(getEventListeners(controller.signal, "abort")).toHaveLength(1)
+    controller.abort()
+
+    await expect(result).resolves.toEqual([])
+    expect(getEventListeners(controller.signal, "abort")).toEqual([])
+    for (const reject of rejectTasks) reject(new Error("late query failure"))
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    expect(query).toHaveBeenCalledTimes(WATCH_HISTORY_FANOUT_CONCURRENCY)
+  })
+
   it("settles within its own budget instead of running 25 rounds of 15 s", async () => {
     // Bounding concurrency without bounding the total is the regression this
     // pins: at width 8 the 200-id cap is 25 sequential rounds, so a hanging
@@ -353,7 +421,7 @@ describe("fetchWatchHistoryVideoDetails", () => {
     expect(seen.every((signal) => signal.aborted)).toBe(true)
   })
 
-  it("reports a spent budget distinctly from upstream failures", async () => {
+  it("reports that the shared deadline was reached", async () => {
     query.mockImplementation(() => new Promise(() => {}))
 
     await fetchWatchHistoryVideoDetails(requests(20), {
@@ -407,4 +475,46 @@ describe("fetchWatchHistoryVideoDetails", () => {
 
     expect(console.warn).not.toHaveBeenCalled()
   })
+
+  it.each(["unsafe", "getter", "non-error"])(
+    "preserves healthy siblings when an error name is %s",
+    async (kind) => {
+      const error =
+        kind === "non-error"
+          ? "must-not-log-rejection-payload"
+          : new Error("must-not-log-error-message")
+      if (error instanceof Error) {
+        Object.defineProperty(error, "name", {
+          get() {
+            if (kind === "getter") throw new Error("name getter failed")
+            return `TimeoutError\n${"X".repeat(100)}`
+          },
+        })
+      }
+      query.mockImplementation(
+        ({ variables }: { variables: { id: string } }) =>
+          variables.id === "v1"
+            ? Promise.reject(error)
+            : Promise.resolve(videoPayload(variables.id)),
+      )
+
+      const items = await fetchWatchHistoryVideoDetails(requests(3))
+
+      expect(items.map((item) => item.videoId)).toEqual(["v0", "v2"])
+      const lines = vi.mocked(console.warn).mock.calls.map(([line]) => line)
+      expect(lines).toHaveLength(2)
+      const reason =
+        kind === "unsafe"
+          ? `TimeoutError_${"X".repeat(51)}`
+          : kind === "getter"
+            ? "object"
+            : "string"
+      expect(lines[0]).toBe(
+        `[watch-history] event=history_video_fetch_failure videoId=v1 reason=${reason}`,
+      )
+      expect(lines[1]).toContain("returned=2 failed=1")
+      expect(lines.join(" ")).not.toContain("must-not-log")
+      expect(lines[0]).not.toContain("\n")
+    },
+  )
 })

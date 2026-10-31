@@ -1,0 +1,51 @@
+{
+  "declaredAt": "2026-09-30T19:58:36.992Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "provenance": "Candidate source SQL with unchanged deployed graph builder; no unpublished publisher/service imported",
+  "statementTimeoutMs": 5000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "publicationPerformed": false,
+  "automaticRetryPermitted": false,
+  "rawTransportOutputRetained": false,
+  "sqlSha256": "88067ecca128a3e98f494727aaa717fb286b50a2bd4f58623a8799a4a56979e0",
+  "jit": false,
+  "transportExitCode": 0,
+  "records": [
+    {
+      "status": "ready",
+      "readOnly": true,
+      "sourceMs": 2339.699228,
+      "totalMs": 2537.950189,
+      "generation": "ba798b8f9864d21fd8b5fbec100bd498a6415bff26830189814d675eb25ed757",
+      "rawSourceCount": 40605,
+      "sourceCount": 6841,
+      "attemptedPairCount": 46663,
+      "contributionCount": 39961,
+      "edgeCount": 9123,
+      "supportedEdgeCount": 844,
+      "publicationRowCount": 55926,
+      "graphRowJsonBytes": {
+        "sources": {
+          "total": 5596867,
+          "maximum": 863
+        },
+        "contributions": {
+          "total": 20929103,
+          "maximum": 541
+        },
+        "edges": {
+          "total": 4453321,
+          "maximum": 507
+        }
+      },
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf"
+    }
+  ],
+  "receiptPreservation": "Restored verbatim values from the captured tool response after a helper output filename collision; no production query rerun."
+}

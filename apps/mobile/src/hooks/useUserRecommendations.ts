@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
-  fetchUserRecommendations,
+  fetchUserRecommendationsWithCoverage,
   getDeliveryDeps,
   isSlateExpired,
   type DeliveryResult,
@@ -71,7 +71,8 @@ let defaultClient: UserRecommendationsClient | null = null
 export function getUserRecommendationsClient(): UserRecommendationsClient {
   if (!defaultClient) {
     defaultClient = {
-      fetch: (input) => fetchUserRecommendations(input, getDeliveryDeps()),
+      fetch: (input) =>
+        fetchUserRecommendationsWithCoverage(input, getDeliveryDeps()),
       recordEvidence: (kind, slate, item, ledger) =>
         recordEvidence(kind, slate, item, ledger, getEvidenceDeps()),
       select: (slate, item) =>

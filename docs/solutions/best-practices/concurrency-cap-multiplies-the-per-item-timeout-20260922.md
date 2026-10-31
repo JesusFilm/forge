@@ -27,9 +27,9 @@ related:
   - docs/solutions/best-practices/parallel-workflow-error-robustness-20260420.md
   - docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md
 related_features:
-  - feat-537
+  - feat-919
 related_prs:
-  - JesusFilm/Forge#2382
+  - JesusFilm/Forge#2384
 ---
 
 # A concurrency cap multiplies the per-item timeout into the total
@@ -178,3 +178,16 @@ under one app's vocabulary is a law that only that app obeys.
   skipping the `if (!response.ok) return []` contract entirely. **A fail-soft
   branch on the response is not a fail-soft function.** Check every way the call
   can reject, not just every status it can return.
+
+## Diagnostic boundary — 2026-10-31
+
+A failure logger must not reopen the failure path it describes. `Error.name`
+is writable and may be a throwing getter, so extracting a type-only reason
+still needs a guard, a bounded safe character set and a primitive fallback.
+Never read the error message or serialize the thrown value for this event.
+
+The fan-out `timedOut` field records shared-deadline exhaustion, not its cause.
+Returned counters are observations at settlement; they cannot classify a slow
+provider versus a large healthy workload or prove that an ignored abort stopped
+upstream work. Keep actual transport cancellation and full-route latency as
+separate acceptance evidence.

@@ -37,18 +37,20 @@ describe("RecommendationEpisodeService", () => {
         newClaimNonce: () => "source-neutral-claim-nonce",
       })
 
-      await expect(
-        service.issueContext({
-          caller,
-          sessionDigest: "a".repeat(64),
-          mediaId: "target-video",
-          discoverySource,
-          provenance: { campaign: "bounded-campaign" },
-        }),
-      ).resolves.toEqual({
+      const receipt = await service.issueContext({
+        caller,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        discoverySource,
+        provenance: { campaign: "bounded-campaign" },
+      })
+      // U5 reads the episode id from this receipt to attribute a push open.
+      expect(receipt).toEqual({
+        episodeId: "context-episode-1",
         claimNonce: "source-neutral-claim-nonce",
         contextVersion: "playback-context-v1",
       })
+      expect(receipt.episodeId).toBe(created[0].id)
       expect(created[0]).toMatchObject({
         id: "context-episode-1",
         requestId: null,
@@ -328,25 +330,19 @@ describe("RecommendationEpisodeService", () => {
         expiresAt: new Date("2026-09-17T03:00:00.000Z"),
         experimentAssignment: {
           id: "assignment-1",
-          experimentId: "profile-pilot-1",
-          profileId: "profile-1",
-          privacyGeneration: 4,
+          experimentId: "session-pilot-1",
+          profileId: null,
+          privacyGeneration: null,
           arm: "CHALLENGER",
           assignmentProbability: 0.25,
           configurationDigest: "c".repeat(64),
           state: "ACTIVE",
           expiresAt: new Date("2026-09-01T00:00:00.000Z"),
-          profile: {
-            state: "ACTIVE",
-            tokenDigest: "d".repeat(64),
-            privacyGeneration: 4,
-            expiresAt: new Date("2027-02-21T00:00:00.000Z"),
-          },
           experiment: {
-            experimentVersion: "profile-pilot-v1",
+            experimentVersion: "session-pilot-v1",
             generation: 3,
             controlManifestId: "semantic-transcript-pgvector-v1",
-            challengerManifestId: "multi-interest-profile-pilot-v1",
+            challengerManifestId: "semantic-challenger-v1",
           },
         },
       },
@@ -354,6 +350,9 @@ describe("RecommendationEpisodeService", () => {
     const tx = {
       $executeRaw: vi.fn(async () => 1),
       $queryRaw: vi.fn(async () => [{ id: "current" }]),
+      recommendationPrecomputedBaselineVisitRequest: {
+        findUnique: vi.fn(async () => null),
+      },
       recommendationSelection: {
         findUnique: vi.fn(async () => null),
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -366,13 +365,6 @@ describe("RecommendationEpisodeService", () => {
     }
     const prisma = {
       recommendationServedItem: { findUnique: vi.fn(async () => item) },
-      recommendationProfileSessionLink: {
-        findFirst: vi.fn(async () => ({
-          profileId: "profile-1",
-          privacyGeneration: 4,
-          profile: { privacyGeneration: 4 },
-        })),
-      },
       recommendationEvidenceAudit: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
       $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
@@ -443,11 +435,11 @@ describe("RecommendationEpisodeService", () => {
       "delivery-token",
       expect.objectContaining({
         assignmentId: "assignment-1",
-        experimentId: "profile-pilot-1",
-        experimentVersion: "profile-pilot-v1",
+        experimentId: "session-pilot-1",
+        experimentVersion: "session-pilot-v1",
         experimentGeneration: 3,
         experimentArm: "challenger",
-        effectiveManifestId: "multi-interest-profile-pilot-v1",
+        effectiveManifestId: "semantic-challenger-v1",
         assignmentProbability: 0.25,
         assignmentConfigurationDigest: "c".repeat(64),
       }),
@@ -486,6 +478,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ id: "current" }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => null),
           create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
@@ -556,15 +551,10 @@ describe("RecommendationEpisodeService", () => {
           }),
         }),
       )
-      await vi.waitFor(() => expect(dispatchProfileFeedback).toHaveBeenCalled())
+      await vi.waitFor(() => expect(classifySelection).toHaveBeenCalled())
       expect(classifySelection).toHaveBeenCalledWith("direct-id-2")
-      expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
-      expect(dispatchProfileFeedback).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
-        profileId: "profile-direct",
-        privacyGeneration: 7,
-        evidenceWatermark: new Date(eligibleAt),
-      })
+      expect(classifySelection).toHaveBeenCalledOnce()
+      expect(dispatchProfileFeedback).not.toHaveBeenCalled()
     },
   )
 
@@ -783,6 +773,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => ({
             id: "selection-1",

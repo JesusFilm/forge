@@ -41,3 +41,11 @@ U1 and U2 implemented. Verification covers target/argument and entrypoint tests,
 existing path-slice regressions, RAG lint/typecheck/import law and formatting.
 867 tests passed and two database integration tests were skipped. Live
 configuration and production proof are tracked in feat-471.
+
+## Current environment contract
+
+This implemented plan records its original contract. Feat-532 supersedes legacy
+production input names; use [the current environment runbook](../../apps/rag/docs/ops/environment-and-secrets.md)
+for operator commands. Dashboard and evaluation require the separate Forge reader
+URL and never accept the writer URL. Historical requirements and receipts above
+are retained as implementation history.

@@ -111,7 +111,19 @@ before a PR.
 
 ## i18n
 
-Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier — no cookie and no visible `/[locale]` URL prefix.
+Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier: Watch routing does not read language cookies or browser-language headers, and there is no visible `/[locale]` URL prefix.
+
+This URL-only rule is an explicit product decision, not an implementation
+accident. PR #1057 removed cookie routing after a stale `forge_watch_lang`
+cookie changed an explicit shared English URL into Bangla. PR #2658 later
+revived cookie and `Accept-Language` negotiation for bare entry routes from
+FGE-176 without reconciling that decision; feat-708 reverted it on 2026-10-15.
+Do not revive request-state Watch routing from the old audit, historical plans,
+the vestigial cookie helpers, or the existence of `parseAcceptLanguage`.
+Language changes must navigate to a URL that names the selected public audio
+language. See
+`docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`
+for the evidence and decision history.
 
 Public watch links must always pass the raw audio language slug, never the message-catalog key, into the route builders in `src/lib/routes.ts`. The canonical builder emits `/watch/{slug}.html` for eligible English and `/watch/{slug}.html/{language}.html` for non-English. Explicit English remains a direct compatibility URL and the internal renderer shape; a content slug colliding with a public language home also remains explicit-English. `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
@@ -123,7 +135,7 @@ and derive the visual active card from that pending payload so it self-invalidat
 when the route commits. See
 `docs/solutions/design-patterns/watch-chapter-optimistic-navigation-feedback.md`.
 
-Public Watch language namespace: `src/lib/language-bcp47-map.ts` (slug → BCP-47, drives `<html lang>` and the UI-catalog fallback) and `packages/watch-url-policy/src/public-watch-language-slugs.ts` (slug-only corpus for URL-grammar disambiguation and the client-side pickers/parsers) are BOTH generated from admin's public `languages` query by `pnpm --filter @forge/web generate:language-bcp47-map`; `check:language-bcp47-map` reports drift and the scheduled `watch-language-corpus-drift` workflow opens a refresh PR when admin publishes new languages. The corpus is a fallback, not the route authority: `src/proxy.ts` and the catch-all page decide whether an ambiguous `.html` segment is a language through `isWatchAudioLanguageSlug` (compiled corpus OR the live route manifest), so a language admin published after the last regeneration still routes and plays — it only degrades to English chrome and `<html lang="en">` until the corpus is refreshed. Never re-introduce a bare `isPublicWatchLanguageSlug` check in either classifier: that frozen-snapshot veto is what 404'd 58 newly published languages as fake implicit-English episodes (Linear FGE-81). The same rule binds the language-inventory route `src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.tsx` and `resolveWatchLanguageInventory`/`switcherLanguageFromRaw` in `src/lib/watch-language-inventory.ts`, which were missed by the original sweep: the route 404'd every language published since the last corpus build, and the resolver would have answered a fixed route with ENGLISH inventory under the new language's URL. A snapshot-only veto is only ever acceptable where the fallback DEGRADES (English chrome, `<html lang="en">`, a surface label) — never where it 404s or swaps the content. Admission for that surface has exactly one definition, `isAdmittedWatchInventoryLanguageSlug`, which both the route guard and the resolver call — two copies are how a guard and a resolver drift into disagreeing, and the way they disagree is English inventory under a new language's URL. Keep its manifest await lazy (only when the corpus misses) so content resolution never serializes behind the manifest request; always `.catch(() => null)` every manifest await on the path, including the unconditional one in `resolveSwitcherLanguages`, so a manifest outage degrades to the corpus instead of throwing a 500 into a route with no error boundary; and apply the slug SHAPE test before the manifest branch, which unlike the corpus branch does not enforce it, wherever the admitted slug is interpolated into a URL. Two callers deliberately remain on the corpus alone, and both are degradations rather than vetoes: `FloatingSearchProvider` is a client component that cannot await the manifest, so a language published since the last regeneration loses its in-app link to the inventory but the route still serves it; and `normalizeDynamicCollectionFeedInput` in `src/lib/dynamic-collection-contract.ts` is a SYNCHRONOUS validator of untrusted public query input whose `languageSlug` is part of the feed's signed cache identity — it still throws on a corpus miss, so the infinite feed on a newly published language's watch home 400s until the corpus refreshes. That one is a real gap, not an accepted shape; widening it means making a security boundary async and re-deriving the cache identity, which belongs in its own change.
+Public Watch language namespace: `src/lib/language-bcp47-map.ts` (slug → BCP-47, drives `<html lang>` and the UI-catalog fallback) and `packages/watch-url-policy/src/public-watch-language-slugs.ts` (slug-only corpus for URL-grammar disambiguation and the client-side pickers/parsers) are BOTH generated from admin's public `languages` query by `pnpm --filter @forge/web generate:language-bcp47-map`; `check:language-bcp47-map` reports drift and the scheduled `watch-language-corpus-drift` workflow opens a refresh PR when admin publishes new languages. The corpus is a fallback, not the route authority: `src/proxy.ts` and the catch-all page decide whether an ambiguous `.html` segment is a language through `isWatchAudioLanguageSlug` (compiled corpus OR the live route manifest), so a language admin published after the last regeneration still routes and plays — it only degrades to English chrome and `<html lang="en">` until the corpus is refreshed. Never re-introduce a bare `isPublicWatchLanguageSlug` check in either classifier: that frozen-snapshot veto is what 404'd 58 newly published languages as fake implicit-English episodes (Linear FGE-81). The same rule binds the language-inventory route `src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.tsx` and `resolveWatchLanguageInventory`/`switcherLanguageFromRaw` in `src/lib/watch-language-inventory.ts`, which were missed by the original sweep: the route 404'd every language published since the last corpus build, and the resolver would have answered a fixed route with ENGLISH inventory under the new language's URL. A snapshot-only veto is only ever acceptable where the fallback DEGRADES (English chrome, `<html lang="en">`, a surface label) — never where it 404s or swaps the content. Admission for that surface has exactly one definition, `isAdmittedWatchInventoryLanguageSlug`, which both the route guard and the resolver call — two copies are how a guard and a resolver drift into disagreeing, and the way they disagree is English inventory under a new language's URL. Keep its manifest await lazy (only when the corpus misses) so content resolution never serializes behind the manifest request; always `.catch(() => null)` every manifest await on the path, including the unconditional one in `resolveSwitcherLanguages`, so a manifest outage degrades to the corpus instead of throwing a 500 into a route with no error boundary; and apply the slug SHAPE test before the manifest branch, which unlike the corpus branch does not enforce it, wherever the admitted slug is interpolated into a URL. Two callers deliberately remain on the corpus alone, and both are degradations rather than vetoes: `FloatingSearchProvider` is a client component that cannot await the manifest, so a language published since the last regeneration loses its in-app link to the inventory but the route still serves it; and `normalizeDynamicCollectionFeedInput` in `src/lib/dynamic-collection-contract.ts` is a SYNCHRONOUS validator of untrusted public query input whose `languageSlug` is part of the feed's signed cache identity — it still throws on a corpus miss, so the infinite feed on a newly published language's watch home 400s until the corpus refreshes. That one is a real gap, not an accepted shape; widening it means making a security boundary async and re-deriving the cache identity, which belongs in its own change. Routing is only half of it: `contentIdentityForWatchLanguage` in `src/lib/content.ts` decides what reaches admin as `languageSlug`, and admin selects the dub from `languageSlug` alone (`null` → primary-language dub → `?_lr=1` redirect to `english.html`). It therefore applies the same corpus-OR-manifest admission and passes any admitted or non-tag kebab-shaped slug through, so a corpus miss (or a slug whose BCP-47 tag equals the slug, e.g. `luo`) must never collapse to `languageSlug: null` — that is exactly how 11 freshly synced languages played English on 2026-09-11. Its manifest await is lazy too (a corpus-hit slug never waits); a corpus-miss slug does wait, bounded by the manifest module's 1.5 s fetch timeout and its last-cached-manifest fallback.
 
 Adding a UI locale: drop `messages/{locale}.json`, then run `pnpm --filter @forge/web generate:ui-locales` or any build/test script that runs it. The generated edge-safe catalog module drives middleware, route helpers, and next-intl catalog membership without a manual TypeScript whitelist. CI runs `check:ui-locales` during lint before build/test scripts can regenerate the file, and the drift gate in `src/i18n/__tests__/messages-parity.test.ts` verifies the generated list matches filesystem catalogs. The structural-parity test also enforces every namespace key exists in every catalog.
 
@@ -228,6 +240,33 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
+`forge.watch.audience` (default `false`, fallback env
+`FORGE_WATCH_AUDIENCE_DEFAULT`) gates every Watch audience surface: the home
+band, the watch-page questionnaire and its Explore/Share/Partner/Grow panels,
+`/watch/api/film-finder`, `/watch/api/learning-progress` GET/POST (its DELETE
+reset stays available, with its origin/subject/payload/revision checks), the
+Partner
+collection Server Action, and the audience frame in capability previews. Every
+read fails closed (an unreadable flag is off). Admin evaluates the same key
+for `Query.watchFilmFinder`, `WatchSetting.watchAudience`, own learning
+read/save, the editor's Watch Audience controls, and service writes that
+create, change, duplicate or publish a `watchAudience` block (see
+`apps/admin/.env.example`);
+serve Web and Admin the same value, and remember an LD flip reaches Admin only
+when Admin has `LAUNCHDARKLY_SDK_KEY`. Erasure, reset and account deletion are
+never gated.
+
+Rollout and rollback timing: home and catch-all Watch pages are `force-static`
+with `revalidate = 3600`, so the flag is read at render time, not per request.
+After a flip, cached pages keep the old state for up to about an hour plus CDN
+time. Do not add client polling to shorten that. For an instant change,
+revalidate the Watch cache tags (`watch:home`, `watch:settings`,
+`watch:experience`, `watch:video`, `watch:series`) through `/api/revalidate`,
+then purge the Cloudflare cache for Watch paths. During a rollback window,
+stale pages that still show the band get 404s from the finder and from
+progress reads/saves and show their unavailable states; resetting saved
+progress still works.
+
 One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
@@ -262,15 +301,10 @@ default and keeps anonymous downloads available through opaque download IDs;
 the gated path. Do not use this flag as restricted-content authorization; it is
 a UX/product rollout gate with a fail-open fallback.
 
-`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
-flag for the global floating beta tester CTA. `false` omits the floating CTA
-while keeping the shared modal provider available to authored beta-tester
-links; `true` renders the floating CTA. Because public Watch routes are
-statically cached, evaluate this flag through the same-origin, no-store
-`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
-layout. Keep
-`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
-or rolling out the launcher.
+The Watch beta testing program was retired on 2026-10-08. Do not restore
+signup buttons, its Mailchimp modal, or the runtime CTA flag request.
+Authored CTA sections linking to the retired signup URL are suppressed by
+`src/lib/retired-watch-beta-signup.ts`. Other authored CTAs remain available.
 
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the

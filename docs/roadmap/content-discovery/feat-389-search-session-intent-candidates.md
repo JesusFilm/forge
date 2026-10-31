@@ -3,15 +3,10 @@ id: "feat-389"
 title: "Search and session-intent candidates"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
-depends_on:
-  - "feat-375"
-  - "feat-376"
-  - "feat-379"
-  - "feat-382"
-  - "feat-383"
+depends_on: []
 blocks: []
 tags:
   - "admin"
@@ -21,7 +16,18 @@ tags:
   - "candidates"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+A new search-query/session-intent candidate generator is optional expansion of the current semantic/profile/co-watch system and is retired. Existing search telemetry and session/durable separation remain. No query-to-recommendation training, generator rollout or usefulness improvement is claimed.
+
+Audit anchors: `apps/admin/src/services/recommendations/candidate.ts`, `apps/admin/src/services/recommendations/profiles/projection.ts`, `apps/web/src/components/SearchOverlay.tsx`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Current search and session evidence can improve retrieval, but transient queries must not become permanent taste by default.
 

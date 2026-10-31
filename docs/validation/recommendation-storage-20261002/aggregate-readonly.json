@@ -1,0 +1,240 @@
+{
+  "scope": "Bounded read-only aggregate production storage snapshot; no viewer/request/trace identities",
+  "measured_at": "2026-10-01T22:51:37.417000+00:00",
+  "postgres": {
+    "same_binding_sha256": "c44972c696a29221a6e9cfd7deedc2b6e979ffc2d2b514d5e8c644a98e0c0f74",
+    "data_directory_matches_pgdata": true,
+    "available_bytes": 25630932992,
+    "wal_bytes": 553648128,
+    "measured_at": "2026-10-01T22:51:36.14664+00:00",
+    "database_bytes": 22617757375,
+    "stage_nonempty": false,
+    "legacy_stage_bytes": 24576
+  },
+  "active_admin_roles": {
+    "web": {
+      "commit": "755345a92d0c4c12d920535800be5cd80f38a74f",
+      "health_status": 200,
+      "trace_format": "compact",
+      "workflow_runner_enabled": "false"
+    },
+    "worker": {
+      "commit": "755345a92d0c4c12d920535800be5cd80f38a74f",
+      "health_status": 200,
+      "trace_format": "compact",
+      "workflow_runner_enabled": "true"
+    }
+  },
+  "newer_admin_building_at_snapshot": [
+    {
+      "service": "@forge/admin",
+      "status": "BUILDING",
+      "commit": "b01e0ddca4ba871e9b5f2e491100d88e12cdf0ef"
+    },
+    {
+      "service": "@forge/admin/worker",
+      "status": "BUILDING",
+      "commit": "b01e0ddca4ba871e9b5f2e491100d88e12cdf0ef"
+    }
+  ],
+  "retention": {
+    "day": "2026-10-01 UTC",
+    "durable_by_status": [
+      {
+        "status": "succeeded",
+        "entries": 78,
+        "cap_reached": false,
+        "reason_code": null,
+        "roots_deleted": 7746,
+        "stages_deleted": 5893,
+        "served_items_deleted": 26746,
+        "candidate_runs_deleted": 7746,
+        "oldest_expired_seen_after": "2026-09-30T11:04:52.52+00:00"
+      },
+      {
+        "status": "failed",
+        "entries": 2,
+        "cap_reached": false,
+        "reason_code": "PrismaClientKnownRequestError",
+        "roots_deleted": 100,
+        "stages_deleted": 0,
+        "served_items_deleted": 470,
+        "candidate_runs_deleted": 100,
+        "oldest_expired_seen_after": null
+      },
+      {
+        "status": "failed",
+        "entries": 2,
+        "cap_reached": false,
+        "reason_code": "PrismaClientUnknownRequestError",
+        "roots_deleted": 0,
+        "stages_deleted": 0,
+        "served_items_deleted": 0,
+        "candidate_runs_deleted": 0,
+        "oldest_expired_seen_after": null
+      }
+    ],
+    "workflow_by_status": [
+      {
+        "status": "succeeded",
+        "trigger": "scheduled",
+        "wrappers": 78,
+        "elapsed_ms": 107826.0,
+        "with_error": 0,
+        "cap_reached": false,
+        "overdue_true": 0,
+        "max_elapsed_ms": 3081.0,
+        "overdue_missing": 0
+      },
+      {
+        "status": "failed",
+        "trigger": "scheduled",
+        "wrappers": 4,
+        "elapsed_ms": 10465.0,
+        "with_error": 4,
+        "cap_reached": false,
+        "overdue_true": 0,
+        "max_elapsed_ms": 5034.0,
+        "overdue_missing": 4
+      }
+    ],
+    "expired_backlog": {
+      "measured_at": "2026-10-01T22:51:36.158326+00:00",
+      "expired_roots": 3337,
+      "oldest_expired_at": "2026-10-01T10:59:28.84+00:00"
+    },
+    "error_categories": {
+      "deadlock": 0,
+      "cap_reached": false,
+      "lock_timeout": 0,
+      "prisma_p2028": 0,
+      "failed_wrappers": 4,
+      "statement_timeout": 0,
+      "sql_query_cancelled": 0,
+      "connection_mentioned": 0,
+      "sql_transaction_timeout": 0,
+      "transaction_timeout_or_closed": 2
+    }
+  },
+  "storage_formats": {
+    "recent_candidate_runs": {
+      "runs": 1000,
+      "legacy_runs": 0,
+      "missing_compact_payload": 0,
+      "unexpected_recent_retirement": 0
+    },
+    "recent_requests": {
+      "requests": 1000,
+      "packed_requests": 857,
+      "bad_packed_version": 0,
+      "unexpected_inline_multi": 0
+    },
+    "recent_profile_runs": {
+      "runs": 154,
+      "published": 25,
+      "cap_reached": false,
+      "typed_empty": 129,
+      "failed_or_fenced": 0
+    },
+    "recent_vector_shapes": {
+      "inline": 0,
+      "shared": 2391,
+      "interests": 2391,
+      "invalid_shape": 0,
+      "distinct_vectors": 212
+    },
+    "recent_exposure_identifiers": {
+      "rows": 1000,
+      "cuid_shape": 1000,
+      "uuid_shape": 0,
+      "invalid_expiry": 0,
+      "distinct_event_ids": 1000,
+      "distinct_internal_ids": 1000
+    },
+    "recent_first_empty_generation_shape": {
+      "typed_empty_runs": 1000,
+      "with_prior_generation": 0
+    }
+  },
+  "migrations": [
+    {
+      "applied": true,
+      "rolled_back": false,
+      "migration_name": "0115_recommendation_fact_duplicate_constraints"
+    },
+    {
+      "applied": true,
+      "rolled_back": false,
+      "migration_name": "0117_recommendation_served_item_payload"
+    },
+    {
+      "applied": true,
+      "rolled_back": false,
+      "migration_name": "0121_watch_exposure_narrow_index_reconciliation"
+    },
+    {
+      "applied": false,
+      "rolled_back": true,
+      "migration_name": "0127_recommendation_legacy_stage_bulk_retirement"
+    },
+    {
+      "applied": true,
+      "rolled_back": false,
+      "migration_name": "0127_recommendation_legacy_stage_bulk_retirement"
+    }
+  ],
+  "indexes": [
+    {
+      "bytes": 163504128,
+      "indexname": "watch_surface_exposure_window_item_narrow_idx"
+    }
+  ],
+  "exposure_allocation": {
+    "index_bytes": 699850752,
+    "relation_bytes": 1140342784
+  },
+  "relation_families": [
+    {
+      "relname": "recommendation_candidate_run",
+      "total_bytes": 797990912
+    },
+    {
+      "relname": "recommendation_candidate_stage_evidence",
+      "total_bytes": 24576
+    },
+    {
+      "relname": "recommendation_profile_interest",
+      "total_bytes": 678879232
+    },
+    {
+      "relname": "recommendation_profile_projection_generation",
+      "total_bytes": 327221248
+    },
+    {
+      "relname": "recommendation_profile_projection_pointer",
+      "total_bytes": 111370240
+    },
+    {
+      "relname": "recommendation_profile_vector_snapshot",
+      "total_bytes": 2891776
+    },
+    {
+      "relname": "recommendation_request",
+      "total_bytes": 303128576
+    },
+    {
+      "relname": "recommendation_served_item",
+      "total_bytes": 2595676160
+    },
+    {
+      "relname": "watch_surface_exposure",
+      "total_bytes": 1138491392
+    }
+  ],
+  "lock_state": {
+    "lock_waiters": 0,
+    "possible_cleanup_operations": 0
+  },
+  "production_mutations": 0,
+  "interpretation": "October 1 recovered after four failures; zero qualifying failure-free loaded cycles; short allocation snapshot is not steady monthly growth."
+}

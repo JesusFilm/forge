@@ -1,3 +1,15 @@
+import {
+  requireContentOnlyManifest,
+  BEHAVIORAL_RETIREMENT_REASON,
+} from "../behavioral-retirement"
+import {
+  RecommendationOwnerReleaseOperator,
+  type OwnerReleaseOperatorInput,
+} from "./owner-operator"
+import { lockOwnerReleaseForRevocation } from "./owner-authority"
+import { assertStudyAuthority } from "../experiment/study-authority"
+import { PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION } from "../experiment/assignment"
+import { STUDY_POLICY_VERSION } from "../experiment/study-protocol"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -53,6 +65,7 @@ type Dependencies = Readonly<{
 
 export type CreatePromotionRunInput = Readonly<{
   actor: Principal
+  operationId?: string
   action: PromotionAction
   expectedPointerGeneration: number
   targetManifestId: string
@@ -69,11 +82,42 @@ type ExecutionResult =
     }>
   | Readonly<{
       status: "fenced"
-      reason: "run_missing" | "claim_lost" | "pointer_changed"
+      reason:
+        | "run_missing"
+        | "claim_lost"
+        | "pointer_changed"
+        | "behavioral_recommendations_retired"
     }>
 
 export class RecommendationPromotionService {
   constructor(private readonly deps: Dependencies) {}
+
+  prepareOwnerRelease(input: OwnerReleaseOperatorInput) {
+    return this.ownerOperator().prepare(input)
+  }
+
+  activateOwnerRelease(
+    input: OwnerReleaseOperatorInput & { bindingDigest: string },
+  ) {
+    return this.ownerOperator().activate(input)
+  }
+
+  reconcileOwnerRelease(input: {
+    actor: Principal
+    authenticatedAt: Date | null
+    operationId: string
+  }) {
+    return this.ownerOperator().reconcile(input)
+  }
+
+  private ownerOperator() {
+    return new RecommendationOwnerReleaseOperator({
+      prisma: this.deps.prisma,
+      now: this.deps.now,
+      invalidateCaches:
+        this.deps.invalidateCaches ?? invalidateRecommendationCandidatePools,
+    })
+  }
 
   async approveBoundedStage(input: {
     actor: Principal
@@ -81,6 +125,7 @@ export class RecommendationPromotionService {
     maxExposureBps: number
   }) {
     requirePermission(input.actor, "operate:recommendation-experiments")
+    requireContentOnlyManifest(input.manifestId)
     if (!input.actor.id) throw new ForbiddenError("Permission denied")
     if (
       !Number.isInteger(input.maxExposureBps) ||
@@ -180,6 +225,25 @@ export class RecommendationPromotionService {
 
   async createRun(input: CreatePromotionRunInput) {
     authorizeRunRequest(input)
+    if (!isRollback(input.action))
+      requireContentOnlyManifest(input.targetManifestId)
+    if (
+      !isRollback(input.action) &&
+      input.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+    )
+      throw new RecommendationInputError(
+        "Hybrid activation and advancement require the governed study flow with an incumbent-matched comparator",
+      )
+    if (input.operationId) {
+      const existing =
+        await this.deps.prisma.recommendationPromotionRun.findUnique({
+          where: { id: input.operationId },
+        })
+      if (existing) {
+        assertReplayInputs(existing, input)
+        return { ...existing, replayed: true }
+      }
+    }
     const now = this.now()
     const [pointer, approval, evaluation] = await Promise.all([
       this.deps.prisma.recommendationPromotionPointer.findUnique({
@@ -200,6 +264,41 @@ export class RecommendationPromotionService {
     ])
     if (!pointer || pointer.generation !== input.expectedPointerGeneration) {
       throw new RecommendationConflictError("Promotion page is stale")
+    }
+    if (
+      !isRollback(input.action) &&
+      evaluation?.evaluationPolicyVersion !== STUDY_POLICY_VERSION
+    ) {
+      const governed = await this.deps.prisma.recommendationStudy.findFirst({
+        where: {
+          activatedAt: { not: null },
+          expiresAt: { gt: now },
+          experiment: {
+            state: "ACTIVE",
+            challengerManifestId: pointer.activeManifestId,
+          },
+        },
+        select: { experimentId: true },
+      })
+      if (governed)
+        throw new RecommendationInputError(
+          "Frozen study admission cannot be changed by a legacy transition",
+        )
+    }
+    if (
+      !isRollback(input.action) &&
+      evaluation &&
+      (evaluation.evaluationPolicyVersion === STUDY_POLICY_VERSION ||
+        evaluation.experiment.assignmentPolicyVersion ===
+          PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION)
+    ) {
+      await this.deps.prisma.$transaction((tx) =>
+        assertStudyAuthority(tx, {
+          evaluationId: evaluation.id,
+          purpose: "advancement",
+          now,
+        }),
+      )
     }
     const initialShadowWhere = approval
       ? exactPersonalizedShadowAuthorizationWhere(approval.manifest, now)
@@ -232,8 +331,18 @@ export class RecommendationPromotionService {
         now,
       })
     }
-    const runId = this.newId()
+    const runId = input.operationId ?? this.newId()
     return this.deps.prisma.$transaction(async (tx) => {
+      if (input.operationId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${input.operationId}, 505))`
+        const existing = await tx.recommendationPromotionRun.findUnique({
+          where: { id: input.operationId },
+        })
+        if (existing) {
+          assertReplayInputs(existing, input)
+          return { ...existing, replayed: true }
+        }
+      }
       const run = await tx.recommendationPromotionRun.create({
         data: {
           id: runId,
@@ -281,7 +390,7 @@ export class RecommendationPromotionService {
           }),
         })
       }
-      return run
+      return { ...run, replayed: false }
     })
   }
 
@@ -344,6 +453,68 @@ export class RecommendationPromotionService {
 
         const action = policyAction(run.action)
         const rollback = isRollback(action)
+        if (
+          !rollback &&
+          ![
+            "semantic-transcript-pgvector-v1",
+            "semantic-experiment-aa-v1",
+          ].includes(run.targetManifestId)
+        ) {
+          await fencePromotionRun(
+            tx,
+            run.id,
+            input,
+            now,
+            BEHAVIORAL_RETIREMENT_REASON,
+          )
+          return {
+            status: "fenced",
+            reason: BEHAVIORAL_RETIREMENT_REASON,
+          } as const
+        }
+        if (rollback && pointer.activeOwnerReleaseId) {
+          await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
+        }
+        if (
+          !rollback &&
+          run.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
+        )
+          throw new RecommendationInputError(
+            "Hybrid activation and advancement require the governed study flow with an incumbent-matched comparator",
+          )
+        if (
+          !rollback &&
+          run.evaluation?.evaluationPolicyVersion !== STUDY_POLICY_VERSION
+        ) {
+          const governed = await tx.recommendationStudy.findFirst({
+            where: {
+              activatedAt: { not: null },
+              expiresAt: { gt: now },
+              experiment: {
+                state: "ACTIVE",
+                challengerManifestId: pointer.activeManifestId,
+              },
+            },
+            select: { experimentId: true },
+          })
+          if (governed)
+            throw new RecommendationInputError(
+              "Frozen study admission cannot be changed by a legacy transition",
+            )
+        }
+        if (
+          !rollback &&
+          run.evaluation &&
+          (run.evaluation.evaluationPolicyVersion === STUDY_POLICY_VERSION ||
+            run.evaluation.experiment.assignmentPolicyVersion ===
+              PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION)
+        ) {
+          await assertStudyAuthority(tx, {
+            evaluationId: run.evaluation.id,
+            purpose: "advancement",
+            now,
+          })
+        }
         const initialShadowWhere = run.approval
           ? exactPersonalizedShadowAuthorizationWhere(
               run.approval.manifest,
@@ -410,6 +581,12 @@ export class RecommendationPromotionService {
           data: {
             activeManifestId: nextManifestId,
             activeApprovalId: rollback ? null : run.approvalId,
+            ...(rollback
+              ? {
+                  activeOwnerReleaseId: null,
+                  ownerInfluenceFloorGeneration: nextGeneration,
+                }
+              : {}),
             stage: databaseStage(transition.nextStage),
             exposureCeilingBps: transition.nextExposureCeilingBps,
             generation: nextGeneration,
@@ -448,6 +625,7 @@ export class RecommendationPromotionService {
               experimentGeneration:
                 run.evaluation?.experiment.generation ?? null,
               activeManifestId: pointer.activeManifestId,
+              ownerReleaseId: pointer.activeOwnerReleaseId,
               pointerGeneration: nextGeneration,
               now,
             })
@@ -568,11 +746,29 @@ export class RecommendationPromotionService {
             changed: false,
           } as const
         }
+        if (input.enabled && pointer.activeOwnerReleaseId) {
+          await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
+        }
         const nextGeneration = pointer.generation + 1
+        const stoppedOwner =
+          input.enabled &&
+          pointer.stage === RecommendationPromotionStage.OWNER_APPROVED
         const updated = await tx.recommendationPromotionPointer.updateMany({
           where: { id: pointer.id, generation: pointer.generation },
           data: {
             killSwitchEnabled: input.enabled,
+            ...(input.enabled
+              ? { ownerInfluenceFloorGeneration: nextGeneration }
+              : {}),
+            ...(stoppedOwner
+              ? {
+                  activeOwnerReleaseId: null,
+                  activeApprovalId: null,
+                  activeManifestId: pointer.lastKnownGoodManifestId,
+                  stage: RecommendationPromotionStage.CONTROL,
+                  exposureCeilingBps: 0,
+                }
+              : {}),
             generation: nextGeneration,
             reasonCode: input.enabled ? reason : "kill_switch_cleared",
           },
@@ -585,18 +781,12 @@ export class RecommendationPromotionService {
           ReturnType<typeof applyPromotionRollbackPolicy>
         > | null = null
         if (input.enabled) {
-          const experiment = await tx.recommendationExperiment.findFirst({
-            where: {
-              challengerManifestId: pointer.activeManifestId,
-              state: "ACTIVE",
-            },
-            select: { id: true, generation: true },
-          })
           influenceFence = await applyPromotionRollbackPolicy(tx, {
             runId: `kill-switch:${nextGeneration}`,
-            experimentId: experiment?.id ?? null,
-            experimentGeneration: experiment?.generation ?? null,
+            experimentId: null,
+            experimentGeneration: null,
             activeManifestId: pointer.activeManifestId,
+            ownerReleaseId: pointer.activeOwnerReleaseId,
             pointerGeneration: nextGeneration,
             now,
           })
@@ -609,9 +799,13 @@ export class RecommendationPromotionService {
               ? RecommendationPromotionEventType.KILL_SWITCH_ENABLED
               : RecommendationPromotionEventType.KILL_SWITCH_CLEARED,
             fromManifestId: pointer.activeManifestId,
-            toManifestId: pointer.activeManifestId,
+            toManifestId: stoppedOwner
+              ? pointer.lastKnownGoodManifestId
+              : pointer.activeManifestId,
             fromStage: pointer.stage,
-            toStage: pointer.stage,
+            toStage: stoppedOwner
+              ? RecommendationPromotionStage.CONTROL
+              : pointer.stage,
             pointerGeneration: nextGeneration,
             exposureCeilingBps: pointer.exposureCeilingBps,
             actorClass: "admin",
@@ -748,7 +942,9 @@ export async function recordFirstEligiblePromotionExposure(
           itemId: input.itemId,
           occurredAt: input.occurredAt,
         }),
-        details: { receivedAt: input.receivedAt.toISOString() },
+        details: {
+          receivedAt: input.receivedAt.toISOString(),
+        },
         now: input.receivedAt,
       }),
     ],
@@ -911,6 +1107,7 @@ function databaseStage(stage: PromotionStage): RecommendationPromotionStage {
     control: RecommendationPromotionStage.CONTROL,
     bounded: RecommendationPromotionStage.BOUNDED,
     permanent: RecommendationPromotionStage.PERMANENT,
+    owner_approved: RecommendationPromotionStage.OWNER_APPROVED,
   }[stage]
 }
 
@@ -922,6 +1119,8 @@ function policyStage(stage: RecommendationPromotionStage): PromotionStage {
       return "bounded"
     case RecommendationPromotionStage.PERMANENT:
       return "permanent"
+    case RecommendationPromotionStage.OWNER_APPROVED:
+      return "owner_approved"
   }
 }
 
@@ -941,4 +1140,30 @@ function isRollback(action: PromotionAction) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value != null && !Array.isArray(value)
+}
+
+function assertReplayInputs(
+  run: {
+    action: string
+    expectedPointerGeneration: number
+    targetManifestId: string
+    approvalId: string | null
+    evaluationId: string | null
+    exposureCeilingBps: number
+    requestedActorId: string | null
+  },
+  input: CreatePromotionRunInput,
+) {
+  if (
+    run.action !== databaseAction(input.action) ||
+    run.expectedPointerGeneration !== input.expectedPointerGeneration ||
+    run.targetManifestId !== input.targetManifestId ||
+    run.approvalId !== (input.approvalId ?? null) ||
+    run.evaluationId !== (input.evaluationId ?? null) ||
+    run.exposureCeilingBps !== input.exposureCeilingBps ||
+    run.requestedActorId !== input.actor.id
+  )
+    throw new RecommendationConflictError(
+      "Operation ID already binds another transition",
+    )
 }

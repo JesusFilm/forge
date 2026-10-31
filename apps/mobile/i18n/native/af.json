@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Die app gebruik jou plaaslike netwerk om toestelle te vind waarna jy kan uitsaai, sodat jy video’s op jou TV kan speel."
+  }
+}

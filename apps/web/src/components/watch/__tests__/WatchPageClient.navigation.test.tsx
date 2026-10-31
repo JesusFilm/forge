@@ -5,6 +5,10 @@
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  PLAYBACK_NAVIGATION_INTENT_EVENT,
+  type PlaybackNavigationIntent,
+} from "@/lib/playback-navigation-intent"
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -367,6 +371,10 @@ async function clickChapterAndFlushNavigation() {
 describe("WatchPageClient chapter navigation", () => {
   it("accepts an exact pending route from a non-default selectable parent", async () => {
     renderWatchPage(makeVideo(), makeSelectableBlocks())
+    const intents: PlaybackNavigationIntent[] = []
+    const capture = (event: Event) =>
+      intents.push((event as CustomEvent<PlaybackNavigationIntent>).detail)
+    window.addEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture)
 
     const renderer = () =>
       container.querySelector('[data-testid="watch-section-renderer"]')
@@ -376,6 +384,11 @@ describe("WatchPageClient chapter navigation", () => {
           '[data-testid="watch-section-renderer-selectable-parent"]',
         ) as HTMLButtonElement
       ).click()
+    })
+    window.removeEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture)
+    expect(intents).toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
     })
 
     expect(renderer()?.getAttribute("data-pending-target")).toBe("shared-child")

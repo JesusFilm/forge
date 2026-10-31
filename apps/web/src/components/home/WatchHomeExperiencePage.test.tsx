@@ -10,6 +10,25 @@ import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { DynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
+vi.mock("@/lib/watch-surface-manifest.server", () => ({
+  signWatchSurfaceManifest: () => null,
+  signWatchHomeHeroManifestCatalog: vi.fn(
+    () =>
+      null as
+        | import("@/lib/watch-home-hero-manifest").WatchHomeHeroManifestCatalog
+        | null,
+  ),
+}))
+
+vi.mock("@/env", () => ({
+  env: {
+    REVALIDATION_SECRET: "public-authored-hero-fixture-key",
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://www.jesusfilm.org",
+  },
+}))
+import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
+import { selectWatchHomeHeroManifest } from "@/lib/watch-home-hero-manifest"
+import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 
 const createCacheSignatures = vi.hoisted(() => vi.fn())
 
@@ -29,18 +48,26 @@ vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
   createInitialDynamicCollectionFeedCacheSignatures: createCacheSignatures,
 }))
 
+const roleBandMock = vi.hoisted(() => vi.fn())
+vi.mock("@/components/home/WatchHomeRoleBand", () => ({
+  WatchHomeRoleBand: (props: unknown) => {
+    roleBandMock(props)
+    return <section data-testid="watch-home-audience-frame-mock" />
+  },
+}))
+
 vi.mock("@/components/home/WatchHomeFooter", () => ({
   WatchHomeFooter: () => <footer data-testid="watch-home-footer" />,
 }))
 
 vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
-  WatchHomeTvCarousel: ({ pinned = true }: { pinned?: boolean }) => (
+  WatchHomeTvCarousel: vi.fn(({ pinned = true }: { pinned?: boolean }) => (
     <section
       data-testid="watch-home-hero"
       data-block-marker="WatchHomeHeroBlock"
       data-pinned={pinned ? "true" : "false"}
     />
-  ),
+  )),
 }))
 
 vi.mock("@/components/sections", () => ({
@@ -173,6 +200,8 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.mocked(signWatchHomeHeroManifestCatalog).mockReset().mockReturnValue(null)
+  vi.mocked(WatchHomeTvCarousel).mockClear()
   createCacheSignatures.mockReset()
   createCacheSignatures.mockReturnValue({
     mobile: "m".repeat(43),
@@ -191,6 +220,157 @@ afterEach(async () => {
 })
 
 describe("WatchHomeExperiencePage", () => {
+  it("hands the published audience configuration to the one home band", async () => {
+    roleBandMock.mockClear()
+    const audience = { kind: "rejected" } as const
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[makePageHeadingBlock("Fixture heading", "fixture-heading")]}
+          languageSlug="spanish"
+          locale="es"
+          audienceEnabled
+          audience={audience}
+        />,
+      ),
+    )
+    expect(roleBandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience,
+        languageSlug: "spanish",
+      }),
+    )
+  })
+
+  it("recognizes the authored audience block without mounting a second frame or disturbing its neighbours", async () => {
+    const authored = {
+      __typename: "WatchAudienceBlock",
+      t: "watchAudience",
+      sectionKey: "watch-audience",
+      configurationJson: "{}",
+    } as unknown as Section
+    const first = makePageHeadingBlock("First", "first")
+    const second = makePageHeadingBlock("Second", "second")
+    const html = async (blocks: Section[]) => {
+      await act(async () =>
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="spanish"
+            audienceEnabled
+          />,
+        ),
+      )
+      return container.innerHTML
+    }
+    const without = await html([first, second])
+    const withBlock = await html([first, authored, second])
+    expect(withBlock).toBe(without)
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-home-audience-frame-mock"]',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("keeps the audience frame off by default and adds it beside the unchanged authored content", async () => {
+    const blocks = [makePageHeadingBlock("Fixture heading", "fixture-heading")]
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(
+      container.querySelector('[data-testid="watch-home-audience-frame-mock"]'),
+    ).toBeNull()
+    const heading = container.querySelector("h1")
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="spanish"
+          audienceEnabled
+        />,
+      ),
+    )
+    expect(
+      container.querySelector('[data-testid="watch-home-audience-frame-mock"]'),
+    ).not.toBeNull()
+    expect(container.querySelector("h1")).toBe(heading)
+    expect(container.querySelector("h1")?.textContent).toBe("Fixture heading")
+  })
+
+  it("transports actual origin catalogs from the rendered model for leading and authored heroes", async () => {
+    const actual = await vi.importActual<
+      typeof import("@/lib/watch-surface-manifest.server")
+    >("@/lib/watch-surface-manifest.server")
+    vi.mocked(signWatchHomeHeroManifestCatalog).mockImplementation(
+      actual.signWatchHomeHeroManifestCatalog,
+    )
+    const model: WatchHomeModel = {
+      ...heroModel,
+      carousel: {
+        pools: [
+          {
+            id: "pool",
+            collectionIds: [],
+            videos: Array.from({ length: 110 }, (_, i) => ({
+              kind: "video",
+              id: `candidate-${i}`,
+              title: `Candidate ${i}`,
+              label: "Segment",
+              href: `/candidate-${i}.html`,
+              posterUrl: null,
+              thumbnailUrl: null,
+              imageAlt: "",
+              src: "https://media.invalid/fixture",
+              playbackId: null,
+              durationSeconds: 600,
+            })),
+          },
+        ],
+      },
+    }
+    renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={model}
+        languageSlug="english"
+        blocks={[
+          makeBlock("WatchHomeHeroBlock", "leading"),
+          makeBlock("TextBlock", "body"),
+          makeBlock("WatchHomeHeroBlock", "authored"),
+        ]}
+      />,
+    )
+    const heroes = vi
+      .mocked(WatchHomeTvCarousel)
+      .mock.calls.map(([props]) => props)
+    expect(heroes).toHaveLength(2)
+    expect(
+      heroes.map((props) => props.heroManifestCatalog?.manifest.placement),
+    ).toEqual(["home-hero", "authored-hero-2"])
+    for (const props of heroes) {
+      expect(props.slides).toBe(model.heroSlides)
+      expect(props.sequence).toBe(model.carousel)
+      expect(props.heroManifestCatalog?.items).toHaveLength(110)
+      const selected = selectWatchHomeHeroManifest(
+        props.heroManifestCatalog,
+        "/candidate-109.html",
+      )
+      expect(selected?.manifest.items).toEqual([
+        { position: 0, itemPath: "/watch/candidate-109.html" },
+      ])
+      expect(actual.verifyWatchSurfaceManifest(selected) !== null).toBe(true)
+    }
+  })
+
   it.each([
     ["WatchHomeCategoryRailBlock", "HomepageRecommendationsBlock", "TextBlock"],
     ["HomepageRecommendationsBlock", "WatchHomeCategoryRailBlock", "TextBlock"],

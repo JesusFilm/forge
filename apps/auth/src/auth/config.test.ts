@@ -61,6 +61,7 @@ vi.mock("@/config/env", () => ({
   assertProductionAuthSecrets: vi.fn(),
   env: authConfigCapture.env,
   getAdminWatchProgressErasureConfig: vi.fn(() => null),
+  isWatchLearningErasureRequired: vi.fn(() => false),
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
   getAuthCustomAudiences: vi.fn(() => ["https://custom.example.test"]),
@@ -265,6 +266,7 @@ describe("auth provider configuration", () => {
       clientId: "google-client-id",
       clientSecret: "google-client-secret",
       prompt: "select_account",
+      getUserInfo: expect.any(Function),
     })
   })
 
@@ -626,7 +628,6 @@ describe("mobile login configuration", () => {
     expect(jfp).toMatchObject({
       providerId: "jfp",
       clientId: "jfp_mobile_local",
-      discoveryUrl: "http://localhost:3004/.well-known/openid-configuration",
       requireIdTokenVerification: true,
       redirectURI: "http://localhost:3004/api/auth/callback/jfp",
       pkce: true,
@@ -635,6 +636,9 @@ describe("mobile login configuration", () => {
       // session; a revert must fail this exact-value pin.
       prompt: "login",
     })
+    expect(jfp?.discoveryUrl).toBe(
+      `http://127.0.0.1:${process.env.PORT ?? "3004"}/.well-known/openid-configuration`,
+    )
     expect(jfp).not.toHaveProperty("clientSecret")
   })
 

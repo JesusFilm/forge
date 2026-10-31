@@ -1,10 +1,23 @@
 /**
  * Maps the `watch-home` Experience's flat MediaCollectionBlock items into the
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
- * renders unchanged. Non-collection blocks are skipped (the client-owned hero and
- * Web-only category rail are silent placeholders).
+ * renders unchanged. Non-collection blocks are skipped (the client-owned hero,
+ * the Web-only category rail and the recommendations shelf are silent
+ * placeholders; the last one reports its position, see KTD1).
  */
+import {
+  ENGLISH_ADMIN_FORMS,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
+import {
+  ENGLISH_TEXT_LANG,
+  pickUiVideoText,
+  pickVideoText,
+  readCardDescription,
+  readTitle,
+  type LocalizedText,
+} from "../videoText"
 import {
   buildVideoByCoreIdIndex,
   buildWatchHomeModelFromVideos,
@@ -14,6 +27,21 @@ import {
   type WatchHomeSection,
   type WatchHomeVideoInput,
 } from "./model"
+
+/** Which homepage the body came from (KTD10, R11): the catalog tag's own, or
+ *  the English one because Admin has none for the catalog tag. */
+export type HomepageSource = "locale" | "en-fallback"
+
+/** The language context every card is read in. */
+export type HomeTextContext = {
+  forms: AdminLanguageForms
+  homepageSource: HomepageSource
+}
+
+const ENGLISH_HOME_TEXT: HomeTextContext = {
+  forms: ENGLISH_ADMIN_FORMS,
+  homepageSource: "locale",
+}
 
 // Structural block shape — the precise gql.tada block unions assign to this;
 // field access happens via a Record cast inside blockToSection.
@@ -34,6 +62,11 @@ type ExperienceItem = {
 }
 
 type ThumbnailOrientation = WatchHomeSection["orientation"]
+
+// KTD2: the legacy Watch Experience fragment returns only the bare __typename
+// for this block, so the type name is the whole detection and no other field of
+// the block is read. An Admin without the type sends no such block (R3, AE10).
+const RECOMMENDATIONS_BLOCK_TYPENAME = "HomepageRecommendationsBlock"
 
 // KTD10 parity: item coreIds ride as a $coreIds GraphQL variable, but validate
 // before they reach the top-up union anyway.
@@ -66,11 +99,52 @@ function mapThumbnailOrientation(value: unknown): ThumbnailOrientation | null {
   return value === "vertical" || value === "horizontal" ? value : null
 }
 
+function authored(
+  value: string | null | undefined,
+  lang: string,
+): LocalizedText | null {
+  return value != null && value.trim() !== "" ? { text: value, lang } : null
+}
+
+/** A card's title and short text. Under the catalog tag's own homepage the
+ *  authored text wins. Under the `en` fallback the video's UI-language text
+ *  wins, and the authored English text fills only its gaps (R11). */
+function cardText(
+  item: ExperienceItem,
+  hydrated: WatchHomeVideoInput | undefined,
+  context: HomeTextContext,
+): { title: LocalizedText | null; description: LocalizedText | null } {
+  const { forms, homepageSource } = context
+  const authoredLang =
+    homepageSource === "en-fallback" ? ENGLISH_TEXT_LANG : forms.catalogTag
+  const authoredTitle =
+    authored(item.titleOverride, authoredLang) ??
+    authored(item.labelOverride, authoredLang)
+  const authoredDescription = authored(item.subtitleOverride, authoredLang)
+  const videoTitle = pickVideoText(hydrated, forms, readTitle)
+  if (homepageSource === "en-fallback") {
+    return {
+      title:
+        pickUiVideoText(hydrated, forms, readTitle) ??
+        authoredTitle ??
+        videoTitle,
+      description:
+        pickUiVideoText(hydrated, forms, readCardDescription) ??
+        authoredDescription,
+    }
+  }
+  return {
+    title: authoredTitle ?? videoTitle,
+    description: authoredDescription,
+  }
+}
+
 function itemToCard(
   item: ExperienceItem,
   sourceId: string,
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
+  context: HomeTextContext,
 ): WatchHomeCard | null {
   // Match web's enrichment: curated home items carry videoId but a null
   // videoSlug, so keep the card (image + title) with an empty slug — HomeCard
@@ -86,14 +160,12 @@ function itemToCard(
   const label = item.labelOverride ?? ""
   // Under-curated items (prod "Acts of the Apostles") carry a coreId but no
   // authored title/image; hydrate both from the linked video so they read like
-  // every other card. Authored overrides always win — working shelves unchanged.
+  // every other card.
   const hydrated = item.coreId ? videoByCoreId.get(item.coreId) : undefined
-  const hydratedTitle = hydrated?.locales?.[0]?.title ?? null
   const hydratedImage = hydrated ? pickAdminImage(hydrated.images ?? []) : null
-  // Never blank: titleOverride, else labelOverride, else the linked video's
-  // title, else the slug.
-  const title =
-    item.titleOverride || item.labelOverride || hydratedTitle || slug
+  const text = cardText(item, hydrated, context)
+  // Never blank: the chosen title, else the slug.
+  const title = text.title?.text || slug
   // collectionSize is a free-text String badge (e.g. "25 items"); blank/whitespace
   // reads as absent (trimmed), then falls to the label, else no badge.
   const size = item.collectionSize?.trim() || null
@@ -114,11 +186,14 @@ function itemToCard(
     coreId: cardCoreId,
     slug,
     title,
-    description: item.subtitleOverride ?? null,
+    titleLang: text.title?.text ? text.title.lang : null,
+    description: text.description?.text ?? null,
+    descriptionLang: text.description?.lang ?? null,
     label,
-    // A curated item has no wire enum, so the authored override IS its
-    // classification label — blank means unlabeled, not the string "".
-    rawLabel: label !== "" ? label : null,
+    // Classify on the linked video's raw kind (KTD15): the authored override is
+    // display text, and a localized homepage writes "Serie", not "series". An
+    // item with no linked video falls back to its override; blank is unlabeled.
+    rawLabel: hydrated?.label || (label !== "" ? label : null),
     metaLabel,
     imageUrl,
     imageAlt: title,
@@ -152,13 +227,20 @@ function blockToSection(
   index: number,
   videoByCoreId: Map<string, WatchHomeVideoInput>,
   takenSectionIds: ReadonlySet<string>,
+  context: HomeTextContext,
 ): WatchHomeSection | null {
   const b = block as Record<string, unknown>
   const sectionKey = (b.sectionKey as string | null) ?? null
   const rawItems = (b.items as ExperienceItem[] | null | undefined) ?? []
   const cards = rawItems
     .map((item, i) =>
-      itemToCard(item, sectionKey ?? "home-experience", i, videoByCoreId),
+      itemToCard(
+        item,
+        sectionKey ?? "home-experience",
+        i,
+        videoByCoreId,
+        context,
+      ),
     )
     .filter((c): c is WatchHomeCard => c != null)
   if (cards.length === 0) return null // empty / all-dropped collection → skip
@@ -181,6 +263,10 @@ function blockToSection(
     eyebrow: categoryLabel,
     // Empty admin title falls back to the category label so a shelf is never headless.
     title: blockTitle || categoryLabel,
+    titleLang:
+      context.homepageSource === "en-fallback"
+        ? ENGLISH_TEXT_LANG
+        : context.forms.catalogTag,
     description: (b.subtitle as string | null) ?? null,
     layout,
     orientation: thumbnailOrientation ?? orientation,
@@ -189,17 +275,36 @@ function blockToSection(
   }
 }
 
-export function buildWatchHomeSectionsFromExperience(
+export type WatchHomeExperienceBody = {
+  sections: WatchHomeSection[]
+  /**
+   * Where the recommendations shelf belongs in `sections` — the count of
+   * sections already emitted when the adapter met the block (KTD1). Null when
+   * the Experience publishes no such block.
+   */
+  recommendationsInsertIndex: number | null
+}
+
+/**
+ * The Experience body: the rendered shelves, plus the authored position of the
+ * recommendations block. The position travels BESIDE the sections, never as a
+ * marker section inside them, so `WatchHomeModel` does not change (KTD1).
+ */
+export function buildWatchHomeBodyFromExperience(
   blocks: readonly ExperienceBlock[] | null | undefined,
   // Hydration index from the merged bulk fetch. Defaults empty so a caller with
   // no video data (and the existing tests) renders inline-only, as before.
   videoByCoreId: Map<string, WatchHomeVideoInput> = new Map(),
-): WatchHomeSection[] {
+  // The language the cards are read in; English with its own homepage when
+  // absent, which is the behaviour before U6.
+  context: HomeTextContext = ENGLISH_HOME_TEXT,
+): WatchHomeExperienceBody {
   const sections: WatchHomeSection[] = []
   // Only shelves that survive reserve an id, so a dropped block can't push its
   // surviving twin off the authored key.
   const takenSectionIds = new Set<string>()
-  ;(blocks ?? []).forEach((block, index) => {
+  let recommendationsInsertIndex: number | null = null
+  for (const [index, block] of (blocks ?? []).entries()) {
     const typename = block.__typename
     if (typename === "MediaCollectionBlock") {
       const section = blockToSection(
@@ -207,10 +312,18 @@ export function buildWatchHomeSectionsFromExperience(
         index,
         videoByCoreId,
         takenSectionIds,
+        context,
       )
       if (section) {
         sections.push(section)
         takenSectionIds.add(section.id)
+      }
+    } else if (typename === RECOMMENDATIONS_BLOCK_TYPENAME) {
+      // An expected placeholder like the hero below: it renders no section, so
+      // its position is the number of shelves already emitted. A second block is
+      // an authoring mistake — keep the first position and render one shelf.
+      if (recommendationsInsertIndex == null) {
+        recommendationsInsertIndex = sections.length
       }
     } else if (
       typename === "WatchHomeHeroBlock" ||
@@ -221,8 +334,8 @@ export function buildWatchHomeSectionsFromExperience(
     } else if (__DEV__) {
       console.warn(`[WatchHomeAdapter] skipped block type: ${typename}`)
     }
-  })
-  return sections
+  }
+  return { sections, recommendationsInsertIndex }
 }
 
 /**
@@ -245,6 +358,16 @@ export function experienceItemCoreIds(
   return [...new Set(ids)]
 }
 
+export type WatchHomeBodyResolution = {
+  model: WatchHomeModel
+  usedExperience: boolean
+  /**
+   * The authored position of the recommendations shelf in `model.sections`, or
+   * null when the block is absent or the body fell back to the config model.
+   */
+  recommendationsInsertIndex: number | null
+}
+
 /**
  * Body `sections` come from the Experience when it yields ≥1 shelf, else the
  * config model. The hero `carousel` is always config-sourced (spread from
@@ -253,14 +376,22 @@ export function experienceItemCoreIds(
 export function resolveWatchHomeModel(args: {
   configModel: WatchHomeModel
   experienceSections: WatchHomeSection[]
-}): { model: WatchHomeModel; usedExperience: boolean } {
+  recommendationsInsertIndex?: number | null
+}): WatchHomeBodyResolution {
   if (args.experienceSections.length >= 1) {
     return {
       model: { ...args.configModel, sections: args.experienceSections },
       usedExperience: true,
+      recommendationsInsertIndex: args.recommendationsInsertIndex ?? null,
     }
   }
-  return { model: args.configModel, usedExperience: false }
+  // KD9: the config body has no authored positions, so the one function that
+  // picks the body also drops the index. No caller can pair them wrongly.
+  return {
+    model: args.configModel,
+    usedExperience: false,
+    recommendationsInsertIndex: null,
+  }
 }
 
 /**
@@ -276,18 +407,29 @@ export function assembleWatchHomeModel(args: {
   configVideos: readonly WatchHomeVideoInput[]
   hydrationVideos: readonly WatchHomeVideoInput[]
   blocks: readonly ExperienceBlock[] | null
-  languageSlug?: string
-}): { model: WatchHomeModel; usedExperience: boolean } {
+  /** The Admin language forms the videos were fetched with (KTD10). */
+  forms?: AdminLanguageForms
+  /** Which homepage `blocks` came from; the card precedence follows it (R11). */
+  homepageSource?: HomepageSource
+}): WatchHomeBodyResolution {
+  const forms = args.forms ?? ENGLISH_ADMIN_FORMS
   const configModel = buildWatchHomeModelFromVideos({
     videos: args.configVideos,
-    languageSlug: args.languageSlug,
+    forms,
   })
   const videoByCoreId = buildVideoByCoreIdIndex([
     ...args.configVideos,
     ...args.hydrationVideos,
   ])
-  const experienceSections = args.blocks
-    ? buildWatchHomeSectionsFromExperience(args.blocks, videoByCoreId)
-    : []
-  return resolveWatchHomeModel({ configModel, experienceSections })
+  const body = args.blocks
+    ? buildWatchHomeBodyFromExperience(args.blocks, videoByCoreId, {
+        forms,
+        homepageSource: args.homepageSource ?? "locale",
+      })
+    : { sections: [], recommendationsInsertIndex: null }
+  return resolveWatchHomeModel({
+    configModel,
+    experienceSections: body.sections,
+    recommendationsInsertIndex: body.recommendationsInsertIndex,
+  })
 }

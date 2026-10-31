@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSegments } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../i18n/useT"
 import { useTypography } from "../hooks/useTypography"
 import {
   isTabGroupRoute,
@@ -42,6 +43,7 @@ import {
   type ExportReportRecord,
   type ExportReportSignal,
 } from "../lib/exportReport"
+import { GlassSurface, type GlassFallback } from "./ui/GlassSurface"
 
 // Every producer already imports the channel from this file, so the signal it
 // must build stays importable from here too.
@@ -49,9 +51,6 @@ export { EXPORT_REPORT_AUTO_DISMISS_MS } from "../lib/exportReport"
 export type { ExportReportSignal } from "../lib/exportReport"
 
 const MAX_BUFFERED_SIGNALS = 20
-
-const DISMISS_LABEL = "Dismiss export report"
-const REPORT_LABEL = "Export report"
 
 type ExportReportListener = (signal: ExportReportSignal) => void
 
@@ -117,6 +116,7 @@ export function ExportReportHost() {
     ? TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP
     : 0
   const typography = useTypography()
+  const t = useT("ExportReport")
   const [reports, setReports] = useState<readonly ExportReportRecord[]>([])
 
   useEffect(() => {
@@ -182,40 +182,39 @@ export function ExportReportHost() {
       ]}
     >
       {reports.map((record) => {
-        const view = viewFor(record)
+        const view = viewFor(record, t)
         return (
-          <View
-            key={record.runId}
-            accessibilityLabel={REPORT_LABEL}
-            style={styles.card}
-          >
-            <Ionicons name={view.icon} size={20} color={view.iconColor} />
-            <View style={styles.body}>
-              {view.title ? (
-                <Text
-                  style={[styles.title, typography.caption]}
-                  numberOfLines={1}
-                >
-                  {view.title}
+          <View key={record.runId} accessibilityLabel={t("reportAriaLabel")}>
+            <GlassSurface style={styles.card} fallback={SOLID_CARD}>
+              <Ionicons name={view.icon} size={20} color={view.iconColor} />
+              <View style={styles.body}>
+                {view.title ? (
+                  <Text
+                    style={[styles.title, typography.caption]}
+                    numberOfLines={1}
+                  >
+                    {view.title}
+                  </Text>
+                ) : null}
+                <Text style={[styles.headline, typography.bodySmall]}>
+                  {view.headline}
                 </Text>
-              ) : null}
-              <Text style={[styles.headline, typography.bodySmall]}>
-                {view.headline}
-              </Text>
-              {view.detail ? (
-                <Text style={[styles.detail, typography.caption]}>
-                  {view.detail}
-                </Text>
-              ) : null}
-            </View>
-            <Pressable
-              onPress={() => dismiss(record.runId)}
-              accessibilityRole="button"
-              accessibilityLabel={DISMISS_LABEL}
-              hitSlop={8}
-            >
-              <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
-            </Pressable>
+                {view.detail ? (
+                  <Text style={[styles.detail, typography.caption]}>
+                    {view.detail}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={() => dismiss(record.runId)}
+                accessibilityRole="button"
+                accessibilityLabel={t("dismissAriaLabel")}
+                hitSlop={8}
+                {...{ "dd-action-name": "export-report-dismiss" }}
+              >
+                <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
+              </Pressable>
+            </GlassSurface>
           </View>
         )
       })}
@@ -234,10 +233,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: SURFACE_COLOR,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  cardFill: {
+    backgroundColor: SURFACE_COLOR,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -250,15 +251,15 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   headline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   detail: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
 })
+
+// The solid card wherever Liquid Glass is unavailable.
+const SOLID_CARD: GlassFallback = { kind: "fill", style: styles.cardFill }

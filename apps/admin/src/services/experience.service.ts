@@ -22,7 +22,6 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "./errors"
-import { BlocksSchema } from "@/domain/blocks"
 import {
   boundedAuthoredVideoDubSelectors,
   extractAuthoredVideoDubSelectors,
@@ -31,6 +30,8 @@ import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import { validateExperienceEditorDubSelections } from "./experience-editor-video.service"
+import { stripRetiredBlockVisualUrls } from "./experience-persisted-blocks"
+import { assertWatchAudienceWriteAllowed } from "./watch-audience-write-gate"
 import {
   CreateExperienceInput,
   DuplicateExperienceInput,
@@ -108,6 +109,22 @@ export class ExperienceWatchHomeCategoryRailPlacementError extends Error {
   }
 }
 
+export class ExperienceHomepageLayoutPublishError extends Error {
+  constructor() {
+    super(
+      "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+    )
+    this.name = "ExperienceHomepageLayoutPublishError"
+  }
+}
+
+export class ExperienceHomepageLayoutMutationError extends Error {
+  constructor() {
+    super("The homepage layout context cannot be changed by a draft update.")
+    this.name = "ExperienceHomepageLayoutMutationError"
+  }
+}
+
 function isDynamicCollectionBlock(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
@@ -170,6 +187,19 @@ function assertHomepageBlockPlacement(
 ): void {
   assertDynamicCollectionPlacement(blocks, isHomepage)
   assertWatchHomeCategoryRailPlacement(blocks, isHomepage)
+}
+
+/**
+ * The homepage RENDERING context: the live homepage assignment, or a page
+ * (such as a homepage duplicate) authored with the Watch home layout. Draft
+ * saves and previews use this; publish uses the assignment alone, so an
+ * unassigned copy cannot go live as an ordinary page with homepage-only blocks.
+ */
+export function rendersAsHomepage(locale: {
+  isHomepage: boolean
+  homepageLayout: boolean
+}): boolean {
+  return locale.isHomepage || locale.homepageLayout
 }
 
 function snapshotEnvelope(
@@ -238,6 +268,7 @@ type LocaleSnapshotSource = {
   locale: string
   slug: string
   isHomepage: boolean
+  homepageLayout: boolean
   pathSegment: string | null
   title: string | null
   metaDescription: string | null
@@ -257,13 +288,14 @@ export function draftDataFromLocale(
   return ExperienceLocaleDraftDataSchema.parse({
     slug: locale.slug,
     isHomepage: locale.isHomepage,
+    homepageLayout: locale.homepageLayout,
     pathSegment: locale.pathSegment,
     title: locale.title,
     metaDescription: locale.metaDescription,
     ogTitle: locale.ogTitle,
     ogDescription: locale.ogDescription,
     ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks,
+    blocks: stripRetiredBlockVisualUrls(locale.blocks),
   })
 }
 
@@ -290,7 +322,13 @@ function effectiveDraftData(
   const data = asSnapshotRecord(envelope?.data)
   // Older and SEO-created revisions may be partial. Adopt them by filling all
   // missing locale-owned fields from canonical before the next write.
-  return ExperienceLocaleDraftDataSchema.parse({ ...base, ...(data ?? {}) })
+  return ExperienceLocaleDraftDataSchema.parse({
+    ...base,
+    ...(data ?? {}),
+    ...(data && "blocks" in data
+      ? { blocks: stripRetiredBlockVisualUrls(data.blocks) }
+      : {}),
+  })
 }
 
 function effectiveLocale<T extends LocaleSnapshotSource>(
@@ -363,8 +401,17 @@ export class ExperienceService {
           ...base,
           ...patch,
         })
-        assertHomepageBlockPlacement(data.blocks, data.isHomepage)
+        assertHomepageBlockPlacement(data.blocks, rendersAsHomepage(data))
         if (patch.blocks !== undefined) {
+          // Covers editor save, MCP, chat mutations, restore and the import
+          // script. The draft or the published canonical counts as existing.
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [
+              ...base.blocks,
+              ...(Array.isArray(canonical.blocks) ? canonical.blocks : []),
+            ],
+            nextBlocks: data.blocks,
+          })
           await assertNoNewUnavailableVideoDubs(
             tx,
             canonical.locale,
@@ -521,6 +568,10 @@ export class ExperienceService {
 
     assertHomepageBlockPlacement(input.blocks, false)
     boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
+    })
 
     return this.prisma.$transaction(
       async (tx) => {
@@ -593,124 +644,228 @@ export class ExperienceService {
     }
     const ownerId = user.id
 
-    const source = await this.prisma.experience.findFirst({
-      where: { id: input.id },
-      select: {
-        isTemplate: true,
-        archivedAt: true,
-        locales: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    // One REPEATABLE READ transaction: every source locale and draft is read
+    // from the same snapshot, so a concurrent source save or publish cannot
+    // yield a copy that mixes two versions. The source is never written.
+    return this.prisma.$transaction(
+      async (tx) => {
+        const source = await tx.experience.findFirst({
+          where: { id: input.id },
           select: {
-            id: true,
-            experienceId: true,
-            locale: true,
-            slug: true,
-            isHomepage: true,
-            pathSegment: true,
-            title: true,
-            metaDescription: true,
-            ogTitle: true,
-            ogDescription: true,
-            ogImageUrl: true,
-            blocks: true,
-            status: true,
-            publishedAt: true,
+            isTemplate: true,
+            archivedAt: true,
+            locales: {
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                experienceId: true,
+                locale: true,
+                slug: true,
+                isHomepage: true,
+                homepageLayout: true,
+                pathSegment: true,
+                title: true,
+                metaDescription: true,
+                ogTitle: true,
+                ogDescription: true,
+                ogImageUrl: true,
+                blocks: true,
+                status: true,
+                publishedAt: true,
+              },
+            },
           },
-        },
-      },
-    })
-    if (!source) {
-      throw new NotFoundError("Experience", input.id)
-    }
-    if (!canViewExperience(user, source)) {
-      throw new ForbiddenError()
-    }
+        })
+        if (!source) {
+          throw new NotFoundError("Experience", input.id)
+        }
+        if (!canViewExperience(user, source)) {
+          throw new ForbiddenError()
+        }
 
-    if (source.locales.length === 0) {
-      throw new ExperienceDuplicationError()
-    }
-
-    const activeDrafts = await this.prisma.contentRevision.findMany({
-      where: {
-        entityType: "ExperienceLocale",
-        entityId: { in: source.locales.map((locale) => locale.id) },
-        status: "DRAFT",
-      },
-      orderBy: [{ revisedAt: "desc" }, { id: "asc" }],
-      select: { entityId: true, snapshot: true },
-    })
-    const activeDraftByLocaleId = new Map<string, unknown>()
-    for (const draft of activeDrafts) {
-      if (!activeDraftByLocaleId.has(draft.entityId)) {
-        activeDraftByLocaleId.set(draft.entityId, draft.snapshot)
-      }
-    }
-
-    const sourceLocales = source.locales.map((canonical) => {
-      const snapshot = activeDraftByLocaleId.get(canonical.id)
-      let locale = canonical
-      if (snapshot !== undefined) {
-        try {
-          locale = effectiveLocale(
-            canonical,
-            effectiveDraftData(canonical, snapshot),
-          )
-        } catch {
+        if (source.locales.length === 0) {
           throw new ExperienceDuplicationError()
         }
-      }
-      const blocks = BlocksSchema.safeParse(locale.blocks)
-      if (!blocks.success) {
-        throw new ExperienceDuplicationError()
-      }
-      assertWatchHomeCategoryRailPlacement(blocks.data, false)
-      return locale
-    })
 
-    const localeCodes = Array.from(
-      new Set(sourceLocales.map((locale) => locale.locale)),
-    )
-    const existingSlugs = await this.prisma.experienceLocale.findMany({
-      where: {
-        locale: { in: localeCodes },
-      },
-      select: { locale: true, slug: true },
-    })
-    const usedSlugsByLocale = new Map(
-      localeCodes.map((locale) => [locale, new Set<string>()]),
-    )
-    for (const row of existingSlugs) {
-      usedSlugsByLocale.get(row.locale)!.add(row.slug)
-    }
+        const activeDraftByLocaleId = new Map<string, ActiveLocaleDraft>()
+        if (input.sourceVersion === "EFFECTIVE") {
+          const activeDrafts = await tx.contentRevision.findMany({
+            where: {
+              entityType: "ExperienceLocale",
+              entityId: { in: source.locales.map((locale) => locale.id) },
+              status: "DRAFT",
+            },
+            orderBy: [{ revisedAt: "desc" }, { id: "asc" }],
+            select: {
+              id: true,
+              entityId: true,
+              snapshot: true,
+              revisedAt: true,
+              revisedBy: true,
+              reason: true,
+            },
+          })
+          for (const draft of activeDrafts) {
+            if (!activeDraftByLocaleId.has(draft.entityId)) {
+              activeDraftByLocaleId.set(draft.entityId, draft)
+            }
+          }
+        }
 
-    return this.prisma.experience.create({
-      data: {
-        // Template classification is authored canonical state, not publication
-        // state. Preserve it so route-only template blocks remain editable.
-        isTemplate: source.isTemplate,
-        ownerId,
-        locales: {
-          create: sourceLocales.map((locale) => ({
-            locale: locale.locale,
-            slug: availableDuplicateSlug(
-              locale.slug,
-              usedSlugsByLocale.get(locale.locale)!,
-            ),
-            isHomepage: false,
-            pathSegment: locale.pathSegment,
-            title: locale.title,
-            metaDescription: locale.metaDescription,
-            ogTitle: locale.ogTitle,
-            ogDescription: locale.ogDescription,
-            ogImageUrl: locale.ogImageUrl,
-            blocks: locale.blocks as Prisma.InputJsonValue,
-            status: "DRAFT",
-            publishedAt: null,
-          })),
-        },
+        const copies = source.locales.map((canonical) => {
+          const activeDraft = activeDraftByLocaleId.get(canonical.id)
+          let data: ExperienceLocaleDraftData
+          try {
+            data = activeDraft
+              ? effectiveDraftData(canonical, activeDraft.snapshot)
+              : draftDataFromLocale(canonical)
+          } catch {
+            throw new ExperienceDuplicationError()
+          }
+          // The copy never inherits the live homepage assignment. It keeps the
+          // homepage rendering context instead, so homepage-only blocks stay
+          // valid, previewable, and editable on the unassigned copy.
+          const homepageLayout = rendersAsHomepage(data)
+          try {
+            assertHomepageBlockPlacement(data.blocks, homepageLayout)
+          } catch {
+            throw new ExperienceDuplicationError()
+          }
+          // Validate through the persistence schema, but store the saved JSON
+          // itself so schema defaults never rewrite authored content.
+          // Blocks saved before raw image URLs were retired lose those keys.
+          const savedBlocks = stripRetiredBlockVisualUrls(
+            activeDraft
+              ? (asSnapshotRecord(asSnapshotRecord(activeDraft.snapshot)?.data)
+                  ?.blocks ?? canonical.blocks)
+              : canonical.blocks,
+          )
+          return {
+            sourceLocaleId: canonical.id,
+            copiedFrom: activeDraft
+              ? ("ACTIVE_DRAFT" as const)
+              : ("CANONICAL" as const),
+            sourceDraftRevision: activeDraft
+              ? localeDraftRevision(activeDraft)
+              : null,
+            locale: canonical.locale,
+            data: {
+              ...data,
+              blocks: savedBlocks as ExperienceLocaleDraftData["blocks"],
+              isHomepage: false,
+              homepageLayout,
+            },
+          }
+        })
+
+        // A copy carrying a questionnaire is new audience authoring: it keeps
+        // `isTemplate` and can become the default template (oldest unarchived)
+        // once the source is archived. Ordinary duplicates never read the flag.
+        for (const copy of copies) {
+          await assertWatchAudienceWriteAllowed({
+            previousBlocks: [],
+            nextBlocks: copy.data.blocks,
+          })
+        }
+
+        const localeCodes = Array.from(
+          new Set(copies.map((copy) => copy.locale)),
+        )
+        const existingSlugs = await tx.experienceLocale.findMany({
+          where: {
+            locale: { in: localeCodes },
+          },
+          select: { locale: true, slug: true },
+        })
+        const usedSlugsByLocale = new Map(
+          localeCodes.map((locale) => [locale, new Set<string>()]),
+        )
+        for (const row of existingSlugs) {
+          usedSlugsByLocale.get(row.locale)!.add(row.slug)
+        }
+        for (const copy of copies) {
+          copy.data.slug = availableDuplicateSlug(
+            copy.data.slug,
+            usedSlugsByLocale.get(copy.locale)!,
+          )
+        }
+
+        const experience = await tx.experience.create({
+          data: {
+            // Template classification is authored canonical state, not
+            // publication state. Preserve it so route-only template blocks
+            // remain editable.
+            isTemplate: source.isTemplate,
+            ownerId,
+            locales: {
+              // Canonical rows hold the copied content too, so discarding the
+              // copy's draft returns to the as-duplicated page, not a blank one.
+              create: copies.map((copy) => ({
+                locale: copy.locale,
+                ...copy.data,
+                blocks: copy.data.blocks as Prisma.InputJsonValue,
+                status: "DRAFT" as const,
+                publishedAt: null,
+              })),
+            },
+          },
+          include: { locales: true },
+        })
+
+        // Stage one active draft per copied locale, exactly like a newly
+        // created Experience, so the copy has a working preview capability and
+        // the normal save/publish/discard lifecycle from the first request.
+        const reason = `Duplicated from Experience ${input.id} (${input.sourceVersion.toLowerCase()} source version)`
+        const locales = []
+        for (const copy of copies) {
+          const locale = experience.locales.find(
+            (row) => row.locale === copy.locale,
+          )
+          if (!locale) throw new ExperienceDuplicationError()
+          const draft = await tx.contentRevision.create({
+            data: {
+              entityType: "ExperienceLocale",
+              entityId: locale.id,
+              snapshot: snapshotEnvelope(
+                copy.data as unknown as Prisma.InputJsonObject,
+              ),
+              status: "DRAFT",
+              previewToken: randomBytes(32).toString("base64url"),
+              revisedBy: ownerId,
+              revisedByKind: "USER",
+              reason,
+            },
+          })
+          locales.push({
+            locale,
+            source: {
+              localeId: copy.sourceLocaleId,
+              copiedFrom: copy.copiedFrom,
+              draftRevision: copy.sourceDraftRevision,
+            },
+            draftRevision: localeDraftRevision(draft),
+            // Bearer preview capability for the copy's own draft. Returned to
+            // the caller that just created and owns the copy; it retires when
+            // that draft is published or discarded.
+            previewToken: draft.previewToken,
+          })
+        }
+
+        return {
+          ...experience,
+          duplication: {
+            sourceExperienceId: input.id,
+            sourceVersion: input.sourceVersion,
+            locales,
+          },
+        }
       },
-      include: { locales: true },
-    })
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: 2_000,
+        timeout: 10_000,
+      },
+    )
   }
 
   async createLocale({
@@ -738,6 +893,10 @@ export class ExperienceService {
 
     assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
     boundedAuthoredVideoDubSelectors(input.blocks)
+    await assertWatchAudienceWriteAllowed({
+      previousBlocks: [],
+      nextBlocks: input.blocks,
+    })
 
     const { experienceId, ...data } = input
     return this.prisma.$transaction(
@@ -912,6 +1071,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -931,6 +1091,13 @@ export class ExperienceService {
 
     if (!canEditExperienceLocale(user, existing)) {
       throw new ForbiddenError()
+    }
+
+    if (
+      input.homepageLayout !== undefined &&
+      input.homepageLayout !== existing.homepageLayout
+    ) {
+      throw new ExperienceHomepageLayoutMutationError()
     }
 
     const { id, ...data } = input
@@ -964,6 +1131,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -991,7 +1159,9 @@ export class ExperienceService {
         const canonical = await tx.experienceLocale.findUniqueOrThrow({
           where: { id: input.id },
           include: {
-            experience: { select: { ownerId: true, archivedAt: true } },
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
           },
         })
         if (!canPublishExperienceLocale(user, canonical))
@@ -1023,8 +1193,27 @@ export class ExperienceService {
         if (!draft) {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
-        const draftData = effectiveDraftData(canonical, draft.snapshot)
+        const draftData = ExperienceLocaleDraftDataSchema.parse(
+          effectiveDraftData(canonical, draft.snapshot),
+        )
+        // Publish checks the ASSIGNMENT, not the rendering context: a homepage
+        // layout copy must be assigned as the homepage before it can go live,
+        // even after its homepage-only blocks were removed.
+        if (draftData.homepageLayout && !draftData.isHomepage) {
+          throw new ExperienceHomepageLayoutPublishError()
+        }
         assertHomepageBlockPlacement(draftData.blocks, draftData.isHomepage)
+        // A draft staged while the flag was on cannot change the published
+        // questionnaire while it is off; an unchanged block republishes. The
+        // baseline is what is actually PUBLISHED: a never-published canonical
+        // row (e.g. a duplicate's copied DRAFT content) counts as empty.
+        await assertWatchAudienceWriteAllowed({
+          previousBlocks:
+            canonical.status === "PUBLISHED" && Array.isArray(canonical.blocks)
+              ? canonical.blocks
+              : [],
+          nextBlocks: draftData.blocks,
+        })
         const appliedAt = new Date()
 
         await tx.contentRevision.create({
@@ -1072,7 +1261,11 @@ export class ExperienceService {
         locale: previous.locale,
       })
     }
-    if (published.isHomepage || previous.isHomepage) {
+    if (
+      published.isHomepage ||
+      previous.isHomepage ||
+      previous.experience.isTemplate
+    ) {
       void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,
@@ -1232,6 +1425,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,
@@ -1389,6 +1583,7 @@ export class ExperienceService {
         locale: true,
         slug: true,
         isHomepage: true,
+        homepageLayout: true,
         pathSegment: true,
         title: true,
         metaDescription: true,

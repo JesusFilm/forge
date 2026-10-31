@@ -1,0 +1,17 @@
+{
+  "measuredAt": "2026-09-28T22:45:24.973385+00:00",
+  "environment": "production",
+  "method": "Read-only process environment HMAC comparison; key values and proofs omitted",
+  "services": {
+    "admin": {
+      "configured": true,
+      "revision": "811f1ec81f359d1cf66cdda5bad8f5445631c44c"
+    },
+    "web": {
+      "configured": true,
+      "revision": "811f1ec81f359d1cf66cdda5bad8f5445631c44c"
+    }
+  },
+  "sameConfiguredValue": true,
+  "productionMutations": 0
+}

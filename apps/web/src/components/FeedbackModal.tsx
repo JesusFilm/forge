@@ -754,6 +754,7 @@ export function FeedbackModal({
           searchAliasSlug: option.aliasOwnerSlug,
           name: option.englishName,
           nativeName: option.nativeName,
+          nativeNameLang: option.nativeNameLang,
         }))
         setLanguageOptions(nextOptions)
         setLanguageOptionsState("ready")
@@ -1147,7 +1148,7 @@ export function FeedbackModal({
             ref={formRef}
             noValidate
             onSubmit={handleSubmit}
-            className="w-full overflow-visible px-2 py-2 sm:px-10 sm:py-4"
+            className="min-w-0 w-full overflow-visible px-2 py-2 sm:px-10 sm:py-4"
           >
             <header className="pr-12 sm:pr-14">
               <DialogTitle className="text-3xl leading-tight font-semibold text-white sm:text-[2rem]">

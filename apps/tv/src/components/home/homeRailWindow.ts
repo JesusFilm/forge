@@ -1,6 +1,5 @@
-// Image-windowing (Android home perf): every rail mounts its full card tree (so
-// D-pad focus always has a target), but cards in off-window rails skip the image
-// decode. Decoding ~50 card images per frame pinned the weak Chromecast home.
+// Android mounts rails incrementally and loads images near focus to keep Home
+// responsive. tvOS keeps every rail mounted and active.
 
 /**
  * Rows: 0 is the hero (mounted separately), 1..N are the section rails.
@@ -14,4 +13,15 @@ export function isRailActive(
   buffer: number,
 ): boolean {
   return Math.abs(rowIndex - focusedRow) <= buffer
+}
+
+export function homeRailRenderCount(
+  platform: string,
+  mountedCount: number,
+  focusedRow: number,
+  total: number,
+): number {
+  return platform === "android"
+    ? Math.min(total, Math.max(mountedCount, focusedRow + 2))
+    : total
 }

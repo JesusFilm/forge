@@ -4,6 +4,7 @@ import { Image } from "expo-image"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { card, carousel, layout, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { PressableCard } from "../ui/PressableCard"
@@ -33,14 +34,15 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
+  const t = useT("Sections")
   const s = section as Record<string, unknown>
-  const heading = "Stories"
+  const heading = t("storiesHeading")
   const items = (s.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
 
   return (
-    <View style={layout.sectionOuter}>
+    <View testID="sdui-navigation-carousel" style={layout.sectionOuter}>
       <Text
         style={[text.sectionHeadingPadded, typography.heading]}
         accessibilityRole="header"
@@ -53,7 +55,9 @@ export function NavigationCarouselRenderer({
         contentContainerStyle={carousel.listContent}
         decelerationRate="fast"
         accessibilityRole="adjustable"
-        accessibilityLabel={`${items.length} navigation items`}
+        accessibilityLabel={t("navigationItemsAriaLabel", {
+          count: items.length,
+        })}
       >
         {items.map((item, index) => {
           const imageUrl = resolveThumbnailUrl(item.imageUrl)
@@ -71,7 +75,7 @@ export function NavigationCarouselRenderer({
                 }
               }}
               accessibilityLabel={`${item.category ?? ""} ${item.title}`.trim()}
-              accessibilityHint="Scrolls to this section"
+              accessibilityHint={t("scrollsToSectionAriaHint")}
               style={[
                 card.base,
                 styles.localCard,
@@ -130,7 +134,6 @@ const styles = StyleSheet.create({
   category: {
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
-    fontFamily: "System",
     // All-caps text needs letter spacing of at least 5% of its font size.
     // The other caption-size capitals already use 0.8.
     letterSpacing: 0.8,
@@ -139,6 +142,5 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

@@ -5,6 +5,7 @@ import type {
   RecommendationExperimentEvaluationState,
   RecommendationRequestState,
 } from "@prisma/client"
+import type { DeliveryDiagnostics } from "../delivery-diagnostics"
 
 export type RecommendationFactMetrics = Readonly<{
   initiation?: "manual" | "automatic"
@@ -78,6 +79,7 @@ export type RecommendationRequestDetailData = Readonly<{
   classifierVersion: string
   seedMediaId: string | null
   locale: string
+  deliveryDiagnostics: DeliveryDiagnostics | null
   expectedItemCount: number
   state: "prepared" | "issued" | "issuance_failed"
   result: "served" | "fallback" | "empty" | "unavailable"
@@ -173,6 +175,7 @@ export type RecommendationRequestDetailData = Readonly<{
     }>
     evidenceComplete: boolean
     fallbackReason: string | null
+    legacyDetailRetiredAt: Date | null
     stages: Array<
       Readonly<{
         stage:
@@ -380,6 +383,7 @@ export type DetailRootRow = Readonly<{
   classifierVersion: string
   seedMediaId: string | null
   locale: string
+  deliveryDiagnostics?: unknown
   expectedItemCount: number
   state: RecommendationRequestState
   result: RecommendationDeliveryResult
@@ -443,6 +447,9 @@ export type DetailControlReadinessRow = Readonly<{
 
 export type DetailCandidateRunRow = Readonly<{
   id: string
+  traceFormatVersion: number | null
+  hasTracePayload: boolean
+  legacyDetailRetiredAt: Date | null
   purpose: string
   contextVersion: string
   generatorVersion: string

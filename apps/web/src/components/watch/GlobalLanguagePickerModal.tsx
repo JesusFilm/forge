@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -14,7 +15,7 @@ import { flushSync } from "react-dom"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import {
   LANGUAGE_PICKER_FOCUS_RING_CLASS,
@@ -109,6 +110,7 @@ export function GlobalLanguagePickerModal({
 }: GlobalLanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
   const searchT = useTranslations("SearchOverlay")
+  const headingId = useId()
   const router = useRouter()
   const modalRef = useRef<HTMLDivElement>(null)
   const navigatingRef = useRef(false)
@@ -191,6 +193,9 @@ export function GlobalLanguagePickerModal({
         searchAliasSlug: option.aliasOwnerSlug,
         name: option.englishName,
         nativeName: option.nativeName,
+        // Verified by the search provider; absent for guessed/unproven labels.
+        nativeNameLang: option.nativeNameLang,
+        bcp47: option.bcp47,
       })),
     [options],
   )
@@ -287,6 +292,7 @@ export function GlobalLanguagePickerModal({
       <DialogContent
         ref={modalRef}
         data-testid="global-language-picker-modal"
+        aria-labelledby={headingId}
         aria-modal="true"
         initialFocus={false}
         finalFocus={returnFocusRef}
@@ -302,8 +308,6 @@ export function GlobalLanguagePickerModal({
           ariaLabel={t("close")}
           renderInline
         />
-        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
-
         <p
           aria-live="polite"
           aria-atomic="true"
@@ -330,6 +334,7 @@ export function GlobalLanguagePickerModal({
                     : undefined
               }
               heading={t("languageHeading")}
+              headingId={headingId}
               loading={loadState.status === "loading"}
               testIdPrefix="global-language-picker"
               onActivate={setActiveTooltipCopy}

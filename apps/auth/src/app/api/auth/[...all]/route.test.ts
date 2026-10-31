@@ -395,8 +395,121 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
+  it.each(["login", "consent login"])(
+    "lets a denied Changelog account reach %s before checking the selected account",
+    async (prompt) => {
+      // Use the installed provider and a real in-memory Auth session: merely
+      // mocking a /login redirect missed the production session-dependent loop.
+      const { betterAuth } = await import("better-auth")
+      const { oauthProvider } = await import("@better-auth/oauth-provider")
+      const { jwt } = await import("better-auth/plugins")
+      const callback = "https://changelog.jesusfilm.org/api/auth/callback"
+      const instance = betterAuth({
+        baseURL: "http://localhost:3004",
+        secret: "test-only-secret-for-denied-account-login",
+        emailAndPassword: { enabled: true },
+        plugins: [
+          jwt(),
+          oauthProvider({
+            loginPage: "/login",
+            consentPage: "/consent",
+            scopes: ["openid", "changelog:read"],
+          }),
+        ],
+        logger: { disabled: true },
+      })
+      const providerContext = await instance.$context
+      await providerContext.adapter.create({
+        model: "oauthClient",
+        data: {
+          clientId: "jfp_changelog_production",
+          redirectUris: [callback],
+          scopes: ["openid", "changelog:read"],
+          requirePKCE: true,
+          skipConsent: true,
+          tokenEndpointAuthMethod: "none",
+        },
+      })
+      const signup = await instance.api.signUpEmail({
+        asResponse: true,
+        body: {
+          email: "denied@example.test",
+          name: "Denied",
+          password: "test-password-only-12345",
+        },
+      })
+      const cookie = signup.headers
+        .getSetCookie()
+        .map((value) => value.split(";")[0])
+        .join("; ")
+      const session = await instance.api.getSession({
+        headers: new Headers({ cookie }),
+      })
+      expect(session).not.toBeNull()
+      getSession.mockResolvedValue({
+        ...session,
+        user: { ...session!.user, membershipStatus: "INVITED" },
+      })
+      decideChangelogGrant.mockResolvedValue({
+        allowed: false,
+        reason: "changelog_access_denied",
+      })
+      findOAuthClient.mockResolvedValue({
+        disabled: false,
+        redirectUris: [callback],
+      })
+      authGet.mockImplementation((request) =>
+        instance.handler(request as Request),
+      )
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: "jfp_changelog_production",
+        redirect_uri: callback,
+        scope: "openid changelog:read",
+        state: "switch-state",
+        response_type: "code",
+        code_challenge: "a".repeat(43),
+        code_challenge_method: "S256",
+        prompt,
+      }).toString()
+      const { GET } = await import("./route")
+      const context = {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      }
+      const login = await GET(
+        new Request(url, { headers: { cookie } }),
+        context,
+      )
+
+      expect(login.status).toBe(302)
+      const destination = new URL(login.headers.get("location")!, url)
+      expect(destination.pathname).toBe("/login")
+      expect(destination.searchParams.has("sig")).toBe(true)
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+      const forwarded = authGet.mock.calls[0]?.[0] as Request
+      expect(new URL(forwarded.url).searchParams.get("prompt")).toBe(prompt)
+
+      // The sign-in continuation consumes prompt=login. Choosing the denied
+      // account again must still fail before the provider can issue a code.
+      authGet.mockClear()
+      url.searchParams.delete("prompt")
+      const denied = await GET(
+        new Request(url, { headers: { cookie } }),
+        context,
+      )
+      expect(
+        new URL(denied.headers.get("location")!).searchParams.get("error"),
+      ).toBe("access_denied")
+      expect(authGet).not.toHaveBeenCalled()
+      expect(decideChangelogGrant).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: session!.user.id }),
+      )
+    },
+  )
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -428,6 +541,7 @@ describe("Auth route wrapper", () => {
 
   it("routes an explicit Admin resource before inspecting Changelog scopes", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     authGet.mockResolvedValueOnce(Response.json({ ok: true }))
@@ -448,6 +562,51 @@ describe("Auth route wrapper", () => {
   })
 
   it.each([
+    "http://localhost:3002/mcp",
+    "https://manager-preview.jesusfilm.org/mcp",
+    "https://manager-stage.jesusfilm.org/mcp",
+    "https://manager.jesusfilm.org/mcp",
+  ])(
+    "forwards a registered Shorts resource to the OAuth provider (%s)",
+    async (resource) => {
+      const { GET } = await import("./route")
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: "chatgpt_dynamic",
+        redirect_uri: "https://chatgpt.com/connector_platform/oauth/callback",
+        response_type: "code",
+        scope: "shorts:read shorts:edit shorts:render",
+        resource,
+        state: "opaque-state",
+        code_challenge: "pkce-challenge",
+        code_challenge_method: "S256",
+      }).toString()
+
+      const response = await GET(new Request(url), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+
+      expect(response.status).toBe(200)
+      expect(authGet).toHaveBeenCalledOnce()
+      const forwarded = authGet.mock.calls[0]?.[0]
+      if (!(forwarded instanceof Request)) throw new Error("Expected a request")
+      expect(forwarded.url).toBe(url.toString())
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      name: "a Shorts resource with an unregistered path",
+      query: "resource=https%3A%2F%2Fmanager.jesusfilm.org%2Fmcp%2Fother",
+      dynamic: false,
+    },
+    {
+      name: "a Shorts resource with another resource",
+      query:
+        "resource=http%3A%2F%2Flocalhost%3A3002%2Fmcp&resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fmcp",
+      dynamic: false,
+    },
     {
       name: "no resource with global scopes",
       query:
@@ -475,6 +634,7 @@ describe("Auth route wrapper", () => {
     "rejects $name without an authorization continuation",
     async (testCase) => {
       getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
         user: { id: "user_123", membershipStatus: "ACTIVE" },
       })
       if (testCase.dynamic) {
@@ -500,8 +660,118 @@ describe("Auth route wrapper", () => {
     },
   )
 
+  it.each([
+    {
+      clientId: "jfp_web_staging",
+      resource: "https://admin-stage.jesusfilm.org/api/graphql",
+      redirectUri: "https://web-stage.jesusfilm.org/watch/api/auth/callback",
+    },
+    {
+      clientId: "jfp_web_production",
+      resource: "https://admin.jesusfilm.org/api/graphql",
+      redirectUri: "https://www.jesusfilm.org/watch/api/auth/callback",
+    },
+  ])(
+    "forwards the Watch user-data resource for its own Web client ($clientId)",
+    async ({ clientId, resource, redirectUri }) => {
+      const { GET } = await import("./route")
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid profile:read email:read web:watch-events:write",
+        resource,
+        state: "opaque-state",
+        code_challenge: "pkce-challenge",
+        code_challenge_method: "S256",
+      }).toString()
+
+      const response = await GET(new Request(url), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+
+      expect(response.status).toBe(200)
+      expect(authGet).toHaveBeenCalledOnce()
+      const forwarded = authGet.mock.calls[0]?.[0]
+      if (!(forwarded instanceof Request)) throw new Error("Expected a request")
+      expect(forwarded.url).toBe(url.toString())
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    {
+      name: "another environment's Web client",
+      query:
+        "client_id=jfp_web_local&resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a non-Web first-party client",
+      query:
+        "client_id=jfp_tv_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a dynamic client",
+      query:
+        "client_id=codex_dynamic&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "a scope outside the Web ceiling",
+      query:
+        "client_id=jfp_web_local&scope=openid+admin%3Aaccess&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql",
+    },
+    {
+      name: "the Watch resource with another resource",
+      query:
+        "client_id=jfp_web_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql&resource=http%3A%2F%2Flocalhost%3A3003%2Fmcp",
+    },
+    {
+      name: "a Watch resource with an unregistered path",
+      query:
+        "client_id=jfp_web_local&resource=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fgraphql%2Fother",
+    },
+  ])("rejects Watch user-data authorization for $name", async ({ query }) => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(`http://localhost:3004/api/auth/oauth2/authorize?${query}`),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid_target",
+    })
+    expect(authGet).not.toHaveBeenCalled()
+    expect(decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
+  it("still rejects a configured custom audience for the Web client", async () => {
+    vi.resetModules()
+    vi.stubEnv("AUTH_VALID_AUDIENCES", "http://localhost:4318/api/graphql")
+    try {
+      const { GET } = await import("./route")
+      const response = await GET(
+        new Request(
+          "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_local&scope=openid+web%3Awatch-events%3Awrite&resource=http%3A%2F%2Flocalhost%3A4318%2Fapi%2Fgraphql",
+        ),
+        { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+      )
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        error: "invalid_target",
+      })
+      expect(authGet).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+      vi.resetModules()
+    }
+  })
+
   it("adds the canonical native resource for a seeded Changelog client", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -530,6 +800,7 @@ describe("Auth route wrapper", () => {
 
   it("uses seeded defaults when a Changelog client omits scope", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -569,33 +840,43 @@ describe("Auth route wrapper", () => {
     )
   })
 
-  it("returns a no-store OAuth denial without invoking the provider", async () => {
-    getSession.mockResolvedValueOnce({
-      user: { id: "user_123", membershipStatus: "ACTIVE" },
-    })
-    decideChangelogGrant.mockResolvedValueOnce({
-      allowed: false,
-      reason: "changelog_access_denied",
-    })
-    const { GET } = await import("./route")
-    const response = await GET(
-      new Request(
-        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
-      ),
-      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
-    )
+  it.each([
+    "",
+    "&prompt=consent",
+    "&prompt=login&prompt=consent",
+    "&prompt=login%09consent",
+  ])(
+    "returns a no-store OAuth denial without invoking the provider (%s)",
+    async (prompt) => {
+      getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+      })
+      decideChangelogGrant.mockResolvedValueOnce({
+        allowed: false,
+        reason: "changelog_access_denied",
+      })
+      const { GET } = await import("./route")
+      const response = await GET(
+        new Request(
+          `http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp${prompt}`,
+        ),
+        { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+      )
 
-    expect(response.status).toBe(403)
-    await expect(response.json()).resolves.toEqual({
-      error: "access_denied",
-      error_description: "Changelog access is not available.",
-    })
-    expect(response.headers.get("cache-control")).toBe("no-store")
-    expect(authGet).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: "access_denied",
+        error_description: "Changelog access is not available.",
+      })
+      expect(response.headers.get("cache-control")).toBe("no-store")
+      expect(authGet).not.toHaveBeenCalled()
+    },
+  )
 
   it("returns invalid_target for an invalid Changelog resource", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -621,6 +902,7 @@ describe("Auth route wrapper", () => {
 
   it("redirects a trusted client denial with OAuth state", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -654,6 +936,7 @@ describe("Auth route wrapper", () => {
 
   it("redirects invalid_target to a trusted client with OAuth state", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -682,31 +965,34 @@ describe("Auth route wrapper", () => {
     expect(authGet).not.toHaveBeenCalled()
   })
 
-  it("revalidates the signed consent continuation before native code creation", async () => {
-    getSession.mockResolvedValueOnce({
-      user: { id: "user_123", membershipStatus: "ACTIVE" },
-    })
-    decideChangelogGrant.mockResolvedValueOnce({
-      allowed: false,
-      reason: "changelog_grant_changed",
-    })
-    const { POST } = await import("./route")
-    const response = await POST(
-      new Request("http://localhost:3004/api/auth/oauth2/consent", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          accept: true,
-          oauth_query:
-            "client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed",
+  it.each(["", "&prompt=login"])(
+    "revalidates the signed consent continuation before native code creation (%s)",
+    async (prompt) => {
+      getSession.mockResolvedValueOnce({
+        session: { id: "session_123" },
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+      })
+      decideChangelogGrant.mockResolvedValueOnce({
+        allowed: false,
+        reason: "changelog_grant_changed",
+      })
+      const { POST } = await import("./route")
+      const response = await POST(
+        new Request("http://localhost:3004/api/auth/oauth2/consent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            accept: true,
+            oauth_query: `client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed${prompt}`,
+          }),
         }),
-      }),
-      { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
-    )
+        { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
+      )
 
-    expect(response.status).toBe(403)
-    expect(authPost).not.toHaveBeenCalled()
-  })
+      expect(response.status).toBe(403)
+      expect(authPost).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     {
@@ -725,6 +1011,7 @@ describe("Auth route wrapper", () => {
     },
   ])("rejects signed consent when $name", async (testCase) => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({
@@ -763,6 +1050,7 @@ describe("Auth route wrapper", () => {
 
   it("forwards an unchanged signed consent after successful revalidation", async () => {
     getSession.mockResolvedValueOnce({
+      session: { id: "session_123" },
       user: { id: "user_123", membershipStatus: "ACTIVE" },
     })
     decideChangelogGrant.mockResolvedValueOnce({

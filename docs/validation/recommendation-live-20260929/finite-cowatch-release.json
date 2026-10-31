@@ -1,0 +1,259 @@
+{
+  "headRefOid": "39008fced16eac74948746d84dff8e7cfceca42c",
+  "mergeCommit": { "oid": "4c0beac5010daedf5b7fc0c740329f7661789831" },
+  "mergedAt": "2026-09-29T03:34:51Z",
+  "state": "MERGED",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:02Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326452/job/109242430439",
+      "name": "issue-label",
+      "startedAt": "2026-09-29T03:29:02Z",
+      "status": "COMPLETED",
+      "workflowName": "issue-labels"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:58Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517324164/job/109242425335",
+      "name": "Analyze (actions)",
+      "startedAt": "2026-09-29T03:29:03Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:30:07Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430202",
+      "name": "commit-lint",
+      "startedAt": "2026-09-29T03:29:11Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:59Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517324164/job/109242425501",
+      "name": "Analyze (c-cpp)",
+      "startedAt": "2026-09-29T03:29:03Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:32:03Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517324164/job/109242425576",
+      "name": "Analyze (javascript-typescript)",
+      "startedAt": "2026-09-29T03:29:03Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:30:04Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517324164/job/109242425496",
+      "name": "Analyze (python)",
+      "startedAt": "2026-09-29T03:29:03Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:51Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430076",
+      "name": "affected",
+      "startedAt": "2026-09-29T03:29:04Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:06Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326452/job/109242429288",
+      "name": "pr-label",
+      "startedAt": "2026-09-29T03:29:03Z",
+      "status": "COMPLETED",
+      "workflowName": "issue-labels"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:31:51Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430104",
+      "name": "format",
+      "startedAt": "2026-09-29T03:29:04Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:24Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430268",
+      "name": "patched-deps-guard",
+      "startedAt": "2026-09-29T03:29:14Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430151",
+      "name": "hidden-roadmap-lanes",
+      "startedAt": "2026-09-29T03:29:04Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:17Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430024",
+      "name": "dev-port-contract",
+      "startedAt": "2026-09-29T03:29:07Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:21Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242430217",
+      "name": "experiment-ledger",
+      "startedAt": "2026-09-29T03:29:11Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242612259",
+      "name": "rag-portal-allowlist",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242612223",
+      "name": "admin-graphql-generate",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:33:29Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242610938",
+      "name": "admin-schema-drift",
+      "startedAt": "2026-09-29T03:29:54Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242612028",
+      "name": "web-redis-integration",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242612261",
+      "name": "auth-postgres-integration",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242611655",
+      "name": "rag-postgres-integration",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:32:47Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242610958",
+      "name": "lint (@forge/admin)",
+      "startedAt": "2026-09-29T03:29:54Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:34:03Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242610941",
+      "name": "test (@forge/admin)",
+      "startedAt": "2026-09-29T03:30:30Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:52Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242612215",
+      "name": "expo-doctor",
+      "startedAt": "2026-09-29T03:29:52Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:32:13Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109242610872",
+      "name": "build (@forge/admin)",
+      "startedAt": "2026-09-29T03:29:53Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:34:07Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/actions/runs/36517326527/job/109243597664",
+      "name": "ci-gate",
+      "startedAt": "2026-09-29T03:34:05Z",
+      "status": "COMPLETED",
+      "workflowName": "forge-ci"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-29T03:29:49Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/JesusFilm/forge/runs/109242594130",
+      "name": "CodeQL",
+      "startedAt": "2026-09-29T03:29:47Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "url": "https://github.com/JesusFilm/forge/pull/2461"
+}

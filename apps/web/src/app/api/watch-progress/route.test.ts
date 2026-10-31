@@ -192,6 +192,46 @@ describe("POST /api/watch-progress", () => {
   })
 })
 
+describe("POST /api/watch-progress error-name isolation", () => {
+  it.each(["unsafe", "getter", "non-error"])(
+    "keeps the authenticated response when an error name is %s",
+    async (kind) => {
+      const error =
+        kind === "non-error"
+          ? "must-not-log-rejection-payload"
+          : new Error("must-not-log-error-message")
+      if (error instanceof Error) {
+        Object.defineProperty(error, "name", {
+          get() {
+            if (kind === "getter") throw new Error("name getter failed")
+            return `TimeoutError\n${"X".repeat(100)}`
+          },
+        })
+      }
+      fetchWatchHistoryVideoDetails.mockRejectedValue(error)
+
+      const response = await POST(request({ includeVideos: true }))
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        authenticated: true,
+        userId: USER_ID,
+        entries: [entry],
+        videos: [],
+      })
+      const reason =
+        kind === "unsafe"
+          ? `TimeoutError_${"X".repeat(51)}`
+          : kind === "getter"
+            ? "object"
+            : "string"
+      expect(console.warn).toHaveBeenCalledWith(
+        `[watch-progress] event=history_videos_unavailable reason=${reason}`,
+      )
+    },
+  )
+})
+
 describe("GET /api/watch-progress", () => {
   it("returns an anonymous shape without a session", async () => {
     verifyAuthSession.mockResolvedValue({ authenticated: false })

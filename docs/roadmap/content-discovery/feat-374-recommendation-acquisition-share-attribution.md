@@ -3,15 +3,11 @@ id: "feat-374"
 title: "Recommendation acquisition and share attribution"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
-depends_on:
-  - "feat-368"
-  - "feat-372"
-  - "feat-373"
-blocks:
-  - "feat-375"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "web"
@@ -20,6 +16,17 @@ tags:
   - "attribution"
   - "sharing"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled the proposed cross-session acquisition and Forge-share attribution
+programme. No bounded share-token/campaign journey and Admin acquisition funnel
+is claimed from the current implementation. Watch still marks shared URLs in
+`apps/web/src/lib/playback-discovery.ts`, records Share interactions, and keeps
+configured GA/RUM navigation and interaction analytics. A Share action or a
+referrer must not be treated as recommendation-caused playback without a proven
+join. Additional acquisition attribution is optional for the selected bounded
+recommendation product; actual broken Share/navigation analytics remain defects.
 
 ## Problem
 

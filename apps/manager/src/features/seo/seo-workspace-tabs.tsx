@@ -62,6 +62,8 @@ export function SeoWorkspaceTabs({
       onSelect(nextView)
       return
     }
+    // Reload to hydrate the server-selected view when no parent controls this tab.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign(`/dashboard/seo?view=${nextView}`)
   }
 

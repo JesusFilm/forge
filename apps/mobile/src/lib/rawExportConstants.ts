@@ -24,9 +24,12 @@ export const RAW_EXPORT_ID_PREFIX = "rawexport:"
  */
 export const RAW_EXPORT_DIR_NAME = "raw-exports"
 
-/**
- * Bound on the viewer-legible exported filename (R34). The name derives from an
- * untrusted video title, so it is sanitized and truncated before it reaches the
- * chosen folder.
- */
+/** Bound on the viewer-legible exported filename (R34), in UTF-16 code units.
+ *  The name derives from an untrusted video title, so it is sanitized and
+ *  truncated before it reaches the chosen folder; the staged name shares it. */
 export const RAW_EXPORT_MAX_FILENAME_LENGTH = 120
+
+/** The file system bound on the exported filename, in UTF-8 bytes (R23): APFS,
+ *  ext4 and F2FS each cap one name at 255 bytes. A title in a 3-byte script
+ *  reaches it before {@link RAW_EXPORT_MAX_FILENAME_LENGTH} does. */
+export const RAW_EXPORT_MAX_FILENAME_BYTES = 255

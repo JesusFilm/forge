@@ -39,6 +39,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)("playback episode populated upgrade", () => {
   const schemaName = `recommendation_playback_upgrade_${Date.now()}_${Math.random()
     .toString(36)
     .slice(2)}`
+  const createdAt = "2026-08-19T03:00:00.000Z"
   const expiresAt = "2026-09-17T00:00:00.000Z"
   let client: Client
 
@@ -48,19 +49,19 @@ describe.skipIf(!RUN_REAL_DB_TEST)("playback episode populated upgrade", () => {
       `INSERT INTO recommendation_request (
         id, contract_version, surface_version, manifest_id, strategy_version,
         classifier_version, session_digest, seed_media_id, locale,
-        expected_item_count, result, expires_at
+        expected_item_count, result, created_at, expires_at
       ) VALUES ($1, 'semantic-recommendation-v1', 'watch-below-player-v1',
         'semantic-transcript-pgvector-v1', 'semantic-transcript-pgvector-v1',
-        'legacy-position-v0', $2, 'seed-video', 'en', 1, 'served', $3)`,
-      [`${prefix}-request`, "a".repeat(64), expiresAt],
+        'legacy-position-v0', $2, 'seed-video', 'en', 1, 'served', $3, $4)`,
+      [`${prefix}-request`, "a".repeat(64), createdAt, expiresAt],
     )
     await client.query(
       `INSERT INTO recommendation_served_item (
         id, request_id, position, target_media_id, canonical_href,
-        candidate_generator, candidate_provenance, expires_at
+        candidate_generator, candidate_provenance, created_at, expires_at
       ) VALUES ($1, $2, 0, 'media-1', '/watch/media-1.html/en.html',
-        'semantic', '{}'::jsonb, $3)`,
-      [`${prefix}-item`, `${prefix}-request`, expiresAt],
+        'semantic', '{}'::jsonb, $3, $4)`,
+      [`${prefix}-item`, `${prefix}-request`, createdAt, expiresAt],
     )
     await client.query(
       `INSERT INTO recommendation_selection (

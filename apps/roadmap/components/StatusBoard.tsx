@@ -10,6 +10,7 @@ const COLUMNS: { status: FeatureStatus; accent: string }[] = [
   { status: "not-started", accent: "border-stone-500/50" },
   { status: "in-progress", accent: "border-blue-500/50" },
   { status: "complete", accent: "border-green-500/50" },
+  { status: "cancelled", accent: "border-slate-500/50" },
 ]
 
 const PRIORITY_ORDER: Record<string, number> = { P0: 0, P1: 1, P2: 2 }
@@ -91,7 +92,7 @@ export function StatusBoard({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       {COLUMNS.map(({ status, accent }) => {
         const items = sortByPriority(byStatus.get(status) ?? [])
         return (

@@ -1,4 +1,5 @@
 import { env } from "@/env"
+import { safeErrorName } from "@/lib/safe-error-name"
 
 const REQUEST_TIMEOUT_MS = 10_000
 
@@ -60,9 +61,7 @@ async function softFetch<T>(
     // stringified payloads from Next.js route handlers. Type name only — a
     // rejected fetch's message can carry upstream body fragments.
     console.warn(
-      `[watch-progress-server] event=${label} reason=${
-        error instanceof Error ? error.name : typeof error
-      }`,
+      `[watch-progress-server] event=${label} reason=${safeErrorName(error)}`,
     )
     return fallback
   }

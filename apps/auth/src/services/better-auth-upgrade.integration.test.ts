@@ -799,6 +799,138 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     await prisma.user.delete({ where: { id: signedUp.user.id } })
   })
 
+  it("rotates Shorts refresh credentials twice without widening authority", async () => {
+    const { STUDIO_MCP_APP_SEED } = await import("@/domain/apps")
+    const local = STUDIO_MCP_APP_SEED.environments.find(
+      (e) => e.kind === "local",
+    )!
+    const resource = local.mcpResourceAudience!
+    const clientId = `shorts_renewal_${randomUUID()}`
+    dynamicClientIds.push(clientId)
+    await prisma.oauthClient.create({
+      data: {
+        clientId,
+        name: "Shorts renewal fixture",
+        scopes: local.defaultScopes,
+        redirectUris: [REDIRECT_URI],
+        grantTypes: ["authorization_code", "refresh_token"],
+        responseTypes: ["code"],
+        public: true,
+        requirePKCE: true,
+        tokenEndpointAuthMethod: "none",
+        applicationType: "native",
+        skipConsent: true,
+        resourceLinks: { create: { resourceId: resource } },
+      },
+    })
+    const signUp = await auth.api.signUpEmail({
+      asResponse: true,
+      headers: new Headers(),
+      body: {
+        email: `shorts_renewal_${randomUUID()}@example.test`,
+        password: `T3st-${randomUUID()}!`,
+        name: "Shorts Renewal Fixture",
+      },
+    })
+    expect(signUp.status).toBe(200)
+    const cookie = signUp.headers.get("set-cookie")?.split(";")[0]
+    if (!cookie) throw new Error("Missing fixture session cookie")
+    const signedUp = await signUp.json()
+    try {
+      async function exchange(scopes: string) {
+        const pkce = pkcePair()
+        const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+        url.search = new URLSearchParams({
+          response_type: "code",
+          client_id: clientId,
+          redirect_uri: REDIRECT_URI,
+          scope: scopes,
+          resource,
+          code_challenge: pkce.challenge,
+          code_challenge_method: "S256",
+        }).toString()
+        const authorized = await routeGet(
+          new Request(url, { headers: { cookie: cookie! } }),
+          {
+            params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+          },
+        )
+        expect(authorized.status).toBe(302)
+        const location = authorized.headers.get("location")
+        if (!location) throw new Error("Missing authorization redirect")
+        const code = new URL(location).searchParams.get("code")
+        expect(code, "Shorts authorization must return a code").toBeTruthy()
+        return exchangeOverHttp(
+          auth,
+          new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: clientId,
+            code: code!,
+            code_verifier: pkce.verifier,
+            redirect_uri: REDIRECT_URI,
+            resource,
+          }),
+        )
+      }
+      const withoutOffline = await exchange("shorts:read shorts:edit")
+      expect(withoutOffline.response.status).toBe(200)
+      expect(withoutOffline.body.refresh_token).toBeUndefined()
+      const scopes = "offline_access shorts:read shorts:edit"
+      let issued = await exchange(scopes)
+      expect(issued.response.status).toBe(200)
+      for (let rotation = 0; rotation < 2; rotation++) {
+        expect(issued.body.scope).toBe(scopes)
+        expect(
+          decodeJwtPayload(String(issued.body.access_token)),
+        ).toMatchObject({
+          aud: resource,
+          scope: scopes,
+          "https://jesusfilm.org/claims/app": "shorts-mcp",
+          "https://jesusfilm.org/claims/environment": "local",
+        })
+        expect(issued.body.refresh_token).toEqual(expect.any(String))
+        for (const [override, error] of [
+          [{ scope: `${scopes} shorts:render` }, "invalid_scope"],
+          [{ resource: ADMIN_MCP_AUDIENCE }, "invalid_target"],
+        ] as const) {
+          const denied = await exchangeOverHttp(
+            auth,
+            new URLSearchParams({
+              grant_type: "refresh_token",
+              client_id: clientId,
+              refresh_token: String(issued.body.refresh_token),
+              ...override,
+            }),
+          )
+          expect(denied.response.status).toBe(400)
+          expect(denied.body.error).toBe(error)
+        }
+        const previous = issued.body.refresh_token
+        issued = await exchangeOverHttp(
+          auth,
+          new URLSearchParams({
+            grant_type: "refresh_token",
+            client_id: clientId,
+            refresh_token: String(previous),
+            resource,
+          }),
+        )
+        expect(issued.response.status).toBe(200)
+        expect(issued.body.refresh_token).toEqual(expect.any(String))
+        expect(issued.body.refresh_token).not.toBe(previous)
+      }
+      expect(issued.body.scope).toBe(scopes)
+      expect(decodeJwtPayload(String(issued.body.access_token))).toMatchObject({
+        aud: resource,
+        scope: scopes,
+        "https://jesusfilm.org/claims/app": "shorts-mcp",
+        "https://jesusfilm.org/claims/environment": "local",
+      })
+    } finally {
+      await prisma.user.delete({ where: { id: signedUp.user.id } })
+    }
+  })
+
   it("binds a native DCR resource through authorization, exchange, and refresh", async () => {
     const email = `resource_binding_${randomUUID()}@example.test`
     const signUp = await auth.api.signUpEmail({
@@ -949,5 +1081,112 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email } })
     await prisma.user.delete({ where: { id: user.id } })
+  })
+
+  it("keeps the seeded hosted ChatGPT client consented, scoped and idempotent without app grants", async () => {
+    const {
+      STUDIO_CHATGPT_CLIENT_ID: clientId,
+      STUDIO_CHATGPT_CALLBACK: redirectUri,
+      STUDIO_CHATGPT_SCOPES: scopes,
+    } = await import("@/domain/apps")
+    const resource = "https://manager.jesusfilm.org/mcp"
+    const grantsBefore = await prisma.appGrant.count()
+    const before = await prisma.oauthClient.findUniqueOrThrow({
+      where: { clientId },
+    })
+    await seedFirstPartyApps()
+    const after = await prisma.oauthClient.findUniqueOrThrow({
+      where: { clientId },
+    })
+    expect(after.id).toBe(before.id)
+    expect(after).toMatchObject({
+      public: true,
+      requirePKCE: true,
+      skipConsent: false,
+      tokenEndpointAuthMethod: "none",
+      applicationType: "web",
+      scopes,
+      redirectUris: [redirectUri],
+    })
+    expect(
+      await prisma.oauthClientResource.findMany({
+        where: { clientId },
+        select: { resourceId: true },
+      }),
+    ).toEqual([{ resourceId: resource }])
+    expect(await prisma.appGrant.count()).toBe(grantsBefore)
+    const signup = await auth.api.signUpEmail({
+      asResponse: true,
+      headers: new Headers(),
+      body: {
+        email: `chatgpt_seed_${randomUUID()}@example.test`,
+        password: `T3st-${randomUUID()}!`,
+        name: "Hosted client fixture",
+      },
+    })
+    expect(signup.status).toBe(200)
+    const cookie = signup.headers.get("set-cookie")?.split(";")[0]
+    if (!cookie) throw new Error("Missing fixture cookie")
+    const signedUp = await signup.json()
+    const pkce = pkcePair()
+    const params = {
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scopes.join(" "),
+      resource,
+      code_challenge: pkce.challenge,
+      code_challenge_method: "S256",
+    }
+    async function authorize(overrides: Record<string, string> = {}) {
+      const url = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+      url.search = new URLSearchParams({ ...params, ...overrides }).toString()
+      return routeGet(new Request(url, { headers: { cookie: cookie! } }), {
+        params: Promise.resolve({ all: ["oauth2", "authorize"] }),
+      })
+    }
+    try {
+      expect(
+        await prisma.appGrant.count({ where: { userId: signedUp.user.id } }),
+      ).toBe(0)
+      const accepted = await authorize()
+      expect(accepted.status).toBe(302)
+      const consent = new URL(
+        accepted.headers.get("location")!,
+        "http://localhost:3004",
+      )
+      expect(consent.pathname).toBe("/oauth/consent")
+      expect(consent.searchParams.get("code")).toBeNull()
+      // Reaching consent requires no AppGrant for a HUMAN. It does not imply
+      // consent was given or that Manager's current Operator check will pass.
+      const rejectedRequests: Record<string, string>[] = [
+        { redirect_uri: "https://chatgpt.com/unregistered" },
+        { code_challenge: "", code_challenge_method: "" },
+        { scope: scopes.join(" ") + " shorts:chat" },
+        { resource: ADMIN_MCP_AUDIENCE },
+      ]
+      for (const override of rejectedRequests) {
+        const denied = await authorize(override)
+        const location = denied.headers.get("location")
+        const target = location
+          ? new URL(location, "http://localhost:3004")
+          : null
+        expect(target?.pathname).not.toBe("/oauth/consent")
+        expect(target?.searchParams.get("code") ?? null).toBeNull()
+        expect(denied.status >= 400 || target?.searchParams.has("error")).toBe(
+          true,
+        )
+      }
+      expect(
+        await prisma.oauthAccessToken.count({
+          where: { clientId, userId: signedUp.user.id },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.appGrant.count({ where: { userId: signedUp.user.id } }),
+      ).toBe(0)
+    } finally {
+      await prisma.user.delete({ where: { id: signedUp.user.id } })
+    }
   })
 })

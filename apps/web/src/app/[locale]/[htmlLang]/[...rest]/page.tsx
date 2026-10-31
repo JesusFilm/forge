@@ -1,3 +1,8 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  watchVideoSurfaceSources,
+  watchSeriesEpisodesSource,
+} from "@/lib/watch-surface-manifest.sources"
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
@@ -13,6 +18,8 @@ import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceReg
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
+import { WatchGrowReturnPreload } from "@/components/watch/WatchGrowReturnPreload"
+import { watchAudienceFrame } from "@/lib/watch-audience-config"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
@@ -40,7 +47,9 @@ import {
   getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
+import { resolveWatchAudience } from "@/lib/watch-audience-content"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
@@ -51,6 +60,7 @@ import {
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  correctedBcp47,
   slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
@@ -369,8 +379,19 @@ type Shape =
   | { kind: "unknown" }
 
 function stripSafeSegment(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    // Catch-all params can contain UTF-8 percent escapes after Next parses the
+    // internal rewrite. Keep encoded separators/reserved characters encoded so
+    // the safe slug grammar still rejects them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function routeIntentFromRest(rest: string[]) {
@@ -674,6 +695,13 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment"
       ? null
       : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+  // Started early so it overlaps the message load, but it is only awaited after
+  // that load. Without a handler attached now, a rejection while the load is
+  // pending (or after the load rejects and the page has already thrown) is an
+  // unhandled rejection. This marks the rejection observed without changing
+  // it: the original promise is still awaited below and still throws there, and
+  // a loadClientMessages failure still wins because it is awaited first.
+  translateAvailabilityCountsPromise?.catch(() => {})
   const messages = await loadClientMessages(shape.locale, namespaces)
 
   let content: ReactNode
@@ -767,13 +795,25 @@ async function renderOneSegment(shape: {
           name: "Watch",
         })
       : null
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
+          publicDocumentPathname={
+            localeSlug
+              ? `${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`
+              : undefined
+          }
           locale={locale}
           legacyCategoryRailCompatibility={
             pageResult.data?.kind === "experience" &&
@@ -937,14 +977,28 @@ async function renderEpisode(
         languageSlug,
       })
 
+  const audienceEnabled = await isWatchAudienceEnabled()
+  // One published definition for home and video; omitted when the rollout is off.
+  const audience = audienceEnabled
+    ? await resolveWatchAudience(locale)
+    : undefined
   return (
     <>
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
+      {audienceEnabled && watchAudienceFrame(audience) ? (
+        <WatchGrowReturnPreload />
+      ) : null}
       <WatchPageClient
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
+        surfaceManifests={watchVideoSurfaceSources(
+          clientMergedBlocks,
+          languageSlug,
+        ).map((source) => signWatchSurfaceManifest(source))}
         variant={clientVariant}
         video={clientVideo}
         languageSlug={languageSlug}
@@ -1107,16 +1161,30 @@ async function renderVideo(
           blocks: mergedBlocks,
           languageSlug,
         })
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData
           json={watchVideoStructuredDataJson(metadataModel)}
         />
         <WatchStructuredData json={relatedItemsJson} />
+        {audienceEnabled && watchAudienceFrame(audience) ? (
+          <WatchGrowReturnPreload />
+        ) : null}
         <WatchPageClient
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
+          surfaceManifests={watchVideoSurfaceSources(
+            clientMergedBlocks,
+            languageSlug,
+          ).map((source) => signWatchSurfaceManifest(source))}
           variant={clientVariant}
           video={clientVideo}
           languageSlug={languageSlug}
@@ -1204,7 +1272,7 @@ async function renderVideo(
       languageSlug: seriesLanguage?.slug ?? "",
       canonicalUrl,
       inLanguage:
-        seriesLanguage?.bcp47 ??
+        correctedBcp47(seriesLanguage?.slug, seriesLanguage?.bcp47) ??
         slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
       routeManifest,
     })
@@ -1213,6 +1281,11 @@ async function renderVideo(
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
           series={visibleSeries}
+          surfaceManifest={
+            signWatchSurfaceManifest(
+              watchSeriesEpisodesSource(visibleSeries, seriesLanguage.slug),
+            ) ?? undefined
+          }
           selectedVariant={
             series.selectedVariant?.language?.slug === seriesLanguage.slug
               ? series.selectedVariant

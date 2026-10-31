@@ -7,7 +7,6 @@ import {
   formatRecommendationPercent as formatPercent,
   recommendationNumberFrom as numberFrom,
 } from "./recommendation-display"
-import { PromotionControls } from "./PromotionControls"
 
 export function ProfileEligibilityReconciliation({
   overview,
@@ -279,7 +278,6 @@ export function ProfileShadowEvaluation({
 
 export function PromotionDecision({
   overview,
-  canOperate,
 }: {
   overview: RecommendationOverviewData
   canOperate: boolean
@@ -368,7 +366,9 @@ export function PromotionDecision({
             <dd className="mt-1 text-[var(--color-text-secondary)]">
               {promotion.approval
                 ? `${promotion.approval.maxExposureBps / 100}% · digest ${promotion.approval.manifestDigest.slice(0, 12)}`
-                : "No exact approval"}
+                : promotion.stage === "owner_approved"
+                  ? "Direct owner approval · usefulness unmeasured"
+                  : "No exact approval"}
             </dd>
           </div>
           <div>
@@ -391,24 +391,11 @@ export function PromotionDecision({
         </dl>
       </div>
       <div className="border-t border-[var(--color-hairline)] p-4">
-        {canOperate ? (
-          <PromotionControls
-            generation={promotion.generation}
-            stage={promotion.stage}
-            targetManifestId={promotion.targetManifestId}
-            lastKnownGoodManifestId={promotion.lastKnownGoodManifestId}
-            approvalId={promotion.approval?.id ?? null}
-            evaluationId={promotion.evaluationId}
-            exposureCeilingBps={promotion.exposureCeilingBps}
-            proposedExposureCeilingBps={promotion.proposedExposureCeilingBps}
-            killSwitchEnabled={promotion.killSwitchEnabled}
-            ready={promotion.readiness.ready}
-          />
-        ) : (
-          <p className="text-[12px] text-[var(--color-text-muted)]">
-            Read-only evidence. Promotion controls require Admin authority.
-          </p>
-        )}
+        <p className="text-[12px] text-[var(--color-text-muted)]">
+          Historical evidence only. Viewer profiles, co-watch and behavioral
+          learning have been retired. Semantic and metadata recommendations
+          remain active.
+        </p>
       </div>
       <div className="border-t border-[var(--color-hairline)]">
         <div className="px-4 pt-4 label-text">Recent immutable audit</div>
@@ -458,6 +445,21 @@ export function ExperimentEvaluation({
         <p className="px-4 py-5 text-[13px] text-[var(--color-text-muted)]">
           No retained experiment evaluation is available yet. Semantic control
           remains the serving fallback.
+        </p>
+      </PageSection>
+    )
+  }
+  if (evaluation.versions.evaluation === "profile-study-governance-v1") {
+    return (
+      <PageSection
+        title="Governed profile study evaluation"
+        meta="V2 / VERSION-BOUND AUTHORITY"
+      >
+        <p className="px-4 py-5 text-[13px] text-[var(--color-text-secondary)]">
+          The latest evaluation belongs to {evaluation.experimentId}. Open
+          Governed profile studies to inspect its calibration or efficacy
+          result, exact comparator, and current evidence. A database PASS by
+          itself does not authorize promotion.
         </p>
       </PageSection>
     )

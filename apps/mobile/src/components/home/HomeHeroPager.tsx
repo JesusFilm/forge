@@ -36,7 +36,12 @@ import {
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
+import { useRtlScrollGate } from "../../hooks/useRtlScrollGate"
+import { useUiTag } from "../../hooks/useUiTag"
+import { textDirectionProps } from "../../i18n/textDirection"
+import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
+import { scrollPageIndex } from "../../lib/horizontalPaging"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
@@ -122,6 +127,7 @@ export function HomeHeroPager({
   // R9/R10. Read here rather than taken as a prop: the hero must yield the
   // decoder on every route that mounts it, with no wiring to forget.
   const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const epoch = useLocaleEpoch()
 
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
@@ -497,10 +503,24 @@ export function HomeHeroPager({
   // on a different index are stale (an older animation finishing) and must
   // not move the reducer.
   const pendingScrollIndexRef = useRef(0)
+  const scrollToPending = useCallback(() => {
+    try {
+      listRef.current?.scrollToIndex({
+        index: pendingScrollIndexRef.current,
+        animated: false,
+      })
+    } catch {
+      // A shorter queue can put the pending index out of range; the scroll
+      // effect then scrolls to the reset index.
+    }
+  }, [])
+  const scrollGate = useRtlScrollGate(state.slides.length, scrollToPending)
+  const { mustWait } = scrollGate
 
   useEffect(() => {
     if (state.slides.length === 0) return
     pendingScrollIndexRef.current = state.currentIndex
+    if (mustWait()) return
     try {
       listRef.current?.scrollToIndex({
         index: state.currentIndex,
@@ -509,14 +529,14 @@ export function HomeHeroPager({
     } catch {
       // List not laid out yet; getItemLayout makes later calls reliable.
     }
-  }, [state.currentIndex, state.slides.length])
+  }, [state.currentIndex, state.slides.length, mustWait])
 
   // List is scrollEnabled={false} — slide changes are programmatic only (all
   // route through the handle/reducer). Animated scrollToIndex still fires
   // momentum end; SLIDE_SHOWN on the settled index no-ops if it matches.
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+      const index = scrollPageIndex(e.nativeEvent, screenWidth)
       // Stale settle (an older animation overtaken by a newer target) must
       // not move the reducer; legit off-page re-syncs go through
       // onScrollToIndexFailed instead.
@@ -615,11 +635,12 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}|${epoch}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onContentSizeChange={scrollGate.onContentSizeChange}
         onScrollToIndexFailed={handleScrollToIndexFailed}
         getItemLayout={getItemLayout}
         initialNumToRender={1}
@@ -708,14 +729,23 @@ const HeroPage = memo(function HeroPage({
   // Mux overlay copy is time-of-day sensitive — resolve at DISPLAY time
   // (Eastern-hour rule), not at queue-build time. Memoized per slide entry
   // (the intended display-time semantics; per-render recompute is wasteful).
+  const uiTag = useUiTag()
   const muxCopy = useMemo(
     () =>
-      slide.kind === "mux" ? muxSlideDisplayCopy(slide, new Date()) : null,
-    [slide],
+      slide.kind === "mux"
+        ? muxSlideDisplayCopy(slide, new Date(), uiTag)
+        : null,
+    [slide, uiTag],
   )
   const eyebrow = muxCopy?.label ?? slide.label
   const title = muxCopy?.title ?? slide.title
   const insertAction = muxCopy?.action ?? null
+  // A video slide's label is UI text; the Mux copy's language is not known.
+  const eyebrowDirection = textDirectionProps(muxCopy ? null : uiTag, uiTag)
+  const titleDirection = textDirectionProps(
+    slide.kind === "video" ? slide.titleLang : null,
+    uiTag,
+  )
 
   // Pages host DISPLAY content only — interactive chrome lives in HomeScreen's
   // zIndex-2 overlay, since the FlashList over the hero swallows taps here. The
@@ -780,12 +810,19 @@ const HeroPage = memo(function HeroPage({
             JESUS FILM PROJECT
           </Text>
         )}
-        <Text style={[styles.eyebrow, typography.caption]}>
-          {eyebrow.toUpperCase()}
+        <Text
+          style={[styles.eyebrow, typography.caption, eyebrowDirection.style]}
+        >
+          {eyebrow.toLocaleUpperCase(uiTag)}
         </Text>
         <Text
-          style={[styles.title, typography.headingScale.h2]}
+          style={[
+            styles.title,
+            typography.headingScale.h2,
+            titleDirection.style,
+          ]}
           accessibilityRole="header"
+          accessibilityLanguage={titleDirection.accessibilityLanguage}
           numberOfLines={3}
         >
           {title}
@@ -826,26 +863,22 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
     letterSpacing: 3,
     marginBottom: 8,
   },
   eyebrow: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "600",
     letterSpacing: 2,
     marginBottom: 6,
   },
   title: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   description: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 6,
   },
   dotsOverlay: {

@@ -107,6 +107,89 @@ describeIntegration("Changelog production operator access", () => {
     })
   })
 
+  it("cancels the recipient's pending production approvals without canceling other approvals", async () => {
+    const approverId = randomUUID()
+    const approverEmail = `${approverId}@example.test`
+    await prisma.user.create({
+      data: {
+        id: approverId,
+        email: approverEmail,
+        name: "Approver",
+        emailVerified: true,
+        actorType: "HUMAN",
+        membershipStatus: "ACTIVE",
+      },
+    })
+    try {
+      await operate("grant-admin", approverEmail)
+      const production = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_production" },
+      })
+      const local = await prisma.appEnvironment.findUniqueOrThrow({
+        where: { clientId: "jfp_changelog_local" },
+      })
+      const adminScope = await prisma.scope.findUniqueOrThrow({
+        where: { key: "changelog:admin" },
+      })
+      const submitScope = await prisma.scope.findUniqueOrThrow({
+        where: { key: "changelog:submit" },
+      })
+      await prisma.appGrant.create({
+        data: {
+          appId: local.appId,
+          environmentId: local.id,
+          subjectType: "USER",
+          userId: approverId,
+          status: "APPROVED",
+          scopes: { create: { scopeId: adminScope.id } },
+        },
+      })
+      await prisma.appGrant.create({
+        data: {
+          appId: production.appId,
+          environmentId: production.id,
+          subjectType: "USER",
+          userId,
+          status: "APPROVED",
+          scopes: { create: { scopeId: submitScope.id } },
+        },
+      })
+      const approvals = await Promise.all(
+        [
+          { environmentId: production.id, email },
+          { environmentId: local.id, email },
+          { environmentId: production.id, email: approverEmail },
+        ].map((target) =>
+          prisma.changelogPreapproval.create({
+            data: {
+              id: randomUUID(),
+              ...target,
+              approverId,
+              expiresAt: new Date(Date.now() + 86400000),
+            },
+          }),
+        ),
+      )
+      await expect(operate("revoke", email)).resolves.toMatchObject({
+        changed: true,
+      })
+      for (const [index, approval] of approvals.entries())
+        expect(
+          await prisma.changelogPreapproval.findUniqueOrThrow({
+            where: { id: approval.id },
+          }),
+        ).toMatchObject({
+          state: index === 0 ? "canceled" : "pending",
+          version: index === 0 ? 1 : 0,
+          redeemedAt: null,
+          redeemedById: null,
+        })
+    } finally {
+      await prisma.changelogPreapproval.deleteMany({ where: { approverId } })
+      await prisma.user.delete({ where: { id: approverId } })
+    }
+  })
+
   it("revokes the production grant union, blocks stale refresh and preserves local access", async () => {
     await operate("grant-admin", email)
     const { grantChangelogLocalReader } =

@@ -7,11 +7,6 @@
  * regions left the other two byte-identical.
  */
 
-const mockOpenPassageSheet = jest.fn()
-jest.mock("../../../lib/openPassageSheet", () => ({
-  openPassageSheet: (...args: unknown[]) => mockOpenPassageSheet(...args),
-}))
-
 /**
  * A jest.fn component is the assertion surface: zero calls means no image
  * element, which is what stops the prop cases below passing against an absent
@@ -30,9 +25,23 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: (...a: unknown[]) => mockWarn(...a) },
 }))
 
+// The UI language, for the passage-direction cases (KTD13).
+let mockUiTag = "en"
+jest.mock("../../../hooks/useUiTag", () => ({ useUiTag: () => mockUiTag }))
+
+// Only the Burmese UI case starts the locale store; every other case reads
+// en.json as before.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+
 import { act } from "react"
 import type React from "react"
-import { AccessibilityInfo, Dimensions } from "react-native"
+import { AccessibilityInfo, Dimensions, I18nManager } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -51,7 +60,17 @@ import {
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
-import { BibleQuotesCarouselRenderer } from "../BibleQuotesCarouselRenderer"
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
+import { readerHref } from "../../../lib/bible/routes/readerRoute"
+import type { VerseRef } from "../../../lib/bible/versification/convert"
+import {
+  BibleQuotesCarouselRenderer,
+  READER_OPEN_DEBOUNCE_MS,
+} from "../BibleQuotesCarouselRenderer"
 import {
   TestRenderer,
   press,
@@ -72,8 +91,18 @@ const PASSAGE_QUOTE: Quote = {
   ctaLink: null,
   translation: "World English Bible British Edition",
   copyright: "Public Domain",
-  passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
+  citationStart: { book: "GEN", chapter: 1, verse: 26 },
   loading: false,
+}
+
+/** The AE1 card, as `useBibleVerses` composes it for John 3:16-17. */
+const JOHN_QUOTE: Quote = {
+  ...PASSAGE_QUOTE,
+  reference: "John 3:16-17",
+  text: "For God so loved the world that He gave His one and only Son…",
+  translation: "Berean Standard Bible",
+  copyright: "Public Domain",
+  citationStart: { book: "JHN", chapter: 3, verse: 16 },
 }
 
 // Exactly the shape admin's Experience quote type produces: authored text, and
@@ -96,6 +125,7 @@ const EXPERIENCE_QUOTE: Quote = {
 function renderAtSize(
   quotes: Quote[],
   size: { width: number; fontScale: number },
+  onOpenReader?: (start: VerseRef) => void,
 ): TestInstance {
   const real = Dimensions.get
   const spy = jest
@@ -111,7 +141,7 @@ function renderAtSize(
         : real(dim),
     )
   try {
-    return render(quotes)
+    return render(quotes, undefined, onOpenReader)
   } finally {
     spy.mockRestore()
   }
@@ -135,6 +165,7 @@ const mounted: TestInstance[] = []
 function render(
   quotes: Quote[],
   onArtworkFailed?: (cardIndex: number, failedUrl: string) => void,
+  onOpenReader?: (start: VerseRef) => void,
 ): TestInstance {
   let renderer!: TestInstance
   act(() => {
@@ -143,6 +174,7 @@ function render(
         <BibleQuotesCarouselRenderer
           section={sectionOf(quotes)}
           onArtworkFailed={onArtworkFailed}
+          onOpenReader={onOpenReader}
         />
       ) as React.ReactElement,
     )
@@ -212,6 +244,291 @@ function passageLinks(renderer: TestInstance): RenderedNode[] {
       typeof node.props.onPress === "function",
   )
 }
+
+// U7: the passage's language (R10, KTD13). An English passage on a card in
+// another UI language carries the English mark and a left-to-right direction.
+describe("BibleQuotesCarouselRenderer — the passage language", () => {
+  /** The quote card's language marks (its composite and host nodes agree). */
+  function cardLanguages(renderer: TestInstance, reference: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(reference),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  const PASSAGE_TEXTS = [
+    "Let’s make man in our image",
+    "World English Bible British Edition",
+    "Public Domain",
+  ]
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
+  it.each([
+    ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
+    ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
+    // feat-695 KTD6: with mirroring on, every known language sets its edge.
+    ["an English passage in an English UI", "en", "en", ["en"], "ltr"],
+    ["a Russian passage in an English UI", "en", "ru", [undefined], "ltr"],
+  ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
+    mockUiTag = uiTag
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(marks)
+    for (const needle of PASSAGE_TEXTS) {
+      const style = flatStyle(findText(renderer, needle))
+      expect([style.writingDirection, style.direction]).toEqual([
+        direction,
+        direction,
+      ])
+    }
+  })
+
+  // R16, R17: in a left-to-right layout, the Arabic verse keeps its own start
+  // edge (the right), and its short credit goes to the layout's start (the left).
+  it("aligns the verse as a paragraph and the credit as short text", () => {
+    mockUiTag = "en"
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ar" }])
+    expect(flatStyle(findText(renderer, PASSAGE_TEXTS[0]!)).textAlign).toBe(
+      "left",
+    )
+    expect(flatStyle(findText(renderer, "Public Domain")).textAlign).toBe(
+      "right",
+    )
+  })
+
+  it("leaves the Experience quote as it was", () => {
+    const renderer = render([EXPERIENCE_QUOTE])
+    expect(cardLanguages(renderer, "John 3:16")).toEqual([undefined])
+  })
+})
+
+// Plan 2026-10-08 (KTD7, KTD13): a card from the reader's translation takes
+// its marks from the catalog, not from the UI or `textLang`.
+describe("BibleQuotesCarouselRenderer — a reader-translation card", () => {
+  const KOREAN_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "요한복음 3:16",
+    text: "하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니",
+    translation: "한국어 성경",
+    copyright: "public domain",
+    textLang: "ko",
+    verseDirection: "ltr",
+    verseLang: "ko",
+    citationStart: { book: "JHN", chapter: 3, verse: 16 },
+  }
+  const ARABIC_CARD: Quote = {
+    ...KOREAN_CARD,
+    reference: "يُوحَنّا 3:16",
+    text: "لِأَنَّهُ هَكَذَا أَحَبَّ ٱللهُ ٱلْعَالَمَ",
+    translation: "الكتاب المقدس باللغة العربية، فان دايك",
+    textLang: "ar",
+    verseDirection: "rtl",
+    verseLang: "ar",
+  }
+
+  function direction(renderer: TestInstance, needle: string) {
+    const style = flatStyle(findText(renderer, needle))
+    return [style.writingDirection, style.direction]
+  }
+
+  function cardLanguage(renderer: TestInstance, label: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(label),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
+  it("marks a Korean card ltr on a Korean UI, read as Korean", () => {
+    mockUiTag = "ko"
+    const renderer = render([KOREAN_CARD])
+
+    for (const needle of ["요한복음 3:16", "하나님이 세상을", "한국어 성경"]) {
+      expect(direction(renderer, needle)).toEqual(["ltr", "ltr"])
+    }
+    expect(cardLanguage(renderer, "요한복음 3:16")).toEqual(["ko"])
+  })
+
+  it("marks an Arabic card rtl on an English UI, with an ltr credit", () => {
+    const renderer = render([ARABIC_CARD])
+
+    for (const needle of [
+      "يُوحَنّا 3:16",
+      "لِأَنَّهُ هَكَذَا",
+      "الكتاب المقدس باللغة العربية",
+    ]) {
+      expect(direction(renderer, needle)).toEqual(["rtl", "rtl"])
+    }
+    expect(direction(renderer, "public domain")).toEqual(["ltr", "ltr"])
+    expect(cardLanguage(renderer, "يُوحَنّا 3:16")).toEqual(["ar"])
+  })
+
+  it("upper-cases a Turkish reference with a dotted capital İ", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        reference: "Elçilerin İşleri 2:38",
+        textLang: "tr",
+        verseLang: "tr",
+      },
+    ])
+
+    expect(findText(renderer, "ELÇİLERİN İŞLERİ 2:38")).toBeDefined()
+  })
+
+  it("caps a long name and credit at 2 lines and keeps the verse", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        translation: "N".repeat(140),
+        copyright: "C".repeat(121),
+      },
+    ])
+
+    expect(findText(renderer, "N".repeat(140))?.props.numberOfLines).toBe(
+      TRANSLATION_MAX_LINES,
+    )
+    expect(findText(renderer, "C".repeat(121))?.props.numberOfLines).toBe(
+      COPYRIGHT_MAX_LINES,
+    )
+    expect(
+      findText(renderer, "하나님이 세상을")?.props.numberOfLines,
+    ).toBeGreaterThan(0)
+  })
+})
+
+// A fixed line height cuts the tops off Myanmar letters on iOS (simulator,
+// 2026-10-09), so a Myanmar row takes the font's own line height.
+describe("BibleQuotesCarouselRenderer — Myanmar rows", () => {
+  const MYANMAR_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "ကမ္ဘာဦးကျမ်း 1:26-27",
+    text: "တဖန် ဘုရားသခင်က၊ ငါတို့ပုံသဏ္ဌာန်နှင့်အညီ လူကိုဖန်ဆင်းကြစို့",
+    translation: "မြန်မာကျမ်းစာ",
+    copyright: "public domain",
+    textLang: "my",
+    verseDirection: "ltr",
+    verseLang: "my",
+  }
+  const typography = computeTypographyScale(Dimensions.get("window").width)
+
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  it("gives the reference and the name no fixed line height", () => {
+    const renderer = render([MYANMAR_CARD])
+
+    const reference = flatStyle(findText(renderer, "ကမ္ဘာဦးကျမ်း"))
+    const name = flatStyle(findText(renderer, "မြန်မာကျမ်းစာ"))
+    expect(reference.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(reference).not.toHaveProperty("lineHeight")
+    expect(name.fontSize).toBe(typography.caption.fontSize)
+    expect(name).not.toHaveProperty("lineHeight")
+    // The verse fits its own line height on the device, so it keeps it.
+    expect(flatStyle(findText(renderer, "တဖန်")).lineHeight).toBe(
+      verseTypography(typography).lineHeight,
+    )
+  })
+
+  it("keeps the fixed line heights on a Latin card", () => {
+    const renderer = render([PASSAGE_QUOTE])
+
+    expect(flatStyle(findText(renderer, "GENESIS 1:26-27")).lineHeight).toBe(
+      typography.bodySmall.lineHeight,
+    )
+    expect(
+      flatStyle(findText(renderer, "World English Bible")).lineHeight,
+    ).toBe(typography.caption.lineHeight)
+  })
+
+  // The fit must budget the taller rows, or the bottom-aligned stack overflows
+  // and the clip takes the reference off the top.
+  it("gives the verse fewer lines than a Latin card at the same size", () => {
+    const size = { width: 411.43, fontScale: 1.3 }
+    const verseLines = (quote: Quote, needle: string) =>
+      findText(renderAtSize([quote], size, jest.fn()), needle)?.props
+        .numberOfLines as number
+
+    const latin = verseLines(JOHN_QUOTE, "For God so loved")
+    const myanmar = verseLines(MYANMAR_CARD, "တဖန်")
+
+    expect(myanmar).toBeGreaterThan(0)
+    expect(myanmar).toBeLessThan(latin)
+  })
+
+  // One Myanmar row per case, so dropping any one row's fit input fails here.
+  // At these sizes that row alone costs the John card one verse line.
+  function johnVerseLines(
+    change: Quote,
+    size: { width: number; fontScale: number },
+  ) {
+    const renderer = renderAtSize(
+      [{ ...JOHN_QUOTE, ...change }],
+      size,
+      jest.fn(),
+    )
+    return findText(renderer, "For God so loved")?.props.numberOfLines
+  }
+
+  it.each([
+    ["reference", { reference: "ယောဟန် 3:16-17" }],
+    ["translation name", { translation: "မြန်မာကျမ်းစာ" }],
+  ])("budgets a Myanmar %s by itself", (_row, change) => {
+    const size = { width: 411.43, fontScale: 1.3 }
+
+    expect(johnVerseLines({}, size)).toBe(3)
+    expect(johnVerseLines(change, size)).toBe(2)
+  })
+
+  it("budgets a Burmese reader link by itself", () => {
+    const size = { width: 440, fontScale: 1.5 }
+    expect(johnVerseLines({}, size)).toBe(3)
+
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+
+    expect(johnVerseLines({}, size)).toBe(2)
+  })
+
+  it("gives the Burmese reader link no fixed line height", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+    const renderer = render([PASSAGE_QUOTE], undefined, jest.fn())
+
+    const link = flatStyle(findText(renderer, "ကျမ်းပိုဒ်"))
+    expect(link.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(link).not.toHaveProperty("lineHeight")
+  })
+
+  it("gives a Burmese promo button no fixed line height", () => {
+    const renderer = render([
+      {
+        ...EXPERIENCE_QUOTE,
+        ctaLabel: "ကျွန်ုပ်တို့၏ ကျမ်းစာလေ့လာမှုတွင် ပါဝင်ပါ",
+        ctaLink: "https://join.bsfinternational.org/",
+      },
+    ])
+
+    const button = flatStyle(findText(renderer, "ကျမ်းစာလေ့လာမှု"))
+    expect(button.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(button).not.toHaveProperty("lineHeight")
+  })
+})
 
 describe("BibleQuotesCarouselRenderer — passage cards", () => {
   it("renders the verse, the translation, the copyright and the link", () => {
@@ -361,24 +678,40 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     expect(flatStyle(cta).textShadowColor).toBeDefined()
   })
 
-  // Covers AE3.
-  it("renders a reference alone when the card has no passage", () => {
-    const renderer = render([
-      {
-        ...PASSAGE_QUOTE,
-        text: "",
-        translation: null,
-        copyright: null,
-        passageUrl: null,
-      },
-    ])
+  // Covers AE3, as R1 (feat-553) changed it: no verse and no credit, but the
+  // button still opens the reader, which needs no admin text.
+  it("renders the reference and the button when the card has no passage", () => {
+    const renderer = render(
+      [
+        {
+          ...PASSAGE_QUOTE,
+          text: "",
+          translation: null,
+          copyright: null,
+        },
+      ],
+      undefined,
+      jest.fn(),
+    )
 
     expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
     expect(
       findText(renderer, "World English Bible British Edition"),
     ).toBeUndefined()
     expect(findText(renderer, "Public Domain")).toBeUndefined()
+    expect(passageLinks(renderer)).toHaveLength(1)
+  })
+
+  it("renders no button for a card whose citation has no book", () => {
+    const renderer = render(
+      [{ ...PASSAGE_QUOTE, citationStart: null }],
+      undefined,
+      jest.fn(),
+    )
+
+    expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
     expect(findText(renderer, "Read full passage")).toBeUndefined()
+    expect(passageLinks(renderer)).toHaveLength(0)
   })
 
   // Covers AE8.
@@ -401,7 +734,6 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
         text: "",
         translation: null,
         copyright: null,
-        passageUrl: null,
         loading: true,
       },
     ])
@@ -413,8 +745,8 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
 
   // The affordance disables itself when no handler is wired, so a link with no
   // behaviour can never reach a viewer through a landing-order mistake.
-  it("renders a tappable link now that a handler is wired", () => {
-    const renderer = render([PASSAGE_QUOTE])
+  it("renders a tappable link when a handler is wired", () => {
+    const renderer = render([PASSAGE_QUOTE], undefined, jest.fn())
 
     const links = passageLinks(renderer)
     expect(links.length).toBeGreaterThan(0)
@@ -423,20 +755,128 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     }
   })
 
-  it("opens the passage when the link is pressed", async () => {
+  it("disables the link when no handler is wired", () => {
     const renderer = render([PASSAGE_QUOTE])
+
+    const links = passageLinks(renderer)
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) {
+      expect(link.props.disabled).toBe(true)
+    }
+  })
+
+  // KTD17: the button gates on the citation alone.
+  it("shows no button with no citation start", () => {
+    const renderer = render(
+      [{ ...PASSAGE_QUOTE, citationStart: undefined }],
+      undefined,
+      jest.fn(),
+    )
+
+    expect(passageLinks(renderer)).toHaveLength(0)
+  })
+})
+
+// ── The reader entry (feat-553 U12, KTD17) ─────────────────────────────────
+
+describe("BibleQuotesCarouselRenderer — Read full passage opens the reader", () => {
+  // The same composition as the watch route's handler, which the route
+  // guard pins, so this case proves the whole tap-to-push path.
+  function routeHandler(push: jest.Mock) {
+    return (start: VerseRef) => push(readerHref(start, "quote"))
+  }
+
+  // Covers AE1 (handler half). KD3, no pause on the tap path, is pinned by
+  // app/watch/__tests__/bibleQuotesReader.guard.test.js.
+  it("pushes the reader at John 3:16", async () => {
+    const push = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, routeHandler(push))
 
     await press(passageLinks(renderer)[0]!)
 
-    expect(mockOpenPassageSheet).toHaveBeenCalledWith(PASSAGE_QUOTE.passageUrl)
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith({
+      pathname: "/reader",
+      params: { book: "JHN", chapter: "3", verse: "16", source: "quote" },
+    })
   })
 
-  it("renders no link for a passage URL that fails validation", () => {
-    const renderer = render([
-      { ...PASSAGE_QUOTE, passageUrl: "javascript:alert(1)" },
-    ])
+  it("hands the handler the card's own start, once per tap", async () => {
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
 
-    expect(findText(renderer, "Read full passage")).toBeUndefined()
+    await press(passageLinks(renderer)[0]!)
+
+    expect(onOpenReader.mock.calls).toEqual([
+      [{ book: "JHN", chapter: 3, verse: 16 }],
+    ])
+  })
+
+  // Two readers must never stack.
+  it("pushes one reader for a double tap", async () => {
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000_000)
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
+    const link = passageLinks(renderer)[0]!
+
+    await press(link)
+    now.mockReturnValue(1_000_000 + 250)
+    await press(link)
+
+    expect(onOpenReader).toHaveBeenCalledTimes(1)
+  })
+
+  // Anti-vacuous: a permanent latch would pass the double-tap case too, and
+  // would strand the button after the viewer comes back from the reader.
+  it("opens the reader again once the debounce has passed", async () => {
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000_000)
+    const onOpenReader = jest.fn()
+    const renderer = render([JOHN_QUOTE], undefined, onOpenReader)
+    const link = passageLinks(renderer)[0]!
+
+    await press(link)
+    now.mockReturnValue(1_000_000 + READER_OPEN_DEBOUNCE_MS)
+    await press(link)
+
+    expect(onOpenReader).toHaveBeenCalledTimes(2)
+  })
+
+  // R37, KD17: Datadog RUM names the tap from this label. A new label would
+  // start a new tap series and break the before-and-after comparison.
+  it("keeps the accessibility label Read full passage", () => {
+    const renderer = render([JOHN_QUOTE], undefined, jest.fn())
+    const controls = renderer.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessibilityRole === "link",
+    )
+
+    expect(controls).toHaveLength(1)
+    expect(controls[0]?.props.accessibilityLabel).toBe("Read full passage")
+    expect(findText(renderer, "Read full passage")).toBeDefined()
+  })
+
+  // R1 at the design-centre Android device. Measured geometry: 1080 px at
+  // density 2.625 is 411.43 dp, with the system text size at 1.3.
+  it("keeps the button and shortens the verse at the Pixel 9a's 1.3 text scale", () => {
+    const renderer = renderAtSize(
+      [JOHN_QUOTE],
+      { width: 411.43, fontScale: 1.3 },
+      jest.fn(),
+    )
+
+    expect(passageLinks(renderer)).toHaveLength(1)
+    const verse = findText(renderer, "For God so loved the world")
+    expect(verse?.props.numberOfLines).toBeGreaterThan(0)
+    expect(verse?.props.numberOfLines).toBeLessThan(VERSE_MAX_LINES)
+    // The credit stays with the verse (R5 of the passages plan).
+    expect(findText(renderer, "Berean Standard Bible")).toBeDefined()
+    expect(findText(renderer, "Public Domain")).toBeDefined()
+  })
+
+  it("shows no button on an Experience card, even with a handler", () => {
+    const renderer = render([EXPERIENCE_QUOTE], undefined, jest.fn())
+    expect(passageLinks(renderer)).toHaveLength(0)
   })
 })
 
@@ -537,14 +977,15 @@ describe("fitPassageCardRegions", () => {
   })
 
   // The reader's text size is the only thing that can overflow the square.
-  it("drops the link first, then shortens the verse, before losing the credit", () => {
+  // feat-553 R1: the verse shortens to make room; the button stays.
+  it("shortens the verse and keeps the button, before losing the credit", () => {
     const scaled = fitPassageCardRegions({
       ...full,
       contentHeight: 303,
-      fontScale: 2,
+      fontScale: 1.5,
     })
 
-    expect(scaled.link).toBe(false)
+    expect(scaled.link).toBe(true)
     expect(scaled.verseLines).toBeLessThan(VERSE_MAX_LINES)
     expect(scaled.verseLines).toBeGreaterThan(0)
     // R5: a rendered verse carries its translation and copyright. Shortening
@@ -559,27 +1000,27 @@ describe("fitPassageCardRegions", () => {
   it("drops the verse rather than its credit when nothing else fits", () => {
     const cramped = fitPassageCardRegions({
       ...full,
-      contentHeight: 230,
+      contentHeight: 260,
       fontScale: 2,
     })
 
-    expect(cramped.link).toBe(false)
+    expect(cramped.link).toBe(true)
     expect(cramped.verseLines).toBe(0)
     expect(cramped.translation).toBe(true)
     expect(cramped.copyright).toBe(true)
   })
 
   // Past that point R5 no longer binds — it governs a RENDERED verse, and there
-  // is none. The reference is what the remaining space must protect.
+  // is none. The reference and the button are what the space must protect.
   it("sheds the credit too once there is no verse left to credit", () => {
     const tiny = fitPassageCardRegions({
       ...full,
-      contentHeight: 90,
+      contentHeight: 150,
       fontScale: 2,
     })
 
     expect(tiny.verseLines).toBe(0)
-    expect(tiny.link).toBe(false)
+    expect(tiny.link).toBe(true)
     expect(tiny.copyright).toBe(false)
     expect(tiny.translation).toBe(false)
   })
@@ -1147,5 +1588,51 @@ describe("BibleQuotesCarouselRenderer — header share button", () => {
 
     expect(shareButtons(renderer)).toHaveLength(0)
     expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
+  })
+})
+
+// feat-695 U5: both platforms report contentOffset.x from the left edge of the
+// content, so a right-to-left carousel counts its resting card from the right.
+describe("BibleQuotesCarouselRenderer — the resting card in a right-to-left layout", () => {
+  // 750 wide: five 718-wide cards, 12 between them, 16 at each end.
+  const PAGE = 730
+  const CONTENT = 3670
+  const VIEWPORT = 750
+
+  function carouselList(renderer: TestInstance): RenderedNode {
+    const [list] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityRole === "adjustable" &&
+        typeof node.props.onMomentumScrollEnd === "function",
+    )
+    return list
+  }
+
+  it("names the card that rests in view", async () => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    const renderer = await renderSettled(
+      Array.from({ length: 5 }, () => PASSAGE_QUOTE),
+    )
+    const settle = carouselList(renderer).props.onMomentumScrollEnd as (
+      e: unknown,
+    ) => void
+
+    act(() => {
+      settle({
+        nativeEvent: {
+          // The fourth card from the right edge.
+          contentOffset: { x: CONTENT - VIEWPORT - 3 * PAGE },
+          contentSize: { width: CONTENT },
+          layoutMeasurement: { width: VIEWPORT },
+        },
+      })
+    })
+
+    expect(carouselList(renderer).props.accessibilityValue).toEqual({
+      text: "Item 4 of 5",
+    })
   })
 })

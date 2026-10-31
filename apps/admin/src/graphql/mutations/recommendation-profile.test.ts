@@ -2,20 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const statusMock = vi.fn()
 const transitionMock = vi.fn()
-const completeErasureMock = vi.fn()
-const dispatchProjectionMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/services/recommendations/profile.service", () => ({
   createRecommendationProfileService: vi.fn(() => ({
     status: statusMock,
     transition: transitionMock,
-    completeErasure: completeErasureMock,
   })),
 }))
 vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/recommendations/profiles/job", () => ({
-  dispatchRecommendationProfileProjection: dispatchProjectionMock,
-}))
 
 import { schema } from "@/graphql/schema"
 
@@ -47,20 +41,19 @@ beforeEach(() => {
     erasureGeneration: null,
   })
   transitionMock.mockResolvedValue({
-    state: "active",
-    choice: "durable_allowed",
-    privacyGeneration: 1,
-    expiresAt: "2027-02-21T00:00:00.000Z",
-    erasureState: "not_required",
-    cookieDisposition: "set",
-    consentChoice: "personalization",
+    state: "session_only",
+    choice: "session_only",
+    privacyGeneration: null,
+    expiresAt: null,
+    erasureState: "pending",
+    cookieDisposition: "clear",
+    consentChoice: "undecided",
     consentContractVersion: "recommendation-consent-v1",
-    consentExpiresAt: "2027-02-21T00:00:00.000Z",
-    consentCookieDisposition: "set",
+    consentExpiresAt: null,
+    consentCookieDisposition: "clear",
     profileId: "private-profile-id",
-    erasureGeneration: null,
+    erasureGeneration: 1,
   })
-  dispatchProjectionMock.mockResolvedValue({ queued: true })
 })
 
 describe("recommendation profile resolvers", () => {
@@ -84,24 +77,24 @@ describe("recommendation profile resolvers", () => {
       consentReceiptDigest: null,
     })
     expect(result).not.toHaveProperty("tokenDigest")
-    await Promise.resolve()
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
   })
 
-  it("schedules status projection only for an active personalized receipt", async () => {
+  it("keeps a historical pending erasure private without restarting a learner", async () => {
     statusMock.mockResolvedValueOnce({
-      state: "active",
-      choice: "durable_allowed",
-      privacyGeneration: 3,
-      expiresAt: "2027-02-21T00:00:00.000Z",
-      erasureState: "not_required",
-      cookieDisposition: "keep",
-      consentChoice: "personalization",
+      state: "session_only",
+      choice: "session_only",
+      privacyGeneration: null,
+      expiresAt: null,
+      erasureState: "pending",
+      cookieDisposition: "clear",
+      consentChoice: "undecided",
       profileId: "private-profile-id",
-      erasureGeneration: null,
+      erasureGeneration: 3,
     })
 
-    await mutation("recommendationProfileStatus")(
+    const result = await mutation("recommendationProfileStatus")(
       null,
       {
         contractVersion: "recommendation-profile-v1",
@@ -112,13 +105,9 @@ describe("recommendation profile resolvers", () => {
       {} as never,
     )
 
-    await vi.waitFor(() => {
-      expect(dispatchProjectionMock).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
-        profileId: "private-profile-id",
-        privacyGeneration: 3,
-      })
-    })
+    expect(result).toMatchObject({ erasureState: "pending" })
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
   })
 
   it("does not schedule a projection for an Essential-only receipt", async () => {
@@ -147,9 +136,6 @@ describe("recommendation profile resolvers", () => {
       { user: caller },
       {} as never,
     )
-
-    await Promise.resolve()
-    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 
   it("keeps erasure scheduling keys out of the public receipt", async () => {
@@ -176,12 +162,7 @@ describe("recommendation profile resolvers", () => {
       proposedConsentReceiptDigest: null,
     })
     expect(result).not.toHaveProperty("tokenDigest")
-    await vi.waitFor(() => {
-      expect(dispatchProjectionMock).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
-        profileId: "private-profile-id",
-        privacyGeneration: 1,
-      })
-    })
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
   })
 })

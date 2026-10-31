@@ -41,6 +41,13 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
+// feat-705 U11: each case sets the Liquid Glass gate; it is off by default.
+// A host stand-in makes the glass findable and its props readable.
+const mockGate = { glass: false }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 // ── Series route seams ──────────────────────────────────────────────
 const mockBack = jest.fn()
@@ -75,8 +82,11 @@ jest.mock("../../../contexts/DownloadsProvider", () => ({
 jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
   useWatchPreferences: () => ({ wifiOnly: false }),
 }))
+const mockQuery = jest.fn()
 jest.mock("../../../lib/apolloClient", () => ({
-  getApolloClient: () => ({ query: jest.fn() }),
+  getApolloClient: () => ({
+    query: (...args: unknown[]) => mockQuery(...args),
+  }),
 }))
 jest.mock("../../../lib/queries", () => ({
   GET_VIDEO_DUB: "GET_VIDEO_DUB",
@@ -90,25 +100,103 @@ jest.mock("../../../lib/seriesDownloadResolver", () => ({
   resolveSeriesDownload: (...args: unknown[]) => mockResolveSeries(...args),
 }))
 
+// ── UI language seams ───────────────────────────────────────────────
+// Fixture `ru` and `fr` catalogs join the real set, so a test can change the
+// UI language while the sheet is on screen.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: {
+          DownloadQuality: {
+            highest: "Наилучшее",
+            high: "Высокое",
+            low: "Низкое",
+          },
+          Subtitles: { off: "Выкл.", noSubtitles: "Без субтитров" },
+          DownloadSheet: {
+            offlineWatching: "Офлайн-просмотр",
+            downloadButton: "Скачать",
+            downloadVideoAriaLabel: "Скачать видео",
+          },
+          SeriesDownload: {
+            downloadAll: "Скачать все",
+            downloadAllAriaLabel: "Скачать все серии",
+          },
+        },
+        fr: {
+          DownloadSheet: {
+            termsTitle: "Conditions d'utilisation",
+            cancel: "Annuler",
+            accept: "Accepter",
+            acceptTermsAriaLabel: "Accepter les conditions d'utilisation",
+            agreeAriaLabel: "J'accepte les conditions d'utilisation",
+            agreeToTerms: "J'accepte les {terms}.",
+            termsLink: "conditions d'utilisation",
+            readTermsAriaLabel: "Lire les conditions d'utilisation",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru", "fr"],
+    ),
+)
+
 import { act } from "react"
 import { Alert } from "react-native"
+import { StyleSheet } from "react-native"
+
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { getT } from "../../../i18n/useT"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
 
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
-  DOWNLOAD_MODE_LABELS,
   DownloadSheetContent,
-  formatSeriesReuseNote,
-  rawModeLabel,
+  TermsAcceptanceRow,
+  TermsModal,
   suspendedInRawMode,
   type DownloadMode,
 } from "../DownloadSheet"
+import { TERMS_OF_USE_PARAGRAPHS } from "../../../lib/terms-of-use"
+import { rawModeLabel } from "../../../lib/rawModeLabel"
 import {
   summarizeResolution,
   type SeriesEpisodeResolution,
 } from "../../../lib/seriesDownloadResolver"
 import type { QualityTier } from "../../../lib/downloadTiers"
 import type { OfflineDownloadRecord } from "../../../lib/offlineManifest"
-import type { WatchDownload, WatchSubtitle } from "../../../lib/normalizeVideo"
+import type {
+  WatchDownload,
+  WatchEpisode,
+  WatchSubtitle,
+} from "../../../lib/normalizeVideo"
+import {
+  adminFormsFor,
+  type AdminLanguageForms,
+} from "../../../i18n/adminLanguage"
 import {
   TestRenderer,
   hasText,
@@ -126,6 +214,16 @@ import {
 const rawExportConstants = jest.requireMock(
   "../../../lib/rawExportConstants",
 ) as { RAW_EXPORT_ENABLED: boolean }
+
+// The English the two mode rows read. Jest runs the app as iOS, so the raw row
+// names Files.
+const DOWNLOAD_MODE_LABELS = {
+  offline: "Offline Watching",
+  raw: "Save to Files",
+} as const
+const REUSE_ALL = "3 of 3 episodes reuse an offline copy at this quality."
+const REUSE_NONE =
+  "0 of 3 episodes reuse an offline copy at this quality. The other episodes download again."
 
 // ── Fixtures ────────────────────────────────────────────────────────
 
@@ -154,11 +252,16 @@ const DOWNLOADS: WatchDownload[] = [
 ]
 
 const EPISODE_SLUGS = ["ep-one", "ep-two", "ep-three"] as const
-const TIERS: readonly QualityTier[] = ["Highest", "High", "Low"]
+const TIERS: readonly QualityTier[] = ["highest", "high", "low"]
 
 // Module scope, and returned by identity: a fresh series object per render
 // re-creates the route's resolve callback and spins the mount effect forever.
-const mockSeries = {
+const mockSeries: {
+  slug: string
+  title: string
+  episodes: WatchEpisode[]
+  adminForms?: AdminLanguageForms
+} = {
   slug: "washi-gospel",
   title: "Washi Gospel",
   episodes: EPISODE_SLUGS.map((slug, index) => ({
@@ -207,11 +310,11 @@ function buildResolution(tier: QualityTier) {
 
 /** A verified offline copy of every episode at the Highest tier. */
 function savedRecord(slug: string): OfflineDownloadRecord {
-  return savedRecordAt(slug, "Highest")
+  return savedRecordAt(slug, "highest")
 }
 
 /**
- * The same copy at a named tier. "Highest" is ALSO the sheet's own opening
+ * The same copy at a named tier. "highest" is ALSO the sheet's own opening
  * default, so a fixture saved there cannot tell an assignment apart from the
  * value the state already held.
  */
@@ -375,7 +478,7 @@ async function chooseQuality(
   renderer: TestInstance,
   section: string,
   current: string,
-  next: QualityTier,
+  next: string,
 ) {
   await press(pressableByLabel(renderer, `${section}, ${current}`))
   await press(pressableByLabel(renderer, next))
@@ -414,16 +517,19 @@ afterEach(() => {
 // Owner decision 2026-09-11: the two rows carry the whole choice. No section
 // header, no description beside either label.
 describe("mode control copy", () => {
-  it("names each mode by its destination", () => {
-    expect(DOWNLOAD_MODE_LABELS.offline).toBe("Offline Watching")
-    expect(DOWNLOAD_MODE_LABELS.raw).toBe("Save to Files")
+  it("names each mode by its destination", async () => {
+    const renderer = await renderSheet()
+    expect(radioByLabel(renderer, "Offline Watching")).not.toBeNull()
+    expect(radioByLabel(renderer, "Save to Files")).not.toBeNull()
+    await unmount(renderer)
   })
 
   it("names the platform's OWN file destination on each platform", () => {
     // jest runs this app as iOS only, so the Android wording is unreachable
     // through the rendered sheet. Pin the resolver directly instead.
-    expect(rawModeLabel("ios")).toBe("Save to Files")
-    expect(rawModeLabel("android")).toBe("Save to Device")
+    const t = getT("DownloadSheet")
+    expect(rawModeLabel("ios", t)).toBe("Save to Files")
+    expect(rawModeLabel("android", t)).toBe("Save to Device")
   })
 
   it("renders no section header above the two rows", async () => {
@@ -986,11 +1092,11 @@ describe("series sheet mode control", () => {
     // Switching to raw re-defaults the quality to the saved tier, so every
     // episode reuses its copy without the viewer touching the picker.
     await chooseMode(renderer, "raw")
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
     // Picking a tier nothing is saved at is what drops the reuse to zero.
     await chooseQuality(renderer, "Quality", "Highest", "Low")
-    expect(hasText(renderer, formatSeriesReuseNote(0, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_NONE)).toBe(true)
 
     await unmount(renderer)
   })
@@ -1046,16 +1152,16 @@ describe("series sheet opened for an export", () => {
 
   it("keeps the saved quality, so every episode reuses its offline copy", async () => {
     // Saved at a tier that is NOT the sheet's opening default, so only the
-    // assignment can produce this result. With the fixture at "Highest" the
+    // assignment can produce this result. With the fixture at "highest" the
     // assignment writes the value the state already holds, and deleting it
     // leaves the test green.
     mockGetRecord.mockImplementation((slug: string) =>
-      savedRecordAt(slug, "Low"),
+      savedRecordAt(slug, "low"),
     )
     const renderer = await renderSeries({ mode: "raw" })
 
     expect(nodeByLabel(renderer, "Quality, Low")).not.toBeNull()
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
     await unmount(renderer)
   })
@@ -1067,7 +1173,7 @@ describe("series sheet opened for an export", () => {
     // run, and the seed must leave it alone. The resolution is held open here
     // because it settles instantly otherwise, which skips this window.
     mockGetRecord.mockImplementation((slug: string) =>
-      savedRecordAt(slug, "Low"),
+      savedRecordAt(slug, "low"),
     )
     let releaseFirst!: () => void
     const held = new Promise<void>((resolve) => {
@@ -1110,8 +1216,311 @@ describe("series sheet opened for an export", () => {
     // Switching to raw moves back ONTO it, so the reuse is complete.
     await chooseMode(renderer, "raw")
     expect(nodeByLabel(renderer, "Quality, Highest")).not.toBeNull()
-    expect(hasText(renderer, formatSeriesReuseNote(3, 3))).toBe(true)
+    expect(hasText(renderer, REUSE_ALL)).toBe(true)
 
+    await unmount(renderer)
+  })
+})
+
+// KTD15: tier and "no subtitles" text comes from the catalog at render, and
+// each control whose label moved there keeps one RUM action name.
+describe("UI language", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  async function switchToRussian() {
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+  }
+
+  /** The distinct accessibility labels of the open panel's radio rows. */
+  function panelRows(renderer: TestInstance): string[] {
+    // The mode rows are radios too; their tap names hold in every language.
+    const isModeRow = (n: RenderedNode) =>
+      String(n.props["dd-action-name"] ?? "").startsWith("download-mode-")
+    return [
+      ...new Set(
+        renderer.root
+          .findAll(
+            (n) => n.props.accessibilityRole === "radio" && !isModeRow(n),
+          )
+          .map((n) => String(n.props.accessibilityLabel)),
+      ),
+    ]
+  }
+
+  it("keeps each video-sheet control's tap name in en and ru", async () => {
+    const renderer = await renderSheet()
+    await press(pressableByLabel(renderer, "Select a file size, Highest"))
+    const names = (labels: string[]) => [
+      tapActionName(pressableByLabel(renderer, labels[0])),
+      tapActionName(pressableByLabel(renderer, labels[1])),
+      tapActionName(radioByLabel(renderer, labels[2])!),
+      tapActionName(pressableByLabel(renderer, labels[3])),
+    ]
+    const english = names([
+      "Select a file size, Highest",
+      "High",
+      "Offline Watching",
+      "Download video",
+    ])
+
+    await switchToRussian()
+    // The open row now reads Russian, so the label alone would split the tap
+    // series by language.
+    expect(nodeByLabel(renderer, "High")).toBeNull()
+    expect(hasText(renderer, "Офлайн-просмотр")).toBe(true)
+    expect(hasText(renderer, "Скачать")).toBe(true)
+    const russian = names([
+      "Select a file size, Наилучшее",
+      "Высокое",
+      "Офлайн-просмотр",
+      "Скачать видео",
+    ])
+    expect(russian).toEqual(english)
+    expect(english).toEqual([
+      "download-quality-toggle",
+      "download-quality-option",
+      "download-mode-offline",
+      "download-confirm",
+    ])
+    await unmount(renderer)
+  })
+
+  it("reads the no-subtitles row from the catalog, with one tap name", async () => {
+    const renderer = await renderSheet({ subtitleLanguageSlug: null })
+    await press(pressableByLabel(renderer, "Subtitles, No subtitles"))
+    const englishName = tapActionName(
+      pressableByLabel(renderer, "No subtitles"),
+    )
+
+    await switchToRussian()
+    const russian = pressableByLabel(renderer, "Без субтитров")
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("download-subtitles-option")
+    await unmount(renderer)
+  })
+
+  it("sorts subtitle names by the UI tag", async () => {
+    const subtitles: WatchSubtitle[] = [
+      ...SUBTITLES,
+      {
+        documentId: "s-ru",
+        languageSlug: "russian",
+        languageName: "Русский",
+        languageBcp47: "ru",
+        vttSrc: "https://cdn.example.com/ru.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ]
+    const renderer = await renderSheet({ subtitles })
+    await press(pressableByLabel(renderer, "Subtitles, Spanish"))
+    expect(panelRows(renderer)).toEqual([
+      "No subtitles",
+      "English",
+      "Spanish",
+      "Русский",
+    ])
+
+    await switchToRussian()
+    // Russian collation puts Cyrillic before Latin.
+    expect(panelRows(renderer)).toEqual([
+      "Без субтитров",
+      "Русский",
+      "English",
+      "Spanish",
+    ])
+    await unmount(renderer)
+  })
+
+  it("keeps the series sheet's quality and confirm tap names", async () => {
+    const renderer = await renderSeries()
+    const english = [
+      tapActionName(pressableByLabel(renderer, "Quality, Highest")),
+      tapActionName(pressableByLabel(renderer, "Download all episodes")),
+    ]
+
+    await switchToRussian()
+
+    expect(hasText(renderer, "Скачать все")).toBe(true)
+    expect([
+      tapActionName(pressableByLabel(renderer, "Quality, Наилучшее")),
+      tapActionName(pressableByLabel(renderer, "Скачать все серии")),
+    ]).toEqual(english)
+    expect(english[1]).toBe("series-download-confirm")
+    await unmount(renderer)
+  })
+})
+
+// AE12, KTD17: in a French UI the terms window keeps the terms in English, read
+// by an English voice, while its own controls take the catalog's French.
+describe("the terms window and row in a French UI (AE12)", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  function startIn(tag: string) {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    startLocaleSync()
+    refreshLocale()
+  }
+
+  async function mount(
+    element: Parameters<typeof TestRenderer.create>[0],
+  ): Promise<TestInstance> {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(element)
+    })
+    return renderer
+  }
+
+  const modal = () =>
+    mount(<TermsModal visible onAccept={jest.fn()} onCancel={jest.fn()} />)
+  const row = () =>
+    mount(
+      <TermsAcceptanceRow
+        accepted={false}
+        onToggle={jest.fn()}
+        onOpenTerms={jest.fn()}
+      />,
+    )
+
+  /** Host Text contents, in render order. */
+  function texts(renderer: TestInstance): string[] {
+    return renderer.root
+      .findAll((node) => node.type === "Text")
+      .map((node) => String(node.props.children))
+  }
+
+  it("shows the terms in English, and its title and buttons in French", async () => {
+    startIn("fr-FR")
+    const renderer = await modal()
+
+    const paragraphs = renderer.root.findAll(
+      (node) =>
+        node.type === "Text" &&
+        TERMS_OF_USE_PARAGRAPHS.includes(node.props.children as string),
+    )
+    expect(paragraphs).toHaveLength(TERMS_OF_USE_PARAGRAPHS.length)
+    for (const node of paragraphs) {
+      expect(node.props.accessibilityLanguage).toBe("en")
+      expect(StyleSheet.flatten(node.props.style as never)).toMatchObject({
+        writingDirection: "ltr",
+      })
+    }
+    expect(hasText(renderer, "Conditions d'utilisation")).toBe(true)
+    expect(hasText(renderer, "Terms of Use")).toBe(false)
+    expect(hasText(renderer, "Accepter")).toBe(true)
+    expect(hasText(renderer, "Annuler")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("keeps the button tap names in both languages", async () => {
+    startIn("en-US")
+    const renderer = await modal()
+    const english = [
+      tapActionName(pressableByLabel(renderer, "Accept terms of use")),
+      tapActionName(pressableByLabel(renderer, "Cancel")),
+    ]
+
+    mockGetLocales.mockReturnValue(phoneLocales("fr-FR"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    expect([
+      tapActionName(
+        pressableByLabel(renderer, "Accepter les conditions d'utilisation"),
+      ),
+      tapActionName(pressableByLabel(renderer, "Annuler")),
+    ]).toEqual(english)
+    expect(english).toEqual(["download-terms-accept", "download-terms-cancel"])
+    await unmount(renderer)
+  })
+
+  it("reads the same English checkbox row as before", async () => {
+    const renderer = await row()
+    expect(texts(renderer)).toEqual(["I agree to the ", "Terms of Use"])
+    expect(
+      pressableByLabel(renderer, "I agree to the Terms of Use"),
+    ).toBeTruthy()
+    expect(pressableByLabel(renderer, "Read Terms of Use")).toBeTruthy()
+    await unmount(renderer)
+  })
+
+  it("puts the link where the French sentence puts it", async () => {
+    startIn("fr-FR")
+    const renderer = await row()
+    expect(texts(renderer)).toEqual([
+      "J'accepte les ",
+      "conditions d'utilisation",
+      ".",
+    ])
+    expect(
+      tapActionName(
+        pressableByLabel(renderer, "Lire les conditions d'utilisation"),
+      ),
+    ).toBe("download-terms-read")
+    await unmount(renderer)
+  })
+})
+
+// KTD16: the series sheet names subtitle tracks with the series screen's
+// captured forms, not with English and not with the live UI language.
+describe("series sheet subtitle names", () => {
+  afterEach(() => {
+    delete mockSeries.adminForms
+  })
+
+  it("reads each track's name in the captured language", async () => {
+    mockSeries.adminForms = adminFormsFor("fr")
+    mockQuery.mockResolvedValue({
+      data: {
+        videoDub: {
+          downloads: [],
+          videoEdition: {
+            subtitles: [
+              {
+                documentId: "sub-es",
+                vttSrc: "https://cdn.example.com/es.vtt",
+                language: {
+                  slug: "spanish",
+                  bcp47: "es",
+                  name: { en: "Spanish", fr: "Espagnol" },
+                },
+              },
+            ],
+          },
+        },
+      },
+    })
+    mockResolveSeries.mockImplementation(
+      async (
+        _episodes: unknown,
+        choice: { qualityTier: QualityTier },
+        deps: { getDubMedia: (id: string) => Promise<unknown> },
+      ) => {
+        await deps.getDubMedia("dub-ep-one")
+        return buildResolution(choice.qualityTier)
+      },
+    )
+
+    const renderer = await renderSeries()
+    await press(pressableByLabel(renderer, "Subtitles, No subtitles"))
+
+    expect(radioByLabel(renderer, "Espagnol")).not.toBeNull()
+    expect(radioByLabel(renderer, "Spanish")).toBeNull()
     await unmount(renderer)
   })
 })
@@ -1123,4 +1532,107 @@ describe("suspendedInRawMode", () => {
     expect(suspendedInRawMode("raw", true)).toBeUndefined()
     expect(suspendedInRawMode("offline", true)).toBe(true)
   })
+})
+
+// feat-705 U11, R16: on iOS 26 the terms window's near-black panel becomes one
+// full-panel glass. Elsewhere it keeps both of today's black fills.
+describe("the terms window panel", () => {
+  const OVERLAY_FILL = "rgba(0, 0, 0, 0.9)"
+  const PANEL_FILL = "rgba(0, 0, 0, 0.95)"
+
+  afterEach(() => {
+    mockGate.glass = false
+  })
+
+  async function openTerms(): Promise<TestInstance> {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <TermsModal visible onAccept={jest.fn()} onCancel={jest.fn()} />,
+      )
+    })
+    return renderer
+  }
+
+  function ancestors(node: RenderedNode): RenderedNode[] {
+    const chain: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      chain.push(at)
+    }
+    return chain
+  }
+
+  const styleOf = (node: RenderedNode) =>
+    StyleSheet.flatten(node.props.style as never) as
+      | { backgroundColor?: unknown; opacity?: unknown; flex?: unknown }
+      | undefined
+
+  /** Every view fill from the Accept button up to the window, inner first. */
+  function fillsAboveAccept(renderer: TestInstance): unknown[] {
+    return ancestors(pressableByLabel(renderer, "Accept terms of use"))
+      .filter((node) => typeof node.type === "string")
+      .map((node) => styleOf(node)?.backgroundColor)
+      .filter((fill) => fill !== undefined && fill !== "transparent")
+  }
+
+  it("draws the whole panel on one glass surface on iOS 26", async () => {
+    mockGate.glass = true
+    const renderer = await openTerms()
+
+    const glass = renderer.root.findAll((node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    expect(
+      ancestors(pressableByLabel(renderer, "Accept terms of use")),
+    ).toContain(glass[0])
+    expect(hasText(renderer, TERMS_OF_USE_PARAGRAPHS[0]!)).toBe(true)
+    // Untinted text measured 13:1 over the playing video (2026-10-15).
+    expect(glass[0]!.props.tintColor).toBeUndefined()
+    expect(glass[0]!.props).toMatchObject({
+      colorScheme: "dark",
+      glassEffectStyle: { style: "regular" },
+    })
+    expect(styleOf(glass[0]!)).toMatchObject({ flex: 1 })
+    expect(styleOf(glass[0]!)?.backgroundColor).toBeUndefined()
+    expect(fillsAboveAccept(renderer)).toEqual([])
+    await unmount(renderer)
+  })
+
+  it("puts no opacity on any view above the glass", async () => {
+    mockGate.glass = true
+    const renderer = await openTerms()
+    const [glass] = renderer.root.findAll((node) => node.type === "GlassView")
+    const above = ancestors(glass!)
+    expect(above.length).toBeGreaterThan(0)
+    for (const node of above) {
+      expect(styleOf(node)?.opacity).toBeUndefined()
+    }
+    await unmount(renderer)
+  })
+
+  it("keeps today's two black fills without Liquid Glass", async () => {
+    const renderer = await openTerms()
+    expect(renderer.root.findAll((node) => node.type === "GlassView")).toEqual(
+      [],
+    )
+    expect(fillsAboveAccept(renderer)).toEqual([PANEL_FILL, OVERLAY_FILL])
+    await unmount(renderer)
+  })
+
+  it.each([true, false])(
+    "keeps the window's slide motion (Liquid Glass %s)",
+    async (glass) => {
+      mockGate.glass = glass
+      const renderer = await openTerms()
+      const [modal] = renderer.root.findAll(
+        (node) =>
+          typeof node.type !== "string" &&
+          node.props.animationType !== undefined,
+      )
+      expect(modal?.props).toMatchObject({
+        animationType: "slide",
+        transparent: true,
+      })
+      await unmount(renderer)
+    },
+  )
 })

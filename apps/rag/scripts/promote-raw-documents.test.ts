@@ -46,8 +46,9 @@ describe("raw-document promotion CLI", () => {
         ["--source", "starting-with-god"],
         {
           RAG_LOCAL_DATABASE_URL: "postgresql://local:secret@localhost/rag",
-          JFRAG_POSTGRESQL_DB_URL: "postgresql://prod:secret@prod.example/rag",
-          JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+          FORGE_RAG_POSTGRESQL_DB_URL:
+            "postgresql://prod:secret@prod.example/rag",
+          FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
         },
         {
           sourceExists: () => true,
@@ -102,8 +103,9 @@ describe("raw-document promotion CLI", () => {
           "0123456789abcdef0123456789abcdef",
         ],
         {
-          JFRAG_POSTGRESQL_DB_URL: "postgresql://prod:secret@prod.example/rag",
-          JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+          FORGE_RAG_POSTGRESQL_DB_URL:
+            "postgresql://prod:secret@prod.example/rag",
+          FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
         },
         {
           sourceExists: () => true,
@@ -138,8 +140,9 @@ describe("raw-document promotion CLI", () => {
         "0123456789abcdef0123456789abcdef",
       ],
       {
-        JFRAG_POSTGRESQL_DB_URL: "postgresql://prod:secret@prod.example/rag",
-        JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+        FORGE_RAG_POSTGRESQL_DB_URL:
+          "postgresql://prod:secret@prod.example/rag",
+        FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
       },
       {
         sourceExists: () => true,

@@ -1,3 +1,5 @@
+import { sourceAdmissionDocument } from "./studio-source-admission"
+import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import {
@@ -13,6 +15,7 @@ import {
 import { STUDIO_RENDER_INPUT_BYTES } from "@forge/studio-contracts/render"
 import {
   createStudioAssetBroker,
+  prepareStudioRenderSources,
   readRetainedStudioSource,
   StudioBrokerError,
   type StudioBrokerClient,
@@ -37,7 +40,12 @@ export async function prepareStudioRenderInput(
         endMs: z.number(),
       }),
     )
-    .parse(await call("preview-sources", { projectId, document }))
+    .parse(
+      await call("preview-sources", {
+        projectId,
+        document: sourceAdmissionDocument(document),
+      }),
+    )
   const assets = createStudioAssetBroker(call, signal)
   const files: {
     name: string
@@ -48,29 +56,52 @@ export async function prepareStudioRenderInput(
   const media: StudioPreview["media"] = {},
     code: StudioPreview["code"] = {}
   let size = 0
+  const retainedBytes = new Map<
+    string,
+    Awaited<ReturnType<typeof assets.read>>
+  >()
+  const fileByDigest = new Map<string, string>()
   const read = async (
     ref: z.infer<typeof studioAssetReferenceSchema>,
     max = STUDIO_RENDER_INPUT_BYTES,
   ) => {
     signal.throwIfAborted()
+    const identity = JSON.stringify([ref.assetId, ref.versionId, ref.digest])
+    const prior = retainedBytes.get(identity)
+    if (prior) {
+      if (prior.length > max)
+        throw new StudioBrokerError("Render input exceeds its byte budget")
+      return prior
+    }
     const bytes = await assets.read(
       ref,
       Math.min(max, STUDIO_RENDER_INPUT_BYTES - size),
     )
     size += bytes.length
+    retainedBytes.set(identity, bytes)
     return bytes
   }
   const add = (name: string, bytes: Buffer) => {
+    const digest = createHash("sha256").update(bytes).digest("hex")
+    const prior = fileByDigest.get(digest)
+    if (prior) return prior
     if (files.some((file) => file.name === name))
       throw new StudioBrokerError("Duplicate render file")
     files.push({
       name,
-      digest: createHash("sha256").update(bytes).digest("hex"),
+      digest,
       size: bytes.length,
       base64: bytes.toString("base64"),
     })
+    fileByDigest.set(digest, name)
+    return name
   }
-  for (const entry of sources) {
+  const mediaStarts = studioMediaStartTimes(document)
+  for (const resolvedEntry of sources) {
+    const entry = {
+      ...resolvedEntry,
+      startMs: mediaStarts.get(resolvedEntry.itemId) ?? resolvedEntry.startMs,
+    }
     const { snapshot } = entry
     if (
       !proofKey ||
@@ -104,10 +135,10 @@ export async function prepareStudioRenderInput(
     if (info.segmentDurations.length !== manifest.media.length)
       throw new StudioBrokerError("Invalid retained export segment proof")
     const prefix = `source-${files.length}`,
-      names = manifest.media.map((_, i) => `${prefix}-${i}.ts`)
+      names = manifest.media.map((ref) => `source-${ref.digest}.ts`)
     for (let i = 0; i < manifest.media.length; i++)
-      add(names[i]!, await read(manifest.media[i]!))
-    const name = `${prefix}.m3u8`
+      names[i] = add(names[i]!, await read(manifest.media[i]!))
+    const playlistName = `${prefix}.m3u8`
     const playlist = Buffer.from(
       [
         "#EXTM3U",
@@ -126,7 +157,7 @@ export async function prepareStudioRenderInput(
     size += playlist.length
     if (size > STUDIO_RENDER_INPUT_BYTES)
       throw new StudioBrokerError("Render input exceeds its byte budget")
-    add(name, playlist)
+    const name = add(playlistName, playlist)
     media[entry.itemId] = {
       file: name,
       sourceStartMs: info.sourceStartMs,
@@ -144,8 +175,10 @@ export async function prepareStudioRenderInput(
         : ["audio/mpeg", "audio/wav", "audio/mp4", "audio/ogg"]
     if (!allowed.includes(asset.mimeType))
       throw new StudioBrokerError("Unsupported render asset type")
-    const name = `asset-${files.length}`
-    add(name, await read(item.asset, 32 * 1024 * 1024))
+    const name = add(
+      `asset-${files.length}`,
+      await read(item.asset, 32 * 1024 * 1024),
+    )
     media[item.id] = { file: name, sourceStartMs: 0, kind: item.kind }
   }
   const active = new Set(
@@ -161,4 +194,31 @@ export async function prepareStudioRenderInput(
     }).decode(await read(component.code, 32768))
   signal.throwIfAborted()
   return { input: studioPreviewSchema.parse({ document, media, code }), files }
+}
+
+/** Durable render leases own preparation too: canonical descriptors are resolved
+ * through the trusted broker, never client URLs or a human-edit impersonation.
+ * Materialization adds retained byte identities without editing the admitted revision. */
+export async function prepareStudioDraftRenderInput(
+  call: StudioBrokerClient,
+  projectId: string,
+  rawDocument: unknown,
+  proofKey: string,
+  signal: AbortSignal,
+  preparation: {
+    read(): Promise<unknown>
+    save(document: unknown): Promise<unknown>
+  },
+) {
+  const existing = await preparation.read()
+  const pinned =
+    existing ??
+    (await preparation.save(
+      (await prepareStudioRenderSources(call, projectId, rawDocument, signal))
+        .document,
+    ))
+  const { document } = z
+    .object({ document: studioDocumentSchema })
+    .parse(pinned)
+  return prepareStudioRenderInput(call, projectId, document, proofKey, signal)
 }

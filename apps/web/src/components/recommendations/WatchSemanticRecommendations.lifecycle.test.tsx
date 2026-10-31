@@ -31,17 +31,33 @@ vi.mock("next/link", () => {
 vi.mock("@/components/watch/MuxHoverPreview", () => ({
   MuxHoverPreview: () => null,
 }))
+vi.mock("@/components/recommendations/WatchRecommendationVerification", () => ({
+  WatchRecommendationVerification: ({
+    onToken,
+  }: {
+    onToken: (token: string) => void
+  }) => (
+    <button type="button" onClick={() => onToken("verified-token")}>
+      Verify recommendations
+    </button>
+  ),
+}))
 
+import { setRequestLocale } from "next-intl/server"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import enMessages from "../../../messages/en.json"
+import ruMessages from "../../../messages/ru.json"
 import {
   completeRecommendationConsentBootstrap,
   startRecommendationConsentBootstrap,
 } from "@/lib/recommendation-consent-bootstrap"
 import { RECOMMENDATION_TAB_CORRELATION_KEY } from "@/lib/recommendation-contracts"
 import {
+  acceptedEvidenceResponse,
   container,
   delivery,
   deliveryWithTwoItems,
+  deferred,
   flush,
   jsonResponse,
   observerCallback,
@@ -57,6 +73,170 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     startRecommendationConsentBootstrap()
     completeRecommendationConsentBootstrap()
   })
+
+  it("keeps the legacy delivery body compatible while sending a stable visit header", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({
+              delivery: {
+                ...delivery,
+                result: "empty",
+                requestId: null,
+                items: [],
+              },
+            })
+          : jsonResponse({ receipts: [] }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    const deliveryCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(deliveryCall).toBeDefined()
+    const init = deliveryCall?.[1] as RequestInit
+    expect(JSON.parse(String(init.body))).toEqual({
+      seedMediaId: "seed-1",
+      locale: "en",
+      audioLanguageSlug: "english",
+    })
+    expect(
+      (init.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+  })
+
+  it("requests verification only after an active signal and retries the same visit", async () => {
+    let deliveryCount = 0
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          deliveryCount += 1
+          return deliveryCount === 1
+            ? jsonResponse({
+                delivery: {
+                  ...delivery,
+                  result: "empty",
+                  items: [],
+                  requestId: null,
+                },
+                verificationRequired: true,
+                verificationSiteKey: "watch-site-key",
+              })
+            : jsonResponse({ delivery })
+        }
+        return acceptedEvidenceResponse(init)
+      },
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(container.textContent).toContain("Verify recommendations")
+    const verify = container.querySelector("button")!
+    act(() => verify.click())
+    await flush()
+    const calls = fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(calls).toHaveLength(2)
+    const first = calls[0]?.[1] as RequestInit
+    const second = calls[1]?.[1] as RequestInit
+    expect(
+      (second.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toBe(
+      (first.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    )
+    expect(JSON.parse(String(second.body)).turnstileToken).toBe(
+      "verified-token",
+    )
+    expect(container.textContent).toContain("Target video")
+  })
+
+  it.each([-301, 0, 601])(
+    "characterizes render evidence from a client clock offset by %s seconds without terminal retry amplification",
+    async (clientOffsetSeconds) => {
+      const issuedAt = new Date("2026-09-23T00:00:00.000Z")
+      const expiresAt = new Date(issuedAt.getTime() + 600_000)
+      const clientNow = new Date(
+        issuedAt.getTime() + clientOffsetSeconds * 1_000,
+      )
+      vi.setSystemTime(clientNow)
+      let evidenceAttempts = 0
+      let evidenceOccurredAt: string | undefined
+      const fetchMock = vi.fn(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input)
+          if (url.endsWith("/api/recommendations")) {
+            return jsonResponse({
+              delivery: { ...delivery, expiresAt: expiresAt.toISOString() },
+            })
+          }
+          if (url.endsWith("/profile")) {
+            return jsonResponse({
+              profile: { state: "session_only", privacyGeneration: null },
+            })
+          }
+          evidenceAttempts += 1
+          const body = JSON.parse(String(init?.body)) as {
+            events: Array<{ occurredAt: string }>
+          }
+          evidenceOccurredAt = body.events[0]?.occurredAt
+          // Admin's separately tested signed-capability timestamp boundary.
+          const eventTime = new Date(evidenceOccurredAt!).getTime()
+          return eventTime < issuedAt.getTime() - 300_000 ||
+            eventTime > expiresAt.getTime()
+            ? jsonResponse({ error: "invalid_request" }, 400)
+            : acceptedEvidenceResponse(init)
+        },
+      )
+      vi.stubGlobal("fetch", fetchMock)
+
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+          />,
+        )
+      })
+      await flush()
+      await act(async () => vi.advanceTimersByTimeAsync(10_000))
+
+      expect(evidenceOccurredAt).toBe(clientNow.toISOString())
+      expect(evidenceAttempts).toBe(1)
+      expect(container.textContent).toContain("Target video")
+      expect(
+        container.textContent?.includes(
+          "Recommendation activity could not be recorded.",
+        ),
+      ).toBe(clientOffsetSeconds !== 0)
+    },
+  )
 
   it("hides a stale slate while a changed Watch seed loads", async () => {
     let resolveReplacement!: (response: Response) => void
@@ -116,6 +296,95 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     expect(container.textContent).not.toContain("Target video")
   })
 
+  it("ignores a pending Simplified delivery after the same Mandarin page switches to Traditional", async () => {
+    const simplified = deferred<Response>()
+    const traditional = deferred<Response>()
+    const deliveryRequests: Array<{
+      locale: string
+      signal: AbortSignal | null | undefined
+    }> = []
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).endsWith("/api/recommendations")) {
+        return Promise.resolve(acceptedEvidenceResponse(init))
+      }
+      const body = JSON.parse(String(init?.body)) as {
+        locale: string
+        audioLanguageSlug: string
+      }
+      expect(body.audioLanguageSlug).toBe("mandarin-china")
+      deliveryRequests.push({ locale: body.locale, signal: init?.signal })
+      // Deliberately ignore abort so a late response exercises the stale-result fence.
+      return body.locale === "zh-Hans"
+        ? simplified.promise
+        : traditional.promise
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="zh-Hans"
+          audioLanguageSlug="mandarin-china"
+        />,
+      )
+    })
+    await flush()
+    expect(deliveryRequests.map(({ locale }) => locale)).toEqual(["zh-Hans"])
+
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="zh-Hant"
+          audioLanguageSlug="mandarin-china"
+        />,
+      )
+    })
+    await flush()
+    expect(deliveryRequests[0]?.signal?.aborted).toBe(true)
+    expect(container.querySelector("a")).toBeNull()
+
+    // Delivery shares the consent lock: settle the cancelled request before
+    // the new script can acquire it. Its late cards must never become visible.
+    simplified.resolve(
+      jsonResponse({
+        delivery: {
+          ...delivery,
+          requestId: "simplified-request",
+          items: [{ ...delivery.items[0], videoTitle: "Simplified title" }],
+        },
+      }),
+    )
+    await flush()
+    expect(container.textContent).not.toContain("Simplified title")
+    expect(deliveryRequests.map(({ locale }) => locale)).toEqual([
+      "zh-Hans",
+      "zh-Hant",
+    ])
+    expect(deliveryRequests[1]?.signal?.aborted).toBe(false)
+    expect(container.querySelector("a")).toBeNull()
+
+    traditional.resolve(
+      jsonResponse({
+        delivery: {
+          ...delivery,
+          requestId: "traditional-request",
+          items: [{ ...delivery.items[0], videoTitle: "Traditional title" }],
+        },
+      }),
+    )
+    await flush()
+    expect(container.textContent).toContain("Traditional title")
+
+    expect(container.textContent).not.toContain("Simplified title")
+    expect(
+      requestBodies(fetchMock).filter(
+        (body) => body.requestId === "simplified-request",
+      ),
+    ).toEqual([])
+  })
+
   it("leaves loading when delivery headers arrive but the JSON body exceeds the deadline", async () => {
     vi.stubGlobal(
       "fetch",
@@ -172,6 +441,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
       )
     })
     await flush()
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
+    ).toHaveLength(0)
     const card = container.querySelector("a")!
     act(() => {
       card.dispatchEvent(
@@ -215,6 +487,130 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     )
     expect(container.innerHTML).not.toContain("capability-secret")
   })
+
+  it("announces the opening video title from the active locale catalog", async () => {
+    let resolveSelection!: (response: Response) => void
+    // Hold the selection open so the busy announcement stays visible.
+    const selectionResponse = new Promise<Response>((resolve) => {
+      resolveSelection = resolve
+    })
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith("/api/recommendations")) {
+        return Promise.resolve(jsonResponse({ delivery }))
+      }
+      if (url.endsWith("/select")) return selectionResponse
+      return Promise.resolve(jsonResponse({ receipts: [] }))
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const openingTitle = ruMessages.VideoRecommendations.openingTitle
+    expect(openingTitle).not.toBe(enMessages.VideoRecommendations.openingTitle)
+
+    setRequestLocale("ru")
+    try {
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="ru"
+            audioLanguageSlug="russian"
+            navigate={vi.fn()}
+          />,
+        )
+      })
+      await flush()
+      const card = container.querySelector("a")!
+      act(() => {
+        card.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+      })
+
+      expect(card.getAttribute("aria-busy")).toBe("true")
+      expect(container.textContent).toContain(
+        openingTitle.replace("{title}", "Target video"),
+      )
+      expect(container.textContent).not.toContain("Opening Target video")
+    } finally {
+      resolveSelection(
+        jsonResponse({
+          claimNonce: requestBodies(fetchMock).find(
+            (body) => body.eventId != null,
+          )?.claimNonce,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        }),
+      )
+      await flush()
+      setRequestLocale("en")
+    }
+  })
+
+  it.each([
+    { name: "control-click", type: "click", button: 0, ctrlKey: true },
+    { name: "middle-click", type: "auxclick", button: 1, ctrlKey: false },
+  ])(
+    "records $name without delaying native new-tab navigation",
+    async (activation) => {
+      const fetchMock = vi.fn(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          if (String(input).endsWith("/api/recommendations"))
+            return jsonResponse({ delivery })
+          if (String(input).endsWith("/select"))
+            return jsonResponse({
+              claimNonce: JSON.parse(String(init?.body)).claimNonce,
+              canonicalHref: "/watch/target.html",
+              targetMediaId: "target-1",
+            })
+          return jsonResponse({ receipts: [] })
+        },
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      const navigate = vi.fn()
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />,
+        )
+      })
+      await flush()
+      const card = container.querySelector("a")!
+      const event = new MouseEvent(activation.type, {
+        bubbles: true,
+        cancelable: true,
+        button: activation.button,
+        ctrlKey: activation.ctrlKey,
+      })
+      act(() => card.dispatchEvent(event))
+      await flush()
+      expect(event.defaultPrevented).toBe(false)
+      expect(navigate).not.toHaveBeenCalled()
+      expect(card.getAttribute("href")).toBe("/target.html")
+      expect(card.innerHTML).not.toContain("capability-secret")
+      const selections = requestBodies(fetchMock).filter(
+        (body) => body.itemId && body.claimNonce,
+      )
+      expect(selections).toHaveLength(1)
+      expect(selections[0]).toMatchObject({
+        requestId: "request-1",
+        itemId: "item-1",
+        capability: "delivery-capability-secret",
+      })
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+      ).not.toBe(selections[0]?.claimNonce)
+      expect(JSON.stringify(sessionStorage)).not.toContain("capability-secret")
+      expect(
+        fetchMock.mock.calls.find(([url]) =>
+          String(url).endsWith("/select"),
+        )?.[1]?.keepalive,
+      ).toBe(true)
+    },
+  )
 
   it("allows only one component-wide selection attempt across different cards", async () => {
     let resolveSelection!: (response: Response) => void
@@ -329,17 +725,19 @@ describe("WatchSemanticRecommendations lifecycle", () => {
 
   it("fails open to the token-free trusted href on the short selection deadline without double navigation", async () => {
     let resolveSelectionBody!: (body: unknown) => void
+    let selectionSignal: AbortSignal | undefined
     const selectionBody = new Promise<unknown>((resolve) => {
       resolveSelectionBody = resolve
     })
     vi.stubGlobal(
       "fetch",
-      vi.fn((input: RequestInfo | URL) => {
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input)
         if (url.endsWith("/api/recommendations")) {
           return Promise.resolve(jsonResponse({ delivery }))
         }
         if (url.endsWith("/select")) {
+          selectionSignal = init?.signal ?? undefined
           return Promise.resolve({
             ok: true,
             json: () => selectionBody,
@@ -371,6 +769,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     await act(async () => vi.advanceTimersByTime(800))
     expect(navigate).toHaveBeenCalledOnce()
     expect(navigate).toHaveBeenCalledWith("/watch/target.html")
+    expect(selectionSignal?.aborted).toBe(false)
+    act(() => root.render(<div>replacement</div>))
+    expect(selectionSignal?.aborted).toBe(false)
 
     resolveSelectionBody({
       claimNonce: "late_claim_nonce_1234567890",

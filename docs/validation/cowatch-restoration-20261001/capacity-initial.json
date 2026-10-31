@@ -1,0 +1,41 @@
+{
+  "purpose": "one bounded release-specific aggregate operational admission",
+  "sqlSha256": "60906de11b1a3612f20f657ec5c8a774fd94e83680fb06f97313a09520195894",
+  "productionExecuted": true,
+  "dataMutations": 0,
+  "sourcePopulationQueries": 0,
+  "rawOutputRetained": false,
+  "status": "observed",
+  "health": {
+    "readOnly": "on",
+    "measuredAt": "2026-09-30T19:31:37.503373+00:00",
+    "lockWaiters": 0,
+    "ownerReleases": 3,
+    "recentRequests": 5927,
+    "latestRetention": {
+      "status": "succeeded",
+      "started_at": "2026-09-30T10:40:30.599+00:00",
+      "reason_code": null,
+      "completed_at": "2026-09-30T10:40:30.598+00:00",
+      "roots_deleted": 81,
+      "oldest_expired_at_after": null
+    },
+    "graphGenerations": 3,
+    "longTransactions": 0,
+    "replicationSlots": 0,
+    "residentWalBytes": 134217728,
+    "requestCapReached": false,
+    "graphAllocatedBytes": 158179328,
+    "ownerAllocatedBytes": 65536,
+    "oldestExpiredRequest": "2026-09-30T10:40:46.466+00:00",
+    "slotRetainedWalBytes": 0,
+    "recentEnglishRequests": 2975
+  },
+  "filesystem": {
+    "totalBytes": 48891670528,
+    "usedBytes": 38128263168,
+    "availableBytes": 10746630144,
+    "usePercent": "79%"
+  },
+  "recordedAt": "2026-09-30T19:31:38.159920+00:00"
+}

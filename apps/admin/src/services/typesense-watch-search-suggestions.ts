@@ -552,9 +552,11 @@ function phraseValidationCacheKey(
   suggestion: WatchSearchSuggestion,
   languageIdentity: string,
   fields: readonly string[],
+  collection: string,
 ): string {
   return [
     PHRASE_VALIDATION_CONTRACT_VERSION,
+    collection,
     languageIdentity,
     fields.join(","),
     comparablePhrase(suggestion.title),
@@ -568,12 +570,13 @@ async function validateQuerySuggestions(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  collection: string,
 ): Promise<WatchSearchSuggestion[]> {
   if (suggestions.length === 0) return []
 
   const fields = [...titleFields, ...metadataFields]
   const keys = suggestions.map((suggestion) =>
-    phraseValidationCacheKey(suggestion, languageIdentity, fields),
+    phraseValidationCacheKey(suggestion, languageIdentity, fields, collection),
   )
   const suggestionByKey = new Map(
     suggestions.map((suggestion, index) => [keys[index], suggestion]),
@@ -591,12 +594,15 @@ async function validateQuerySuggestions(
           if (!suggestion) {
             throw new Error("Missing phrase validation suggestion")
           }
-          return phraseValidationRequest(
-            suggestion.title,
-            titleFields,
-            metadataFields,
-            languageIdentity,
-          )
+          return {
+            ...phraseValidationRequest(
+              suggestion.title,
+              titleFields,
+              metadataFields,
+              languageIdentity,
+            ),
+            collection,
+          }
         }),
         { timeoutMs: WATCH_SEARCH_PHRASE_VALIDATION_TIMEOUT_MS },
       )
@@ -732,6 +738,8 @@ export class TypesenseWatchSearchSuggestionsService {
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
     private readonly logger: Pick<Console, "warn"> = console,
+    private readonly resolveCollection: () => string | Promise<string> = () =>
+      TYPESENSE_WATCH_LEXICAL_ALIAS,
   ) {}
 
   async suggest(
@@ -742,8 +750,14 @@ export class TypesenseWatchSearchSuggestionsService {
     const languageSlug = normalizedLanguageSlug(input.languageSlug)
     if (!languageSlug) return []
 
+    let collection: string
+    try {
+      collection = await this.resolveCollection()
+    } catch {
+      return []
+    }
     const requestState = suggestionRequestState(this.prisma)
-    const requestKey = `${languageSlug}\0${query}`
+    const requestKey = `${collection}\0${languageSlug}\0${query}`
     const existing = requestState.inFlight.get(requestKey)
     if (existing) return existing
     if (
@@ -753,7 +767,7 @@ export class TypesenseWatchSearchSuggestionsService {
     }
 
     requestState.activeRequests += 1
-    const request = this.fetchSuggestions(query, languageSlug)
+    const request = this.fetchSuggestions(query, languageSlug, collection)
     requestState.inFlight.set(requestKey, request)
     try {
       return await request
@@ -768,6 +782,7 @@ export class TypesenseWatchSearchSuggestionsService {
   private async fetchSuggestions(
     query: string,
     languageSlug: string,
+    collection: string,
   ): Promise<WatchSearchSuggestion[]> {
     try {
       const language = await resolveSuggestionLanguage(
@@ -784,13 +799,16 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       const [result] =
         await this.typesense.multiSearch<TypesenseWatchLexicalDocument>([
-          suggestionRequest(
-            query,
-            queryTokens,
-            titleFields,
-            metadataFields,
-            language.languageIdentity,
-          ),
+          {
+            ...suggestionRequest(
+              query,
+              queryTokens,
+              titleFields,
+              metadataFields,
+              language.languageIdentity,
+            ),
+            collection,
+          },
         ])
       if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
         return []
@@ -823,6 +841,7 @@ export class TypesenseWatchSearchSuggestionsService {
           titleFields,
           metadataFields,
           language.languageIdentity,
+          collection,
         )
       } catch {
         this.logger.warn(
@@ -839,10 +858,16 @@ export class TypesenseWatchSearchSuggestionsService {
 
 export function createTypesenseWatchSearchSuggestionsService(
   prisma: PrismaClient,
+  resolveCollection?: () => string | Promise<string>,
 ): TypesenseWatchSearchSuggestionsService | null {
   if (!watchSearchSuggestionsEnabled()) return null
   const client = createConfiguredTypesenseClient()
   return client
-    ? new TypesenseWatchSearchSuggestionsService(prisma, client)
+    ? new TypesenseWatchSearchSuggestionsService(
+        prisma,
+        client,
+        console,
+        resolveCollection,
+      )
     : null
 }

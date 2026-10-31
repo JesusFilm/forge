@@ -482,6 +482,7 @@ final class NativePlayerChromeView: UIView {
   var onExplore: (() -> Void)?
   var onAudio: (() -> Void)?
   var onSubtitles: (() -> Void)?
+  var onFeedback: (() -> Void)?
   var onScrubBegan: ((Double) -> Void)?
   var onCandidateChanged: ((Double) -> UIImage?)?
   var onScrubCommit: ((Double) -> Void)?
@@ -531,6 +532,11 @@ final class NativePlayerChromeView: UIView {
     symbol: "captions.bubble",
     title: "Subtitles",
     accessibilityLabel: "Subtitles"
+  )
+  private let feedbackButton = NativeChromeButton(
+    symbol: "text.bubble",
+    title: "Feedback",
+    accessibilityLabel: "Feedback"
   )
   private let loadingIndicator = UIActivityIndicatorView(style: .large)
   private var hideTimer: Timer?
@@ -591,7 +597,8 @@ final class NativePlayerChromeView: UIView {
     let actionRow = UIStackView(arrangedSubviews: [
       exploreButton,
       audioButton,
-      subtitleButton
+      subtitleButton,
+      feedbackButton
     ])
     actionRow.translatesAutoresizingMaskIntoConstraints = false
     actionRow.axis = .horizontal
@@ -671,6 +678,7 @@ final class NativePlayerChromeView: UIView {
       exploreButton.heightAnchor.constraint(equalToConstant: 62),
       audioButton.heightAnchor.constraint(equalToConstant: 62),
       subtitleButton.heightAnchor.constraint(equalToConstant: 62),
+      feedbackButton.heightAnchor.constraint(equalToConstant: 62),
 
       loadingIndicator.centerXAnchor.constraint(equalTo: centerXAnchor),
       loadingIndicator.centerYAnchor.constraint(equalTo: centerYAnchor)
@@ -717,6 +725,10 @@ final class NativePlayerChromeView: UIView {
     audioButton.alpha = hasAudio ? 1 : 0.42
     subtitleButton.isEnabled = hasSubtitles
     subtitleButton.alpha = hasSubtitles ? 1 : 0.42
+  }
+
+  func setFeedbackAvailable(_ available: Bool) {
+    feedbackButton.isHidden = !available
   }
 
   func updatePlayback(position: Double, duration: Double, isPaused: Bool) {
@@ -869,7 +881,8 @@ final class NativePlayerChromeView: UIView {
       startOverButton,
       exploreButton,
       audioButton,
-      subtitleButton
+      subtitleButton,
+      feedbackButton
     ]
     for button in buttons {
       button.onMenu = { [weak self] in
@@ -913,6 +926,7 @@ final class NativePlayerChromeView: UIView {
     exploreButton.addAction(UIAction { [weak self] _ in self?.onExplore?() }, for: .primaryActionTriggered)
     audioButton.addAction(UIAction { [weak self] _ in self?.onAudio?() }, for: .primaryActionTriggered)
     subtitleButton.addAction(UIAction { [weak self] _ in self?.onSubtitles?() }, for: .primaryActionTriggered)
+    feedbackButton.addAction(UIAction { [weak self] _ in self?.onFeedback?() }, for: .primaryActionTriggered)
   }
 
   @objc private func handleScrubPan(_ gesture: UIPanGestureRecognizer) {

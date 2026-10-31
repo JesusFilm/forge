@@ -75,3 +75,13 @@ environment and its protection rules, and confirm no existing Forge Pages tree
 will be displaced. If shared Pages ownership is rejected, stop and amend the
 architecture decision before considering the documented Railway static-host
 fallback; do not maintain both publishers.
+
+## Portal reuse
+
+The authenticated Sources section consumes the same committed
+`dashboard/compiled-data.json` via a serving-owned display projection. After the
+usual snapshot refresh and PR merge, normal RAG deployment makes that snapshot
+available to the portal; no browser or portal database refresh is introduced.
+Preserve `provenance.fetched_at` as the production observation time. The public
+Pages HTML and publication allowlist are unchanged. Source-brand grouping and
+portal-only filtering are documented in `portal/README.md`.

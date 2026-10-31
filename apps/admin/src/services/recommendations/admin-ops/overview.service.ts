@@ -179,7 +179,13 @@ export type RecommendationProfileShadowOverviewData = Readonly<{
 
 export type RecommendationPromotionOverviewData = Readonly<{
   generation: number
-  stage: "control" | "bounded" | "permanent"
+  stage: "control" | "bounded" | "permanent" | "owner_approved"
+  ownerRelease?: {
+    id: string
+    graphGenerationId: string
+    validUntil: Date
+    revoked: boolean
+  } | null
   activeManifestId: string
   targetManifestId: string | null
   lastKnownGoodManifestId: string

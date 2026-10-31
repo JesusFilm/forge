@@ -115,4 +115,42 @@ describe("watch-progress-server fail-soft contract", () => {
 
     expect(console.warn).not.toHaveBeenCalled()
   })
+
+  it.each(["unsafe", "getter", "non-error"])(
+    "keeps read, write and delete fail-soft when an error name is %s",
+    async (kind) => {
+      const error =
+        kind === "non-error"
+          ? "must-not-log-rejection-payload"
+          : new Error("must-not-log-error-message")
+      if (error instanceof Error) {
+        Object.defineProperty(error, "name", {
+          get() {
+            if (kind === "getter") throw new Error("name getter failed")
+            return `TimeoutError\n${"X".repeat(100)}`
+          },
+        })
+      }
+      vi.mocked(fetch).mockRejectedValue(error)
+
+      await expect(fetchWatchProgressForUser("user-1")).resolves.toEqual([])
+      await expect(
+        syncWatchProgressForUser({ userId: "user-1", entries: [entry] }),
+      ).resolves.toEqual([])
+      await expect(deleteWatchProgressForUser("user-1")).resolves.toBe(false)
+
+      const reason =
+        kind === "unsafe"
+          ? `TimeoutError_${"X".repeat(51)}`
+          : kind === "getter"
+            ? "object"
+            : "string"
+      expect(vi.mocked(console.warn).mock.calls.map(([line]) => line)).toEqual(
+        ["read", "write", "delete"].map(
+          (operation) =>
+            `[watch-progress-server] event=progress_${operation}_unavailable reason=${reason}`,
+        ),
+      )
+    },
+  )
 })

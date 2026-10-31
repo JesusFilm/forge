@@ -18,6 +18,10 @@ import type { ExperimentAssignmentResolution } from "./experiment/assignment"
 import type { RecommendationServingState } from "./manifest.service"
 import type { RecommendationRecentContext } from "./recent-context.service"
 import type { DeliveryCapabilityBinding } from "./token.service"
+import type {
+  CuratedDeliveryDiagnostics,
+  SemanticRetrievalDiagnostics,
+} from "./delivery-diagnostics"
 
 export type DeliveryTokenService = {
   activeKid: string
@@ -29,7 +33,12 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
+    | "precomputed"
   contributors: RecommendationCandidateContributor[]
   capability: string
 }
@@ -37,7 +46,8 @@ export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
 export type SemanticRecommendationDelivery = {
   contractVersion: typeof RECOMMENDATION_CONTRACTS.delivery
   surfaceVersion: typeof RECOMMENDATION_CONTRACTS.surface
-  strategyVersion: typeof RECOMMENDATION_CONTRACTS.strategy
+  strategyVersion: string
+  generationId?: string | null
   classifierVersion: typeof RECOMMENDATION_CONTRACTS.outcome
   requestId: string | null
   result: "served" | "fallback" | "empty" | "unavailable"
@@ -65,6 +75,8 @@ export type RecommendationPersonalizationDelivery = Readonly<{
 
 export type DeliveryDependencies = {
   prisma: PrismaClient
+  candidateTraceFormat?: "legacy" | "compact"
+  servedItemFormat?: "legacy" | "packed"
   admission: RecommendationDeliveryAdmission
   getServingState(input: {
     deadlineAt: number
@@ -75,6 +87,7 @@ export type DeliveryDependencies = {
     audioLanguageSlug: string
     limit: number
     deadlineAt: number
+    onDiagnostics?: (diagnostics: SemanticRetrievalDiagnostics) => void
   }): Promise<SemanticCandidatePoolItem[]>
   retrieveCuratedFallback?: (input: {
     seedMediaId: string
@@ -82,6 +95,7 @@ export type DeliveryDependencies = {
     audioLanguageSlug: string
     excludedMediaIds: readonly string[]
     deadlineAt: number
+    onDiagnostics?: (diagnostics: CuratedDeliveryDiagnostics) => void
   }) => Promise<CandidateNomination[]>
   recheckCached(
     items: SemanticCandidatePoolItem[],
@@ -112,9 +126,30 @@ export type DeliveryDependencies = {
     sessionDigest: string
     profileTokenDigest: string
     eligibleForEnrollment: boolean
+    clientDeliveryContract?: string | null
     now: Date
     deadlineAt: number
   }) => Promise<ExperimentAssignmentResolution>
+  resolveStudyAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+  >
+  composeCowatchTrial?: (
+    input: import("./delivery-trial.service").TrialCompositionInput,
+  ) => Promise<import("./delivery-trial.service").TrialCompositionResult>
+  resolveOwnerAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+  >
+  composeOwnerCowatch?: (
+    input: import("./delivery-owner.service").OwnerCompositionInput,
+  ) => Promise<import("./delivery-owner.service").OwnerCompositionResult>
   retrieveProfile?: (input: {
     sessionDigest: string
     profileTokenDigest: string | null
@@ -135,6 +170,7 @@ export type DeliveryDependencies = {
     sessionDigest: string
     profileTokenDigest: string | null
     allowDurableProfileLinks: boolean
+    locale: string
     now: Date
     deadlineAt: number
   }) => Promise<RecommendationRecentContext>
@@ -151,10 +187,16 @@ export type DeliveryDependencies = {
 export type DeliveryInput = {
   caller: Principal | null
   seedMediaId: string
+  /** Requested presentation locale. Chinese script variants retrieve zh transcripts. */
   locale: string
   audioLanguageSlug: string
   sessionDigest: string
   consentReceiptDigest?: string | null
   profileTokenDigest?: string | null
   eligibleHuman?: boolean
+  /** Private precomputed A/B owns assignment but keeps the live control route. */
+  suppressExperimentEnrollment?: boolean
+  deadlineAt?: number
+  trafficCategory?: string | null
+  clientDeliveryContract?: string | null
 }

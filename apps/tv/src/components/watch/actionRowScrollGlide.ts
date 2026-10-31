@@ -14,6 +14,7 @@ export const ACTION_ROW_PILLS = [
   "subtitles",
   "mylist",
   "share",
+  "feedback",
 ] as const
 
 export type ActionRowPill = (typeof ACTION_ROW_PILLS)[number]

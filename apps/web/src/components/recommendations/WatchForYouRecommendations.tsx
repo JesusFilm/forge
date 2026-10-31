@@ -1,5 +1,11 @@
 "use client"
 
+import {
+  waitForRecommendationActivation,
+  isDeferredRecommendationResponse,
+} from "@/lib/recommendation-activation"
+import { CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY } from "@/lib/recommendation-contracts"
+
 import Image from "next/image"
 import {
   useCallback,
@@ -29,7 +35,12 @@ import {
   RECOMMENDATION_TAB_CORRELATION_KEY,
   parseRecommendationEvidenceReceipts,
 } from "@/lib/recommendation-contracts"
+import {
+  RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
+} from "@/lib/recommendation-timeouts"
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
+import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
 
 const DELIVERY_COOLDOWN_MS = 5_000
 const DELIVERY_ATTEMPTS = 3
@@ -80,7 +91,7 @@ export function WatchForYouRecommendations({
   sectionKey?: string | null
   navigate?: (href: string) => void
 }) {
-  const t = useTranslations("WatchHome")
+  const t = useTranslations("Recommendations")
   const root = useRef<HTMLElement>(null)
   const [near, setNear] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -127,7 +138,7 @@ export function WatchForYouRecommendations({
     return () => {
       alive.current = false
       observer.disconnect()
-      selection.current?.abort()
+      if (!navigating.current) selection.current?.abort()
     }
   }, [])
   useEffect(() => {
@@ -140,7 +151,9 @@ export function WatchForYouRecommendations({
     const restore = (event: PageTransitionEvent) => {
       if (event.persisted) refresh()
     }
-    const leave = () => selection.current?.abort()
+    const leave = () => {
+      if (!navigating.current) selection.current?.abort()
+    }
     window.addEventListener("pagehide", leave)
     window.addEventListener("pageshow", restore)
     window.addEventListener("forge:recommendation-profile-changed", refresh)
@@ -160,6 +173,7 @@ export function WatchForYouRecommendations({
     selection.current = null
     navigating.current = false
     ledger.current.clear()
+    let recoveredDeferredResponse = false
     let retryTimer: ReturnType<typeof setTimeout> | undefined
     const fail = () => {
       const rect = root.current?.getBoundingClientRect()
@@ -191,6 +205,7 @@ export function WatchForYouRecommendations({
     const load = async (attempt: number) => {
       let retryable = true
       try {
+        await waitForRecommendationActivation(controller.signal)
         await waitForRecommendationConsentBootstrap()
         if (controller.signal.aborted) return
         const value = await withRecommendationConsentLock(() =>
@@ -214,6 +229,15 @@ export function WatchForYouRecommendations({
           ),
         )
         if (controller.signal.aborted) return
+        if (isDeferredRecommendationResponse(value)) {
+          if (recoveredDeferredResponse) {
+            fail()
+            return
+          }
+          recoveredDeferredResponse = true
+          void load(attempt)
+          return
+        }
         const parsed = Envelope.safeParse(value)
         if (!parsed.success) {
           observe(attempt, "unavailable", "invalid_response")
@@ -232,11 +256,20 @@ export function WatchForYouRecommendations({
           setState({ key, disabled: true })
           return
         }
+        const contextual =
+          result.requestId === null &&
+          result.items.length > 0 &&
+          result.items.every(
+            (item) =>
+              item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
+          )
         if (
-          result.result !== "served" ||
-          result.items.length !== 6 ||
-          !result.requestId ||
-          new Set(result.items.map((item) => item.targetMediaId)).size !== 6 ||
+          (result.result !== "served" &&
+            !(contextual && result.result === "fallback")) ||
+          (!contextual && result.items.length !== 6) ||
+          (!contextual && !result.requestId) ||
+          new Set(result.items.map((item) => item.targetMediaId)).size !==
+            result.items.length ||
           result.items.some((item, index) => item.position !== index)
         ) {
           observe(
@@ -268,7 +301,11 @@ export function WatchForYouRecommendations({
   }, [near, key, locale, audioLanguageSlug])
 
   const evidence = useCallback(
-    (item: Card, kind: "render" | "impression") => {
+    (
+      item: Card,
+      kind: "render" | "impression",
+      visibilityCapability: ExposureVisibilityCapability = "unknown",
+    ) => {
       if (!delivery?.requestId) return
       const ledgerKey = `${delivery.requestId}:${item.id}:${kind}`
       if (ledger.current.has(ledgerKey)) return
@@ -294,7 +331,7 @@ export function WatchForYouRecommendations({
                 occurredAt: new Date().toISOString(),
                 payload:
                   kind === "impression"
-                    ? { visibilityPolicy: SURFACE }
+                    ? { visibilityPolicy: SURFACE, visibilityCapability }
                     : { surfacePolicy: SURFACE },
               },
             ],
@@ -314,9 +351,9 @@ export function WatchForYouRecommendations({
     delivery?.items.forEach((item) => evidence(item, "render"))
   }, [delivery, evidence])
   const eligible = useCallback(
-    (id: string) => {
+    (id: string, capability: ExposureVisibilityCapability) => {
       const item = delivery?.items.find((item) => item.id === id)
-      if (item) evidence(item, "impression")
+      if (item) evidence(item, "impression", capability)
     },
     [delivery, evidence],
   )
@@ -335,7 +372,11 @@ export function WatchForYouRecommendations({
     )
       return
     event.preventDefault()
-    if (selection.current || navigating.current || !delivery?.requestId) return
+    if (!delivery?.requestId) {
+      navigate(item.canonicalHref)
+      return
+    }
+    if (selection.current || navigating.current) return
     const controller = new AbortController()
     selection.current = controller
     const claimNonce = randomRecommendationNonce()
@@ -344,6 +385,21 @@ export function WatchForYouRecommendations({
     } catch {
       /* Playback still opens without tab storage. */
     }
+    const finishNavigation = () => {
+      if (
+        !alive.current ||
+        controller.signal.aborted ||
+        selection.current !== controller ||
+        navigating.current
+      )
+        return
+      navigating.current = true
+      navigate(item.canonicalHref)
+    }
+    const navigationTimer = window.setTimeout(
+      finishNavigation,
+      RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+    )
     void recommendationJsonWithRetry(
       watchPath("/api/recommendations/select"),
       {
@@ -364,19 +420,12 @@ export function WatchForYouRecommendations({
           claimNonce,
         }),
       },
-      800,
+      RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
     )
       .catch(() => undefined)
       .then(() => {
-        if (
-          !alive.current ||
-          controller.signal.aborted ||
-          selection.current !== controller ||
-          navigating.current
-        )
-          return
-        navigating.current = true
-        navigate(item.canonicalHref)
+        window.clearTimeout(navigationTimer)
+        finishNavigation()
       })
   }
   if (current.disabled) return null
@@ -405,7 +454,7 @@ export function WatchForYouRecommendations({
         id="watch-for-you-heading"
         className="mb-6 text-2xl font-bold tracking-tight md:text-3xl"
       >
-        {title?.trim() || t("forYou")}
+        {title?.trim() || t("heading")}
       </h2>
       <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 xl:grid-cols-6">
         {delivery

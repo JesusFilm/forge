@@ -1,0 +1,26 @@
+{
+  "syntheticLocalFixture": true,
+  "productionExecuted": false,
+  "window": "Initial SSR and bundled component code; no response parsing before user submission",
+  "results": {
+    "before": {
+      "samples": 50,
+      "medianSsrMs": 0.5775079999999662,
+      "p95SsrMs": 1.8632690000000025,
+      "initialHtmlBytes": 1499,
+      "initialHtmlSha256": "d3d7343a7a181c68c6a03473fbb435d0102bd88cc9d81e3ea1446cfa864a2e11",
+      "isolatedBundleBytes": 22177,
+      "isolatedBundleGzipBytes": 7305
+    },
+    "after": {
+      "samples": 50,
+      "medianSsrMs": 0.3870579999999677,
+      "p95SsrMs": 1.0197200000000066,
+      "initialHtmlBytes": 1499,
+      "initialHtmlSha256": "d3d7343a7a181c68c6a03473fbb435d0102bd88cc9d81e3ea1446cfa864a2e11",
+      "isolatedBundleBytes": 22841,
+      "isolatedBundleGzipBytes": 7475
+    }
+  },
+  "initialMarkupUnchanged": true
+}

@@ -5,6 +5,10 @@
 const fs = require("fs")
 const path = require("path")
 
+// Explore's two feed players (KTD2): they swap roles on every swipe and never
+// belong to the root host, so the adapter's one-player session cannot hold them.
+const FEED_PLAYERS = "src/hooks/useFeedPlayers.ts"
+
 // Guard (todo 016): both expo-video player-creation APIs stay behind one
 // adapter. The allowlisted heroes own deliberately different player policies.
 const ALLOWED = new Set([
@@ -14,6 +18,7 @@ const ALLOWED = new Set([
   "src/components/home/HomeHeroPager.tsx",
   // SDUI hero renderer: viewport-pause/mute policy; follow-up candidate.
   "src/components/sections/VideoHeroRenderer.tsx",
+  FEED_PLAYERS,
   // Not a player policy: the shared test double names the API it stands in for.
   "src/test-utils/expoVideoMock.ts",
 ])
@@ -23,17 +28,17 @@ const ALLOWED = new Set([
 // player does NOT release with the component — the "outlives the route" hole.
 const RAW_USAGE = /\b(?:useVideoPlayer|createVideoPlayer)\b/
 
+function codeLines(content) {
+  return content.split("\n").filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+}
+
 // Pure detector over [{ relative, content }] so a positive-control fixture can
 // prove the mechanism flags a real violation, not just that today's tree is clean.
-function findRawUsage(entries) {
+function findRawUsage(entries, allowed = ALLOWED) {
   return entries
-    .filter((entry) => !ALLOWED.has(entry.relative))
+    .filter((entry) => !allowed.has(entry.relative))
     .filter((entry) =>
-      entry.content
-        .split("\n")
-        .some(
-          (line) => !/^\s*(\/\/|\*|\/\*)/.test(line) && RAW_USAGE.test(line),
-        ),
+      codeLines(entry.content).some((line) => RAW_USAGE.test(line)),
     )
     .map((entry) => entry.relative)
 }
@@ -48,9 +53,35 @@ function collectSourceFiles(dir, acc = []) {
   return acc
 }
 
+const ROOT = path.resolve(__dirname, "../../..")
+
+// U7: Mux Data monitors a player only through the adapter's monitor session.
+// The other raw players are heroes and the Explore feed, which the first
+// release does not monitor. U9 names the feed as the one later exception.
+const MUX_DATA_IMPORTERS = new Set(["src/hooks/useManagedVideoPlayer.ts"])
+const MUX_DATA_IMPORT =
+  /(?:\bfrom\s+|\brequire\s*\(\s*)["'][^"']*\/muxData(?:\/[^"']*)?["']/
+
+function findMuxDataImporters(entries) {
+  return entries
+    .filter((entry) => ALLOWED.has(entry.relative))
+    .filter((entry) => !MUX_DATA_IMPORTERS.has(entry.relative))
+    .filter((entry) =>
+      codeLines(entry.content).some((line) => MUX_DATA_IMPORT.test(line)),
+    )
+    .map((entry) => entry.relative)
+}
+
+function readFeedPlayers() {
+  return {
+    relative: FEED_PLAYERS,
+    content: fs.readFileSync(path.join(ROOT, FEED_PLAYERS), "utf8"),
+  }
+}
+
 describe("single expo-video adapter", () => {
   it("no raw player creation outside the adapter + allowlist", () => {
-    const root = path.resolve(__dirname, "../../..")
+    const root = ROOT
     const files = [
       ...collectSourceFiles(path.join(root, "src")),
       ...collectSourceFiles(path.join(root, "app")),
@@ -101,6 +132,69 @@ describe("single expo-video adapter", () => {
       "src/components/watch/Aliased.tsx",
       "src/components/watch/Detached.tsx",
       "src/components/watch/DetachedAliased.tsx",
+    ])
+  })
+
+  it("positive control: the feed players' entry is load-bearing", () => {
+    const feed = readFeedPlayers()
+    const withoutFeed = new Set(
+      [...ALLOWED].filter((file) => file !== FEED_PLAYERS),
+    )
+    expect(findRawUsage([feed], withoutFeed)).toEqual([FEED_PLAYERS])
+    expect(findRawUsage([feed])).toEqual([])
+  })
+
+  // KTD2: two useVideoPlayer hooks, so both players release with the feed.
+  // createVideoPlayer would outlive it, and a third player is a third decoder.
+  it("the feed creates exactly two players, both with useVideoPlayer", () => {
+    const code = codeLines(readFeedPlayers().content).join("\n")
+    expect(code.match(/\buseVideoPlayer\(/g)).toHaveLength(2)
+    expect(code).not.toMatch(/\bcreateVideoPlayer\b/)
+  })
+  it("no raw-player file except the adapter imports the Mux Data layer", () => {
+    const entries = [...ALLOWED].map((relative) => ({
+      relative,
+      content: fs.readFileSync(path.join(ROOT, relative), "utf8"),
+    }))
+    expect(findMuxDataImporters(entries)).toEqual([])
+    // Positive control on the real tree: the adapter does import it.
+    const adapter = entries.find(
+      (entry) => entry.relative === "src/hooks/useManagedVideoPlayer.ts",
+    )
+    expect(
+      codeLines(adapter.content).some((line) => MUX_DATA_IMPORT.test(line)),
+    ).toBe(true)
+  })
+
+  it("positive control: the Mux Data detector flags a raw player that imports it", () => {
+    const offenders = findMuxDataImporters([
+      {
+        relative: "src/components/home/HomeHeroPager.tsx",
+        content:
+          'import { createMuxMonitorSession } from "../../lib/muxData/monitorSession"',
+      },
+      {
+        relative: FEED_PLAYERS,
+        content: 'const mux = require("../lib/muxData/monitorSession")',
+      },
+      {
+        relative: "src/components/sections/VideoHeroRenderer.tsx",
+        content: "// mentions ../../lib/muxData in a comment only",
+      },
+      {
+        relative: "src/hooks/useManagedVideoPlayer.ts",
+        content:
+          'import { createMuxMonitorSession } from "../lib/muxData/monitorSession"',
+      },
+      {
+        relative: "src/components/watch/PlaybackHost.tsx",
+        content:
+          'import type { MuxDataOption } from "../../lib/muxData/monitorSession"',
+      },
+    ])
+    expect(offenders).toEqual([
+      "src/components/home/HomeHeroPager.tsx",
+      FEED_PLAYERS,
     ])
   })
 })

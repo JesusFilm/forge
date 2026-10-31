@@ -33,7 +33,32 @@ export type LastWatchedRecord = {
   /** Null for a record written before titles, or one whose title failed the
    *  sanitizer — the reminder copy then falls back to its untitled form. */
   videoTitle: string | null
+  /** The UI catalog tag the title was written under (KTD16). Only a titled
+   *  record has one; a record written before the field reads as English. */
+  titleLocale?: string
   recordedAt: number
+}
+
+// A catalog tag such as `es`, `zh-Hans`, or `es-419`. Optional on read, so
+// LAST_WATCHED_VERSION did not move when this field was added.
+const TITLE_LOCALE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/
+
+function isTitleLocale(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= 35 &&
+    TITLE_LOCALE_PATTERN.test(value)
+  )
+}
+
+/** The title and its language, or no title when the language is unusable. */
+function titleFields(
+  title: string | null,
+  locale: unknown,
+): Pick<LastWatchedRecord, "videoTitle" | "titleLocale"> {
+  if (title == null || locale === undefined) return { videoTitle: title }
+  if (!isTitleLocale(locale)) return { videoTitle: null }
+  return { videoTitle: title, titleLocale: locale }
 }
 
 function isStorableSlug(value: unknown): value is string {
@@ -85,6 +110,7 @@ export function parseStoredLastWatched(
       version?: unknown
       videoSlug?: unknown
       videoTitle?: unknown
+      titleLocale?: unknown
       recordedAt?: unknown
     } | null
     if (data == null || typeof data !== "object" || Array.isArray(data)) {
@@ -102,7 +128,10 @@ export function parseStoredLastWatched(
     // tap needs, and the copy has an untitled form.
     return {
       videoSlug: data.videoSlug,
-      videoTitle: sanitizeLastWatchedTitle(data.videoTitle),
+      ...titleFields(
+        sanitizeLastWatchedTitle(data.videoTitle),
+        data.titleLocale,
+      ),
       recordedAt: data.recordedAt,
     }
   } catch {
@@ -120,7 +149,10 @@ export function serializeLastWatched(record: LastWatchedRecord): string | null {
   return JSON.stringify({
     version: LAST_WATCHED_VERSION,
     videoSlug: record.videoSlug,
-    videoTitle: sanitizeLastWatchedTitle(record.videoTitle),
+    ...titleFields(
+      sanitizeLastWatchedTitle(record.videoTitle),
+      record.titleLocale,
+    ),
     recordedAt: record.recordedAt,
   })
 }
