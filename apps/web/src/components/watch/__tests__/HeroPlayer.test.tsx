@@ -1511,6 +1511,32 @@ describe("HeroPlayer — initial mount", () => {
     }
   })
 
+  it("keeps the poster instead of auto-starting the muted preview under reduced motion", async () => {
+    const idle = installIdleCallbackStub()
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+    })) as unknown as typeof window.matchMedia
+    try {
+      act(() => {
+        root.render(<HeroPlayer block={makeBlock()} />)
+      })
+
+      while (idle.pending > 0) await idle.runNext()
+      expect(muxVideoMock).not.toHaveBeenCalled()
+    } finally {
+      window.matchMedia = originalMatchMedia
+      idle.restore()
+    }
+  })
+
   it("defers idle muted activation while the hero is away from the viewport", async () => {
     const idle = installIdleCallbackStub()
     act(() => {

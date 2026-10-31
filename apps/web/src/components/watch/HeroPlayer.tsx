@@ -800,6 +800,12 @@ export function HeroPlayer({
 
     const canActivatePreview = () => {
       if (document.visibilityState === "hidden") return false
+      // A looping preview nobody asked for is exactly the motion a
+      // reduced-motion preference opts out of. The poster stays; Watch now
+      // and an `?autoplay=1` arrival still play (feat-762).
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        return false
+      }
       const wrapper = wrapperRef.current
       return wrapper ? isHeroNearViewport(wrapper, window) : true
     }
