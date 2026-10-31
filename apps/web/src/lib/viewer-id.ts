@@ -1,5 +1,7 @@
 "use client"
 
+import { randomUuid } from "@/lib/random-uuid"
+
 /**
  * U5 — Stable per-browser viewer identifier for Mux Data attribution on the
  * watch page.
@@ -17,30 +19,38 @@
  * if it's empty rather than fingerprinting an anonymous viewer.
  *
  * Private-browsing fallback: when `localStorage` is unavailable or throws
- * (Safari private mode quota error, restrictive CSP, etc.), we return a fresh
- * UUID per call. The viewer is then tracked as a different user across page
- * loads — acceptable degradation for an analytics signal.
+ * (Safari private mode quota error, restrictive CSP, etc.), we keep one
+ * in-memory UUID for the page. The viewer is then tracked as a different user
+ * across page loads — acceptable degradation for an analytics signal.
+ *
+ * The id is a non-secret analytics label, never authorization. If the browser
+ * has no cryptographic random source at all we return the empty string
+ * rather than break playback.
  */
 
 const VIEWER_ID_STORAGE_KEY = "forge.viewer_id"
 let volatileViewerId: string | null = null
 
 export function getViewerId(): string {
-  // SSR guard — `localStorage` and `crypto.randomUUID` are not available on
-  // the server. Caller should re-invoke after hydration.
+  // SSR guard — `localStorage` is not available on the server. Caller should
+  // re-invoke after hydration.
   if (typeof window === "undefined") return ""
 
   try {
     const stored = window.localStorage.getItem(VIEWER_ID_STORAGE_KEY)
     if (stored) return stored
-    const fresh = crypto.randomUUID()
+    const fresh = randomUuid()
     window.localStorage.setItem(VIEWER_ID_STORAGE_KEY, fresh)
     return fresh
   } catch {
     // Private browsing / disabled storage / quota errors — fall back to a
     // page-session in-memory UUID so Mux Data still receives a stable
     // non-empty value without persisting anything cross-page.
-    volatileViewerId ??= crypto.randomUUID()
+    try {
+      volatileViewerId ??= randomUuid()
+    } catch {
+      return ""
+    }
     return volatileViewerId
   }
 }
