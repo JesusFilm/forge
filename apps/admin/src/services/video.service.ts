@@ -7,6 +7,17 @@
 // service-layer `hasPermission` guard would 403 anonymous callers and
 // breaks `video.service.test.ts:52`. `getByCoreId` is service-to-service
 // only (Core sync internals) and keeps its guard.
+//
+// Content-visibility contract (fix for #1831 — 2026-10-23): `getById`,
+// `getBySlug`, and `getWatchHomeVideos` have no dashboard caller (public-only
+// lookups), so they unconditionally require at least one PUBLISHED,
+// non-deleted locale — mirrors `videoParentsFilter`/`videoChildrenFilter`.
+// `list`/`countActive` ARE also called by the dashboard's video library
+// (which must keep showing DRAFT videos to editors), so they take a `user`
+// and apply the same status gate only for non-EDITOR/ADMIN callers via
+// `videoPublishStatusWhere`. This is a visibility filter, not an auth
+// gate — it narrows returned rows, it never throws/403s, so it does not
+// reintroduce the `hasPermission` guard the paragraph above forbids.
 
 import {
   Prisma,
@@ -28,7 +39,8 @@ import {
 import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
 import {
   notRestrictedFromWatchWhere,
-  watchVisibilityWhere,
+  videoPublishStatusWhere,
+  videoVisibilityWhere,
 } from "./search-watchability"
 import { ForbiddenError } from "./errors"
 import { compareVideoImagesByDisplayPreference } from "./video-image-selection"
@@ -1473,8 +1485,18 @@ export class VideoService {
     return rows[0]?.count ?? 0
   }
 
-  async list({ input: raw, query }: { input: VideoListInput; query: object }) {
-    const filters = [videoListWhere(raw)]
+  async list({
+    input: raw,
+    query,
+    user,
+  }: {
+    input: VideoListInput
+    query: object
+    user: Principal | null
+  }) {
+    const filters = [videoListWhere(raw), videoPublishStatusWhere(user)].filter(
+      (filter) => Object.keys(filter).length > 0,
+    )
     if (raw.excludeWatchRestricted) filters.push(notRestrictedFromWatchWhere())
 
     return this.prisma.video.findMany({
@@ -1487,26 +1509,44 @@ export class VideoService {
   }
 
   async countActive(
-    input?:
+    input:
       | string
-      | Pick<VideoListInput, "category" | "collection" | "language" | "search">,
+      | Pick<VideoListInput, "category" | "collection" | "language" | "search">
+      | undefined,
+    user: Principal | null,
   ) {
     const normalizedInput =
       typeof input === "string" ? { search: input } : (input ?? {})
-    return this.prisma.video.count({ where: videoListWhere(normalizedInput) })
+    const filters = [
+      videoListWhere(normalizedInput),
+      videoPublishStatusWhere(user),
+    ].filter((filter) => Object.keys(filter).length > 0)
+    return this.prisma.video.count({
+      where: filters.length === 1 ? filters[0] : { AND: filters },
+    })
   }
 
   async getById({ id, query }: { id: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { id, deletedAt: null, ...notRestrictedFromWatchWhere() },
+      where: {
+        id,
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
+      },
     })
   }
 
   async getBySlug({ slug, query }: { slug: string; query: object }) {
     return this.prisma.video.findFirst({
       ...query,
-      where: { slug, deletedAt: null, ...notRestrictedFromWatchWhere() },
+      where: {
+        slug,
+        deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
+        ...notRestrictedFromWatchWhere(),
+      },
     })
   }
 
@@ -1628,16 +1668,10 @@ export class VideoService {
       PUBLIC_LANGUAGE_SLUG_PATTERN.test(subtitleLanguageSlug)
         ? subtitleLanguageSlug
         : null
-    const visibleVideo: Prisma.VideoWhereInput = isEditorOrAdmin(user)
-      ? { deletedAt: null }
-      : {
-          deletedAt: null,
-          locales: { some: { status: "PUBLISHED", deletedAt: null } },
-          ...notRestrictedFromWatchWhere(),
-        }
+    const visibleVideo = videoVisibilityWhere(user)
 
     const root = await this.prisma.video.findFirst({
-      where: { slug, deletedAt: null, ...watchVisibilityWhere(user) },
+      where: { slug, ...visibleVideo },
       select: {
         id: true,
         slug: true,
@@ -2217,6 +2251,7 @@ export class VideoService {
       where: {
         coreId: { in: uniqueCoreIds },
         deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
         ...notRestrictedFromWatchWhere(),
       },
     })

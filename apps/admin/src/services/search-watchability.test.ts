@@ -6,17 +6,13 @@ import {
   notRestrictedFromWatchSql,
   notRestrictedFromWatchWhere,
   SearchWatchabilityService,
-  watchVisibilityWhere,
+  videoPublishStatusWhere,
+  videoVisibilityWhere,
 } from "./search-watchability"
 
 const VIEWER: Principal = { id: "viewer-1", role: "VIEWER" }
 const EDITOR: Principal = { id: "editor-1", role: "EDITOR" }
 const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
-const CONSUMER_BEARER: Principal = {
-  id: null,
-  role: "CONSUMER_BEARER",
-  rateLimitBucketKey: "consumer-bucket-key",
-}
 
 describe("notRestrictedFromWatchWhere", () => {
   it("returns a NOT-has-watch where fragment", () => {
@@ -42,31 +38,51 @@ describe("notRestrictedFromWatchSql", () => {
   })
 })
 
-describe("watchVisibilityWhere", () => {
-  it("anonymous → excludes watch-restricted videos", () => {
-    expect(watchVisibilityWhere(null)).toEqual({
+describe("videoVisibilityWhere", () => {
+  it("anonymous → requires a non-deleted, PUBLISHED, unrestricted video", () => {
+    expect(videoVisibilityWhere(null)).toEqual({
+      deletedAt: null,
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
       NOT: { restrictViewPlatforms: { has: "watch" } },
     })
   })
 
-  it("VIEWER → excludes watch-restricted videos", () => {
-    expect(watchVisibilityWhere(VIEWER)).toEqual({
+  it("VIEWER → requires a non-deleted, PUBLISHED, unrestricted video", () => {
+    expect(videoVisibilityWhere(VIEWER)).toEqual({
+      deletedAt: null,
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
       NOT: { restrictViewPlatforms: { has: "watch" } },
     })
   })
 
-  it("CONSUMER_BEARER (web SSR) → excludes watch-restricted videos", () => {
-    expect(watchVisibilityWhere(CONSUMER_BEARER)).toEqual({
-      NOT: { restrictViewPlatforms: { has: "watch" } },
+  it("EDITOR → only excludes soft-deleted rows", () => {
+    expect(videoVisibilityWhere(EDITOR)).toEqual({ deletedAt: null })
+  })
+
+  it("ADMIN → only excludes soft-deleted rows", () => {
+    expect(videoVisibilityWhere(ADMIN)).toEqual({ deletedAt: null })
+  })
+})
+
+describe("videoPublishStatusWhere", () => {
+  it("anonymous → requires at least one PUBLISHED, non-deleted locale", () => {
+    expect(videoPublishStatusWhere(null)).toEqual({
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
     })
   })
 
-  it("EDITOR → no restriction (dashboard must show restricted videos)", () => {
-    expect(watchVisibilityWhere(EDITOR)).toEqual({})
+  it("VIEWER → requires at least one PUBLISHED, non-deleted locale", () => {
+    expect(videoPublishStatusWhere(VIEWER)).toEqual({
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+    })
   })
 
-  it("ADMIN → no restriction (dashboard must show restricted videos)", () => {
-    expect(watchVisibilityWhere(ADMIN)).toEqual({})
+  it("EDITOR → no status filter (dashboard must show DRAFT videos)", () => {
+    expect(videoPublishStatusWhere(EDITOR)).toEqual({})
+  })
+
+  it("ADMIN → no status filter (dashboard must show DRAFT videos)", () => {
+    expect(videoPublishStatusWhere(ADMIN)).toEqual({})
   })
 })
 

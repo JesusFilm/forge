@@ -1722,6 +1722,7 @@ builder.queryFields((t) => ({
           excludeWatchRestricted: true,
         },
         query,
+        user: ctx.user,
       }),
   }),
   watchHomeVideos: t.prismaField({

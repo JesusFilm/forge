@@ -168,6 +168,7 @@ describe("dashboard live data", () => {
         sort: undefined,
       },
       query: {},
+      user: principal,
     })
   })
 
