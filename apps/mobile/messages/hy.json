@@ -138,6 +138,7 @@
     "versesAriaValue": "Համարներ {first}-ից {last}, ընդամենը՝ {total}, {chapter}",
     "demoVerse": "Սահեցրեք վերև՝ հաջորդ համարին անցնելու համար",
     "demoChapter": "Սահեցրեք ձախ՝ հաջորդ գլխին անցնելու համար",
+    "demoChapterRtl": "Սահեցրեք աջ՝ հաջորդ գլխին անցնելու համար",
     "demoSkip": "Հպեք՝ բաց թողնելու համար",
     "demoSkipAriaLabel": "Բաց թողնել սահեցման ցուցադրումը",
     "selectVerseAriaHint": "Կրկնակի հպեք՝ այս համարն ընտրելու համար",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Ընտրեք գիրքը",
+    "chooseChapter": "Ընտրեք գլուխը",
+    "chooseVerse": "Ընտրեք համարը",
     "oldTestament": "Հին Կտակարան",
     "newTestament": "Նոր Կտակարան",
     "books": "Գրքեր",
@@ -193,7 +196,7 @@
     "someBooks": "{count}՝ {total, plural, one {# գրքից} other {# գրքից}}",
     "twoNames": "{first} և {second}",
     "threeNames": "{first}, {second} և {third}",
-    "onDevice": "Այս սարքում",
+    "downloaded": "Ներբեռնված է",
     "downloading": "Ներբեռնվում է՝ {percent}%",
     "downloadStopped": "Ներբեռնումը դադարեց",
     "updateAvailable": "Կա թարմացում",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Շարքի պաստառ",
     "videosHeading": "Տեսանյութեր",
     "detailsLoadError": "Չհաջողվեց բեռնել ամբողջական տվյալները։",
+    "languagesTitle": "Տեսանյութի լեզու",
     "searchLanguagesPlaceholder": "Որոնել լեզուներ…",
     "searchLanguagesAriaLabel": "Որոնել լեզուներ",
     "noLanguagesFound": "Լեզուներ չեն գտնվել",
@@ -502,6 +506,7 @@
     "resumeAt": "Շարունակել {time}-ից",
     "unknownLanguage": "Անհայտ",
     "downloadedStatus": "Ներբեռնված է",
+    "languagesTitle": "Տեսանյութի լեզու",
     "searchLanguagesPlaceholder": "Որոնել լեզուներ…",
     "searchLanguagesAriaLabel": "Որոնել լեզուներ",
     "noLanguagesFound": "Լեզուներ չեն գտնվել",
@@ -773,5 +778,8 @@
     "send": "Ուղարկել",
     "sending": "Ուղարկվում է…",
     "sendAriaLabel": "Ուղարկել արձագանքը"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Հավելվածն օգտագործում է ձեր տեղային ցանցը՝ հեռարձակման սարքեր գտնելու համար, որպեսզի կարողանաք տեսանյութեր նվագարկել ձեր հեռուստացույցով։"
   }
 }

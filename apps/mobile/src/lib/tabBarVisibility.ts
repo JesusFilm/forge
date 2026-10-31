@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react"
 
 /** Whether the iOS native tab bar is hidden: NativeTabs' only hide lever is the
- *  navigator-level `hidden` prop, which a screen's context cannot reach. No
- *  screen hides the bar since the downloads list moved to a root route. */
+ *  navigator-level `hidden` prop, which a screen's context cannot reach. Only
+ *  Explore's 2x hold hides the bar. */
 let hidden = false
 const listeners = new Set<() => void>()
 
@@ -26,6 +26,11 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): boolean {
+  return hidden
+}
+
+/** The current value, outside React. */
+export function isTabBarHidden(): boolean {
   return hidden
 }
 

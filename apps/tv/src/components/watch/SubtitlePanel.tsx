@@ -2,7 +2,7 @@
 // (GET_VIDEO_DUB), renders loading/error/empty/list states; "Subtitles off" and
 // Close stay focusable in EVERY state. Media→UI mapping lives in panelState.ts (jest-expo can't load .tsx).
 
-import { Modal, ScrollView, Text, View } from "react-native"
+import { Modal, Platform, ScrollView, Text, View } from "react-native"
 
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { TVFocusGuideView } from "../TVFocusGuideView"
@@ -14,8 +14,24 @@ import {
 import { PanelLoading } from "./PanelLoading"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
+import { NativeDetailsTrackPanel } from "./NativeDetailsTrackPanel"
 
-export function SubtitlePanel({
+type Props = {
+  visible: boolean
+  onClose: () => void
+  dataState?: DetailsDataState
+  onRetry?: () => void
+}
+
+export function SubtitlePanel(props: Props) {
+  if (Platform.OS === "android" || Platform.OS === "ios")
+    return props.visible ? (
+      <NativeDetailsTrackPanel kind="subtitles" {...props} />
+    ) : null
+  return <ReactSubtitlePanel {...props} />
+}
+
+function ReactSubtitlePanel({
   visible,
   onClose,
   dataState,

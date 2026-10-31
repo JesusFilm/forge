@@ -21,7 +21,7 @@ import {
   sameSessionContent,
   type MiniPlayerStore,
 } from "./store"
-import { canOriginateRoutePattern } from "./presentation"
+import { canOriginateRoutePattern, type SlotPage } from "./presentation"
 import { extractMuxPlaybackId } from "../muxThumbnail"
 import type { VideoPlayerCast } from "../../components/watch/VideoPlayer"
 import type {
@@ -128,17 +128,30 @@ export type PlaybackRequestSnapshot = {
    *  same reason `loadFailed` is: the host is a `<Stack>` SIBLING, so a route's
    *  layer cannot reach the host's React state by context or by prop. */
   playing: boolean
-  /** feat-553 KTD10: a reader covers the current slot, which keeps its rect.
-   *  `admitted` floats the video; `refused` hides the frame. The store always
-   *  sets this and the next field; a hand-built snapshot may omit them. */
-  cover?: ReaderCover | null
+  /** feat-553 KTD10: a reader, or another screen, covers the current slot,
+   *  which keeps its rect. `admitted` floats the video; `refused` hides the
+   *  frame. A hand-built snapshot may omit this and the fields below. */
+  cover?: SlotCover | null
+  /** What started the current slot's cover. Only a reader cover returns by a
+   *  pop and lays the window out for the reader. */
+  coverSource?: CoverSource | null
+  /** Another screen sits over the current slot's screen, which stays mounted.
+   *  The slot publishes it; the host decides whether that screen covers. */
+  underScreen?: boolean
+  /** The page that mounts the current slot, so only its own routes keep it
+   *  in view. Null when the slot named none. */
+  slotPage?: SlotPage | null
   /** feat-553 R10: the resting window frame, for a surface that must keep its
    *  own content clear of it. The host publishes it; null when no window rests. */
   windowFrame?: PlaybackRect | null
 }
 
-/** The admission answer a reader cover got for the current slot. */
-export type ReaderCover = "admitted" | "refused"
+/** The admission answer a cover got for the current slot. */
+export type SlotCover = "admitted" | "refused"
+
+/** A reader route (feat-553 KTD10), or any other screen pushed over the slot's
+ *  screen while that screen stays mounted. */
+export type CoverSource = "reader" | "screen"
 
 export type PlaybackRequestStore = ReturnType<typeof createPlaybackRequestStore>
 
@@ -304,7 +317,12 @@ function sameSession(
   )
 }
 
-type Slot = { request: PlaybackRequest; rect: PlaybackRect | null }
+type Slot = {
+  request: PlaybackRequest
+  rect: PlaybackRect | null
+  underScreen: boolean
+  page: SlotPage | null
+}
 
 export function createPlaybackRequestStore(deps: {
   sessionStore: MiniPlayerStore
@@ -319,12 +337,13 @@ export function createPlaybackRequestStore(deps: {
   // The request of a video whose slot has gone but whose session still owns the
   // player. This is what makes the player outlive the route (R1, R4).
   let retained: PlaybackRequest | null = null
-  // One reader cover at a time. `ownsSession` separates a session the cover
-  // started from one that was live before it (an expanded screen).
+  // One cover at a time. `ownsSession` separates a session the cover started
+  // from one that was live before it (an expanded screen).
   let cover: {
     slotId: number
     admitted: boolean
     ownsSession: boolean
+    source: CoverSource
   } | null = null
   let windowFrame: PlaybackRect | null = null
   let version = 0
@@ -336,6 +355,9 @@ export function createPlaybackRequestStore(deps: {
     loadFailed: false,
     playing: false,
     cover: null,
+    coverSource: null,
+    underScreen: false,
+    slotPage: null,
     windowFrame: null,
   }
   let reconciling = false
@@ -379,6 +401,7 @@ export function createPlaybackRequestStore(deps: {
     const id = currentSlotId()
     if (id != null) {
       const slot = slots.get(id) as Slot
+      const slotCover = cover?.slotId === id ? cover : null
       return {
         request: slot.request,
         rect: slot.rect,
@@ -386,11 +409,14 @@ export function createPlaybackRequestStore(deps: {
         loadFailed,
         playing,
         cover:
-          cover?.slotId === id
-            ? cover.admitted
+          slotCover == null
+            ? null
+            : slotCover.admitted
               ? "admitted"
-              : "refused"
-            : null,
+              : "refused",
+        coverSource: slotCover?.source ?? null,
+        underScreen: slot.underScreen,
+        slotPage: slot.page,
         windowFrame,
       }
     }
@@ -401,6 +427,9 @@ export function createPlaybackRequestStore(deps: {
       loadFailed,
       playing,
       cover: null,
+      coverSource: null,
+      underScreen: false,
+      slotPage: null,
       windowFrame,
     }
   }
@@ -496,9 +525,9 @@ export function createPlaybackRequestStore(deps: {
     },
 
     /** Mount a surface that wants the player. The newest one wins. */
-    attachSlot(request: PlaybackRequest): number {
+    attachSlot(request: PlaybackRequest, page: SlotPage | null = null): number {
       const id = nextSlotId++
-      slots.set(id, { request, rect: null })
+      slots.set(id, { request, rect: null, underScreen: false, page })
       commit()
       return id
     },
@@ -508,7 +537,7 @@ export function createPlaybackRequestStore(deps: {
       const slot = slots.get(id)
       if (slot == null) return
       if (samePlaybackRequest(slot.request, request)) return
-      slots.set(id, { request, rect: slot.rect })
+      slots.set(id, { ...slot, request })
       commit()
     },
 
@@ -525,7 +554,7 @@ export function createPlaybackRequestStore(deps: {
         previous.height === rect.height
       )
         return
-      slots.set(id, { request: slot.request, rect })
+      slots.set(id, { ...slot, rect })
       commit()
     },
 
@@ -553,10 +582,18 @@ export function createPlaybackRequestStore(deps: {
       commit()
     },
 
-    /** feat-553 KTD10: a reader sits over the current slot, which stays
-     *  attached. Admission decides once per cover whether the video floats.
-     *  Null when `id` is not the current slot. */
-    coverSlot(id: number): boolean | null {
+    /** The slot's screen went under another screen, or came back on top. */
+    setSlotUnderScreen(id: number, underScreen: boolean): void {
+      const slot = slots.get(id)
+      if (slot == null || slot.underScreen === underScreen) return
+      slots.set(id, { ...slot, underScreen })
+      commit()
+    },
+
+    /** feat-553 KTD10: a reader, or another screen, sits over the current
+     *  slot, which stays attached. Admission decides once per cover whether
+     *  the video floats. Null when `id` is not the current slot. */
+    coverSlot(id: number, source: CoverSource = "reader"): boolean | null {
       if (currentSlotId() !== id) return null
       if (cover?.slotId === id) return cover.admitted
       const slot = slots.get(id) as Slot
@@ -566,16 +603,19 @@ export function createPlaybackRequestStore(deps: {
         slotId: id,
         admitted,
         ownsSession: admitted && sessionBefore == null,
+        source,
       }
       commit()
       return admitted
     },
 
-    /** The reader left. A session the cover started ends with no report, so
+    /** The cover left. A session the cover started ends with no report, so
      *  the screen is back in its state before the cover (KTD10). */
     uncoverSlot(id: number): void {
       if (cover?.slotId !== id) return
-      const owned = cover.ownsSession
+      // A newer slot for the same video took the player (a tap on the window
+      // pushed it): that slot adopts the session, so it must stay.
+      const owned = cover.ownsSession && currentSlotId() === id
       cover = null
       const session = sessionStore.getSnapshot().session
       const descriptor = slots.get(id)?.request.session ?? null

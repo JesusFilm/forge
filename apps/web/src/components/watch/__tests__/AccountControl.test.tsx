@@ -13,7 +13,6 @@ function bootstrapResponse(account: unknown) {
   return Response.json({
     contractVersion: "watch-bootstrap-v1",
     account,
-    betaTesterCta: { enabled: false },
     watchProgress: { authenticated: false, userId: null, entries: [] },
   })
 }
@@ -344,6 +343,8 @@ describe("AccountControl", () => {
     floatingChrome.searchChromeVisible = false
     await act(async () => {
       root.render(<AccountControl />)
+    })
+    await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
 
@@ -415,5 +416,63 @@ describe("AccountControl", () => {
       ).not.toBeNull()
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+  it("ignores a late shared response after unmount without identifying a user", async () => {
+    let respond: ((response: Response) => void) | undefined
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            respond = resolve
+          }),
+      ),
+    )
+    await act(async () => root.render(<AccountControl />))
+    await act(async () => root.render(<></>))
+    await act(async () =>
+      respond?.(
+        bootstrapResponse({
+          accountGateEnabled: true,
+          authenticated: true,
+          user: { id: "late-user" },
+        }),
+      ),
+    )
+    expect(container.innerHTML).toBe("")
+    expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
+    expect(clearDatadogRumUserMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves public audio language, query and hash for auth after navigation", async () => {
+    Object.assign(window.location, {
+      pathname: "/watch/jesus.html/spanish-castilian.html",
+      search: "?t=12",
+      hash: "#chapter",
+    })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        bootstrapResponse({
+          accountGateEnabled: true,
+          authenticated: false,
+        }),
+      ),
+    )
+    await act(async () => root.render(<AccountControl />))
+    const button = container.querySelector("button") as HTMLButtonElement
+    const [input] = vi.mocked(fetch).mock.calls[0]
+    expect(new URL(String(input)).searchParams.get("callbackURL")).toBe(
+      "/watch/jesus.html/spanish-castilian.html?t=12#chapter",
+    )
+    Object.assign(window.location, {
+      pathname: "/watch/magdalena.html/arabic.html",
+      search: "",
+      hash: "#scene",
+    })
+    await act(async () => button.click())
+    expect(
+      new URL(assignSpy.mock.calls[0][0]).searchParams.get("returnTo"),
+    ).toBe("/watch/magdalena.html/arabic.html#scene")
   })
 })

@@ -90,7 +90,12 @@ export default function SeriesScreen() {
   // The language union (childDubLanguages) is fetched separately so the hero and
   // episode rail above don't wait on the ~835KB server aggregation. It feeds the
   // panel + hero count from its OWN state; the record carries no languages (KTD1).
-  const { data: langData } = useQuery(GET_SERIES_LANGUAGES, {
+  const {
+    data: langData,
+    loading: languagesLoading,
+    error: languagesError,
+    refetch: refetchLanguages,
+  } = useQuery(GET_SERIES_LANGUAGES, {
     variables: { slug: decodedSlug },
     skip: !decodedSlug,
     fetchPolicy: "cache-first",
@@ -418,6 +423,11 @@ export default function SeriesScreen() {
           funnels through closeLanguagePanel — one close, one refocusKey bump. */}
       <SeriesLanguagePanel
         visible={languagePanelVisible}
+        loading={languagesLoading}
+        error={languagesError != null}
+        onRetry={() => {
+          void refetchLanguages().catch(() => {})
+        }}
         languages={seriesLanguages.length > 0 ? seriesLanguages : NO_LANGUAGES}
         activeSlug={selectedSlug ?? trailer?.languageSlug ?? null}
         onSelect={handleLanguageSelect}

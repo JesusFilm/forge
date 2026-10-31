@@ -6,14 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   accountGateEnabled: vi.fn<() => Promise<boolean>>(),
-  globalBetaTesterCtaEnabled: vi.fn<() => Promise<boolean>>(),
   fetchWatchProgressForUser:
     vi.fn<(userId: string, signal?: AbortSignal) => Promise<unknown[]>>(),
 }))
 
 vi.mock("@/lib/feature-flags", () => ({
   isWatchDownloadAccountGateEnabled: mocks.accountGateEnabled,
-  isWatchGlobalBetaTesterCtaEnabled: mocks.globalBetaTesterCtaEnabled,
   watchDownloadAccountGateFlagContext: {
     custom: { surface: "watch-download" },
   },
@@ -29,6 +27,7 @@ async function importRoute() {
   vi.resetModules()
   vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
   vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
+  vi.stubEnv("NEXT_PUBLIC_CANONICAL_ORIGIN", "https://example.test")
   vi.stubEnv(
     "WEB_SESSION_SECRET",
     "test-session-secret-at-least-thirty-two-chars",
@@ -42,11 +41,11 @@ function anonymousRequest(callbackURL: string | null = "/watch/jesus/english") {
   return new Request(url)
 }
 
-async function signedInRequest() {
+async function signedInRequest(subject = "user_123") {
   const { WEB_AUTH_SESSION_COOKIE, createWebAuthSessionCookie } =
     await import("@/auth/web-session")
   const cookie = await createWebAuthSessionCookie({
-    subject: "user_123",
+    subject,
     email: "viewer@example.test",
     name: "Viewer Example",
     image: "https://example.test/avatar.jpg",
@@ -69,18 +68,18 @@ const progressEntry = {
 
 beforeEach(() => {
   mocks.accountGateEnabled.mockReset().mockResolvedValue(false)
-  mocks.globalBetaTesterCtaEnabled.mockReset().mockResolvedValue(false)
   mocks.fetchWatchProgressForUser.mockReset().mockResolvedValue([])
 })
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe("GET /watch/api/bootstrap", () => {
   it("answers an anonymous visitor in one private, uncached response", async () => {
     mocks.accountGateEnabled.mockResolvedValue(true)
-    mocks.globalBetaTesterCtaEnabled.mockResolvedValue(true)
     const { GET } = await importRoute()
 
     const response = await GET(anonymousRequest())
@@ -97,7 +96,6 @@ describe("GET /watch/api/bootstrap", () => {
         loginUrl:
           "https://example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fexample.test%2Fwatch%2Fjesus%2Fenglish",
       },
-      betaTesterCta: { enabled: true },
       watchProgress: { authenticated: false, userId: null, entries: [] },
     })
     // Progress is account-bound: anonymous visitors never reach the upstream.
@@ -142,7 +140,6 @@ describe("GET /watch/api/bootstrap", () => {
           image: "https://example.test/avatar.jpg",
         },
       },
-      betaTesterCta: { enabled: false },
       watchProgress: {
         authenticated: true,
         userId: "user_123",
@@ -165,7 +162,6 @@ describe("GET /watch/api/bootstrap", () => {
   })
 
   it("fails only the account section for a rejected callback destination", async () => {
-    mocks.globalBetaTesterCtaEnabled.mockResolvedValue(true)
     const { GET } = await importRoute()
 
     const response = await GET(
@@ -177,23 +173,6 @@ describe("GET /watch/api/bootstrap", () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toMatchObject({
       account: null,
-      betaTesterCta: { enabled: true },
-      watchProgress: { authenticated: false },
-    })
-  })
-
-  it("fails the beta tester CTA closed without touching the other sections", async () => {
-    mocks.globalBetaTesterCtaEnabled.mockRejectedValue(
-      new Error("LaunchDarkly unavailable"),
-    )
-    const { GET } = await importRoute()
-
-    const response = await GET(anonymousRequest())
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      account: { authenticated: false },
-      betaTesterCta: null,
       watchProgress: { authenticated: false },
     })
   })
@@ -206,7 +185,6 @@ describe("GET /watch/api/bootstrap", () => {
 
     await expect(response.json()).resolves.toMatchObject({
       account: null,
-      betaTesterCta: { enabled: false },
     })
   })
 
@@ -222,9 +200,8 @@ describe("GET /watch/api/bootstrap", () => {
     })
   })
 
-  it("aborts a slow progress read so account and CTA state still return", async () => {
+  it("aborts a slow progress read within the shared response budget", async () => {
     mocks.accountGateEnabled.mockResolvedValue(true)
-    mocks.globalBetaTesterCtaEnabled.mockResolvedValue(true)
     mocks.fetchWatchProgressForUser.mockImplementation(
       (_userId, signal) =>
         new Promise((_resolve, reject) => {
@@ -236,17 +213,20 @@ describe("GET /watch/api/bootstrap", () => {
     const { GET } = await importRoute()
     const request = await signedInRequest()
 
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
     const response = await GET(request)
 
+    expect(timeoutSpy).toHaveBeenCalledWith(1_500)
+    expect(mocks.fetchWatchProgressForUser.mock.calls[0]?.[1]?.aborted).toBe(
+      true,
+    )
     await expect(response.json()).resolves.toMatchObject({
       account: { authenticated: true },
-      betaTesterCta: { enabled: true },
       watchProgress: null,
     })
-    vi.useRealTimers()
   })
 
-  it("evaluates the session and both flags concurrently", async () => {
+  it("starts session verification while the account flag is pending", async () => {
     let releaseFlags: (() => void) | undefined
     const flagsGate = new Promise<void>((resolve) => {
       releaseFlags = resolve
@@ -255,18 +235,57 @@ describe("GET /watch/api/bootstrap", () => {
       await flagsGate
       return false
     })
-    mocks.globalBetaTesterCtaEnabled.mockImplementation(async () => {
-      await flagsGate
-      return false
-    })
     const { GET } = await importRoute()
 
-    const pending = GET(anonymousRequest())
-    await Promise.resolve()
-
+    const fetchMock = vi.fn(async () =>
+      Response.json({ user: { id: "compat-user" } }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const pending = GET(
+      new Request(`${ROUTE_URL}?callbackURL=%2Fwatch`, {
+        headers: { cookie: "better-auth.session_token=compat-fixture" },
+      }),
+    )
+    // The real compatibility verifier reaches its upstream before the flag
+    // resolves; only one verification serves account and progress.
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(mocks.accountGateEnabled).toHaveBeenCalledTimes(1)
-    expect(mocks.globalBetaTesterCtaEnabled).toHaveBeenCalledTimes(1)
     releaseFlags?.()
-    expect((await pending).status).toBe(200)
+    const response = await pending
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      account: { authenticated: true, user: { id: "compat-user" } },
+      watchProgress: { authenticated: true, userId: "compat-user" },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(mocks.fetchWatchProgressForUser).toHaveBeenCalledExactlyOnceWith(
+      "compat-user",
+      expect.any(AbortSignal),
+    )
+  })
+  it("does not reuse one visitor's account or progress in another request", async () => {
+    const { GET } = await importRoute()
+    mocks.fetchWatchProgressForUser.mockImplementation(async (userId) => [
+      {
+        ...progressEntry,
+        videoId: `${userId}-video`,
+      },
+    ])
+    const first = await GET(await signedInRequest("first-user"))
+    const second = await GET(await signedInRequest("second-user"))
+    const guest = await GET(anonymousRequest("/watch"))
+    expect(await first.text()).not.toContain("second-user")
+    const secondBody = await second.text()
+    expect(secondBody).toContain("second-user-video")
+    expect(secondBody).not.toContain("first-user")
+    const guestBody = await guest.text()
+    expect(guestBody).not.toContain("first-user")
+    expect(guestBody).not.toContain("second-user")
+    expect(mocks.fetchWatchProgressForUser).toHaveBeenCalledTimes(2)
+    for (const response of [first, second, guest]) {
+      expect(response.headers.get("cache-control")).toBe(
+        "private, no-cache, no-store, must-revalidate",
+      )
+    }
   })
 })

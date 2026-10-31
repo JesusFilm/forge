@@ -31,6 +31,7 @@ export default function LanguageSheetRoute() {
 
   return (
     <LanguageSheetContent
+      testID="screen-watch-language"
       variants={video.variants}
       activeVariantSlug={activeVariant?.slug ?? ""}
       downloadedDubDocumentId={downloadedDubDocumentId}

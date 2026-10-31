@@ -43,7 +43,9 @@ describe("native Swift player feature parity wiring", () => {
     expect(swift).toContain("self?.presentLanguages()")
     expect(swift).toContain("audioOptions.sorted")
     expect(swift).toContain("localizedCaseInsensitiveCompare")
-    expect(swift).toContain('self?.onAudioChange(["id": id])')
+    expect(swift).toContain('self.onAudioChange(["id": id])')
+    expect(swift).toContain("self.selectedAudioId == expectedAudioId")
+    expect(swift).toContain("self.sourceUrl == expectedSource")
     expect(react).toContain("session.setActiveVariantIndex(index)")
   })
 

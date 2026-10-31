@@ -398,6 +398,69 @@ describe("is the chapter on the device (R41)", () => {
   })
 })
 
+describe("a read from the device only (quote cards)", () => {
+  it("reads a downloaded book with no network call", async () => {
+    const parts = harness()
+    await parts.downloads.start(GUE)
+
+    await expect(
+      repositoryOf(parts).readOnDevice(request(JOHN_3)),
+    ).resolves.toEqual({
+      status: "ok",
+      text: JOHN_3,
+      source: "downloaded",
+      stale: false,
+    })
+    expect(parts.fetchChapter).not.toHaveBeenCalled()
+  })
+
+  it("gives null for a chapter that only the network has, and never fetches", async () => {
+    const parts = harness()
+    parts.fetchChapter.mockResolvedValue({ status: "ok", text: JOHN_3 })
+
+    await expect(
+      repositoryOf(parts).readOnDevice(request(JOHN_3)),
+    ).resolves.toBeNull()
+    expect(parts.fetchChapter).not.toHaveBeenCalled()
+  })
+
+  it("reads a fresh kept chapter, and treats a stale one as missing", async () => {
+    const parts = harness()
+    parts.cache.write(request(JOHN_3, SHA_GUE), JOHN_3)
+    const repository = repositoryOf(parts)
+
+    await expect(
+      repository.readOnDevice(request(JOHN_3, SHA_GUE)),
+    ).resolves.toMatchObject({ status: "ok", source: "kept", stale: false })
+    await expect(
+      repository.readOnDevice(request(JOHN_3, SHA_NEW)),
+    ).resolves.toBeNull()
+    expect(parts.fetchChapter).not.toHaveBeenCalled()
+  })
+
+  it("gives null when a source throws", async () => {
+    const parts = harness()
+    parts.downloads.readBook = () => Promise.reject(new Error("disk"))
+
+    await expect(
+      repositoryOf(parts).readOnDevice(request(JOHN_3)),
+    ).resolves.toBeNull()
+  })
+})
+
+describe("a tagged read", () => {
+  it("passes a quote card's tag to the network fetch", async () => {
+    const parts = harness()
+
+    await repositoryOf(parts).resolve(request(JOHN_3), { source: "quote" })
+
+    expect(parts.fetchChapter).toHaveBeenCalledWith(
+      { translationId: "gue_wbt", bookId: "JHN", chapter: 3 },
+      "quote",
+    )
+  })
+})
+
 describe("R25: the translation shown for a book", () => {
   const PARTIAL = translation("xyz_nt", ["MAT", "JHN"])
   const catalog = catalogOf(GUE, RUS, PARTIAL, BSB)

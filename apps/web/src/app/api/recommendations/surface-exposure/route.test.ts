@@ -1,3 +1,4 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { adminRecordWatchSurfaceExposureOperation } from "@forge/admin-graphql/operations"
 import { resetRecommendationMutationAdmissionForTests } from "@/lib/recommendation-mutation-admission"
@@ -101,5 +102,55 @@ describe("POST /watch/api/recommendations/surface-exposure", () => {
         .status,
     ).toBe(400)
     expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it.each(["thrown", "returned"])(
+    "maps %s Admin input rejection to terminal HTTP 400",
+    async (form) => {
+      const error = new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "Watch exposure timestamp is invalid",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      })
+      if (form === "thrown") mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+
+      const response = await POST(request([event]))
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({
+        error: "exposure_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledOnce()
+    },
+  )
+
+  it("keeps non-validation Admin failures retryable", async () => {
+    mutate.mockRejectedValueOnce(
+      new CombinedGraphQLErrors({
+        errors: [
+          {
+            message: "Unexpected error",
+            extensions: { code: "INTERNAL_SERVER_ERROR" },
+          },
+        ],
+      }),
+    )
+    const response = await POST(request([event]))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
+  })
+
+  it("does not classify an error message as structured invalid input", async () => {
+    mutate.mockRejectedValueOnce(new Error("BAD_USER_INPUT private details"))
+    const response = await POST(request([event]))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
   })
 })

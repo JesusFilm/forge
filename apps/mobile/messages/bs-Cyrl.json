@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихови {first} до {last} од {total}, {chapter}",
     "demoVerse": "Превуците нагоре за сљедећи стих",
     "demoChapter": "Превуците улијево за сљедеће поглавље",
+    "demoChapterRtl": "Превуците удесно за сљедеће поглавље",
     "demoSkip": "Додирните да прескочите",
     "demoSkipAriaLabel": "Прескочи приказ превлачења",
     "selectVerseAriaHint": "Двапут додирните да изаберете овај стих",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Изаберите књигу",
+    "chooseChapter": "Изаберите поглавље",
+    "chooseVerse": "Изаберите стих",
     "oldTestament": "Стари завјет",
     "newTestament": "Нови завјет",
     "books": "Књиге",
@@ -193,7 +196,7 @@
     "someBooks": "Број књига: {count} од укупно {total, plural, other {#}}",
     "twoNames": "{first} и {second}",
     "threeNames": "{first}, {second} и {third}",
-    "onDevice": "На овом уређају",
+    "downloaded": "Преузето",
     "downloading": "Преузимање {percent}%",
     "downloadStopped": "Преузимање прекинуто",
     "updateAvailable": "Доступно ажурирање",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Постер серије",
     "videosHeading": "Видео записи",
     "detailsLoadError": "Није могуће учитати све детаље.",
+    "languagesTitle": "Језик видеа",
     "searchLanguagesPlaceholder": "Претражи језике…",
     "searchLanguagesAriaLabel": "Претражи језике",
     "noLanguagesFound": "Нема пронађених језика",
@@ -502,6 +506,7 @@
     "resumeAt": "Настави од {time}",
     "unknownLanguage": "Непознат језик",
     "downloadedStatus": "Преузето",
+    "languagesTitle": "Језик видеа",
     "searchLanguagesPlaceholder": "Претражи језике…",
     "searchLanguagesAriaLabel": "Претражи језике",
     "noLanguagesFound": "Нема пронађених језика",
@@ -773,5 +778,8 @@
     "send": "Пошаљи",
     "sending": "Слање…",
     "sendAriaLabel": "Пошаљи повратне информације"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Апликација користи вашу локалну мрежу да пронађе уређаје за емитовање како бисте могли пуштати видео записе на свом телевизору."
   }
 }

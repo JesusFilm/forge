@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} ilə {last} arası ayələr, cəmi {total}, {chapter}",
     "demoVerse": "Növbəti ayə üçün yuxarı sürüşdürün",
     "demoChapter": "Növbəti fəsil üçün sola sürüşdürün",
+    "demoChapterRtl": "Növbəti fəsil üçün sağa sürüşdürün",
     "demoSkip": "Keçmək üçün toxunun",
     "demoSkipAriaLabel": "Sürüşdürmə nümayişini keç",
     "selectVerseAriaHint": "Bu ayəni seçmək üçün iki dəfə toxunun",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kitab seçin",
+    "chooseChapter": "Fəsil seçin",
+    "chooseVerse": "Ayə seçin",
     "oldTestament": "Əhdi-Ətiq",
     "newTestament": "Əhdi-Cədid",
     "books": "Kitablar",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# kitabdan} other {# kitabdan}} {count}",
     "twoNames": "{first} və {second}",
     "threeNames": "{first}, {second} və {third}",
-    "onDevice": "Bu cihazda",
+    "downloaded": "Yüklənib",
     "downloading": "Yüklənir: {percent}%",
     "downloadStopped": "Yükləmə dayandı",
     "updateAvailable": "Yeniləmə var",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serial afişası",
     "videosHeading": "Videolar",
     "detailsLoadError": "Tam məlumatı yükləmək mümkün olmadı.",
+    "languagesTitle": "Videonun dili",
     "searchLanguagesPlaceholder": "Dilləri axtar...",
     "searchLanguagesAriaLabel": "Dilləri axtar",
     "noLanguagesFound": "Dil tapılmadı",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} anından davam et",
     "unknownLanguage": "Naməlum",
     "downloadedStatus": "Yüklənib",
+    "languagesTitle": "Videonun dili",
     "searchLanguagesPlaceholder": "Dilləri axtar...",
     "searchLanguagesAriaLabel": "Dilləri axtar",
     "noLanguagesFound": "Dil tapılmadı",
@@ -773,5 +778,8 @@
     "send": "Göndər",
     "sending": "Göndərilir…",
     "sendAriaLabel": "Rəy göndər"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Tətbiq ötürmə cihazlarını tapmaq üçün yerli şəbəkənizdən istifadə edir ki, videoları televizorunuzda oynada biləsiniz."
   }
 }

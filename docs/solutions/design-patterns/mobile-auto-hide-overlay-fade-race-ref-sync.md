@@ -94,6 +94,8 @@ const handleTapPressIn = useCallback(() => {
 }, [controls])
 ```
 
+> **Superseded in part, 2026-10-16 (feat-705 follow-up, PR #2750).** The press no longer reveals the chrome, and `handleTapPressIn` and `wasVisibleRef` are gone. `handleTapPress` reads `controls.isVisibleNow()` at the tap, because a TalkBack activation calls `onPress` with no press-in. The single-tap timer reveals hidden chrome when `DOUBLE_TAP_MS` passes with no second tap, so a double tap on hidden chrome only seeks. The ground-truth rule of this section still holds.
+
 ### 4. Extract a pure transition reducer the hook USES — the testability technique
 
 The load-bearing invariant is the `hideDone` stale-completion guard: if a `reveal` arrived while the fade was running, the completion must find `visible: true` and keep the chrome mounted. Testing it requires a tap landing inside a 150ms window — unreachable in CI. Externalize the `(visible, mounted)` table as a pure function the hook actually calls:
@@ -177,7 +179,7 @@ Key files in this codebase:
 - `apps/mobile/src/lib/controlsVisibility.ts` — the pure three-event reducer with inline invariant comments.
 - `apps/mobile/src/lib/__tests__/controlsVisibility.test.ts` — six named cases covering all three events and the two race paths (reveal-wins-race, second-cycle-ends-visible).
 - `apps/mobile/src/hooks/useControlsVisibility.ts` — `hideNow` (eager ref flip + `nextControlsState("hideStart")`, completion via `nextControlsState("hideDone")`), `reveal`/`noteInteraction` (both `.stop()` the handle and call `nextControlsState("reveal")`), `isVisibleNow()` getter.
-- `apps/mobile/src/components/watch/VideoPlayer.tsx` — `handleTapPressIn` reads `controls.isVisibleNow()`; chrome render gates on `controls.mounted`.
+- `apps/mobile/src/components/watch/VideoPlayer.tsx` — `handleTapPressIn` reads `controls.isVisibleNow()`; chrome render gates on `controls.mounted`. (Superseded 2026-10-16: `handleTapPress` reads it at the tap. See the note in section 3.)
 - `apps/mobile/src/components/watch/PlayerControls.tsx` — seed-on-mount reads `player.muted` unconditionally before the duration guard.
 - `apps/mobile/src/lib/tapSeek.ts` — `classifyTap` / `singleTapAction`, the same pure-then-wire shape for tap disambiguation.
 

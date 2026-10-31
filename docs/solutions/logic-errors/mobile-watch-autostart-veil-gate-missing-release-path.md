@@ -250,6 +250,14 @@ singleTapTimerRef.current = setTimeout(() => {
 The `Pressable` itself stays ungated on purpose. It still drives the double-tap
 seek. The deferred hide is the part that must skip.
 
+> **Superseded in part, 2026-10-16 (feat-705 follow-up, PR #2750).** A tap no
+> longer reveals the chrome on press-in. The single-tap timer reveals hidden
+> chrome when the double-tap window ends, before the veil check, so the veil
+> check now guards the hide only. A double tap on hidden chrome only seeks. A
+> seek's own loading edge does not reveal hidden chrome within
+> `SEEK_LOADING_GRACE_MS` (`noteSeek` in `useControlsVisibility`). The veil rule
+> above, no hide while the veil is up, still holds.
+
 ### 4. Subscribe `statusChange` once per player, and seed the reset from the real status
 
 Before:

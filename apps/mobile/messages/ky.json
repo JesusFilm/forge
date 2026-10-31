@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-аяттан {last}-аятка чейин, жалпы {total} аят, {chapter}",
     "demoVerse": "Кийинки аят үчүн өйдө сүрүңүз",
     "demoChapter": "Кийинки бап үчүн солго сүрүңүз",
+    "demoChapterRtl": "Кийинки бап үчүн оңго сүрүңүз",
     "demoSkip": "Өткөрүп жиберүү үчүн таптаңыз",
     "demoSkipAriaLabel": "Сүрүү көрсөтмөсүн өткөрүп жиберүү",
     "selectVerseAriaHint": "Бул аятты тандоо үчүн эки жолу таптаңыз",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Китепти тандаңыз",
+    "chooseChapter": "Бапты тандаңыз",
+    "chooseVerse": "Аятты тандаңыз",
     "oldTestament": "Байыркы Осуят",
     "newTestament": "Жаңы Осуят",
     "books": "Китептер",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# китептин} other {# китептин}} {count}",
     "twoNames": "{first} жана {second}",
     "threeNames": "{first}, {second} жана {third}",
-    "onDevice": "Бул түзмөктө",
+    "downloaded": "Жүктөлүп алынды",
     "downloading": "Жүктөлүүдө {percent}%",
     "downloadStopped": "Жүктөп алуу токтоду",
     "updateAvailable": "Жаңыртуу бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Серия постери",
     "videosHeading": "Видеолор",
     "detailsLoadError": "Толук маалыматты жүктөө мүмкүн болбоду.",
+    "languagesTitle": "Видеонун тили",
     "searchLanguagesPlaceholder": "Тилдерди издөө…",
     "searchLanguagesAriaLabel": "Тилдерди издөө",
     "noLanguagesFound": "Тилдер табылган жок",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} жеринен улантуу",
     "unknownLanguage": "Белгисиз",
     "downloadedStatus": "Жүктөлүп алынды",
+    "languagesTitle": "Видеонун тили",
     "searchLanguagesPlaceholder": "Тилдерди издөө…",
     "searchLanguagesAriaLabel": "Тилдерди издөө",
     "noLanguagesFound": "Тилдер табылган жок",
@@ -773,5 +778,8 @@
     "send": "Жөнөтүү",
     "sending": "Жөнөтүлүүдө…",
     "sendAriaLabel": "Пикир жөнөтүү"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Колдонмо сыналгыга чыгаруучу түзмөктөрдү табуу үчүн жергиликтүү тармагыңызды колдонот, ошентип видеолорду сыналгыңызда ойното аласыз."
   }
 }

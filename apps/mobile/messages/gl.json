@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículos do {first} ao {last} de {total}, {chapter}",
     "demoVerse": "Desliza cara arriba para ver o seguinte versículo",
     "demoChapter": "Desliza cara á esquerda para ver o seguinte capítulo",
+    "demoChapterRtl": "Desliza cara á dereita para ver o seguinte capítulo",
     "demoSkip": "Toca para omitir",
     "demoSkipAriaLabel": "Omitir a demostración do xesto de deslizar",
     "selectVerseAriaHint": "Toca dúas veces para seleccionar este versículo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Escolle un libro",
+    "chooseChapter": "Escolle un capítulo",
+    "chooseVerse": "Escolle un versículo",
     "oldTestament": "Antigo Testamento",
     "newTestament": "Novo Testamento",
     "books": "Libros",
@@ -193,7 +196,7 @@
     "someBooks": "{count} de {total, plural, one {# libro} other {# libros}}",
     "twoNames": "{first} e {second}",
     "threeNames": "{first}, {second} e {third}",
-    "onDevice": "Neste dispositivo",
+    "downloaded": "Descargado",
     "downloading": "Descargando {percent} %",
     "downloadStopped": "Descarga detida",
     "updateAvailable": "Actualización dispoñible",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Cartel da serie",
     "videosHeading": "Vídeos",
     "detailsLoadError": "Non se puideron cargar todos os detalles.",
+    "languagesTitle": "Idioma do vídeo",
     "searchLanguagesPlaceholder": "Buscar idiomas…",
     "searchLanguagesAriaLabel": "Buscar idiomas",
     "noLanguagesFound": "Non se atopou ningún idioma",
@@ -502,6 +506,7 @@
     "resumeAt": "Continuar en {time}",
     "unknownLanguage": "Descoñecido",
     "downloadedStatus": "Descargado",
+    "languagesTitle": "Idioma do vídeo",
     "searchLanguagesPlaceholder": "Buscar idiomas…",
     "searchLanguagesAriaLabel": "Buscar idiomas",
     "noLanguagesFound": "Non se atopou ningún idioma",
@@ -773,5 +778,8 @@
     "send": "Enviar",
     "sending": "Enviando…",
     "sendAriaLabel": "Enviar comentarios"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "A app usa a túa rede local para atopar dispositivos nos que emitir, de xeito que poidas reproducir vídeos no teu televisor."
   }
 }

@@ -2,10 +2,12 @@ import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
 
 import { buildAccountSessionBody } from "@/lib/account-session-response"
-import { verifyAuthSession, type AuthSessionResult } from "@/lib/auth-session"
+import {
+  verifyAuthSessionAvailability,
+  type AuthSessionResult,
+} from "@/lib/auth-session"
 import {
   isWatchDownloadAccountGateEnabled,
-  isWatchGlobalBetaTesterCtaEnabled,
   watchDownloadAccountGateFlagContext,
 } from "@/lib/feature-flags"
 import {
@@ -43,30 +45,27 @@ function settle<T>(promise: Promise<T>): Promise<Settled<T>> {
  * without taking the others down.
  */
 export async function GET(request: Request): Promise<NextResponse> {
-  const [session, accountGateEnabled, betaTesterCtaEnabled] = await Promise.all(
-    [
-      settle(verifyAuthSession(request.headers)),
-      settle(
-        isWatchDownloadAccountGateEnabled(watchDownloadAccountGateFlagContext),
-      ),
-      settle(isWatchGlobalBetaTesterCtaEnabled()),
-    ],
-  )
+  const [session, accountGateEnabled] = await Promise.all([
+    settle(verifyAuthSessionAvailability(request.headers)),
+    settle(
+      isWatchDownloadAccountGateEnabled(watchDownloadAccountGateFlagContext),
+    ),
+  ])
 
   const body: WatchBootstrapResponse = {
     contractVersion: WATCH_BOOTSTRAP_CONTRACT,
     account:
-      session.ok && accountGateEnabled.ok
+      session.ok && session.value !== null && accountGateEnabled.ok
         ? buildAccountSessionBody({
             request,
             session: session.value,
             accountGateEnabled: accountGateEnabled.value,
           })
         : null,
-    betaTesterCta: betaTesterCtaEnabled.ok
-      ? { enabled: betaTesterCtaEnabled.value }
-      : null,
-    watchProgress: session.ok ? await readWatchProgress(session.value) : null,
+    watchProgress:
+      session.ok && session.value !== null
+        ? await readWatchProgress(session.value)
+        : null,
   }
 
   return NextResponse.json(body, { headers: NO_STORE_HEADERS })
@@ -83,8 +82,8 @@ async function readWatchProgress(
     return {
       authenticated: true,
       userId: session.userId,
-      // Account and CTA state must not wait on the lower-priority progress
-      // snapshot. Aborting the upstream read also keeps a timed-out request
+      // The shared response can wait up to 1.5 s for progress. Aborting
+      // the upstream read bounds that wait and prevents a timed-out read
       // from continuing to consume Admin capacity after this response.
       entries: await fetchWatchProgressForUser(
         session.userId,

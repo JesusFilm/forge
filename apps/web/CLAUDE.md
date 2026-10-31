@@ -111,7 +111,19 @@ before a PR.
 
 ## i18n
 
-Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier — no cookie and no visible `/[locale]` URL prefix.
+Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier: Watch routing does not read language cookies or browser-language headers, and there is no visible `/[locale]` URL prefix.
+
+This URL-only rule is an explicit product decision, not an implementation
+accident. PR #1057 removed cookie routing after a stale `forge_watch_lang`
+cookie changed an explicit shared English URL into Bangla. PR #2658 later
+revived cookie and `Accept-Language` negotiation for bare entry routes from
+FGE-176 without reconciling that decision; feat-708 reverted it on 2026-10-15.
+Do not revive request-state Watch routing from the old audit, historical plans,
+the vestigial cookie helpers, or the existence of `parseAcceptLanguage`.
+Language changes must navigate to a URL that names the selected public audio
+language. See
+`docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`
+for the evidence and decision history.
 
 Public watch links must always pass the raw audio language slug, never the message-catalog key, into the route builders in `src/lib/routes.ts`. The canonical builder emits `/watch/{slug}.html` for eligible English and `/watch/{slug}.html/{language}.html` for non-English. Explicit English remains a direct compatibility URL and the internal renderer shape; a content slug colliding with a public language home also remains explicit-English. `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
@@ -228,6 +240,33 @@ Never expose the LaunchDarkly server-side SDK key to client components or
 `NEXT_PUBLIC_*` env vars. Add new LaunchDarkly flag keys to
 `packages/feature-flags/src/registry.ts` before using them in an app.
 
+`forge.watch.audience` (default `false`, fallback env
+`FORGE_WATCH_AUDIENCE_DEFAULT`) gates every Watch audience surface: the home
+band, the watch-page questionnaire and its Explore/Share/Partner/Grow panels,
+`/watch/api/film-finder`, `/watch/api/learning-progress` GET/POST (its DELETE
+reset stays available, with its origin/subject/payload/revision checks), the
+Partner
+collection Server Action, and the audience frame in capability previews. Every
+read fails closed (an unreadable flag is off). Admin evaluates the same key
+for `Query.watchFilmFinder`, `WatchSetting.watchAudience`, own learning
+read/save, the editor's Watch Audience controls, and service writes that
+create, change, duplicate or publish a `watchAudience` block (see
+`apps/admin/.env.example`);
+serve Web and Admin the same value, and remember an LD flip reaches Admin only
+when Admin has `LAUNCHDARKLY_SDK_KEY`. Erasure, reset and account deletion are
+never gated.
+
+Rollout and rollback timing: home and catch-all Watch pages are `force-static`
+with `revalidate = 3600`, so the flag is read at render time, not per request.
+After a flip, cached pages keep the old state for up to about an hour plus CDN
+time. Do not add client polling to shorten that. For an instant change,
+revalidate the Watch cache tags (`watch:home`, `watch:settings`,
+`watch:experience`, `watch:video`, `watch:series`) through `/api/revalidate`,
+then purge the Cloudflare cache for Watch paths. During a rollback window,
+stale pages that still show the band get 404s from the finder and from
+progress reads/saves and show their unavailable states; resetting saved
+progress still works.
+
 One `NEXT_PUBLIC_*` toggle still controls the inline watch player surface:
 
 - `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` (default `false`) — selects the
@@ -262,16 +301,10 @@ default and keeps anonymous downloads available through opaque download IDs;
 the gated path. Do not use this flag as restricted-content authorization; it is
 a UX/product rollout gate with a fail-open fallback.
 
-`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
-flag for the global floating beta tester CTA. `false` omits the floating CTA
-while keeping the shared modal provider available to authored beta-tester
-links; `true` renders the floating CTA. Because public Watch routes are
-statically cached, evaluate this flag after hydration rather than in a static
-layout: the first provider mount reads it from `/watch/api/bootstrap`, and
-each client navigation re-evaluates it through the same-origin, no-store
-`/watch/api/beta-tester-cta` endpoint. Keep
-`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
-or rolling out the launcher.
+The Watch beta testing program was retired on 2026-10-08. Do not restore
+signup buttons, its Mailchimp modal, or the runtime CTA flag request.
+Authored CTA sections linking to the retired signup URL are suppressed by
+`src/lib/retired-watch-beta-signup.ts`. Other authored CTAs remain available.
 
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
@@ -301,23 +334,6 @@ and email for targeting. Anonymous requests use `watch-anonymous`; recommendatio
 profile cookies, capabilities, access tokens and viewing history never enter LD.
 The Admin device-agnostic API remains independent of this Web rollout flag.
 `WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.
-
-### Watch hydration bootstrap
-
-The Watch shell makes ONE per-visitor read after hydration:
-`GET /watch/api/bootstrap` (`watch-bootstrap-v1`, contract in
-`src/lib/watch-bootstrap-contract.ts`, single-flight loader in
-`src/lib/watch-bootstrap-client.ts`). It carries the account session for
-`AccountControl`, the global beta tester CTA flag, and signed-in watch
-progress. The route verifies the session once, is private/no-store, and fails
-each section to `null` independently so a section degrades exactly as its old
-standalone request did. Do not add new mount-time `fetch` calls for visitor
-state; add a section here instead, and never move it into RSC or a static
-layout. The automatic recommendation profile POST in
-`RecommendationConsentShell` waits for `requestIdleCallback` (capped by
-`RECOMMENDATION_PROFILE_IDLE_TIMEOUT_MS`, `src/lib/idle-task.ts`); it is
-deferred, never consent-gated. See
-`docs/roadmap/platform/feat-630-watch-hydration-bootstrap-request.md`.
 
 ### Recommendation admission runtime
 

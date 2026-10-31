@@ -12,21 +12,27 @@ import {
   adminRecordRecommendationContentActionOperation,
   adminRecordWatchSurfaceExposureOperation,
   adminSelectSemanticRecommendationOperation,
+  adminSelectPrivatePrecomputedRecommendationOperation,
   adminSemanticRecommendationDeliveryOperation,
+  adminPrivateSemanticRecommendationFallbackOperation,
+  adminPrecomputedWatchPreviewDeliveryOperation,
+  adminPrivatePrecomputedWatchVisitDeliveryOperation,
+  adminPrecomputedWatchPublicVisitDeliveryOperation,
   adminTransitionRecommendationProfileOperation,
 } from "@forge/admin-graphql/operations"
 import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import {
+  RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/recommendation-timeouts"
 
 // Keep Admin delivery bounded below the browser's 12-second deadline, leaving
 // room for admission, serialization, network transit, and bounded retries.
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
-const SELECTION_UPSTREAM_TIMEOUT_MS = 700
-const CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
 
 export async function issueWatchSurfaceDelivery(
   variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
@@ -86,7 +92,10 @@ function hasRecommendationGraphqlCode(
 // envelopes for compatible callers without relying on human-readable messages.
 async function withRecommendationDomainErrors<T>(
   operation: Promise<T>,
-  invalidInputCode: "playback_request_invalid" | "evidence_request_invalid",
+  invalidInputCode:
+    | "playback_request_invalid"
+    | "evidence_request_invalid"
+    | "exposure_request_invalid",
 ): Promise<T> {
   let result: T
   try {
@@ -281,17 +290,140 @@ export async function getSemanticRecommendationDelivery(
   variables: AdminVariablesOf<
     typeof adminSemanticRecommendationDeliveryOperation
   >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
 ): Promise<SemanticRecommendationDelivery> {
   const result = await client.query({
     query: adminSemanticRecommendationDeliveryOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(DELIVERY_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(timeoutMs),
   })
   if (result.error || !result.data?.semanticRecommendationDelivery) {
     throw new RecommendationRuntimeError("delivery_unavailable")
   }
   return result.data.semanticRecommendationDelivery
+}
+
+export async function getPrivateSemanticRecommendationFallback(
+  variables: AdminVariablesOf<
+    typeof adminPrivateSemanticRecommendationFallbackOperation
+  >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
+): Promise<SemanticRecommendationDelivery> {
+  const result = await client.query({
+    query: adminPrivateSemanticRecommendationFallbackOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(timeoutMs),
+  })
+  if (result.error || !result.data?.semanticRecommendationDelivery) {
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  return result.data.semanticRecommendationDelivery
+}
+
+export async function getPrecomputedWatchPreviewDelivery(
+  variables: AdminVariablesOf<
+    typeof adminPrecomputedWatchPreviewDeliveryOperation
+  >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
+) {
+  const query = () =>
+    client.query({
+      query: adminPrecomputedWatchPreviewDeliveryOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(timeoutMs),
+    })
+  let result: Awaited<ReturnType<typeof query>>
+  try {
+    result = await query()
+  } catch (error) {
+    if (isPreviewAuthorizationDenial(error))
+      throw new RecommendationPreviewAuthorizationError()
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  if (result.error) {
+    if (isPreviewAuthorizationDenial(result.error))
+      throw new RecommendationPreviewAuthorizationError()
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  if (!result.data?.precomputedWatchPreviewDelivery) {
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  return result.data.precomputedWatchPreviewDelivery
+}
+
+export async function getPrivatePrecomputedWatchVisitDelivery(
+  variables: AdminVariablesOf<
+    typeof adminPrivatePrecomputedWatchVisitDeliveryOperation
+  >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
+) {
+  const result = await client.query({
+    query: adminPrivatePrecomputedWatchVisitDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(timeoutMs),
+  })
+  if (result.error || !result.data?.privatePrecomputedWatchVisitDelivery)
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  return result.data.privatePrecomputedWatchVisitDelivery
+}
+
+export async function getPrecomputedWatchPublicVisitDelivery(
+  variables: AdminVariablesOf<
+    typeof adminPrecomputedWatchPublicVisitDeliveryOperation
+  >,
+  timeoutMs = DELIVERY_UPSTREAM_TIMEOUT_MS,
+) {
+  const result = await client.query({
+    query: adminPrecomputedWatchPublicVisitDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(timeoutMs),
+  })
+  const visit = result.data?.precomputedWatchPublicVisitDelivery
+  if (
+    result.error ||
+    !visit ||
+    visit.visitId !== variables.visitId ||
+    (visit.disposition !== "inactive" &&
+      visit.disposition !== "baseline" &&
+      visit.disposition !== "ab" &&
+      visit.disposition !== "promoted")
+  )
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  return visit
+}
+
+function isPreviewAuthorizationDenial(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+  const value = error as {
+    errors?: Array<{ extensions?: { code?: string } }>
+    graphQLErrors?: Array<{ extensions?: { code?: string } }>
+    statusCode?: number
+    status?: number
+  }
+  if (
+    value.statusCode === 401 ||
+    value.statusCode === 403 ||
+    value.status === 401 ||
+    value.status === 403
+  )
+    return true
+  return [...(value.errors ?? []), ...(value.graphQLErrors ?? [])].some(
+    (reported) =>
+      reported.extensions?.code === "UNAUTHENTICATED" ||
+      reported.extensions?.code === "FORBIDDEN",
+  )
+}
+
+export class RecommendationPreviewAuthorizationError extends Error {
+  constructor() {
+    super("Private recommendation preview authorization denied")
+    this.name = "RecommendationPreviewAuthorizationError"
+  }
 }
 
 export async function recordSemanticRecommendationEvidence(
@@ -324,7 +456,27 @@ export async function selectSemanticRecommendation(
       mutation: adminSelectSemanticRecommendationOperation,
       variables,
       fetchPolicy: "no-cache",
-      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
+    }),
+    "evidence_request_invalid",
+  )
+  if (result.error || !result.data?.selectSemanticRecommendation) {
+    throw new RecommendationRuntimeError("selection_unavailable")
+  }
+  return result.data.selectSemanticRecommendation
+}
+
+export async function selectPrivatePrecomputedRecommendation(
+  variables: AdminVariablesOf<
+    typeof adminSelectPrivatePrecomputedRecommendationOperation
+  >,
+): Promise<SemanticRecommendationSelection> {
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminSelectPrivatePrecomputedRecommendationOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
     }),
     "evidence_request_invalid",
   )
@@ -398,7 +550,7 @@ export async function recordRecommendationContentAction(
     mutation: adminRecordRecommendationContentActionOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recordRecommendationContentAction) {
     throw new RecommendationRuntimeError("content_action_unavailable")
@@ -409,12 +561,17 @@ export async function recordRecommendationContentAction(
 export async function recordWatchSurfaceExposure(
   events: Record<string, unknown>[],
 ) {
-  const result = await client.mutate({
-    mutation: adminRecordWatchSurfaceExposureOperation,
-    variables: { events },
-    fetchPolicy: "no-cache",
-    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
-  })
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordWatchSurfaceExposureOperation,
+      variables: { events },
+      fetchPolicy: "no-cache",
+      context: upstreamContext(
+        RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
+      ),
+    }),
+    "exposure_request_invalid",
+  )
   if (result.error || !result.data?.recordWatchSurfaceExposure) {
     throw new RecommendationRuntimeError("evidence_failed")
   }

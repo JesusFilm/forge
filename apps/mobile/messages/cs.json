@@ -138,6 +138,7 @@
     "versesAriaValue": "Verše {first} až {last} z {total}, {chapter}",
     "demoVerse": "Přejeďte nahoru na další verš",
     "demoChapter": "Přejeďte doleva na další kapitolu",
+    "demoChapterRtl": "Přejeďte doprava na další kapitolu",
     "demoSkip": "Klepnutím přeskočíte",
     "demoSkipAriaLabel": "Přeskočit ukázku přejíždění",
     "selectVerseAriaHint": "Dvojitým klepnutím vyberete tento verš",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Vyberte knihu",
+    "chooseChapter": "Vyberte kapitolu",
+    "chooseVerse": "Vyberte verš",
     "oldTestament": "Starý zákon",
     "newTestament": "Nový zákon",
     "books": "Knihy",
@@ -193,7 +196,7 @@
     "someBooks": "{count} z {total, plural, one {# knihy} few {# knih} many {# knihy} other {# knih}}",
     "twoNames": "{first} a {second}",
     "threeNames": "{first}, {second} a {third}",
-    "onDevice": "V tomto zařízení",
+    "downloaded": "Staženo",
     "downloading": "Stahování {percent} %",
     "downloadStopped": "Stahování zastaveno",
     "updateAvailable": "K dispozici je aktualizace",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakát série",
     "videosHeading": "Videa",
     "detailsLoadError": "Nepodařilo se načíst všechny podrobnosti.",
+    "languagesTitle": "Jazyk videa",
     "searchLanguagesPlaceholder": "Hledat jazyky…",
     "searchLanguagesAriaLabel": "Hledat jazyky",
     "noLanguagesFound": "Žádné jazyky nenalezeny",
@@ -502,6 +506,7 @@
     "resumeAt": "Pokračovat od {time}",
     "unknownLanguage": "Neznámý",
     "downloadedStatus": "Staženo",
+    "languagesTitle": "Jazyk videa",
     "searchLanguagesPlaceholder": "Hledat jazyky…",
     "searchLanguagesAriaLabel": "Hledat jazyky",
     "noLanguagesFound": "Žádné jazyky nenalezeny",
@@ -773,5 +778,8 @@
     "send": "Odeslat",
     "sending": "Odesílání…",
     "sendAriaLabel": "Odeslat zpětnou vazbu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikace používá vaši místní síť k vyhledání zařízení pro odesílání, abyste mohli přehrávat videa na své televizi."
   }
 }

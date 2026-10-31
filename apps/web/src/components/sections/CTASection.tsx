@@ -1,7 +1,6 @@
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { ctaSectionFragment } from "@/lib/fragments/cta-section"
-import { BETA_TESTER_URL } from "@/lib/beta-tester"
-import { BetaTesterTrigger } from "@/components/watch/BetaTesterModalProvider"
+import { isRetiredWatchBetaSignupUrl } from "@/lib/retired-watch-beta-signup"
 
 export { ctaSectionFragment }
 
@@ -24,6 +23,8 @@ export function CTASection({ data }: CTASectionProps) {
     backgroundColor,
     ctaVariant,
   } = data as CTASectionRuntimeData
+  if (isRetiredWatchBetaSignupUrl(buttonLink)) return null
+
   const isTransparent = backgroundColor === "transparent"
   const isSecondary = ctaVariant === "secondary"
   const sectionClass = isTransparent
@@ -45,11 +46,7 @@ export function CTASection({ data }: CTASectionProps) {
       <div className={innerClass}>
         <h2 className="mb-4 text-3xl font-semibold">{heading}</h2>
         <p className={bodyClass}>{body}</p>
-        {buttonLink === BETA_TESTER_URL ? (
-          <BetaTesterTrigger className={buttonClass}>
-            {buttonLabel}
-          </BetaTesterTrigger>
-        ) : buttonLink ? (
+        {buttonLink ? (
           <a
             href={buttonLink}
             rel="noopener noreferrer"

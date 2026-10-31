@@ -387,7 +387,10 @@ function buildWatchVideoRecord(
   const firstPlayable = pickFirstPlayableVariant(raw.variants)
 
   const variants: WatchVariant[] = (raw.variants ?? [])
-    .filter((v) => v.published === true)
+    // Admin sends `language: null` for a dub whose Language it cannot resolve,
+    // so the sheet could only call it "Unknown"; web hides it too. It stays in
+    // `firstPlayable`, so a video with only such dubs still plays.
+    .filter((v) => v.published === true && !!v.language?.slug)
     .map((v) => {
       const name = localizedName(v.language?.name, forms)
       return {

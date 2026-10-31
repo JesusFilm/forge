@@ -1,0 +1,62 @@
+# Search for a fixed word and open a video result (R19 starter journey). Runs
+# answer from config/search-answers.json, so the first result is the same on
+# every Mac (R21). The `search` tag makes record-search run it (KTD10).
+appId: org.jesusfilm.forgewatch
+name: search-open-result
+tags:
+  - search
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Search
+    label: Open the Search tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows
+- tapOn:
+    text: "Search for videos about any topic.*"
+    label: Open the search field
+- inputText:
+    text: easter
+    label: Type the search word
+# A video card reads "<title>, <length>". The first result, "Easter", is a
+# collection whose card reads "Easter, <count> episodes", so match the video.
+- extendedWaitUntil:
+    visible:
+      text: "Easter Explained, ([0-9]+:)?[0-9]+:[0-9]{2}"
+    timeout: 20000
+    label: The results show
+# On Android the result list takes the first tap to close the keyboard
+# (keyboardShouldPersistTaps "never"), so the tap would not open the video.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+    label: Close the keyboard on Android
+- tapOn:
+    text: "Easter Explained, ([0-9]+:)?[0-9]+:[0-9]{2}"
+    label: Open the Easter Explained video
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- tapOn:
+    text: Go back
+    label: Leave the watch page
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows again

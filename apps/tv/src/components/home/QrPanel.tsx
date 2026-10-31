@@ -6,7 +6,7 @@ import { useMemo } from "react"
 import { StyleSheet, Text, View } from "react-native"
 import qrcode from "qrcode-generator"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import {
   BETA_CTA_LABEL,
   BETA_SIGNUP_DISPLAY_URL,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontFamily: "System",
-    fontSize: Math.round(scale(26)),
+    fontSize: readableFontSize(26),
     fontWeight: "700",
     color: "#FFFFFF",
     marginBottom: scale(20),
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   urlText: {
     fontFamily: "System",
-    fontSize: Math.round(scale(21)),
+    fontSize: readableFontSize(21),
     fontWeight: "600",
     // Bright against the frosted wash behind the beta card (was the dim
     // COLORS.muted grey before the colourful restyle).

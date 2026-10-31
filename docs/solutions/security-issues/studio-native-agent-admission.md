@@ -96,8 +96,7 @@ narration or render assets. Feat-458 owns canonical atomic narration attachment
 and linked timing ripple. It must include effective approved speech (including
 bridge and settle) in provider/cache identity and consume the same native-byte
 admission seam. Do not emulate attachment with client patches or mint interactive
-assertions for a delegated agent. Source capture/read, asset and Content Pack
-discovery, and scoped component transfer reuse 455/456 public commands; codec
+assertions for a delegated agent. Source capture/read, asset discovery, and scoped component transfer reuse 455/456 public commands; codec
 materialization remains the existing trusted broker's responsibility. Catalog
 staging remains service-only and hidden.
 

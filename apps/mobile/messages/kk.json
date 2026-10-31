@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}–{last} аяттар, барлығы {total}, {chapter}",
     "demoVerse": "Келесі аятқа өту үшін жоғары сырғытыңыз",
     "demoChapter": "Келесі тарауға өту үшін солға сырғытыңыз",
+    "demoChapterRtl": "Келесі тарауға өту үшін оңға сырғытыңыз",
     "demoSkip": "Өткізіп жіберу үшін түртіңіз",
     "demoSkipAriaLabel": "Сырғыту көрсетілімін өткізіп жіберу",
     "selectVerseAriaHint": "Бұл аятты таңдау үшін екі рет түртіңіз",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Кітапты таңдаңыз",
+    "chooseChapter": "Тарауды таңдаңыз",
+    "chooseVerse": "Аятты таңдаңыз",
     "oldTestament": "Көне өсиет",
     "newTestament": "Жаңа өсиет",
     "books": "Кітаптар",
@@ -193,7 +196,7 @@
     "someBooks": "{count}/{total, plural, one {# кітап} other {# кітап}}",
     "twoNames": "{first} және {second}",
     "threeNames": "{first}, {second} және {third}",
-    "onDevice": "Осы құрылғыда",
+    "downloaded": "Жүктеп алынды",
     "downloading": "Жүктеп алынуда {percent}%",
     "downloadStopped": "Жүктеп алу тоқтады",
     "updateAvailable": "Жаңарту бар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Серия постері",
     "videosHeading": "Видеолар",
     "detailsLoadError": "Толық мәліметті жүктеу мүмкін болмады.",
+    "languagesTitle": "Видео тілі",
     "searchLanguagesPlaceholder": "Тілдерді іздеу...",
     "searchLanguagesAriaLabel": "Тілдерді іздеу",
     "noLanguagesFound": "Тіл табылмады",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} сәтінен жалғастыру",
     "unknownLanguage": "Белгісіз тіл",
     "downloadedStatus": "Жүктеп алынды",
+    "languagesTitle": "Видео тілі",
     "searchLanguagesPlaceholder": "Тілдерді іздеу...",
     "searchLanguagesAriaLabel": "Тілдерді іздеу",
     "noLanguagesFound": "Тіл табылмады",
@@ -773,5 +778,8 @@
     "send": "Жіберу",
     "sending": "Жіберілуде…",
     "sendAriaLabel": "Пікір жіберу"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Қолданба теледидарға шығаруға арналған құрылғыларды табу үшін жергілікті желіңізді пайдаланады, осылайша видеоларды теледидарыңызда ойната аласыз."
   }
 }

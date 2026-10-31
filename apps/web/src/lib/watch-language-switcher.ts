@@ -16,6 +16,10 @@ export type GlobalLanguageOption = {
   aliasOwnerSlug: string | null
   englishName: string
   nativeName: string | null
+  /** Verified declarable tag of `nativeName`; absent means untagged. */
+  nativeNameLang?: string
+  /** Published BCP 47 tag, carried for the language code marker. */
+  bcp47?: string
 }
 
 /** Project cached search metadata into the compact, routable picker shape. */
@@ -28,11 +32,15 @@ export function projectGlobalLanguageOptions(
     const slug = option.publicSlug
     if (!slug || !isPublicWatchLanguageSlug(slug)) continue
 
-    const projected = {
+    const projected: GlobalLanguageOption = {
       slug,
       aliasOwnerSlug: option.aliasOwnerSlug ?? null,
       englishName: option.englishName,
       nativeName: option.nativeName,
+      ...(option.nativeName && option.nativeNameLang
+        ? { nativeNameLang: option.nativeNameLang }
+        : {}),
+      ...(option.bcp47 ? { bcp47: option.bcp47 } : {}),
     }
     const existing = bySlug.get(slug)
     const preferred =

@@ -13,7 +13,6 @@ import {
   CalendarTimeError,
   parseCalendarSuggestions,
 } from "@forge/studio-contracts/calendar"
-import { contentPackDocumentSchema } from "@forge/studio-contracts/content-packs"
 import { studioIdSchema } from "@forge/studio-contracts"
 import type { Principal } from "@/auth/principal"
 import { canReviewStudio } from "@/auth/permissions"
@@ -23,12 +22,7 @@ import { StudioCommandError } from "./errors"
 
 // Reference presence only. Canonical publication independently revalidates eligibility.
 export const calendarSelectedSourceSql = Prisma.sql`EXISTS (SELECT 1 FROM jsonb_array_elements(revision.document->'items') item
-                    WHERE item->>'kind' = 'video')
-            OR EXISTS (
-              SELECT 1 FROM content_pack_revision pack
-              WHERE pack.id IN (SELECT jsonb_array_elements_text(revision.document->'packRevisionIds'))
-                AND jsonb_array_length(pack.document->'sources') > 0
-            )`
+                    WHERE item->>'kind' = 'video')`
 
 type Tx = Prisma.TransactionClient
 export async function calendarOperator(tx: Tx, user: Principal | null) {
@@ -111,9 +105,6 @@ export class StudioCalendarService {
       })
       if ((old?.version ?? 0) !== input.expectedVersion)
         throw new StudioCommandError("CONFLICT")
-      for (const id of input.settings.defaultPackRevisionIds)
-        if (!(await tx.contentPackRevision.findUnique({ where: { id } })))
-          throw new NotFoundError("ContentPackRevision")
       const version = input.expectedVersion + 1
       await tx.shortCalendar.upsert({
         where: { id: input.calendarId },
@@ -233,7 +224,6 @@ export class StudioCalendarService {
             title: "",
             theme: "",
             manual: false,
-            packRevisionId: null,
             projectId: null,
             provenance: null,
             project: null,
@@ -266,13 +256,6 @@ export class StudioCalendarService {
         slot.projectId !== (before?.projectId ?? null)
       )
         throw new StudioCommandError("CONFLICT")
-      if (
-        input.packRevisionId &&
-        !(await tx.contentPackRevision.findUnique({
-          where: { id: input.packRevisionId },
-        }))
-      )
-        throw new NotFoundError("ContentPackRevision")
       await tx.shortScheduleAuthorization.updateMany({
         where: { slotId: id, revokedAt: null, consumedAt: null },
         data: { revokedAt: new Date() },
@@ -282,10 +265,6 @@ export class StudioCalendarService {
         data: {
           title: input.title,
           theme: input.theme,
-          ...(slot.packRevisionId !== input.packRevisionId
-            ? { provenance: Prisma.DbNull }
-            : {}),
-          packRevisionId: input.packRevisionId,
           projectId: input.projectId,
           manual:
             slot.manual ||
@@ -313,13 +292,6 @@ export class StudioCalendarService {
           Date.parse(days[0] + "T00:00Z") - 6 * 86400000
       )
         throw new StudioCommandError("INVALID")
-      if (
-        input.packRevisionId &&
-        !(await tx.contentPackRevision.findUnique({
-          where: { id: input.packRevisionId },
-        }))
-      )
-        throw new NotFoundError("ContentPackRevision")
       await tx.shortPlanWeek.upsert({
         where: {
           calendarId_startDate: {
@@ -331,11 +303,9 @@ export class StudioCalendarService {
           calendarId: input.calendarId,
           startDate: input.startDate,
           theme: input.theme,
-          packRevisionId: input.packRevisionId,
         },
         update: {
           theme: input.theme,
-          packRevisionId: input.packRevisionId,
           provenance: Prisma.DbNull,
         },
       })
@@ -443,8 +413,7 @@ export class StudioCalendarService {
       orderBy: { startDate: "desc" },
       take: 100,
     })
-    const packIds = new Set<string>(),
-      requestedDays = mode === "automatic" ? days.slice(14) : days,
+    const requestedDays = mode === "automatic" ? days.slice(14) : days,
       protectedWeeks = new Set<string>()
     const weekStart = (date: string) => {
       const instant = new Date(date + "T12:00Z")
@@ -463,13 +432,9 @@ export class StudioCalendarService {
           Date.parse(date + "T00:00Z") - Date.parse(w.startDate + "T00:00Z") <
             7 * 86400000,
       )
-      const assigned = slot.packRevisionId ?? week?.packRevisionId
-      const ids = assigned ? [assigned] : config.settings.defaultPackRevisionIds
-      ids.forEach((id) => packIds.add(id))
       slots.push({
         date,
         version: slot.version,
-        packRevisionIds: ids,
         weeklyTheme: week?.theme ?? "",
       })
     }
@@ -486,37 +451,13 @@ export class StudioCalendarService {
       )
       .map((startDate) => ({
         startDate,
-        packRevisionIds: [
-          ...new Set(
-            slots
-              .filter(
-                (slot) =>
-                  slot.date >= startDate &&
-                  Date.parse(slot.date + "T00:00Z") <
-                    Date.parse(startDate + "T00:00Z") + 7 * 86400000,
-              )
-              .flatMap((slot) => slot.packRevisionIds),
-          ),
-        ],
       }))
-    const packs = []
-    for (const revisionId of packIds) {
-      const pack = await tx.contentPackRevision.findUnique({
-        where: { id: revisionId },
-      })
-      if (pack)
-        packs.push({
-          revisionId,
-          document: contentPackDocumentSchema.parse(pack.document),
-        })
-    }
     const context = calendarPlannerInputSchema.parse({
       calendarId,
       version: config.version,
       language: config.settings.language,
       slots,
       weeks: planningWeeks,
-      packs,
     })
     const run = await tx.shortPlanningRun.create({
       data: {
@@ -675,15 +616,11 @@ export class StudioCalendarService {
             calendarId: run.calendarId,
             startDate: week.startDate,
             theme: week.theme,
-            // A suggested theme's source must not become a new week assignment.
-            packRevisionId: null,
             provenance: {
               runId: id,
-              packRevisionId: week.packRevisionId,
               instructions: result.instructions,
               effectiveDigest: result.effectiveDigest,
-              sourceIndices: week.sourceIndices,
-              sourceState: week.sourceIndices.length ? "SELECTED" : "MISSING",
+              sourceState: "MISSING",
             },
           },
         })
@@ -706,14 +643,12 @@ export class StudioCalendarService {
           data: {
             title: item.title,
             theme: item.theme,
-            packRevisionId: item.packRevisionId,
             version: { increment: 1 },
             provenance: {
               runId: id,
               instructions: result.instructions,
               effectiveDigest: result.effectiveDigest,
-              sourceIndices: item.sourceIndices,
-              sourceState: item.sourceIndices.length ? "SELECTED" : "MISSING",
+              sourceState: "MISSING",
             },
           },
         })

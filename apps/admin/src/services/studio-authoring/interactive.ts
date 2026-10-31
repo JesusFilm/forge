@@ -19,7 +19,6 @@ import { StudioAuthoringService } from "./index"
 import { StudioAssetService } from "./assets"
 import { StudioSourceService, resolveStudioDocumentSources } from "./sources"
 import { StudioTransferService } from "./transfers"
-import { ContentPackService } from "./packs"
 
 /** A verified session assertion identifies a user; current DB membership grants access. */
 export async function interactiveStudioPrincipal(
@@ -64,7 +63,6 @@ export async function executeStudioRpc(
   const commands = new StudioAuthoringService(db),
     assets = new StudioAssetService(db),
     sources = new StudioSourceService(db),
-    packs = new ContentPackService(db),
     transfers = new StudioTransferService(db)
   switch (action) {
     case "inspection-context":
@@ -131,6 +129,8 @@ export async function executeStudioRpc(
       )
     case "create":
       return commands.create(user, input)
+    case "delete":
+      return commands.delete(user, input)
     case "apply":
       return commands.apply(user, input)
     case "approve":
@@ -158,10 +158,6 @@ export async function executeStudioRpc(
       return assets.list(user, input)
     case "asset":
       return assets.read(user, input)
-    case "packs":
-      return packs.list(user, input)
-    case "pack":
-      return packs.read(user, studioIdSchema.parse(input))
     case "capture":
       return sources.capture(user, input)
     case "source-preview":

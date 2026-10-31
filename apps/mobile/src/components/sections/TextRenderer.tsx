@@ -48,6 +48,7 @@ export function TextRenderer({ section }: TextRendererProps) {
 
   return (
     <View
+      testID="sdui-text"
       style={[
         layout.sectionOuter,
         styles.localContainer,
@@ -121,7 +122,6 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   paragraphSpacing: {
     marginBottom: 12,

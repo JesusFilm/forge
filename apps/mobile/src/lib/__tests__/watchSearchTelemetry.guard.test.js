@@ -73,7 +73,7 @@ describe("watch search telemetry retirement stays retired", () => {
     // once — so deleting any one pattern fails at least one fixture here.
     const offenders = findRetiredTelemetryEmits([
       {
-        relative: "app/(tabs)/watch.tsx",
+        relative: "app/(tabs)/watch/index.tsx",
         content: 'datadogLog.warn("watch_search_failed", { reason: code })',
       },
       {
@@ -105,7 +105,7 @@ describe("watch search telemetry retirement stays retired", () => {
       },
     ])
     expect(offenders).toEqual([
-      "app/(tabs)/watch.tsx",
+      "app/(tabs)/watch/index.tsx",
       "src/lib/telemetry/FailedSingleQuote.ts",
       "src/lib/telemetry/OldAction.ts",
       "src/lib/telemetry/BareInfo.ts",
@@ -125,7 +125,7 @@ describe("watch search telemetry retirement stays retired", () => {
         },
         {
           // The NEW shared-message emit uses the constant, not a bare string.
-          relative: "app/(tabs)/watch.tsx",
+          relative: "app/(tabs)/watch/index.tsx",
           content:
             "datadogLog.info(WATCH_SEARCH_LOG_MESSAGE, buildWatchSearchLogAttributes(input))",
         },
@@ -136,7 +136,7 @@ describe("watch search telemetry retirement stays retired", () => {
         },
         {
           // Different log name; the action pattern anchors on result_clicked.
-          relative: "app/(tabs)/watch.tsx",
+          relative: "app/(tabs)/watch/index.tsx",
           content: 'datadogLog.info("search.prefetch", { query_length: 3 })',
         },
         {
@@ -146,7 +146,7 @@ describe("watch search telemetry retirement stays retired", () => {
         },
         {
           // The CURRENT failure emit: warn + the shared message stays legal.
-          relative: "app/(tabs)/watch.tsx",
+          relative: "app/(tabs)/watch/index.tsx",
           content:
             "datadogLog.warn(\n  WATCH_SEARCH_LOG_MESSAGE,\n  buildWatchSearchLogAttributes(input),\n)",
         },

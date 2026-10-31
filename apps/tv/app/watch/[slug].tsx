@@ -16,6 +16,8 @@ import {
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
+import * as Linking from "expo-linking"
+import { Image } from "expo-image"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
@@ -24,6 +26,9 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { getResumePosition } from "../../src/lib/watchEvents/continueWatching"
+import { topShelfAutoplayDecision } from "../../src/lib/topShelf/playback"
+import { watchPlaybackLinkIntent } from "../../src/lib/watchPlaybackLink"
+import { useStartupIntroActive } from "../../src/contexts/StartupIntroProvider"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
@@ -91,20 +96,34 @@ export default function WatchVideoScreen() {
     slug,
     seed: seedParam,
     autoplay: autoplayParam,
+    topShelf: topShelfParam,
   } = useLocalSearchParams<{
     slug: string
     seed?: string
     autoplay?: string
+    topShelf?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
-  const { video, setVideo, activeVariant } = useWatchSession()
-  const { hydrated: preferencesReady } = useWatchPreferences()
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
+  const {
+    hydrated: preferencesReady,
+    audioLanguageSlug: preferredAudioLanguage,
+  } = useWatchPreferences()
+  const introActive = useStartupIntroActive()
   const {
     state: playerState,
     decoderClaimed,
     playVideo,
+    dismissVideo,
     consumeUpNextChain,
   } = useVideoPlayerContext()
 
@@ -198,9 +217,55 @@ export default function WatchVideoScreen() {
     "pending" | "playing" | "off"
   >(autoplayParam === "1" ? "pending" : "off")
   const autoplayConsumedRef = useRef(false)
+  useEffect(() => {
+    if (topShelfParam === "1") {
+      autoplayConsumedRef.current = false
+      setAutoplayPhase(autoplayParam === "1" ? "pending" : "off")
+      dismissVideo()
+    }
+  }, [decodedSlug, topShelfParam, autoplayParam, dismissVideo])
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "ios" || !Platform.isTV) return
+      const subscription = Linking.addEventListener("url", ({ url }) => {
+        const intent = watchPlaybackLinkIntent(url, decodedSlug)
+        if (intent == null) return
+        autoplayConsumedRef.current = false
+        setAutoplayPhase(intent === "play" ? "pending" : "off")
+        dismissVideo()
+      })
+      return () => subscription.remove()
+    }, [decodedSlug, dismissVideo]),
+  )
 
   useEffect(() => {
     if (autoplayPhase !== "pending" || autoplayConsumedRef.current) return
+    if (topShelfParam === "1" && (!preferencesReady || loading || introActive))
+      return
+    if (topShelfParam === "1" && video && video.slug !== decodedSlug) return
+    if (topShelfParam === "1" && video) {
+      const decision = topShelfAutoplayDecision({
+        requestedSlug: decodedSlug,
+        videoSlug: video.slug ?? null,
+        preferredLanguage: preferredAudioLanguage,
+        activeLanguage: activeVariant?.languageSlug ?? null,
+        playableLanguages: video.variants
+          .filter((variant) => validateStreamingUrl(variant.hls))
+          .map((variant) => variant.languageSlug),
+      })
+      if (decision !== "ready") {
+        if (decision === "unavailable") setAutoplayPhase("off")
+        else {
+          const targetIndex = video.variants.findIndex(
+            (variant) =>
+              variant.languageSlug === (preferredAudioLanguage ?? "english") &&
+              validateStreamingUrl(variant.hls),
+          )
+          if (targetIndex >= 0) setActiveVariantIndex(targetIndex, false)
+        }
+        return
+      }
+    }
     const hls = activeVariant?.hls
     const videoId = video?.documentId
     if (!hls || !videoId || !validateStreamingUrl(hls)) {
@@ -212,7 +277,6 @@ export default function WatchVideoScreen() {
       if (!loading && (error != null || video != null)) setAutoplayPhase("off")
       return
     }
-
     let cancelled = false
     void (async () => {
       const position = await getResumePosition(videoId)
@@ -236,12 +300,29 @@ export default function WatchVideoScreen() {
               posterUrl: video.upNext.posterUrl,
             }
           : null,
+        recommendationAttribution,
+        playbackEntry,
       )
     })()
     return () => {
       cancelled = true
     }
-  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+  }, [
+    autoplayPhase,
+    activeVariant,
+    video,
+    playVideo,
+    loading,
+    error,
+    topShelfParam,
+    decodedSlug,
+    preferredAudioLanguage,
+    preferencesReady,
+    introActive,
+    setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
+  ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
   // Unless the close IS an Up Next hop: the overlay host marks the chain
@@ -340,22 +421,18 @@ export default function WatchVideoScreen() {
   )
 
   const hasVideo = video != null
-  const detailsDataState =
-    Platform.OS === "android"
-      ? deriveDetailsDataState({
-          loading: loading || !preferencesReady,
-          error: error != null || (!loading && normalized == null),
-          currentVideoReady: video?.slug === decodedSlug,
-        })
-      : undefined
+  const detailsDataState = deriveDetailsDataState({
+    loading: loading || !preferencesReady,
+    error: error != null || (!loading && normalized == null),
+    currentVideoReady: video?.slug === decodedSlug,
+  })
   const retryDetails = () => {
     void refetch().catch(() => {})
   }
 
-  // Error state: only when the query errored AND there's nothing usable to keep
-  // showing — no normalized/cached video and no seed to paint a skeleton from.
-  const showErrorState =
-    detailsDataState === "error" || (error != null && !hasVideo && seed == null)
+  // A seed can paint the title/poster, but cannot satisfy metadata or playback.
+  // Terminal failures must expose Retry even when that seed is available.
+  const showErrorState = detailsDataState === "error"
   const leaveLoading = () => {
     if (router.canGoBack()) router.back()
     else router.replace("/")
@@ -403,7 +480,11 @@ export default function WatchVideoScreen() {
     return <View style={styles.screen} />
   }
 
-  if (detailsDataState === "loading" && !playerState.isVisible) {
+  if (
+    detailsDataState === "loading" &&
+    !playerState.isVisible &&
+    (Platform.OS === "android" || seed == null)
+  ) {
     return (
       <View style={styles.screen}>
         {Platform.OS === "android" ? (
@@ -445,12 +526,20 @@ export default function WatchVideoScreen() {
   if (showErrorState) {
     return (
       <View style={styles.screen}>
+        {Platform.OS === "ios" && displayPoster != null ? (
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Image
+              source={{ uri: displayPoster }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
+            <View style={styles.errorScrim} />
+          </View>
+        ) : null}
         <ScreenStateView
           kind="error"
           message="This video is temporarily unavailable."
-          onRetry={() => {
-            void refetch()
-          }}
+          onRetry={retryDetails}
           retryHint="Reloads this video"
         />
       </View>
@@ -479,6 +568,7 @@ export default function WatchVideoScreen() {
             // one thing that unmounts it if the showcase ever runs above it.
             overlayVisible={playerState.isVisible || decoderClaimed}
             bottomFadeColor={WATCH_THEME.below}
+            scrimVariant="detail"
           />
 
           <View style={styles.heroContent}>
@@ -511,9 +601,7 @@ export default function WatchVideoScreen() {
 
             <DetailsActionRow
               title={displayTitle}
-              metadataReady={
-                detailsDataState == null || detailsDataState === "ready"
-              }
+              metadataReady={detailsDataState === "ready"}
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
               onOpenFeedback={() =>
@@ -591,6 +679,10 @@ export default function WatchVideoScreen() {
 }
 
 const styles = StyleSheet.create({
+  errorScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.78)",
+  },
   screen: {
     flex: 1,
     backgroundColor: WATCH_THEME.below,

@@ -79,6 +79,9 @@ export const watchVideoFragment = graphql(`
       published
       hls
       duration
+      videoEdition {
+        id
+      }
       language {
         coreId
         bcp47
@@ -183,6 +186,9 @@ export const seriesWatchVideoFragment = graphql(`
       slug
       published
       hls
+      videoEdition {
+        id
+      }
       language {
         coreId
         bcp47

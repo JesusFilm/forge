@@ -48,6 +48,21 @@ const LANGUAGE_PICKER_KEYS = [
 ] as const
 const MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO = 0.05
 
+describe("verified Turkmen subtitle labels", () => {
+  it("uses Turkmen spelling and keeps the subtitle count ICU plural", () => {
+    const turkmen = flattenCatalog("tk")
+
+    expect(turkmen["LanguagePickerModal.subtitlesHeading"]).toBe("Subtitrler")
+    expect(turkmen["HeroPlayer.subtitleCount"]).toBe(
+      "Subtitrler: {count, plural, one {# dil} other {# dil}}",
+    )
+    expect(turkmen["LanguageInventory.subtitles"]).toBe("Subtitrler")
+    expect(
+      Object.values(turkmen).filter((value) => value.includes("ə")),
+    ).toEqual([])
+  })
+})
+
 type MessageTree = {
   [key: string]: string | MessageTree
 }
@@ -147,6 +162,45 @@ function formattingValues(message: string): Record<string, unknown> {
 function languagePickerMessages(locale: string): Record<string, string> {
   return loadCatalog(locale).LanguagePickerModal as Record<string, string>
 }
+
+describe("Spanish feedback catalog", () => {
+  it("keeps the complete wizard translated despite other locales' pending paths", () => {
+    const source = flattenCatalog(SOURCE_LOCALE)
+    const spanish = flattenCatalog("es")
+    const paths = Object.keys(source).filter((path) =>
+      path.startsWith("Feedback."),
+    )
+
+    // “Idea” is the same word in Spanish and English. No other feedback UI
+    // copy should silently return to the source while this namespace remains
+    // pending globally for other locales.
+    expect(paths.filter((path) => spanish[path] === source[path])).toEqual([
+      "Feedback.categories.idea.label",
+    ])
+
+    const errors: unknown[] = []
+    const translate = createTranslator({
+      locale: "es",
+      messages: loadCatalog("es") as AbstractIntlMessages,
+      onError: (error) => errors.push(error),
+    }) as (key: string, values?: Record<string, unknown>) => string
+    for (const path of paths) {
+      expect(messageVariables(spanish[path]), path).toEqual(
+        messageVariables(source[path]),
+      )
+      expect(translate(path, formattingValues(source[path])), path).toBeTypeOf(
+        "string",
+      )
+    }
+    expect(errors).toEqual([])
+    expect(
+      translate("Feedback.steps.progressLabel", { step: 3, count: 5 }),
+    ).toBe("Paso 3 de 5")
+    expect(translate("Feedback.picker.selected", { role: "button" })).toBe(
+      "Elemento seleccionado: button · elegir de nuevo",
+    )
+  })
+})
 
 describe("messages catalogs — structural parity", () => {
   const source = flattenCatalog(SOURCE_LOCALE)

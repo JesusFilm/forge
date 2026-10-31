@@ -260,21 +260,18 @@ export async function ensureWatchProgressAuth(): Promise<boolean> {
   if (authRequest) return authRequest
 
   // The signed-in progress snapshot arrives in the shared post-hydration
-  // bootstrap read; an unavailable section is treated as anonymous, exactly
-  // as a failed `GET /watch/api/watch-progress` was.
-  authRequest = loadWatchBootstrap()
+  // bootstrap read. Keep an unavailable section unknown so a later mount
+  // can participate in the loader's bounded recovery; a real guest is cached.
+  const request = loadWatchBootstrap()
     .then((bootstrap) => {
       const progress = bootstrap?.watchProgress
-      if (!progress?.authenticated) return null
-      return { userId: progress.userId, entries: progress.entries }
-    })
-    .then((result) => {
-      if (!result) {
-        authState = "anonymous"
+      if (!progress?.authenticated) {
+        authState = progress ? "anonymous" : "unknown"
         authenticatedUserId = null
         emitChange()
         return false
       }
+      const result = { userId: progress.userId, entries: progress.entries }
 
       const key = userStorageKey(result.userId)
       const localUserProgress = readStoredProgress(key)
@@ -300,8 +297,12 @@ export async function ensureWatchProgressAuth(): Promise<boolean> {
       void syncWatchProgressEntries(entriesToSync)
       return true
     })
+    .finally(() => {
+      if (authRequest === request) authRequest = null
+    })
 
-  return authRequest
+  authRequest = request
+  return request
 }
 
 export function getWatchProgress(videoId: string | null | undefined) {

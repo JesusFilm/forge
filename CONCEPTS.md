@@ -32,16 +32,6 @@ Registering a Dynamic MCP Client identifies the client but grants no application
 
 A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
 
-## Studio authoring
-
-### Content Pack
-
-A reusable set of source material and editorial guidance used to plan or generate
-content. A Content Pack can guide an individual project or a period of calendar
-planning; it is distinct from a viewer-facing video collection.
-
-_Avoid_: Source Collection, Preacher Pack.
-
 ## Devotional generation
 
 ### Devotional Workspace
@@ -136,7 +126,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 A short window of one Video, played from that Video's own Dub stream in the mobile Explore feed; it is a start point and an end point over the full Video, never a separate media file.
 _Avoid:_ short (the same thing in conversation; tickets and code say clip).
 
-A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub. When a clip ends, the feed moves on to the next clip; it plays the clip again instead while the viewer reads its open description or drags its progress bar.
+A clip is cut at sentence boundaries, from the subtitle timing of the Dub that plays, or by a fixed fallback rule when no usable timing exists. A clip never writes watch progress. "Keep watching" hands the viewer from a clip to the full Video, at the point the clip reached and in the clip's Dub. When a clip ends, the feed moves on to the next clip; it plays the clip again instead while the viewer reads its open description, drags its progress bar, or holds a side of the clip to play it faster.
 
 ### Language
 
@@ -209,7 +199,21 @@ derives the UI Locale from the public language slug, so Arabic Najdi renders
 English interface copy. Admin content requests derive three language forms
 from it: the catalog tag for homepage Experiences and recommendations, the
 Language slug for video text rows, search, and Bible passages, and Admin's own
-BCP-47 tag for language-name and Bible-book-name maps.
+BCP-47 tag for language-name and Bible-book-name maps. On mobile, the UI Locale
+also sets the layout direction: a right-to-left UI Locale mirrors the layout,
+and the phone language alone never does.
+
+### Native Localization
+
+The localization that iOS picks from the app bundle for the phone language, or
+for the per-app language that the user sets in iOS Settings, distinct from the
+UI Locale that the app renders its own interface copy in.
+
+iOS uses it for the text that iOS draws for the app, such as the app's sentence
+in a permission alert and the natural alignment of text. The app's in-app
+language choice does not change it, so one screen can show interface copy in
+one language and system-drawn text in another. A permission alert takes its
+text when it first appears, so the language at that moment decides it.
 
 ### Contextual Watch Route
 
@@ -774,6 +778,30 @@ none of them represents a viewer waiting on a stream that was already running.
 A session identifies its content by playback id rather than title, because the
 payload is constrained to non-sensitive, low-cardinality values.
 
+### Downloaded Play
+
+A play of a Dub from a file that the viewer downloaded to the phone. The phone
+can be online or offline: after a download, the app plays the file for every
+later play of that Dub, also when a network connection exists. Playback
+telemetry calls these sessions offline plays, but a Downloaded Play is not the
+same as an offline play: the phone is often online.
+
+### Mux Data View
+
+One quality session that Mux Data records for one stream on one player. The
+view continues while the same video moves between the watch page, the mini
+player, PiP, fullscreen, and the background. A new stream starts a new view: a
+new Video, a Dub change, a quality change, or a reload after an error. The app
+does not monitor a Downloaded Play, so a download that replaces the stream ends
+the view and starts none. The view also ends when the viewer closes the player.
+A Chromecast session only pauses the view: the phone's player pauses during the
+cast, and the app does not measure the receiver.
+
+A Mux Data View is not a play count. GA4 gives the official play counts, and
+Mux counts views only to calculate quality rates such as the rebuffer
+percentage. Its boundaries also differ from Video Playback QoE, where a quality
+change or a download swap keeps the session.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.
@@ -920,7 +948,74 @@ A reviewed, profile-scoped, data-only export of production Admin video data for 
 
 A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
+## Mobile playback
+
+### Mini Player Session
+
+The one playback of a video that outlives its watch page and floats in a small window over the rest of the mobile app. It starts only for a video that plays on the device (not on a cast receiver), has started, and has not finished, when the viewer leaves its page or a Slot Cover sits over that page.
+
+It ends when the viewer closes the window, when another video takes the player, or when the viewer returns to the page whose Slot Cover started it. That last ending sends no end report, so the page continues the same playback as if the cover never happened.
+
+### Slot Cover
+
+A screen that sits over a watch or series page while the page stays mounted, so the app's one root player must step aside without the page leaving. It is either a Bible reader route or any other screen pushed over the page; the page's own sheets are not covers.
+
+Under a Slot Cover, a started video becomes a Mini Player Session and keeps playing, and any other video hides and pauses. The cover ends when the covered page is in view again. Only a reader cover lays the floating window out for the reader and returns to the page by going back; a tap on the window over any other cover opens the video's page again.
+
 ## Recommendations
+
+### Viewer Interest Profile (retired)
+
+A learned representation of a viewer's activity. Retired by the October 29, 2026
+product decision, along with behavioral projection and co-watch learning. Do not
+confuse it with a native installation credential or a video's content summary.
+
+### Video Content Profile
+
+A summary of a video's transcript and metadata used to build content-based
+recommendations (`RecommendationPrecomputedContentProfile`). It describes content,
+not a viewer, and remains part of the semantic/metadata architecture.
+
+### Video Connection
+
+A meaningful relationship between Videos based on similarity, useful viewing
+progression, or unexpected relevance. The appropriate relationship and number
+of connections depend on the Video.
+
+### Precomputed Video Recommendation
+
+A suggested next Video for a source Video, prepared before a viewer requests
+recommendations. It is a reusable recommendation candidate, distinct from the
+Recommendation Served Item that records what a particular viewer was offered.
+
+### Shared Video Recommendations
+
+Recommendations associated with a source Video rather than an individual
+viewer's interests or history. Collective viewing behavior can inform shared
+recommendations without making them personalized to the current viewer.
+
+### Model-Chosen Alternative
+
+A Video suggested through a broader recommendation rationale when direct Video
+Connections are insufficient. It remains an explainable recommendation, without
+claiming a stronger content relationship than the available evidence supports.
+
+### Eligible Recommendation Visit
+
+A Watch visit admitted to a recommendation experiment independently of whether
+the assigned strategy produces recommendation cards. Bot visits are excluded.
+
+### Recommendation Visit CTR
+
+The fraction of Eligible Recommendation Visits with at least one recommendation
+click. Each visit contributes at most one clicked visit, and eligible visits
+with no recommendation cards remain in the denominator.
+
+### Recommendation Experiment Result
+
+A recorded comparison of the recommendation strategies tested for a declared
+cohort and period, with its measurement evidence and winner or inconclusive
+conclusion. A result describes the comparison; it does not activate a strategy.
 
 ### Recommendation Request
 
@@ -1345,11 +1440,13 @@ The credited scripture text a Watch surface renders for a Bible Citation, resolv
 
 The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
 
+A mobile quote card does not always show the Passage. Admin answers a language that it does not map with its English version, so in most languages the Passage is English. The card then shows the verse from the viewer's Bible Reader translation, if that translation is not English. It does the same when a card has no Passage.
+
 ### Bible Reader
 
 The mobile app's native reader, which shows one verse at a time from a Bible quote or from the Bible tab. It is not a way to show a Bible Passage. The reader's text comes from a public catalog of free-use translations, and the app carries one English translation (BSB) inside the install. Admin does not resolve, cache, or credit that text.
 
-The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
+The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. When that Passage would be English, or the card has none, the card can use the viewer's reader translation. If that translation is not English, the card shows its verse, book name, native name, and catalog credit. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation, so such a card and the reader agree. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
 
 _Avoid_: calling reader text a "passage", and reading it from Admin's passage fields.
 
@@ -1764,6 +1861,12 @@ The record a device creates with admin when notification permission is granted: 
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
+### Cold Tap
+
+A tap on an Announcement Campaign or a Lapse Reminder after the phone has stopped the app's process while the app's task stays in the list of recent apps. For an Announcement Campaign, the destination must still open and the open must still be reported.
+
+On Android the phone restarts the old task from its original launch, so the tap reaches the app as a later delivery to that restarted screen, not as the launch itself, and the app has to catch it there. The restart also brings back the launch that first created the task, so a tap that created it must not open its destination again on a later reopen, and a newer Cold Tap must win over it. A tap that finds no task starts the app fresh, and a tap while the process is alive is a warm tap; neither is a Cold Tap.
+
 ### Campaign Revision
 
 The number that names one state of an Announcement Campaign's copy, destination, and audience; an AI agent and the dashboard both write against it, so a write made from an older revision is refused instead of overwriting newer work.
@@ -1786,6 +1889,20 @@ A message a person sends from inside an app — the Watch feedback form on web, 
 
 It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all. A mobile report of the translation kind also names the UI Locale that the app showed, and no other kind sends it; the kind shows only when that UI Locale is not English.
 
+## Mobile release checks
+
+### Release Check
+
+One run of the mobile release check runner before a TestFlight build or an over-the-air update goes out. It builds the app from the current commit, runs every Journey on five local test devices, and writes one report. Every failure fails the run, including a known bug and a flaky Journey. The report gives no release decision; the mobile owner makes it.
+
+### Journey
+
+One fixed, scripted path through the mobile app that a Release Check runs on every test device. It follows the same steps on each run, and it picks content by position where it can.
+
+### Not-Tested List
+
+The repo list of the screens and sheets that no Journey covers on purpose, each with a reason. The Release Check fails when a screen or sheet has no Journey and is not on this list, so a new screen cannot drop out of coverage without a decision.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
@@ -1795,4 +1912,5 @@ It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
 - "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.
 - "Backdrop" names two unrelated blurred-artwork layers on different platforms: the **Immersive Backdrop** is the Watch web wash behind a collection panel, while the **Ambient Backdrop** fills the letterboxing around the mobile and TV player. Qualify which is meant.
+- "Cold" tap had been used both for any tap that starts the app and for the narrower case where the process stopped but the app's task survived. A **Cold Tap** is only the narrower case; say "a tap that starts the app" for the wider one.
 - "Description" is ambiguous for a Video's localized copy: a locale carries both a short authored snippet and a longer catalog description, and which one a surface shows is decided per surface, not per client. The watch-home hero and the video watch page prefer the snippet and fall back to the description; the series page body, SEO metadata, and structured data prefer the description and fall back to the snippet. So a request to change or remove "the description" may act on either field — name the surface, and check its fallback order before assuming which.

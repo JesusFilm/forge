@@ -1,3 +1,7 @@
+// Code switches: menu visibility and launch animation/audio are independent.
+export const ANIMATION_SETTINGS_ENABLED = false
+export const STARTUP_ANIMATION_ENABLED = false
+
 export const LOGO_ANIMATIONS = [
   { id: "01", name: "Diagonal light sweep" },
   { id: "02", name: "Neon edge tracing" },
@@ -18,7 +22,7 @@ export const LOADING_ANIMATIONS = [
 ] as const
 export type LoadingAnimationId = (typeof LOADING_ANIMATIONS)[number]["id"]
 export const DEFAULT_STARTUP_ANIMATION: LogoAnimationId = "09"
-export const DEFAULT_LOADING_ANIMATION: LoadingAnimationId = "03"
+export const DEFAULT_LOADING_ANIMATION: LoadingAnimationId = "dots"
 export const LOGO_PREVIEW_DURATION_MS = 6030
 
 export function parseLogoAnimationId(

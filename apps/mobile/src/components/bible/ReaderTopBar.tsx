@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
@@ -109,7 +110,11 @@ export function ReaderTopBar({
             actionName="bible-reader-back"
             onPress={onBack}
           >
-            <Ionicons name="chevron-back" size={24} color={tokens.icon} />
+            <Ionicons
+              name={directionalIcon("chevron-back")}
+              size={24}
+              color={tokens.icon}
+            />
           </ReaderGlassButton>
         )}
         <ChapterPill
@@ -187,7 +192,8 @@ export function ReaderTopBar({
           actionName="bible-reader-settings"
           onPress={onPressSettings}
         >
-          <Ionicons name="settings-outline" size={22} color={tokens.icon} />
+          {/* The pills' text color, not the accent (owner, 2026-10-15). */}
+          <Ionicons name="settings-outline" size={22} color={tokens.text} />
         </ReaderGlassButton>
       </View>
       {tipOpen && note !== null && leading && (
@@ -327,7 +333,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "600",
-    fontFamily: "System",
   },
   // The passage pill shrinks first; a short name is at most five letters.
   translation: {
@@ -337,7 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-    fontFamily: "System",
   },
   pillStatus: {
     marginLeft: 6,
@@ -379,6 +383,5 @@ const styles = StyleSheet.create({
   tipText: {
     fontSize: 15,
     lineHeight: 20,
-    fontFamily: "System",
   },
 })

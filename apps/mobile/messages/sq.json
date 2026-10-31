@@ -138,6 +138,7 @@
     "versesAriaValue": "Vargjet {first} deri në {last} nga {total}, {chapter}",
     "demoVerse": "Rrëshqitni lart për vargun tjetër",
     "demoChapter": "Rrëshqitni majtas për kapitullin tjetër",
+    "demoChapterRtl": "Rrëshqitni djathtas për kapitullin tjetër",
     "demoSkip": "Prekni për ta kapërcyer",
     "demoSkipAriaLabel": "Kapërce demonstrimin e rrëshqitjes",
     "selectVerseAriaHint": "Prekni dy herë për ta zgjedhur këtë varg",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Zgjidh një libër",
+    "chooseChapter": "Zgjidh një kapitull",
+    "chooseVerse": "Zgjidh një varg",
     "oldTestament": "Dhiata e Vjetër",
     "newTestament": "Dhiata e Re",
     "books": "Librat",
@@ -193,7 +196,7 @@
     "someBooks": "{count} nga {total, plural, one {# libër} other {# libra}}",
     "twoNames": "{first} dhe {second}",
     "threeNames": "{first}, {second} dhe {third}",
-    "onDevice": "Në këtë pajisje",
+    "downloaded": "Shkarkuar",
     "downloading": "Po shkarkohet {percent}%",
     "downloadStopped": "Shkarkimi u ndal",
     "updateAvailable": "Ka përditësim",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Posteri i serisë",
     "videosHeading": "Videot",
     "detailsLoadError": "Detajet e plota nuk mund të ngarkoheshin.",
+    "languagesTitle": "Gjuha e videos",
     "searchLanguagesPlaceholder": "Kërko gjuhë…",
     "searchLanguagesAriaLabel": "Kërko gjuhë",
     "noLanguagesFound": "Nuk u gjetën gjuhë",
@@ -502,6 +506,7 @@
     "resumeAt": "Vazhdo nga {time}",
     "unknownLanguage": "E panjohur",
     "downloadedStatus": "Shkarkuar",
+    "languagesTitle": "Gjuha e videos",
     "searchLanguagesPlaceholder": "Kërko gjuhë…",
     "searchLanguagesAriaLabel": "Kërko gjuhë",
     "noLanguagesFound": "Nuk u gjetën gjuhë",
@@ -773,5 +778,8 @@
     "send": "Dërgo",
     "sending": "Po dërgohet…",
     "sendAriaLabel": "Dërgo komentet"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacioni përdor rrjetin tuaj lokal për të gjetur pajisje transmetimi, që të mund të luani video në televizorin tuaj."
   }
 }

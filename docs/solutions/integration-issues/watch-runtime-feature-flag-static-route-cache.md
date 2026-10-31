@@ -25,6 +25,8 @@ tags:
 
 # Keep runtime feature flags out of static Watch route rendering
 
+2026-10-08: feat-667 removed the beta provider, endpoint, and flag after the program ended. The examples below are historical; the static-route caching guidance still applies to active runtime flags. Do not restore beta signup from this example.
+
 ## Problem
 
 Watch needed a runtime LaunchDarkly switch for the global beta-tester CTA. A
@@ -111,16 +113,6 @@ useEffect(() => {
   }
 }, [])
 ```
-
-> **Updated 2026-10-08 (FGE-225, feat-630):** on the first mount of a document
-> the provider now reads this flag from the shared `/watch/api/bootstrap`
-> response (`watch-bootstrap-v1`) instead of its own request, so hydration
-> makes one visitor read rather than three. Client navigations still
-> re-evaluate through `/watch/api/beta-tester-cta` exactly as shown above. The
-> pattern is unchanged: evaluate after hydration, through a same-origin
-> no-store route, starting from the safe state. See
-> `apps/web/src/components/watch/BetaTesterModalProvider.tsx`
-> (`loadGlobalBetaTesterCtaEnabled`).
 
 Key the provider-owned state to the pathname when navigation should refresh the
 decision. Gate only the floating launcher; keep the shared modal context and

@@ -1,7 +1,9 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 
+import { isLayoutRtl } from "../../src/i18n/layoutRtl"
 import { ACCENT, BG_COLOR, TEXT_SECONDARY as MUTED } from "../../src/lib/color"
 import { isExploreAvailable } from "../../src/lib/explore/availability"
+import { canUseLiquidGlass } from "../../src/lib/liquidGlass"
 import {
   TAB_ROUTE_NAMES,
   type TabRouteName,
@@ -47,9 +49,10 @@ export default function TabLayout() {
       disableTransparentOnScrollEdge
       iconColor={{ default: MUTED, selected: ACCENT }}
       labelStyle={{ default: { color: MUTED }, selected: { color: ACCENT } }}
-      // UIKit tabs ignore React Native's allowRTL and follow the app language,
-      // so an Arabic phone would reverse the tab order (R6).
-      unstable_nativeProps={{ direction: "ltr" }}
+      // UIKit tabs ignore React Native's direction and follow the native
+      // localization, so `inherit` can give them the wrong order. Never
+      // remove the prop: the tab order must follow the layout (feat-695 R4).
+      unstable_nativeProps={{ direction: isLayoutRtl() ? "rtl" : "ltr" }}
     >
       {TAB_ROUTE_NAMES.map((name) => (
         <NativeTabs.Trigger
@@ -58,6 +61,9 @@ export default function TabLayout() {
           // KTD16: hide the trigger, never drop it. The gate is fixed per
           // bundle, because a change to `hidden` remounts the whole navigator.
           hidden={name === "explore" && !isExploreAvailable()}
+          // feat-705 R20: the separate search circle. The predicate is fixed
+          // per launch, because a change to `role` remounts the navigator.
+          role={name === "watch" && canUseLiquidGlass() ? "search" : undefined}
           // UIKit's automatic inset only reaches a scroll view that is first in
           // the subview chain. No tab screen has one there — on Home it would
           // land on the horizontal hero pager — so the screens keep padding

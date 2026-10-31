@@ -2,14 +2,13 @@
  * `watch-bootstrap-v1`: the one same-origin, private/no-store read that the
  * Watch shell makes after hydration to learn who the visitor is.
  *
- * It folds three formerly independent GETs into one round trip:
+ * It folds the two surviving independent GETs into one round trip:
  * - account session (`/watch/api/auth/session`) for `AccountControl`
- * - global beta tester CTA flag (`/watch/api/beta-tester-cta`)
  * - signed-in watch progress (`GET /watch/api/watch-progress`)
  *
  * Each section degrades independently to `null`, which consumers treat the
  * same way they treated a failed request to the old endpoint: the account
- * control hides, the floating CTA stays off, and watch progress stays local.
+ * control hides and watch progress stays local.
  *
  * Client-safe: types and parsers only, no server imports.
  */
@@ -36,8 +35,6 @@ export type WatchAccountSession =
       loginUrl?: string
     }
 
-export type WatchBetaTesterCta = { enabled: boolean }
-
 export type WatchBootstrapProgressEntry = {
   videoId: string
   languageSlug?: string | null
@@ -57,7 +54,6 @@ export type WatchBootstrapProgress =
 export type WatchBootstrapResponse = {
   contractVersion: typeof WATCH_BOOTSTRAP_CONTRACT
   account: WatchAccountSession | null
-  betaTesterCta: WatchBetaTesterCta | null
   watchProgress: WatchBootstrapProgress | null
 }
 
@@ -82,11 +78,6 @@ export function parseWatchBootstrapResponse(
   return {
     contractVersion: WATCH_BOOTSTRAP_CONTRACT,
     account: isAccountSession(value.account) ? value.account : null,
-    betaTesterCta:
-      isRecord(value.betaTesterCta) &&
-      typeof value.betaTesterCta.enabled === "boolean"
-        ? { enabled: value.betaTesterCta.enabled }
-        : null,
     watchProgress: parseWatchProgress(value.watchProgress),
   }
 }

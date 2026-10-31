@@ -1,0 +1,105 @@
+{
+  "scope": "Production-minified actual project-list component in isolated harness; backend responses mocked, Next full-app routing excluded.",
+  "browser": "152.0.7977.64",
+  "samples": {
+    "baseline": [
+      {
+        "readyMs": 348.79999999981374,
+        "dclMs": 296.29999999981374,
+        "requests": 4,
+        "transferredBytes": 594422
+      },
+      {
+        "readyMs": 329,
+        "dclMs": 278.79999999981374,
+        "requests": 4,
+        "transferredBytes": 594422
+      },
+      {
+        "readyMs": 321.79999999981374,
+        "dclMs": 250.70000000018626,
+        "requests": 4,
+        "transferredBytes": 594422
+      },
+      {
+        "readyMs": 476.29999999981374,
+        "dclMs": 413.59999999962747,
+        "requests": 4,
+        "transferredBytes": 594422
+      },
+      {
+        "readyMs": 451,
+        "dclMs": 284.20000000018626,
+        "requests": 4,
+        "transferredBytes": 594422
+      },
+      {
+        "readyMs": 623.8999999994412,
+        "dclMs": 462.59999999962747,
+        "requests": 4,
+        "transferredBytes": 594422
+      }
+    ],
+    "candidate": [
+      {
+        "readyMs": 394,
+        "dclMs": 338.30000000074506,
+        "requests": 4,
+        "transferredBytes": 595881
+      },
+      {
+        "readyMs": 295,
+        "dclMs": 230.79999999981374,
+        "requests": 4,
+        "transferredBytes": 595881
+      },
+      {
+        "readyMs": 502.70000000018626,
+        "dclMs": 334.8999999994412,
+        "requests": 4,
+        "transferredBytes": 595881
+      },
+      {
+        "readyMs": 405,
+        "dclMs": 318.29999999981374,
+        "requests": 4,
+        "transferredBytes": 595881
+      },
+      {
+        "readyMs": 306.29999999981374,
+        "dclMs": 239.29999999981374,
+        "requests": 4,
+        "transferredBytes": 595881
+      },
+      {
+        "readyMs": 565.6000000005588,
+        "dclMs": 406.5,
+        "requests": 4,
+        "transferredBytes": 595881
+      }
+    ]
+  },
+  "medians": {
+    "baseline": {
+      "readyMs": 399.89999999990687,
+      "dclMs": 290.25,
+      "requests": 4,
+      "transferredBytes": 594422
+    },
+    "candidate": {
+      "readyMs": 399.5,
+      "dclMs": 326.59999999962747,
+      "requests": 4,
+      "transferredBytes": 595881
+    }
+  },
+  "behavior": [
+    "owner-only button",
+    "named confirmation",
+    "cancel sends no delete",
+    "conflict preserves cards",
+    "success removes only target",
+    "retry uses exact key",
+    "one initial API request"
+  ]
+}

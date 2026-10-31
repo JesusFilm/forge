@@ -34,12 +34,14 @@ export function usesReadingTypeface(text: string): boolean {
   return true
 }
 
+/** Undefined means the system face: on Android a named family draws only
+ *  Regular or Bold, so naming "System" would drop weights 500 and 600. */
 export function readingFontFamily(
   typeface: ReaderTypeface,
   text: string,
   platform: string,
-): string {
-  if (typeface === "sans" || !usesReadingTypeface(text)) return "System"
+): string | undefined {
+  if (typeface === "sans" || !usesReadingTypeface(text)) return undefined
   return platform === "ios" ? "Georgia" : "serif"
 }
 

@@ -54,7 +54,6 @@ describe("watch progress bootstrap auth", () => {
     return Response.json({
       contractVersion: "watch-bootstrap-v1",
       account: null,
-      betaTesterCta: null,
       watchProgress,
     })
   }
@@ -87,6 +86,73 @@ describe("watch progress bootstrap auth", () => {
     // Anonymous visitors never sync, so the bootstrap is the only request.
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+  it("uses only the bootstrap subject's local bucket and persists subsequent writes", async () => {
+    window.localStorage.clear()
+    const otherBucket = JSON.stringify({
+      "other-video": entry({ videoId: "other-video", positionSeconds: 80 }),
+    })
+    window.localStorage.setItem(
+      "forge.watch_progress.v1.user.other-user",
+      otherBucket,
+    )
+    window.localStorage.setItem(
+      "forge.watch_progress.v1.user.current-user",
+      JSON.stringify({
+        "local-video": entry({ videoId: "local-video", updatedAt: 2 }),
+      }),
+    )
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === "POST"
+          ? Response.json({ entries: [] })
+          : bootstrapBody({
+              authenticated: true,
+              userId: "current-user",
+              entries: [],
+            }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const client = await freshClient()
+    await expect(client.ensureWatchProgressAuth()).resolves.toBe(true)
+    expect(client.getWatchProgress("other-video")).toBeNull()
+    expect(client.getWatchProgress("local-video")?.positionSeconds).toBe(10)
+    client.saveWatchProgress({
+      videoId: "new-video",
+      languageSlug: "arabic",
+      positionSeconds: 24,
+      durationSeconds: 100,
+    })
+    const writes = fetchMock.mock.calls.filter(
+      ([, init]) => init?.method === "POST",
+    )
+    expect(writes).toHaveLength(2)
+    for (const [url, init] of writes) {
+      expect(url).toBe("/watch/api/watch-progress")
+      expect(init).toMatchObject({
+        cache: "no-store",
+        credentials: "same-origin",
+      })
+      expect(init?.body).not.toContain("other-video")
+    }
+    expect(JSON.parse(String(writes[1]?.[1]?.body))).toMatchObject({
+      entries: [
+        { videoId: "new-video", languageSlug: "arabic", positionSeconds: 24 },
+      ],
+    })
+    expect(
+      window.localStorage.getItem("forge.watch_progress.v1.current_user"),
+    ).toBe("current-user")
+    expect(
+      window.localStorage.getItem("forge.watch_progress.v1.user.other-user"),
+    ).toBe(otherBucket)
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "forge.watch_progress.v1.user.current-user",
+        ) ?? "{}",
+      ),
+    ).toHaveProperty("new-video")
+  })
 })
 
 describe("watch progress storage", () => {
@@ -118,7 +184,6 @@ describe("watch progress storage", () => {
           JSON.stringify({
             contractVersion: "watch-bootstrap-v1",
             account: null,
-            betaTesterCta: null,
             watchProgress: {
               authenticated: true,
               userId: "user-1",

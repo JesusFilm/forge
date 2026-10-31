@@ -138,6 +138,7 @@
     "versesAriaValue": "Хоһооннор {first}–{last}, барыта {total}, {chapter}",
     "demoVerse": "Аныгыскы хоһооҥҥо көһөргө өрө сыҕарытыҥ",
     "demoChapter": "Аныгыскы баһылыкка көһөргө хаҥас диэки сыҕарытыҥ",
+    "demoChapterRtl": "Аныгыскы баһылыкка көһөргө уҥа диэки сыҕарытыҥ",
     "demoSkip": "Көтүтэргэ таарыйыҥ",
     "demoSkipAriaLabel": "Сыҕарытыы көрдөрүүтүн көтүт",
     "selectVerseAriaHint": "Бу хоһоону талаары икки төгүл таарыйыҥ",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Кинигэни талыҥ",
+    "chooseChapter": "Баһылыгы талыҥ",
+    "chooseVerse": "Хоһоону талыҥ",
     "oldTestament": "Былыргы Кэс Тыл",
     "newTestament": "Саҥа Кэс Тыл",
     "books": "Кинигэлэр",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, other {# кинигэттэн}} {count}",
     "twoNames": "{first} уонна {second}",
     "threeNames": "{first}, {second} уонна {third}",
-    "onDevice": "Бу тэрилгэ баар",
+    "downloaded": "Хачайдаммыт",
     "downloading": "Хачайданар: {percent}%",
     "downloadStopped": "Хачайдааһын тохтоото",
     "updateAvailable": "Саҥардыы баар",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Сериал постера",
     "videosHeading": "Видеолор",
     "detailsLoadError": "Толору иһитиннэрии киирбэтэ.",
+    "languagesTitle": "Видео тыла",
     "searchLanguagesPlaceholder": "Тыллары көрдөө…",
     "searchLanguagesAriaLabel": "Тыллары көрдөө",
     "noLanguagesFound": "Тыл көстүбэтэ",
@@ -502,6 +506,7 @@
     "resumeAt": "Салҕаа: {time}",
     "unknownLanguage": "Биллибэт тыл",
     "downloadedStatus": "Хачайдаммыт",
+    "languagesTitle": "Видео тыла",
     "searchLanguagesPlaceholder": "Тыллары көрдөө…",
     "searchLanguagesAriaLabel": "Тыллары көрдөө",
     "noLanguagesFound": "Тыл көстүбэтэ",
@@ -773,5 +778,8 @@
     "send": "Ыыт",
     "sending": "Ыытыллар…",
     "sendAriaLabel": "Санааны ыыт"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Сыһыарыы тэлэбиисэргэ ыытар тэриллэри булаары олохтоох ситимҥитин туһанар, онон видеолору тэлэбиисэргитигэр холбуоххутун сөп."
   }
 }

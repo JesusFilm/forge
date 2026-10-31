@@ -138,6 +138,7 @@
     "versesAriaValue": "Mga bersikulo {first} tubtob {last} han {total}, {chapter}",
     "demoVerse": "I-swipe paigbaw para ha sunod nga bersikulo",
     "demoChapter": "I-swipe pawala para ha sunod nga kapitulo",
+    "demoChapterRtl": "I-swipe patuo para ha sunod nga kapitulo",
     "demoSkip": "Pindota basi laktawan",
     "demoSkipAriaLabel": "Laktawan an pagpakita han pag-swipe",
     "selectVerseAriaHint": "Pindota hin makaduha basi pilion ini nga bersikulo",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pagpili hin libro",
+    "chooseChapter": "Pagpili hin kapitulo",
+    "chooseVerse": "Pagpili hin bersikulo",
     "oldTestament": "Daan nga Tugon",
     "newTestament": "Bag-o nga Tugon",
     "books": "Mga Libro",
@@ -193,7 +196,7 @@
     "someBooks": "{count} han {total, plural, one {# ka libro} other {# ka libro}}",
     "twoNames": "{first} ngan {second}",
     "threeNames": "{first}, {second}, ngan {third}",
-    "onDevice": "Aada ha imo device",
+    "downloaded": "Na-download",
     "downloading": "Ginda-download {percent}%",
     "downloadStopped": "Naundang an pag-download",
     "updateAvailable": "May update nga magagamit",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster han serye",
     "videosHeading": "Mga Bidyo",
     "detailsLoadError": "Diri ma-load an bug-os nga detalye.",
+    "languagesTitle": "Yinaknan han bidyo",
     "searchLanguagesPlaceholder": "Pamilnga an mga yinaknan...",
     "searchLanguagesAriaLabel": "Pamilnga an mga yinaknan",
     "noLanguagesFound": "Waray nakit-an nga yinaknan",
@@ -502,6 +506,7 @@
     "resumeAt": "Padayona ha {time}",
     "unknownLanguage": "Waray ngaran",
     "downloadedStatus": "Na-download",
+    "languagesTitle": "Yinaknan han bidyo",
     "searchLanguagesPlaceholder": "Pamilnga an mga yinaknan...",
     "searchLanguagesAriaLabel": "Pamilnga an mga yinaknan",
     "noLanguagesFound": "Waray nakit-an nga yinaknan",
@@ -773,5 +778,8 @@
     "send": "Ipadara",
     "sending": "Ginpapadara…",
     "sendAriaLabel": "Ipadara an feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Gingagamit han app an imo lokal nga network ha pagbiling han mga Cast device, basi makapag-play ka hin mga bidyo ha imo TV."
   }
 }

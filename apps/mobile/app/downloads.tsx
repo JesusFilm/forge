@@ -9,6 +9,7 @@ export default function DownloadsScreen() {
 
   return (
     <LibraryDownloads
+      testID="screen-downloads"
       focusSeriesSlug={
         typeof series === "string" && series.length > 0 ? series : undefined
       }
