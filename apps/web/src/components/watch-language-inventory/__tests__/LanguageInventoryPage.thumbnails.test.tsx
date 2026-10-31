@@ -198,6 +198,105 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     ).toBe(true)
   })
 
+  describe.each([
+    {
+      surface: "InventoryCard",
+      bucket: "subtitleOnlyVideos",
+      availability: "SUBTITLE_ONLY",
+      interactionFrame: "language-inventory-thumbnail-frame",
+    },
+    {
+      surface: "CompactVideoRow",
+      bucket: "audioVideos",
+      availability: "AUDIO",
+      interactionFrame: "language-inventory-compact-thumbnail-frame",
+    },
+  ] as const)(
+    "$surface image fallback",
+    ({ bucket, availability, interactionFrame }) => {
+      it.each([
+        {
+          scenario: "blank artwork with playback",
+          imageUrl: "",
+          muxPlaybackId: "mux-card-control",
+          expectedSource:
+            "https://image.mux.com/mux-card-control/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+        },
+        {
+          scenario: "null artwork with playback",
+          imageUrl: null,
+          muxPlaybackId: "mux-card-control",
+          expectedSource:
+            "https://image.mux.com/mux-card-control/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+        },
+        {
+          scenario: "authored artwork with playback",
+          imageUrl: "https://cdn.test/card-control.jpg",
+          muxPlaybackId: "mux-card-control",
+          expectedSource: "https://cdn.test/card-control.jpg",
+        },
+        {
+          scenario: "blank artwork without playback",
+          imageUrl: "",
+          muxPlaybackId: null,
+          expectedSource: null,
+        },
+        {
+          scenario: "null artwork without playback",
+          imageUrl: null,
+          muxPlaybackId: null,
+          expectedSource: null,
+        },
+        {
+          scenario: "authored artwork without playback",
+          imageUrl: "https://cdn.test/card-control.jpg",
+          muxPlaybackId: null,
+          expectedSource: "https://cdn.test/card-control.jpg",
+        },
+      ])(
+        "renders the card image for $scenario",
+        ({ imageUrl, muxPlaybackId, expectedSource }) => {
+          const href = `/thumbnail-${bucket}.html` as Route
+          act(() => {
+            root.render(
+              <LanguageInventoryPage
+                inventory={model({
+                  [bucket]: [
+                    card({
+                      id: `thumbnail-${bucket}`,
+                      href,
+                      availability,
+                      imageUrl,
+                      muxPlaybackId,
+                    }),
+                  ],
+                })}
+              />,
+            )
+          })
+
+          // Heroes can independently emit this same frame even when the card is
+          // blank. The unique href selects the affected surface, not a sibling.
+          const cards = container.querySelectorAll(`a[href="${href}"]`)
+          expect(cards).toHaveLength(1)
+          const target = cards[0]
+          expect(
+            target.querySelector(`[data-testid="${interactionFrame}"]`),
+          ).not.toBeNull()
+          const images = target.querySelectorAll("img")
+          if (expectedSource === null) {
+            expect(images).toHaveLength(0)
+          } else {
+            expect(images).toHaveLength(1)
+            // Pin WATCH_CHAPTER_CAROUSEL_RECIPE literally, independently of the
+            // builder: a different derivative can trigger a cold Mux render.
+            expect(images[0].getAttribute("src")).toBe(expectedSource)
+          }
+        },
+      )
+    },
+  )
+
   // The page hero previously scanned for the first card with real artwork.
   // Once every card can synthesize a frame, that scan must still prefer the
   // authored image from a LATER card over the first card's frame.

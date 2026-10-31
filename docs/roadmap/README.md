@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 29, 2026)
 
-- **Total tickets:** 985
-- **Complete:** 746
+- **Total tickets:** 986
+- **Complete:** 747
 - **Cancelled:** 43
 - **In progress:** 81
 - **Not started:** 57
@@ -1020,3 +1020,4 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-688](topic-experiences/feat-688-watch-surface-deadline-order.md)                      | Order the Watch surface deadline pairs                                           | vlad          | P2       | —     | 1    | —   | in-progress |
 | [feat-697](topic-experiences/feat-697-watch-home-category-rail-scrollbar.md)                | Hide the Watch home category rail scrollbar                                      | vlad          | P2       | —     | 1    | —   | complete    |
 | [feat-904](topic-experiences/feat-904-tv-emulator-snapshot-playback-investigation.md)       | Investigate retained Android emulator snapshot and capture instability           | ekkasit       | P2       | —     | 2    | —   | not-started |
+| [feat-916](topic-experiences/feat-916-watch-language-inventory-image-fallback.md)           | Fall back from blank language-inventory artwork                                  | vlad          | P2       | —     | 1    | —   | complete    |
