@@ -1,0 +1,32 @@
+{
+  "manifest": {
+    "action": "start",
+    "generationId": "editorial-catalog-20261019-v1",
+    "modelId": "codex-editorial-session",
+    "promptVersion": "editorial-related-videos-v1",
+    "inputDigest": "3077c34d9240c4e867480001a09f26c8ba4384052470b710bda952515334128a",
+    "sourceSetDigest": "5035449a49ed400a610c986eb4b99c368a20892afd62ae600bb2b786b4310b09",
+    "inputCutoff": "2026-10-19T03:02:29.357Z",
+    "expectedSourceCount": 1031,
+    "inputMode": "content_only",
+    "inputSnapshotMode": "observed_fenced"
+  },
+  "result": {
+    "generationId": "editorial-catalog-20261019-v1",
+    "state": "complete",
+    "replay": false
+  },
+  "completedAt": "2026-10-19T03:14:57.948Z",
+  "verification": {
+    "sources": 1031,
+    "acceptedLinks": 6147,
+    "sixChoiceSources": 1017,
+    "fiveChoiceSources": 9,
+    "withheldEvidenceSources": 5,
+    "duplicateChoicesOmitted": 9,
+    "publicControlsUnchanged": true,
+    "storedLinks": 6147,
+    "missingTargets": 0,
+    "selfLinks": 0
+  }
+}
