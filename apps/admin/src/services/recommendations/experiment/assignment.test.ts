@@ -148,7 +148,7 @@ const hybridExperiment = {
 }
 
 describe("resolveExperimentAssignment", () => {
-  it("assigns A/A by profile generation and keeps the assignment across sessions and later sparse inputs", async () => {
+  it("does not revive profile A/A enrollment or sticky assignments", async () => {
     const { prisma, assignment } = harness()
     const protocol = parseStudyProtocol({
       version: "profile-study-governance-v1",
@@ -202,56 +202,21 @@ describe("resolveExperimentAssignment", () => {
       profileTokenDigest: "d".repeat(64),
       profileUsefulness: { eligibleForEnrollment: true },
     }
-    const configured = await prisma.recommendationExperiment.findFirst()
-    assignment.create.mockImplementation(async ({ data }) => {
-      const created = { ...data, state: "ACTIVE" }
-      assignment.findUnique.mockResolvedValue({
-        ...created,
-        profile: {
-          id: "profile-1",
-          state: "ACTIVE",
-          choice: "DURABLE_ALLOWED",
-          privacyGeneration: 2,
-          expiresAt: new Date(protocol.expiresAt),
-        },
-        experiment: { ...configured, state: "ACTIVE" },
-      } as never)
-      return created
-    })
-    const first = await resolveExperimentAssignment(prisma as never, args)
-    const created = assignment.create.mock.calls[0]?.[0].data
-    expect(created).toMatchObject({
-      unitKind: "ANONYMOUS_PROFILE",
-      profileId: "profile-1",
-      privacyGeneration: 2,
-    })
-    assignment.findUnique.mockResolvedValue({
-      ...created,
-      state: "ACTIVE",
-    } as never)
-    const second = await resolveExperimentAssignment(prisma as never, {
-      ...args,
-      sessionDigest: "b".repeat(64),
-      profileUsefulness: { eligibleForEnrollment: false },
-    })
-    expect(second).toEqual(first)
-    expect(assignment.create).toHaveBeenCalledOnce()
-    // Enrollment closes at midnight, but this unit was assigned at noon and
-    // retains its arm until noon the next day.
-    expect(
-      await resolveExperimentAssignment(prisma as never, {
-        ...args,
-        now: new Date("2026-08-21T01:00:00Z"),
-      }),
-    ).toEqual(first)
-    assignment.findUnique.mockResolvedValue(null)
-    expect(
-      await resolveExperimentAssignment(prisma as never, {
-        ...args,
-        now: new Date("2026-08-21T01:00:00Z"),
-      }),
-    ).toMatchObject({ assignment: null, bypassReason: "cohort_ineligible" })
-    expect(assignment.create).toHaveBeenCalledOnce()
+    for (const input of [
+      args,
+      { ...args, sessionDigest: "b".repeat(64) },
+      { ...args, now: new Date("2026-08-21T01:00:00Z") },
+    ]) {
+      await expect(
+        resolveExperimentAssignment(prisma as never, input),
+      ).resolves.toEqual({
+        assignment: null,
+        bypassReason: "personalization_not_consented",
+      })
+    }
+    expect(assignment.create).not.toHaveBeenCalled()
+    expect(assignment.findUnique).not.toHaveBeenCalled()
+    expect(prisma.recommendationProfile.findFirst).not.toHaveBeenCalled()
   })
 
   it("refuses profile enrollment without an activated immutable study", async () => {
@@ -353,7 +318,7 @@ describe("resolveExperimentAssignment", () => {
     ).not.toHaveBeenCalled()
   })
 
-  it("admits the exact hybrid challenger only after its own counterfactual decision", async () => {
+  it("does not revive the exact hybrid challenger or read its old counterfactual decision", async () => {
     const { prisma } = harness()
     prisma.recommendationExperiment.findFirst.mockResolvedValue(
       hybridExperiment,
@@ -394,32 +359,10 @@ describe("resolveExperimentAssignment", () => {
         ...base,
         profileTokenDigest: "d".repeat(64),
       }),
-    ).resolves.toMatchObject({
-      assignment: {
-        experimentId: "anonymous-hybrid-personalized-v1",
-      },
-      bypassReason: null,
+    ).resolves.toEqual({
+      assignment: null,
+      bypassReason: "personalization_not_consented",
     })
-    expect(prisma.recommendationShadowDecision.findFirst).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        evaluation: {
-          manifestId: HYBRID_PERSONALIZED_MANIFEST.id,
-          generatorVersion: "semantic-profile-hybrid-generators-v1",
-        },
-      }),
-      select: { id: true },
-    })
-
-    prisma.recommendationShadowDecision.findFirst.mockResolvedValue({
-      decision: "PROMOTE_TO_EXPERIMENT",
-      evaluation: {
-        manifestId: "multi-interest-profile-shadow-v1",
-        generatorVersion: "multi-interest-profile-candidate-v1",
-      },
-    })
-    // The repository mock returns any row regardless of the requested where;
-    // make the mismatch explicit by returning no exact row on the next check.
-    prisma.recommendationShadowDecision.findFirst.mockResolvedValueOnce(null)
     await expect(
       resolveExperimentAssignment(prisma as never, {
         ...base,
@@ -428,8 +371,13 @@ describe("resolveExperimentAssignment", () => {
       }),
     ).resolves.toEqual({
       assignment: null,
-      bypassReason: "shadow_decision_missing",
+      bypassReason: "personalization_not_consented",
     })
+    expect(prisma.recommendationShadowDecision.findFirst).not.toHaveBeenCalled()
+    expect(prisma.recommendationProfile.findFirst).not.toHaveBeenCalled()
+    expect(
+      prisma.recommendationExperimentAssignment.create,
+    ).not.toHaveBeenCalled()
   })
   it("returns one sticky immutable assignment for repeated and concurrent requests", async () => {
     const { prisma, assignment } = harness()

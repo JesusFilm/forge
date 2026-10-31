@@ -1,7 +1,7 @@
 ---
 title: "A layout effect's setState lands in the NEXT commit — the render in between needs its own answer"
 date: "2026-08-21"
-last_updated: "2026-09-28"
+last_updated: "2026-10-20"
 category: "logic-errors"
 module: "apps/mobile"
 problem_type: "logic_error"
@@ -381,5 +381,10 @@ and to name `departingRect` as the reason the gap needs its own answer.
   There, a key change with an unchanged native frame sends no `onLayout`; the
   test move is a synthetic Fabric layout driver that fires one event flush at a
   time.
+- [A screen pushed over a mounted watch page kept the root player drawn over it](screen-pushed-over-mounted-page-keeps-root-player-drawn.md)
+  — a second way into this shrink. A cover (the Bible reader, or since
+  2026-10-20 any other screen pushed over the page) drops `rect` while the slot
+  stays attached, so the same transition runs with no detach. That doc's
+  layout-effect reset of the started fact applies this doc's commit-lag rule.
 - PR #1962 shipped the mini player (feat-367) and introduced both artifacts.
 - PR #1980 carries this fix (merged 2026-08-21).

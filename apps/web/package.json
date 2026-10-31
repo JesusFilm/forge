@@ -10,7 +10,7 @@
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-web .env",
     "lint": "pnpm run check:ui-locales && eslint .",
     "typecheck": "pnpm run generate:ui-locales && tsc --noEmit",
-    "test": "pnpm run generate:ui-locales && vitest run",
+    "test": "pnpm run generate:ui-locales && pnpm run test:cache-size && vitest run",
     "test:e2e": "playwright test",
     "test:watch": "pnpm run generate:ui-locales && vitest",
     "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-web --minified-path-prefix /watch/_next/static/",
@@ -25,7 +25,9 @@
     "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
     "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts",
     "generate:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts",
-    "check:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts --check"
+    "check:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts --check",
+    "test:cache-size": "node scripts/check-next-cache-size.mjs",
+    "probe:cache-size": "node scripts/check-next-cache-size.mjs --benchmark --storage-codec"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
@@ -33,6 +35,7 @@
     "@datadog/browser-rum": "^7.2.0",
     "@datadog/browser-rum-react": "^7.2.0",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/experience-schema": "workspace:*",
     "@forge/feature-flags": "workspace:*",
     "@forge/video-player": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",

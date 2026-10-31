@@ -495,35 +495,7 @@ describe("recommendation admin overview", () => {
         conflictCount: 0,
         audit: [expect.objectContaining({ eventType: "activation_effective" })],
       },
-      profileShadow: {
-        manifestId: "multi-interest-profile-shadow-v1",
-        manifestEnabled: true,
-        shadowOnly: true,
-        generationCount: 4,
-        durableGenerationCount: 3,
-        sessionGenerationCount: 1,
-        metricsSuppressed: false,
-        coverage: 0.81,
-        stability: 0.74,
-        interests: [
-          expect.objectContaining({
-            kind: "durable",
-            ordinal: 0,
-            generations: 3,
-          }),
-          expect.objectContaining({
-            kind: "session",
-            ordinal: 0,
-            generations: 1,
-          }),
-        ],
-        evaluation: expect.objectContaining({
-          state: "terminal",
-          decision: "PROMOTE_TO_EXPERIMENT",
-          novelty: 0.58,
-          diversity: 0.71,
-        }),
-      },
+      profileShadow: null,
     })
     expect(
       prisma.recommendationControlEvaluation.findFirst,

@@ -572,7 +572,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
       await client.end()
     })
-    it("counts actual hybrid execution without relabeling legacy challenger assignments", async () => {
+    it("preserves historical execution modes without reviving profile reconciliation", async () => {
       const auditAt = new Date("2026-08-28T12:00:00.000Z")
       const start = new Date("2026-08-27T12:00:00.000Z")
       const cases = [
@@ -622,10 +622,32 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         { preset: "24h", start, end: auditAt },
         auditAt,
       )
-      expect(overview).toMatchObject({
-        suppressed: false,
-        currentPointerInvariant: "clean",
-        counts: { cleanHybridRequests: 3 },
+      expect(overview).toBeNull()
+
+      const { rows } = await client.query<{
+        cleanHybridRequests: number
+        legacyChallengerRequests: number
+        viewingModeRequests: number
+      }>(
+        `SELECT
+          COUNT(*) FILTER (WHERE decision.execution_mode = 'hybrid_personalized')::integer AS "cleanHybridRequests",
+          COUNT(*) FILTER (WHERE decision.execution_mode IS NULL)::integer AS "legacyChallengerRequests",
+          COUNT(*) FILTER (WHERE decision.execution_mode = 'viewing_mode_personalized')::integer AS "viewingModeRequests"
+        FROM recommendation_request request
+        JOIN recommendation_personalization_decision decision
+          ON decision.request_id = request.id
+        WHERE request.created_at >= $1
+          AND request.created_at < $2
+          AND request.expires_at > $2
+          AND decision.expires_at > $2
+          AND decision.lane = 'profile_challenger'
+          AND decision.effective_manifest_id = 'semantic-profile-hybrid-v1'`,
+        [start, auditAt],
+      )
+      expect(rows[0]).toEqual({
+        cleanHybridRequests: 3,
+        legacyChallengerRequests: 1,
+        viewingModeRequests: 1,
       })
     })
   },

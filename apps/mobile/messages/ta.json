@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} இல் வசனங்கள் {first} முதல் {last} வரை, {chapter}",
     "demoVerse": "அடுத்த வசனத்திற்கு மேலே ஸ்வைப் செய்யவும்",
     "demoChapter": "அடுத்த அதிகாரத்திற்கு இடப்பக்கம் ஸ்வைப் செய்யவும்",
+    "demoChapterRtl": "அடுத்த அதிகாரத்திற்கு வலப்பக்கம் ஸ்வைப் செய்யவும்",
     "demoSkip": "தவிர்க்கத் தட்டவும்",
     "demoSkipAriaLabel": "ஸ்வைப் விளக்கத்தைத் தவிர்",
     "selectVerseAriaHint": "இந்த வசனத்தைத் தேர்ந்தெடுக்க இருமுறை தட்டவும்",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "புத்தகத்தைத் தேர்ந்தெடு",
+    "chooseChapter": "அதிகாரத்தைத் தேர்ந்தெடு",
+    "chooseVerse": "வசனத்தைத் தேர்ந்தெடு",
     "oldTestament": "பழைய ஏற்பாடு",
     "newTestament": "புதிய ஏற்பாடு",
     "books": "புத்தகங்கள்",
@@ -193,7 +196,7 @@
     "someBooks": "{total, plural, one {# புத்தகத்தில் {count}} other {# புத்தகங்களில் {count}}}",
     "twoNames": "{first} மற்றும் {second}",
     "threeNames": "{first}, {second} மற்றும் {third}",
-    "onDevice": "இந்தச் சாதனத்தில் உள்ளது",
+    "downloaded": "பதிவிறக்கப்பட்டது",
     "downloading": "பதிவிறக்கப்படுகிறது {percent}%",
     "downloadStopped": "பதிவிறக்கம் நின்றது",
     "updateAvailable": "புதுப்பிப்பு உள்ளது",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "தொடர் போஸ்டர்",
     "videosHeading": "வீடியோக்கள்",
     "detailsLoadError": "முழு விவரங்களை ஏற்ற முடியவில்லை.",
+    "languagesTitle": "வீடியோ மொழி",
     "searchLanguagesPlaceholder": "மொழிகளைத் தேடு…",
     "searchLanguagesAriaLabel": "மொழிகளைத் தேடு",
     "noLanguagesFound": "மொழிகள் எதுவும் கிடைக்கவில்லை",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} இலிருந்து தொடரவும்",
     "unknownLanguage": "தெரியாத மொழி",
     "downloadedStatus": "பதிவிறக்கப்பட்டது",
+    "languagesTitle": "வீடியோ மொழி",
     "searchLanguagesPlaceholder": "மொழிகளைத் தேடு…",
     "searchLanguagesAriaLabel": "மொழிகளைத் தேடு",
     "noLanguagesFound": "மொழிகள் எதுவும் கிடைக்கவில்லை",
@@ -773,5 +778,8 @@
     "send": "அனுப்பு",
     "sending": "அனுப்புகிறது…",
     "sendAriaLabel": "கருத்தை அனுப்பு"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "அலைபரப்புச் சாதனங்களைக் கண்டறிய ஆப்ஸ் உங்கள் உள்ளூர் நெட்வொர்க்கைப் பயன்படுத்துகிறது, இதனால் உங்கள் டிவியில் வீடியோக்களை இயக்கலாம்."
   }
 }

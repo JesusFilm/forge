@@ -26,6 +26,7 @@ function muxPort(signal: AbortSignal): StudioMuxPort {
   return {
     read: async (id) => jobSchema.parse(await call("mux-enqueue", id)),
     failed: (id, uploadId) => call("mux-upload-failed", { id, uploadId }),
+    assetFailed: (id, assetId) => call("mux-asset-failed", { id, assetId }),
     upload: (id) => observeStudioMuxUpload(id, signal),
     created: (id, dispatchId, assetId) =>
       call("mux-created", { id, dispatchId, assetId }),

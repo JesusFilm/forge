@@ -75,7 +75,12 @@ jest.mock("expo-network", () => ({
 }))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
-jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// Glass off: each shared glass surface keeps today's look in this suite.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 // The host renders the screen's back affordance, which is the app's existing
 // router-owning component. expo-router is never imported unmocked in this repo.
 // `push` is captured so the expand wiring is assertable end to end.
@@ -194,6 +199,7 @@ import {
   Animated,
   AppState,
   Dimensions,
+  I18nManager,
   Platform,
   StyleSheet,
 } from "react-native"
@@ -219,6 +225,7 @@ import {
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
 import { resetPlayerSettings } from "../../../test-utils/resetPlayerSettings"
 import {
+  DEFAULT_CORNER,
   WINDOW_EDGE_MARGIN,
   frameGeometry,
   miniPlayerCornerFrame,
@@ -230,6 +237,7 @@ import {
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
 } from "../../../lib/miniPlayer/playbackRequest"
+import type { SlotPage } from "../../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
@@ -258,8 +266,10 @@ import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 jest.setTimeout(20_000)
 
@@ -330,8 +340,9 @@ let mounted: TestInstance | null = null
 function attachSlot(
   overrides: Partial<PlaybackRequest> = {},
   rect: typeof RECT | null = RECT,
+  page: SlotPage | null = null,
 ) {
-  const id = requestStore.attachSlot(makeRequest(overrides))
+  const id = requestStore.attachSlot(makeRequest(overrides), page)
   if (rect != null) requestStore.setSlotRect(id, rect)
   return id
 }
@@ -4006,6 +4017,7 @@ function Scene() {
   return (
     <>
       <PlayerSlot
+        page="watch"
         streamingUrl={URL_A}
         posterUrl={POSTER}
         autostart
@@ -5357,6 +5369,352 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
     })
   })
 
+  // 2026-10-20: a screen pushed over the watch screen (a deep link, a push
+  // tap to an experience) keeps it mounted, so its slot never detaches.
+  describe("a screen pushed over the watch screen", () => {
+    const DOWNLOADS_ROUTE = ["downloads"] as const
+    const EXPERIENCE_ROUTE = ["experience", "[slug]"] as const
+
+    /** The router's order: the watch screen loses focus, THEN the segments
+     *  change. A pop never sets the fact, because `beforeRemove` comes first. */
+    async function pushOver(
+      renderer: TestInstance,
+      id: number,
+      segments: readonly string[],
+    ) {
+      await act(async () => {
+        requestStore.setSlotUnderScreen(id, true)
+      })
+      await setRoute(renderer, segments)
+    }
+
+    async function popBackTo(renderer: TestInstance, id: number) {
+      await act(async () => {
+        requestStore.setSlotUnderScreen(id, false)
+      })
+      await setRoute(renderer, WATCH_ROUTE)
+    }
+
+    const SESSION_B: PlaybackSessionDescriptor = {
+      ...SESSION_A,
+      videoId: "video-b",
+      videoSlug: "video-b-slug",
+      title: "Video B",
+    }
+
+    async function playing() {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const id = attachSlot({ posterUrl: POSTER }, RECT, "watch")
+      const renderer = await renderHost()
+      await startPlayback()
+      video.__player.currentTime = 42
+      video.__player.duration = 600
+      return { renderer, id }
+    }
+
+    it("floats a playing video in the app's corner, and the return grows it back still playing", async () => {
+      const { renderer, id } = await playing()
+      const ends = trackEnds()
+
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        rect: RECT,
+        cover: "admitted",
+        coverSource: "screen",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      expect(backButtons(renderer)).toHaveLength(0)
+      // Not the reader's layout: the app's own corner and chrome.
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+      expect(video.__player.playing).toBe(true)
+
+      video.__player.currentTime = 57
+      await popBackTo(renderer, id)
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(frameStyle(renderer)).toMatchObject({
+        left: RECT.x,
+        top: RECT.y,
+        width: RECT.width,
+        height: RECT.height,
+      })
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(backButtons(renderer)).toHaveLength(1)
+      expect(video.__player.playing).toBe(true)
+      expect(video.__player.currentTime).toBe(57)
+      expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(ends.events).toHaveLength(0)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("hides a finished video under the experience page instead of drawing it there", async () => {
+      const { renderer, id } = await playing()
+      await act(async () => {
+        video.__player.pause()
+      })
+      video.__player.currentTime = 600
+      // The poster's fade is native-driven, and this renderer has no native
+      // node to attach it to.
+      jest.spyOn(Animated, "timing").mockReturnValue({
+        start: () => {},
+        stop: () => {},
+        reset: () => {},
+      } as never)
+      await act(async () => {
+        video.__player.__emit("playToEnd")
+      })
+
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(frameStyle(renderer).opacity).toBe(0)
+      expect(backButtons(renderer)).toHaveLength(0)
+      expect(hasWindowChrome(renderer)).toBe(false)
+    })
+
+    it("pauses a series trailer under a pushed screen", async () => {
+      jest.useFakeTimers()
+      mockSegments = ["series", "[slug]"]
+      const id = attachSlot(
+        { session: null, streamingUrl: URL_B },
+        RECT,
+        "series",
+      )
+      const renderer = await renderHost()
+      await startPlayback()
+
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      expect(video.__player.playing).toBe(false)
+      expect(frameStyle(renderer).opacity).toBe(0)
+    })
+
+    // The watch screen's own sheet blurs it too. The page is still in view.
+    it("covers nothing under the screen's own sheet", async () => {
+      const { renderer, id } = await playing()
+
+      await pushOver(renderer, id, ["watch", "language"])
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // A back press shows the route BELOW the watch screen. Today's path owns
+    // that: the full view holds until the screen unmounts, then it floats.
+    it("leaves a pop alone, even onto a route that is not a tab", async () => {
+      const { renderer, id } = await playing()
+
+      await setRoute(renderer, DOWNLOADS_ROUTE)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      await detach(id)
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    })
+
+    // A pop closes one route; the watch screen may be several below. The
+    // pushed screen takes the session, so the video plays on with no reload.
+    it("pushes a watch screen on a tap, which takes the video with no reload", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+      mockRouterBack.mockClear()
+
+      await windowAction(renderer, "activate")
+
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+      expect(mockRouterBack).not.toHaveBeenCalled()
+      // The route changes a commit before the new screen's slot attaches. The
+      // old screen is still under it, so its cover holds, in the app's layout.
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        cover: "admitted",
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+      // The new screen's first stream is another url of the same video.
+      let upper = 0
+      await act(async () => {
+        upper = attachSlot(
+          {
+            posterUrl: POSTER,
+            streamingUrl: `${URL_A}?redundant_streams=true`,
+          },
+          RECT,
+          "watch",
+        )
+      })
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: upper,
+        cover: null,
+      })
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+      expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+      expect(video.__player.playing).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(true)
+    })
+
+    // A deep link opens the watch route with no tap, so no expand hold pins
+    // the window. A reader layout here would glide it to the reader's corner.
+    it("keeps the app's layout while a watch route opens over the screen cover", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await setRoute(renderer, WATCH_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+      expect(frameVisual(renderer)).toEqual(
+        cornerBox(appLayout(), DEFAULT_CORNER),
+      )
+    })
+
+    // A push or lapse-reminder tap opens a series with no trailer, so no newer
+    // slot takes the player: the watch slot is the one under the series page.
+    it("floats a playing video under a series page that mounts no slot", async () => {
+      const { renderer, id } = await playing()
+
+      await pushOver(renderer, id, ["series", "[slug]"])
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        cover: "admitted",
+        coverSource: "screen",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // A screen opened from the page's own sheet closes back onto that sheet.
+    // The page is in view under it, though its screen still has no focus.
+    it("ends the cover when the pushed screen closes back onto the page's sheet", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, ["watch", "download"])
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      await setRoute(renderer, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+
+      await setRoute(renderer, ["watch", "download"])
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // Watch A never plays, a screen opens over it, watch B opens and plays,
+    // then back from B: A's cover starts in the commit that changes the video.
+    it("refuses the cover for a video that never played, after another one played", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const a = attachSlot({ posterUrl: POSTER }, RECT, "watch")
+      const renderer = await renderHost()
+      // A's autostart asks, and never lands.
+      video.__player.play.mockImplementation(() => {})
+      await pushOver(renderer, a, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      let b = 0
+      await act(async () => {
+        mockSegments = WATCH_ROUTE
+        renderer.update(<PlaybackHost />)
+        b = attachSlot(
+          {
+            streamingUrl: URL_B,
+            progressVideoId: "video-b",
+            session: SESSION_B,
+          },
+          RECT,
+          "watch",
+        )
+      })
+      await act(async () => {
+        video.__settleReplace()
+      })
+      await act(async () => {
+        video.__player.playing = true
+        video.__player.__emit("playingChange", { isPlaying: true })
+      })
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: b,
+        cover: null,
+      })
+
+      await act(async () => {
+        mockSegments = DOWNLOADS_ROUTE
+        renderer.update(<PlaybackHost />)
+        requestStore.detachSlot(b)
+      })
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: a,
+        cover: "refused",
+      })
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasWindowChrome(renderer)).toBe(false)
+    })
+
+    it("closes the window over a screen cover with no report, and the return shows the page paused", async () => {
+      const { renderer, id } = await playing()
+      const ends = trackEnds()
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await windowAction(renderer, "dismiss")
+      expect(video.__player.playing).toBe(false)
+      await advance(EXIT_DURATION_MS + 1000)
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+
+      await popBackTo(renderer, id)
+
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(video.__player.currentTime).toBe(42)
+      expect(viewLife.unmounts).toBe(0)
+    })
+
+    it("stays a screen cover under a reader opened over that screen", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, EXPERIENCE_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await setRoute(renderer, READER_ROUTE)
+      await advance(REPOSITION_DURATION_MS + 300)
+      mockRouterPush.mockClear()
+      mockRouterBack.mockClear()
+
+      expect(requestStore.getSnapshot().coverSource).toBe("screen")
+      await windowAction(renderer, "activate")
+      // A pop would land on the experience page, not on the watch screen.
+      expect(mockRouterBack).not.toHaveBeenCalled()
+      expect(mockRouterPush).toHaveBeenCalledWith("/watch/video-a-slug")
+    })
+  })
+
   describe("StrictMode (the cover effect restores what its cleanup undoes)", () => {
     it("mounts onto a covered slot once: one refused cover, no session, no report", async () => {
       jest.useFakeTimers()
@@ -5419,5 +5777,54 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(ends.events).toHaveLength(0)
       expect(hasFullViewChrome(renderer)).toBe(true)
     })
+  })
+})
+
+describe("physical coordinates in a right-to-left layout (feat-695 KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  function hostByTestId(renderer: TestInstance, id: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.testID === id && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node with testID ${id}`)
+    return node
+  }
+
+  it("draws the frame at the measured x 0 inside a left-to-right layer, and leaves the back affordance to the app", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    const frame = hostByTestId(renderer, "playback-frame")
+    expect(RECT.x).toBe(0)
+    expect(StyleSheet.flatten(frame.props.style as never)).toMatchObject({
+      left: 0,
+    })
+    expect(directionAbove(frame)).toBe("ltr")
+
+    // The back affordance mirrors with the app (R11), so it stays outside.
+    const [back] = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === FloatingBackButton,
+    )
+    expect(directionAbove(back)).toBeUndefined()
+  })
+
+  it("keeps the mini player window inside that layer", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(directionAbove(hostByTestId(renderer, "mini-player-window"))).toBe(
+      "ltr",
+    )
   })
 })

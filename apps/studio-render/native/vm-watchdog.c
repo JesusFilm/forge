@@ -54,7 +54,7 @@ static int notify_ready(void) {
 int main(int argc,char **argv) {
   if(getuid()!=0||geteuid()!=0||argc!=5||!fixed_hex(argv[1],32)||strlen(argv[2])!=36) return 126;
   char *end; errno=0; long long deadline=strtoll(argv[3],&end,10);
-  if(errno||*end||deadline<1||deadline-now_ms()>900000) return 126;
+  if(errno||*end||deadline<1||deadline-now_ms()>3600000) return 126;
   errno=0; unsigned long long inode=strtoull(argv[4],&end,10);
   if(errno||*end||inode<1) return 126;
   char state[180],group[220];

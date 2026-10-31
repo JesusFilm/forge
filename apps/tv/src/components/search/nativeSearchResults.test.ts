@@ -14,7 +14,7 @@ function result(overrides: Partial<SearchResult> = {}): SearchResult {
     startSeconds: 10,
     playbackId: "pb1",
     score: 0.9,
-    label: "featureFilm",
+    label: "FEATURE_FILM",
     childCount: 61,
     ...overrides,
   }
@@ -26,16 +26,40 @@ describe("toNativeSearchResults", () => {
       {
         id: "r1",
         title: "JESUS",
-        subtitle: "featureFilm",
+        subtitle: "Feature Film",
         imageUrl: "https://img.example/jesus.jpg",
       },
     ])
   })
 
-  it("maps null label to ABSENT subtitle (not the string 'null')", () => {
-    const [card] = toNativeSearchResults([result({ label: null })])
-    expect(card!.subtitle).toBeUndefined()
-    expect("subtitle" in card! && card!.subtitle).not.toBe("null")
+  it.each([
+    ["EPISODE", "Episode"],
+    ["SEGMENT", "Segment"],
+    ["SHORT_FILM", "Short Film"],
+    ["SERIES", "Series"],
+    ["COLLECTION", "Collection"],
+    ["BEHIND_THE_SCENES", "Behind The Scenes"],
+  ])("presents %s as readable content metadata", (label, expected) => {
+    expect(toNativeSearchResults([result({ label })])[0]?.subtitle).toBe(
+      expected,
+    )
+  })
+
+  it.each([null, ""])(
+    "calls an unlabeled video Video, even when it has chapters (label=%s)",
+    (label) => {
+      expect(toNativeSearchResults([result({ label })])[0]?.subtitle).toBe(
+        "Video",
+      )
+    },
+  )
+
+  it("identifies experiences without borrowing a video's label", () => {
+    expect(
+      toNativeSearchResults([
+        result({ type: "EXPERIENCE", label: "FEATURE_FILM" }),
+      ])[0]?.subtitle,
+    ).toBe("Experience")
   })
 
   it("maps null imageUrl to ABSENT imageUrl", () => {

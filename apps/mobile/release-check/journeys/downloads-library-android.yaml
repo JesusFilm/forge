@@ -1,0 +1,189 @@
+# Download a short video, then select and delete it in the Downloads list
+# through the delete confirm card, and cancel the export folder picker. The
+# app data starts empty. iOS runs downloads-library-ios instead.
+appId: org.jesusfilm.forgewatch
+name: downloads-library-android
+tags:
+  - platform:android
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- tapOn:
+    text: Download
+    label: Open the download sheet
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 20000
+    label: The download sheet shows
+- tapOn:
+    text: Save to Device
+    label: Pick the Save to Device mode
+- tapOn:
+    text: I agree to the Terms of Use
+    label: Accept the terms of use
+# On an iPad the button can sit under the sheet's lower edge, where a tap
+# closes the sheet, so the journey scrolls the sheet itself.
+- swipe:
+    from:
+      id: screen-watch-download
+    direction: UP
+    label: Scroll the sheet up for the save button
+- scrollUntilVisible:
+    element:
+      text: Save video to the device
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the save button
+- tapOn:
+    text: Save video to the device
+    label: Open the folder picker
+# The picker comes first and the export starts only after a pick, so a
+# cancel starts nothing (not-tested.json).
+- extendedWaitUntil:
+    notVisible:
+      id: screen-watch-download
+    timeout: 20000
+    label: The folder picker shows
+- pressKey:
+    key: back
+    label: Cancel the folder picker with the back button
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 10000
+    label: The download sheet stays open after the cancel
+# At full height the sheet's top is under the playing video on Android, so
+# the mode choice cannot be tapped. A new sheet opens in the offline mode.
+- pressKey:
+    key: back
+    label: Close the download sheet with the back button
+- extendedWaitUntil:
+    notVisible:
+      id: screen-watch-download
+    timeout: 10000
+    label: The download sheet closes
+- tapOn:
+    text: Download
+    label: Open the download sheet again
+- extendedWaitUntil:
+    visible:
+      id: screen-watch-download
+    timeout: 20000
+    label: The download sheet shows again
+- tapOn:
+    text: "Select a file size, .+"
+    label: Open the file size list
+- tapOn:
+    text: "Low.*"
+    label: Pick the smallest file
+- swipe:
+    from:
+      id: screen-watch-download
+    direction: UP
+    label: Scroll the sheet up for the download button
+- scrollUntilVisible:
+    element:
+      text: Download video
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the download button
+- tapOn:
+    text: Download video
+    label: Start the download
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 20000
+    label: The watch page shows after the sheet
+- extendedWaitUntil:
+    visible:
+      text: Downloaded
+    timeout: 180000
+    label: The download finishes
+- tapOn:
+    text: Go back
+    label: Leave the watch page
+- extendedWaitUntil:
+    visible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player shows
+# The journey taps the close button's place in the window's top corner, as
+# the mini-player journey does.
+- tapOn:
+    id: mini-player-window
+    point: 93%,12%
+    label: Close the mini player
+- extendedWaitUntil:
+    notVisible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player closes
+- tapOn:
+    text: My Watch
+    label: Open My Watch
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-profile
+    timeout: 20000
+    label: My Watch shows
+# The Downloads heading and "See all" show only when the rail has a tile.
+- extendedWaitUntil:
+    visible:
+      text: See all downloads
+    timeout: 10000
+    label: The downloads rail shows
+- tapOn:
+    text: See all downloads
+    label: Open the Downloads list
+- extendedWaitUntil:
+    visible:
+      id: screen-downloads
+    timeout: 20000
+    label: The Downloads list shows
+- tapOn:
+    text: Select downloads
+    label: Start the selection
+- tapOn:
+    text: ".+, .*Downloaded"
+    label: Select the downloaded video
+- assertVisible:
+    text: 1 selected
+    label: One video is selected
+- tapOn:
+    text: Delete 1 selected video
+    label: Ask to delete the video
+- extendedWaitUntil:
+    visible:
+      id: screen-library-delete-confirm
+    timeout: 10000
+    label: The delete confirm card shows
+- tapOn:
+    text: Delete
+    label: Delete the video
+- extendedWaitUntil:
+    visible:
+      text: No Downloads Yet
+    timeout: 20000
+    label: The empty Downloads state shows

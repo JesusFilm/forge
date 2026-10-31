@@ -36,7 +36,6 @@ const document = {
   tracks: [{ id: "main", kind: "visual" }],
   components: [],
   items: [],
-  packRevisionIds: [],
 }
 
 suite("Studio command seam against disposable Postgres", () => {

@@ -432,7 +432,7 @@ describe("workflow instrumentation", () => {
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationCowatchRefreshSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(ensureRecommendationRetentionSchedulerStarted).toHaveBeenCalledTimes(
       1,
     )
@@ -450,7 +450,7 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledWith(prisma)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
@@ -469,7 +469,7 @@ describe("workflow instrumentation", () => {
       await register()
       expect(
         ensureRecommendationProfileReconciliationSchedulerStarted,
-      ).toHaveBeenCalledOnce()
+      ).not.toHaveBeenCalled()
       expect(
         ensureRecommendationEpisodeFinalizationRecovery,
       ).toHaveBeenCalledOnce()
@@ -482,50 +482,19 @@ describe("workflow instrumentation", () => {
     }
   })
 
-  it("rechecks the profile reconciliation scheduler after a terminal runtime failure", async () => {
+  it("never starts or recovers retired behavioral learners", async () => {
     vi.useFakeTimers()
     mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
     mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
     const { register } = await import("./instrumentation")
-
     await register()
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
-
-    await vi.advanceTimersByTimeAsync(5 * 60_000)
-
+    ).not.toHaveBeenCalled()
     expect(
-      ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(2)
-  })
-
-  it("recovers co-watch scheduler failures independently of profile reconciliation", async () => {
-    vi.useFakeTimers()
-    mockEnv.env.WORKFLOW_RUNNER_ENABLED = "true"
-    mockEnv.env.WORKFLOW_TARGET_WORLD = "@workflow/world-postgres"
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    try {
-      const { register } = await import("./instrumentation")
-      await register()
-      ensureRecommendationCowatchRefreshSchedulerStarted.mockRejectedValueOnce(
-        new Error("temporary scheduler recovery failure"),
-      )
-      await vi.advanceTimersByTimeAsync(10 * 60_000)
-      expect(
-        ensureRecommendationCowatchRefreshSchedulerStarted,
-      ).toHaveBeenCalledTimes(3)
-      expect(
-        ensureRecommendationProfileReconciliationSchedulerStarted,
-      ).toHaveBeenCalledTimes(3)
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "[recommendation-cowatch-refresh] event=scheduler_recovery_failure",
-        ),
-      )
-    } finally {
-      warn.mockRestore()
-    }
+      ensureRecommendationCowatchRefreshSchedulerStarted,
+    ).not.toHaveBeenCalled()
   })
 
   it("does not block worker startup when recommendation recovery fails", async () => {
@@ -642,7 +611,7 @@ describe("workflow instrumentation", () => {
     ).toHaveBeenCalledTimes(1)
     expect(
       ensureRecommendationProfileReconciliationSchedulerStarted,
-    ).toHaveBeenCalledTimes(1)
+    ).not.toHaveBeenCalled()
     expect(
       ensureRecommendationEpisodeFinalizationRecovery,
     ).toHaveBeenCalledTimes(1)
@@ -666,56 +635,78 @@ describe("workflow instrumentation", () => {
 })
 
 describe("Admin worker Railway credential isolation", () => {
-  function workerCommands(): Record<string, string> {
-    const config = readFileSync(
-      fileURLToPath(new URL("../railway.worker.toml", import.meta.url)),
-      "utf8",
-    )
+  const readers = ["TYPESENSE_API_KEY", "TYPESENSE_SEARCH_API_KEY"]
+  const workerAuthority = [
+    "EXPO_ACCESS_TOKEN",
+    "TYPESENSE_OPERATOR_API_KEY",
+    "WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED",
+    "WATCH_CATALOG_PUBLICATION_ENABLED",
+  ]
 
-    return Object.fromEntries(
-      ["buildCommand", "preDeployCommand", "startCommand"].map((command) => {
-        const value = config.match(
-          new RegExp(`^${command} = "([^\\n]*)"$`, "m"),
-        )?.[1]
-        expect(value, `${command} must exist`).toBeDefined()
-        return [command, value!]
-      }),
+  function workerScripts() {
+    const read = (name: string) =>
+      readFileSync(
+        fileURLToPath(new URL(`../${name}`, import.meta.url)),
+        "utf8",
+      )
+    const config = read("railway.worker.toml")
+    expect(config).toMatch(/^builder = "DOCKERFILE"$/m)
+    expect(config).toMatch(/^dockerfilePath = "apps\/admin\/Dockerfile"$/m)
+    for (const [command, script] of [
+      ["preDeployCommand", "predeploy-production.sh"],
+      ["startCommand", "start-production.sh"],
+    ]) {
+      expect(config).toContain(
+        `${command} = "sh /app/apps/admin/${script} worker"`,
+      )
+    }
+    expect(config).not.toMatch(/^buildCommand =/m)
+    return {
+      build: read("Dockerfile").replace(/\\\n/g, " "),
+      predeploy: read("predeploy-production.sh"),
+      runtime: read("start-production.sh"),
+      ignore: read("Dockerfile.dockerignore"),
+    }
+  }
+
+  function unsetVariables(script: string) {
+    expect(script).toContain('if [ "${1:-web}" = worker ]; then')
+    return (
+      script
+        .match(/^\s*unset ([^\n]+)$/m)?.[1]
+        .trim()
+        .split(/\s+/) ?? []
     )
   }
 
-  it("removes inherited Typesense reader credentials from every worker phase", () => {
-    for (const value of Object.values(workerCommands())) {
-      expect(value).toMatch(
-        /^unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY(?:\s|$)/,
+  it("keeps inherited Typesense reader credentials outside the image and both worker phases", () => {
+    const scripts = workerScripts()
+    for (const script of [scripts.predeploy, scripts.runtime]) {
+      expect(unsetVariables(script)).toEqual(expect.arrayContaining(readers))
+    }
+    // Docker only receives explicitly declared build arguments. Nested env files
+    // must stay outside the context copied by COPY apps/admin.
+    for (const name of [...readers, ...workerAuthority]) {
+      expect(scripts.build).not.toMatch(
+        new RegExp(`^(?:ARG|ENV) .*\\b${name}\\b`, "m"),
       )
     }
+    expect(scripts.ignore.split("\n")).toEqual(
+      expect.arrayContaining(["**/.env", "**/.env.*"]),
+    )
   })
 
-  it("removes the Expo access token from the build and pre-deploy phases", () => {
-    const commands = workerCommands()
-
-    for (const command of ["buildCommand", "preDeployCommand"]) {
-      expect(commands[command]).toMatch(/^unset [^&]*EXPO_ACCESS_TOKEN[^&]*&& /)
-    }
-    // The runtime command must keep it: the worker is the only service allowed
-    // to send, and the transport reads it there.
-    expect(commands.startCommand).not.toMatch(/^unset [^&]*EXPO_ACCESS_TOKEN/)
+  it("removes the Expo access token before pre-deploy and retains it at runtime", () => {
+    const scripts = workerScripts()
+    expect(unsetVariables(scripts.predeploy)).toContain("EXPO_ACCESS_TOKEN")
+    expect(unsetVariables(scripts.runtime)).not.toContain("EXPO_ACCESS_TOKEN")
   })
 
-  it("exposes the Typesense operator credential only to the runtime publisher", () => {
-    const commands = workerCommands()
-
-    for (const command of ["buildCommand", "preDeployCommand"]) {
-      expect(commands[command]).toMatch(
-        /^unset [^&]*TYPESENSE_OPERATOR_API_KEY[^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED[^&]*WATCH_CATALOG_PUBLICATION_ENABLED && /,
-      )
-    }
-
-    expect(commands.startCommand).not.toMatch(
-      /^unset [^&]*TYPESENSE_OPERATOR_API_KEY(?:\s|$)/,
+  it("exposes Typesense operator and publication authority only to the runtime publisher", () => {
+    const scripts = workerScripts()
+    expect(unsetVariables(scripts.predeploy)).toEqual(
+      expect.arrayContaining(workerAuthority),
     )
-    expect(commands.startCommand).not.toMatch(
-      /^unset [^&]*WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED(?:\s|$)/,
-    )
+    expect(unsetVariables(scripts.runtime)).toEqual(readers)
   })
 })

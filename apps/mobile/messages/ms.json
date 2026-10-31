@@ -138,6 +138,7 @@
     "versesAriaValue": "Ayat {first} hingga {last} daripada {total}, {chapter}",
     "demoVerse": "Leret ke atas untuk ayat seterusnya",
     "demoChapter": "Leret ke kiri untuk pasal seterusnya",
+    "demoChapterRtl": "Leret ke kanan untuk pasal seterusnya",
     "demoSkip": "Ketik untuk langkau",
     "demoSkipAriaLabel": "Langkau demonstrasi leret",
     "selectVerseAriaHint": "Ketik dua kali untuk memilih ayat ini",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pilih kitab",
+    "chooseChapter": "Pilih pasal",
+    "chooseVerse": "Pilih ayat",
     "oldTestament": "Perjanjian Lama",
     "newTestament": "Perjanjian Baru",
     "books": "Kitab",
@@ -193,7 +196,7 @@
     "someBooks": "{count} daripada {total, plural, other {# kitab}}",
     "twoNames": "{first} dan {second}",
     "threeNames": "{first}, {second} dan {third}",
-    "onDevice": "Pada peranti ini",
+    "downloaded": "Dimuat turun",
     "downloading": "Memuat turun {percent}%",
     "downloadStopped": "Muat turun terhenti",
     "updateAvailable": "Kemas kini tersedia",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Poster siri",
     "videosHeading": "Video",
     "detailsLoadError": "Tidak dapat memuatkan butiran penuh.",
+    "languagesTitle": "Bahasa video",
     "searchLanguagesPlaceholder": "Cari bahasa…",
     "searchLanguagesAriaLabel": "Cari bahasa",
     "noLanguagesFound": "Tiada bahasa ditemui",
@@ -502,6 +506,7 @@
     "resumeAt": "Sambung pada {time}",
     "unknownLanguage": "Tidak diketahui",
     "downloadedStatus": "Dimuat turun",
+    "languagesTitle": "Bahasa video",
     "searchLanguagesPlaceholder": "Cari bahasa…",
     "searchLanguagesAriaLabel": "Cari bahasa",
     "noLanguagesFound": "Tiada bahasa ditemui",
@@ -773,5 +778,8 @@
     "send": "Hantar",
     "sending": "Menghantar…",
     "sendAriaLabel": "Hantar maklum balas"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasi ini menggunakan rangkaian setempat anda untuk mencari peranti penghantaran supaya anda boleh memainkan video di TV anda."
   }
 }

@@ -1,0 +1,12 @@
+{
+  "CFBundleExecutable": "forgewatch",
+  "CFBundleIdentifier": "org.jesusfilm.forgewatch",
+  "CFBundleShortVersionString": "1.0.0",
+  "FIREBASE_ANALYTICS_COLLECTION_DEACTIVATED": true,
+  "ITSAppUsesNonExemptEncryption": false,
+  "MinimumOSVersion": "16.4",
+  "NSAppTransportSecurity": {
+    "NSAllowsLocalNetworking": true
+  },
+  "UIBackgroundModes": ["audio"]
+}

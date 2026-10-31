@@ -105,6 +105,7 @@ export function SeriesEpisodeCard({
     <View style={styles.cardOuter}>
       <Pressable
         onPress={() => onSelect(episode)}
+        testID="series-episode-card"
         accessibilityRole="button"
         accessibilityLabel={labelParts.join(", ")}
         // The mark fits only a label that is the Admin title alone (R10).
@@ -196,7 +197,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontFamily: "System",
     fontWeight: "700",
     fontSize: 13,
     lineHeight: 15,

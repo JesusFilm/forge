@@ -11,6 +11,7 @@
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
 
+import { afterDirectionReturnReload } from "../../i18n/lazyLayoutDirection"
 import { PUSH_ANNOUNCEMENTS_CHANNEL_ID } from "../push/constants"
 import { presentationForTrigger } from "../push/foreground"
 import {
@@ -179,6 +180,9 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
    *  start the OS-side manager replays the tap into this rather than into the
    *  listener, so the cold and warm paths never both fire for one tap. */
   getLastResponseData() {
+    // feat-695 KTD9: a return reload opens Home, so the tap that started the
+    // session must not replay into the runtime that the reload starts.
+    if (afterDirectionReturnReload()) return null
     return (
       Notifications.getLastNotificationResponse()?.notification.request.content
         .data ?? null

@@ -31,8 +31,8 @@ const createAppEnv = () =>
       EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),
       EXPO_PUBLIC_DATADOG_ENV: z.string().optional(),
       EXPO_PUBLIC_DATADOG_VERSION: z.string().optional(),
-      // Profile/sign-in surface (feat-322) — "1" shows it in release builds;
-      // dev builds always show it. Optional so unprovisioned builds boot.
+      // Legacy flag retained for compatibility. profileFlagState.ts currently
+      // hides Profile in every build regardless of this value (feat-596).
       EXPO_PUBLIC_TV_PROFILE_ENABLED: z.string().optional(),
       // Identity provider for the RFC 8628 device grant (feat-322). Optional
       // with a production default so an unprovisioned build still signs in;

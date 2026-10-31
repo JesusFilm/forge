@@ -138,6 +138,7 @@
     "versesAriaValue": "Rannan {first} gu {last} à {total}, {chapter}",
     "demoVerse": "Grad-shlaighd suas airson an ath rainn",
     "demoChapter": "Grad-shlaighd gu clì airson na h-ath chaibideil",
+    "demoChapterRtl": "Grad-shlaighd gu deas airson na h-ath chaibideil",
     "demoSkip": "Thoir gnogag gus leum thairis air",
     "demoSkipAriaLabel": "Leum thairis air taisbeanadh a’ ghrad-shlaighdidh",
     "selectVerseAriaHint": "Thoir gnogag dhùbailte gus an rann seo a thaghadh",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Tagh leabhar",
+    "chooseChapter": "Tagh caibideil",
+    "chooseVerse": "Tagh rann",
     "oldTestament": "An Seann Tiomnadh",
     "newTestament": "An Tiomnadh Nuadh",
     "books": "Leabhraichean",
@@ -193,7 +196,7 @@
     "someBooks": "{count} à {total, plural, one {# leabhar} two {# leabhar} few {# leabhraichean} other {# leabhar}}",
     "twoNames": "{first} agus {second}",
     "threeNames": "{first}, {second} agus {third}",
-    "onDevice": "Air an uidheam seo",
+    "downloaded": "Air a luchdadh a-nuas",
     "downloading": "A’ luchdadh a-nuas {percent}%",
     "downloadStopped": "Stad an luchdadh a-nuas",
     "updateAvailable": "Tha ùrachadh ri fhaighinn",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Postair na sreatha",
     "videosHeading": "Bhideothan",
     "detailsLoadError": "Cha b’ urrainn dhuinn am fiosrachadh slàn a luchdadh.",
+    "languagesTitle": "Cànan a’ bhidio",
     "searchLanguagesPlaceholder": "Lorg cànanan…",
     "searchLanguagesAriaLabel": "Lorg cànanan",
     "noLanguagesFound": "Cha deach cànan a lorg",
@@ -502,6 +506,7 @@
     "resumeAt": "Lean air adhart aig {time}",
     "unknownLanguage": "Neo-aithnichte",
     "downloadedStatus": "Air a luchdadh a-nuas",
+    "languagesTitle": "Cànan a’ bhidio",
     "searchLanguagesPlaceholder": "Lorg cànanan…",
     "searchLanguagesAriaLabel": "Lorg cànanan",
     "noLanguagesFound": "Cha deach cànan a lorg",
@@ -773,5 +778,8 @@
     "send": "Cuir",
     "sending": "A’ cur…",
     "sendAriaLabel": "Cuir am fios-air-ais"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Cleachdaidh an aplacaid an lìonra ionadail agad gus uidheaman tilgeil a lorg, airson ’s gun urrainn dhut bhideothan a chluich air an telebhisean agad."
   }
 }

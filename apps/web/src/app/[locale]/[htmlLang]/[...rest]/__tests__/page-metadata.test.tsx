@@ -71,6 +71,7 @@ vi.mock("@/components/sections", () => ({
 }))
 
 vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
   isWatchCtaTextCopyEnabled: vi.fn(),
   isWatchHideBibleQuotesEnabled: vi.fn(),
   isWatchQuestionPanelEnabled: vi.fn(),

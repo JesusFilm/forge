@@ -138,6 +138,7 @@
     "versesAriaValue": "Verse {first} tot {last} van {total}, {chapter}",
     "demoVerse": "Swiep op vir die volgende vers",
     "demoChapter": "Swiep links vir die volgende hoofstuk",
+    "demoChapterRtl": "Swiep regs vir die volgende hoofstuk",
     "demoSkip": "Tik om oor te slaan",
     "demoSkipAriaLabel": "Slaan die swiepdemonstrasie oor",
     "selectVerseAriaHint": "Dubbeltik om hierdie vers te kies",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kies ’n boek",
+    "chooseChapter": "Kies ’n hoofstuk",
+    "chooseVerse": "Kies ’n vers",
     "oldTestament": "Ou Testament",
     "newTestament": "Nuwe Testament",
     "books": "Boeke",
@@ -193,7 +196,7 @@
     "someBooks": "{count} van {total, plural, one {# boek} other {# boeke}}",
     "twoNames": "{first} en {second}",
     "threeNames": "{first}, {second} en {third}",
-    "onDevice": "Op hierdie toestel",
+    "downloaded": "Afgelaai",
     "downloading": "Laai tans af: {percent}%",
     "downloadStopped": "Aflaai het gestop",
     "updateAvailable": "Opdatering beskikbaar",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Reeksplakkaat",
     "videosHeading": "Video’s",
     "detailsLoadError": "Kon nie volle besonderhede laai nie.",
+    "languagesTitle": "Videotaal",
     "searchLanguagesPlaceholder": "Soek tale…",
     "searchLanguagesAriaLabel": "Soek tale",
     "noLanguagesFound": "Geen tale gevind nie",
@@ -502,6 +506,7 @@
     "resumeAt": "Hervat by {time}",
     "unknownLanguage": "Onbekend",
     "downloadedStatus": "Afgelaai",
+    "languagesTitle": "Videotaal",
     "searchLanguagesPlaceholder": "Soek tale…",
     "searchLanguagesAriaLabel": "Soek tale",
     "noLanguagesFound": "Geen tale gevind nie",
@@ -773,5 +778,8 @@
     "send": "Stuur",
     "sending": "Stuur tans…",
     "sendAriaLabel": "Stuur terugvoer"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Die app gebruik jou plaaslike netwerk om toestelle te vind waarna jy kan uitsaai, sodat jy video’s op jou TV kan speel."
   }
 }

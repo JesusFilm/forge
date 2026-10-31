@@ -7,7 +7,7 @@ module: apps/mobile
 symptom: "Network Request Failed or Aborted on real iOS devices; app works on simulators"
 root_cause: "@expo/env loads .env.production over .env when NODE_ENV=production (set by Metro for device builds); real devices cannot reach localhost"
 severity: high
-last_updated: 2026-06-22
+last_updated: 2026-10-19
 ---
 
 > **Superseded in part — 2026-08-07 (feat-339, `apps/mobile` only).** Three
@@ -40,7 +40,7 @@ Real iOS devices showed "Network Request Failed" or "Aborted" when connecting to
 
 1. `.env.production` overrode local dev secrets due to Expo's env file priority
 2. Real devices can't reach `localhost` — they need the computer's LAN IP
-3. Shell env var overrides (`export EXPO_PUBLIC_X=...`) don't propagate to Metro bundler
+3. Shell env var overrides (`export EXPO_PUBLIC_X=...`) don't propagate to Metro bundler (corrected 2026-10-19: they do reach the bundle, but in a dev bundle a `.env` file value for the same key wins; see "Shell Env Vars vs Metro")
 4. `eas update --channel preview` does NOT auto-select the preview EAS Environment
 5. EAS "secret" visibility variables are NOT available during `eas update`
 
@@ -66,6 +66,16 @@ Simulators share the host's network stack (`localhost` works), but a physical ph
 ### Shell Env Vars vs Metro
 
 `@expo/env` parses `.env` files at Metro startup and inlines `EXPO_PUBLIC_*` values via babel transform at bundle time. Shell-level `export` is ignored because the babel plugin re-reads from parsed env files, not `process.env`.
+
+> **Corrected 2026-10-19.** The mechanism above is wrong for Expo SDK 57. A
+> shell value does reach the dev bundle, in its `process.env` prelude. A dev
+> bundle reads `EXPO_PUBLIC_*` through `expo/virtual/env`, which spreads the
+> `.env` files after `process.env`, so a `.env` file value for the same key
+> wins. A key that no `.env` file sets still comes from the shell. A
+> production bundle works the other way: `babel-preset-expo` inlines
+> `process.env[key]`, and `@expo/env` does not overwrite a shell key, so the
+> shell value wins. The advice is unchanged: use a file-based override. See
+> [the dev-bundle precedence learning](../developer-experience/expo-dev-bundle-env-file-beats-shell-override.md).
 
 ## Solution
 
@@ -128,7 +138,7 @@ Added to `app.json` infoPlist. Allows HTTP to LAN IPs on real devices. Scoped to
 | Gotcha                                                   | Detail                                                                                                                                                                                                                                                        |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `expo export` forces `NODE_ENV=production`               | Regardless of what you set. Don't rely on NODE_ENV for env switching.                                                                                                                                                                                         |
-| Shell `export` doesn't work for `EXPO_PUBLIC_*`          | Metro inlines values from `.env` files via babel, not from `process.env`. Use file-based overrides.                                                                                                                                                           |
+| Shell `export` doesn't work for `EXPO_PUBLIC_*`          | In a dev bundle, a `.env` file value beats a shell value for the same key (corrected 2026-10-19; see "Shell Env Vars vs Metro"). Use file-based overrides.                                                                                                    |
 | `--channel` != `--environment` in EAS                    | Channel = which builds receive the update. Environment = which env vars are injected. Must pass both explicitly.                                                                                                                                              |
 | SDK 54: `--environment` is optional but critical         | Without it, `eas update` falls back to local `.env` files (which don't exist in CI). In SDK 55+, it's required.                                                                                                                                               |
 | EAS "secret" visibility                                  | NOT available during `eas update`, only during `eas build`. Use "sensitive" for `EXPO_PUBLIC_*` tokens.                                                                                                                                                       |
@@ -152,4 +162,5 @@ Added to `app.json` infoPlist. Allows HTTP to LAN IPs on real devices. Scoped to
 - [EAS Update Stakeholder Preview Setup](../mobile/eas-update-stakeholder-preview-setup.md) — references `.env` which is now `.env.local`
 - [New App CI and Deployment Patterns](../platform/new-app-ci-and-deployment-patterns.md) — `skipValidation` guard and `EAS_BUILD` explanation
 - [Adding New Apps](../platform/adding-new-apps.md) — env validation convention
-- `@expo/env` source: `node_modules/.pnpm/@expo+env@2.0.8/node_modules/@expo/env/build/index.js`
+- [Expo dev bundle: a .env file value beats a shell override](../developer-experience/expo-dev-bundle-env-file-beats-shell-override.md) — the dev and production precedence between shell values and `.env` files
+- `@expo/env` source: `build/index.js` in the installed `@expo/env` package (2.4.3 on 2026-10-19; the 2.0.8 copy this doc first cited is no longer installed)

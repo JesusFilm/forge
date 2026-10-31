@@ -87,6 +87,173 @@ describe("getWatchRouteSnapshotBySlug", () => {
     )
   })
 
+  describe("requested language identity (FGE-284)", () => {
+    const frenchAfricanColumns = {
+      requestedLanguageCoreId: "7140",
+      requestedLanguageBcp47: "fra",
+      requestedLanguageSlug: "french-african",
+      requestedLanguageName: { en: "French, African" },
+    }
+    const englishFallbackDub = {
+      id: "dub-english-fallback",
+      slug: "english",
+      published: true,
+      hls: "https://cdn.example/english.m3u8",
+      duration: 120,
+      languageCoreId: "529",
+      languageBcp47: "en",
+      languageSlug: "english",
+      languageName: { en: "English" },
+      muxVideoId: null,
+      playbackId: null,
+    }
+    const noDubColumns = {
+      id: null,
+      slug: null,
+      published: null,
+      hls: null,
+      duration: null,
+      languageCoreId: null,
+      languageBcp47: null,
+      languageSlug: null,
+      languageName: null,
+      muxVideoId: null,
+      playbackId: null,
+    }
+
+    function snapshotService(preferredRow: Record<string, unknown>) {
+      const queryRaw = vi.fn((strings: TemplateStringsArray) => {
+        const sql = strings.join(" ")
+        if (sql.includes("WITH requested AS")) {
+          return Promise.resolve([preferredRow])
+        }
+        if (sql.includes("COUNT(DISTINCT vd.language_id)")) {
+          return Promise.resolve([{ count: 1 }])
+        }
+        return Promise.resolve([])
+      })
+      const prisma = {
+        video: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "video-jesus",
+            slug: "jesus",
+            publishedAt: new Date("2026-08-05T00:00:00.000Z"),
+            noIndex: false,
+            label: "FEATURE_FILM",
+            primaryLanguageId: "language-en",
+            primaryLanguage: { coreId: "529", bcp47: "en" },
+          }),
+        },
+        videoRelation: { findMany: vi.fn().mockResolvedValue([]) },
+        bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+        videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+        videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+        videoStudyQuestion: { findMany: vi.fn().mockResolvedValue([]) },
+        $queryRaw: queryRaw,
+      }
+      return { service: new VideoService(prisma as never), queryRaw }
+    }
+
+    function requestFrenchAfrican(service: VideoService) {
+      return service.getWatchRouteSnapshotBySlug({
+        slug: "jesus",
+        locale: "fra",
+        languageSlug: "french-african",
+        subtitleLanguageSlug: null,
+        user: null,
+      })
+    }
+
+    it("carries the exact requested catalog language beside a fallback dub without swapping identities", async () => {
+      const { service } = snapshotService({
+        ...englishFallbackDub,
+        ...frenchAfricanColumns,
+      })
+
+      const result = await requestFrenchAfrican(service)
+
+      expect(result?.requestedLanguage).toEqual({
+        coreId: "7140",
+        bcp47: "fra",
+        slug: "french-african",
+        name: { en: "French, African" },
+      })
+      // The fallback dub keeps its own (English) identity; neither side
+      // borrows the other's label.
+      expect(result?.preferredVariant?.documentId).toBe("dub-english-fallback")
+      expect(result?.preferredVariant?.language).toEqual({
+        coreId: "529",
+        bcp47: "en",
+        slug: "english",
+        name: { en: "English" },
+      })
+    })
+
+    it("returns the requested language when the video has no playable dub at all", async () => {
+      const { service } = snapshotService({
+        ...noDubColumns,
+        ...frenchAfricanColumns,
+      })
+
+      const result = await requestFrenchAfrican(service)
+
+      expect(result?.preferredVariant).toBeNull()
+      expect(result?.requestedLanguage?.slug).toBe("french-african")
+      expect(result?.requestedLanguage?.name).toEqual({
+        en: "French, African",
+      })
+    })
+
+    it("returns null when no active language carries the requested slug", async () => {
+      const { service } = snapshotService({
+        ...englishFallbackDub,
+        requestedLanguageCoreId: null,
+        requestedLanguageBcp47: null,
+        requestedLanguageSlug: null,
+        requestedLanguageName: null,
+      })
+
+      const result = await requestFrenchAfrican(service)
+
+      expect(result?.requestedLanguage).toBeNull()
+      expect(result?.preferredVariant?.language?.slug).toBe("english")
+    })
+
+    it("resolves the requested identity inside the existing preferred-variant statement", async () => {
+      const { service, queryRaw } = snapshotService({
+        ...englishFallbackDub,
+        ...frenchAfricanColumns,
+      })
+
+      await requestFrenchAfrican(service)
+
+      const preferredCalls = queryRaw.mock.calls.filter(([strings]) =>
+        strings.join(" ").includes("WITH requested AS"),
+      )
+      expect(preferredCalls).toHaveLength(1)
+      // No other raw statement mentions the requested language: the join is
+      // not a second round trip.
+      const otherRequestedLanguageCalls = queryRaw.mock.calls.filter(
+        ([strings]) =>
+          !strings.join(" ").includes("WITH requested AS") &&
+          strings.join(" ").includes("requested_language"),
+      )
+      expect(otherRequestedLanguageCalls).toHaveLength(0)
+      const [strings, ...values] = preferredCalls[0]!
+      const sql = strings.join(" ").replace(/\s+/g, " ")
+      expect(values).toEqual(["french-african", null, "video-jesus"])
+      expect(sql).toContain(
+        'LEFT JOIN "language" requested_language ON requested_language.slug = requested.audio_language_slug AND requested_language.deleted_at IS NULL',
+      )
+      // Exact-slug identity only — never the bcp47 alias the dub ordering
+      // also accepts, which could match a different catalog language.
+      expect(sql).not.toContain("requested_language.bcp47 =")
+      expect(sql).toContain(
+        'requested_language.name AS "requestedLanguageName"',
+      )
+    })
+  })
+
   it("uses the exact language slug for related metadata and study questions", async () => {
     const relatedLocaleFindMany = vi.fn().mockResolvedValue([
       {

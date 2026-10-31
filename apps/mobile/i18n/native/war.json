@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Gingagamit han app an imo lokal nga network ha pagbiling han mga Cast device, basi makapag-play ka hin mga bidyo ha imo TV."
+  }
+}

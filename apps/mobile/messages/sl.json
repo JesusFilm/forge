@@ -138,6 +138,7 @@
     "versesAriaValue": "Vrstice {first} do {last} od {total}, {chapter}",
     "demoVerse": "Podrsajte navzgor za naslednjo vrstico",
     "demoChapter": "Podrsajte levo za naslednje poglavje",
+    "demoChapterRtl": "Podrsajte desno za naslednje poglavje",
     "demoSkip": "Tapnite za preskok",
     "demoSkipAriaLabel": "Preskoči prikaz drsenja",
     "selectVerseAriaHint": "Dvakrat tapnite, da izberete to vrstico",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Izberite knjigo",
+    "chooseChapter": "Izberite poglavje",
+    "chooseVerse": "Izberite vrstico",
     "oldTestament": "Stara zaveza",
     "newTestament": "Nova zaveza",
     "books": "Knjige",
@@ -193,7 +196,7 @@
     "someBooks": "{count} od {total, plural, one {# knjige} two {# knjig} few {# knjig} other {# knjig}}",
     "twoNames": "{first} in {second}",
     "threeNames": "{first}, {second} in {third}",
-    "onDevice": "V tej napravi",
+    "downloaded": "Preneseno",
     "downloading": "Prenašanje: {percent} %",
     "downloadStopped": "Prenos se je ustavil",
     "updateAvailable": "Na voljo je posodobitev",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Plakat serije",
     "videosHeading": "Videoposnetki",
     "detailsLoadError": "Vseh podrobnosti ni bilo mogoče naložiti.",
+    "languagesTitle": "Jezik videoposnetka",
     "searchLanguagesPlaceholder": "Poišči jezike …",
     "searchLanguagesAriaLabel": "Iskanje jezikov",
     "noLanguagesFound": "Ni najdenih jezikov",
@@ -502,6 +506,7 @@
     "resumeAt": "Nadaljuj pri {time}",
     "unknownLanguage": "Neznano",
     "downloadedStatus": "Preneseno",
+    "languagesTitle": "Jezik videoposnetka",
     "searchLanguagesPlaceholder": "Poišči jezike …",
     "searchLanguagesAriaLabel": "Iskanje jezikov",
     "noLanguagesFound": "Ni najdenih jezikov",
@@ -773,5 +778,8 @@
     "send": "Pošlji",
     "sending": "Pošiljanje …",
     "sendAriaLabel": "Pošlji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija uporablja vaše lokalno omrežje za iskanje naprav za pretakanje, da lahko predvajate videoposnetke na svojem televizorju."
   }
 }

@@ -18,6 +18,7 @@ import {
   VideoCard,
 } from "./VideoCard"
 import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
+import { SearchResults } from "./SearchResults"
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => {
@@ -290,15 +291,19 @@ describe("defaultHrefBuilder", () => {
   )
 
   // Canonical production slugs, confirmed through anonymous Admin search.
-  // Until PR #2662 supports them, null is the safe recovery; once routable,
-  // they must preserve content identity rather than return the homepage.
+  // PR #2662 is on main: these TARGET_AUDIO records must remain playable.
   it.each(["tümlükden-nura", "çoğu-çay-mostly-tea"])(
-    "never converts canonical Unicode slug %s into a homepage link",
+    "builds a canonical playable link for Unicode slug %s",
     (slug) => {
-      const href = defaultHrefBuilder(
-        makeResult({ slug, languageSlug: "english" }),
-      )
-      if (href !== null) expect(decodeURIComponent(href)).toBe(`/${slug}.html`)
+      expect(
+        defaultHrefBuilder(
+          makeResult({
+            slug,
+            languageSlug: "english",
+            availabilityKind: "target_audio",
+          }),
+        ),
+      ).toBe(`/${slug}.html`)
     },
   )
 
@@ -1151,6 +1156,146 @@ describe("VideoCard with no valid destination", () => {
     expect(onResultClick).not.toHaveBeenCalled()
   })
 
+  it.each([
+    { name: "malformed slug", slug: "Know_God_1_Created" },
+    {
+      name: "unavailable without a requested language",
+      slug: "jesus",
+      availabilityKind: "unavailable" as const,
+    },
+    {
+      name: "subtitle intent without audio",
+      slug: "jesus",
+      availabilityKind: "target_subtitle" as const,
+      subtitleLanguageSlug: "russian",
+    },
+    {
+      name: "subtitle intent without subtitles",
+      slug: "jesus",
+      languageSlug: "english",
+      availabilityKind: "target_subtitle" as const,
+    },
+  ])("never anchors unrepresentable intent: $name", ({ name, ...fields }) => {
+    const result = makeResult({
+      ...fields,
+      title: name,
+      playbackId: "mux-playback-1",
+    })
+    const onResultClick = vi.fn()
+    renderCard(result, { onResultClick })
+
+    // This fails on actual main's pre-guard VideoCard: its fallback is an
+    // anchor to the homepage, optionally with playback_source=search.
+    expect(container?.querySelector("a")).toBeNull()
+    const card = container?.querySelector<HTMLElement>(
+      '[data-testid="search-card-disabled"]',
+    )
+    expect(card).not.toBeNull()
+    expect(card?.getAttribute("aria-disabled")).toBe("true")
+    expect(card?.tabIndex).toBe(-1)
+    expect(
+      card?.querySelector(
+        'a, button, input, select, textarea, [tabindex], [contenteditable="true"], [role="button"], [role="link"]',
+      ),
+    ).toBeNull()
+    expect(container?.textContent).toContain(name)
+    expect(
+      card?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(englishMessages.LanguagePickerModal.notAvailable)
+
+    act(() => {
+      card?.focus()
+      card?.dispatchEvent(new FocusEvent("focus"))
+      card?.dispatchEvent(new Event("pointerenter"))
+      for (const key of ["Enter", " "]) {
+        card?.dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true }),
+        )
+        card?.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }))
+      }
+      card?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    expect(document.activeElement).not.toBe(card)
+    expect(onResultClick).not.toHaveBeenCalled()
+    expect(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).toBeNull()
+    expect(card?.querySelector("video, audio, source, svg")).toBeNull()
+    expect(card?.querySelector('[data-testid="mux-hover-preview"]')).toBeNull()
+    expect(card?.querySelector('[data-testid="watch-progress-bar"]')).toBeNull()
+    expect(
+      card?.querySelector('[data-testid="search-card-hover-outline"]'),
+    ).toBeNull()
+    expect(card?.innerHTML).not.toContain("search-card-hover-zoom")
+    expect(card?.innerHTML).not.toContain("animated.webp")
+    expect(card?.innerHTML).not.toContain("playback_source")
+  })
+
+  it.each([
+    {
+      slug: "tümlükden-nura",
+      href: "/t%C3%BCml%C3%BCkden-nura.html?playback_source=search",
+    },
+    {
+      slug: "çoğu-çay-mostly-tea",
+      href: "/%C3%A7o%C4%9Fu-%C3%A7ay-mostly-tea.html?playback_source=search",
+    },
+  ])(
+    "keeps canonical Unicode result $slug linked with playable affordances and click context",
+    ({ slug, href }) => {
+      const result = makeResult({
+        slug,
+        title: slug,
+        languageSlug: "english",
+        availabilityKind: "target_audio",
+        playbackId: "mux-playback-1",
+      })
+      const onResultClick = vi.fn<
+        NonNullable<ComponentProps<typeof VideoCard>["onResultClick"]>
+      >((_result, event) => {
+        expect(event.currentTarget.getAttribute("href")).toBe(href)
+        event.preventDefault()
+      })
+      renderCard(result, { onResultClick })
+
+      const anchor = container?.querySelector("a")
+      expect(anchor).not.toBeNull()
+      expect(anchor?.getAttribute("href")).toBe(href)
+      expect(
+        container?.querySelector('[data-testid="search-card-disabled"]'),
+      ).toBeNull()
+      expect(
+        container?.querySelector(
+          '[data-testid="search-card-availability-badge"]',
+        ),
+      ).toBeNull()
+      expect(
+        container?.querySelector('[data-testid="mux-hover-preview"]'),
+      ).not.toBeNull()
+      expect(
+        container?.querySelector('[data-testid="watch-progress-bar"]'),
+      ).not.toBeNull()
+      expect(container?.querySelector("svg")).not.toBeNull()
+      expect(container?.innerHTML).toContain("search-card-hover-zoom")
+
+      act(() => {
+        anchor?.focus()
+        anchor?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+      })
+      expect(document.activeElement).toBe(anchor)
+      expect(onResultClick).toHaveBeenCalledOnce()
+      expect(onResultClick.mock.calls[0][0]).toBe(result)
+      expect(
+        sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+      ).toBeNull()
+    },
+  )
+
   it("shows no hover, play, preview or progress affordance, and only the generic Not available badge", () => {
     renderCard(malformed())
 
@@ -1180,6 +1325,44 @@ describe("VideoCard with no valid destination", () => {
         ?.textContent,
     ).toBe(englishMessages.LanguagePickerModal.notAvailable)
     expect(container?.textContent).not.toContain("Spanish, Castilian")
+  })
+
+  it("keeps malformed rows in the actual result grid alongside valid links", () => {
+    const results = [
+      malformed(),
+      makeResult({ id: "valid", slug: "jesus", title: "JESUS" }),
+      makeResult({
+        id: "missing-language",
+        slug: "good-friday-live",
+        title: "Good Friday Live",
+        availabilityKind: "unavailable",
+      }),
+    ]
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => {
+      root?.render(
+        <SearchResults
+          initialResults={results}
+          initialHasMore={false}
+          query="Jesus"
+        />,
+      )
+    })
+
+    expect(container.querySelector(".grid")?.children).toHaveLength(3)
+    expect(
+      container.querySelectorAll('[data-testid="search-card-disabled"]'),
+    ).toHaveLength(2)
+    expect(container.querySelectorAll("a")).toHaveLength(1)
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/jesus.html?playback_source=search",
+    )
+    for (const result of results) {
+      expect(container.textContent).toContain(result.title)
+    }
+    expect(container.textContent).not.toContain("No results")
   })
 
   it("keeps the duration and episode-count pills so result counts read the same", () => {

@@ -11,7 +11,7 @@ type Props = {
 
 /**
  * Read-only query line atop the search layer (design: .s-query); edited via the
- * letter strip below. Placeholder at 25% white reads as a prompt; a blinking
+ * letter strip below. Placeholder stays readable against the near-black surface; a blinking
  * accent caret trails. Fixed minHeight so empty↔non-empty doesn't shift the strip.
  */
 export function QueryDisplay({ value }: Props) {
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   placeholder: {
-    color: SEARCH_THEME.textDim(0.25),
+    color: WATCH_THEME.text50,
     fontWeight: "700",
   },
   caret: {

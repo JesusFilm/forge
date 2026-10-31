@@ -1,0 +1,120 @@
+{
+  "case": "reservation_timeout_before_dispatch",
+  "databaseObservation": {
+    "attempt": {
+      "attemptId": "b01b7bb1-5b87-4630-baca-7640e76cfd62",
+      "authMethod": "chatgpt",
+      "backend": "codex_chatgpt_subscription",
+      "billingBasis": "included_subscription",
+      "endReason": "paused",
+      "endedAt": "2026-10-14T00:11:59.518",
+      "modelId": "gpt-6-astra",
+      "startedAt": "2026-10-14T00:08:14.752"
+    },
+    "call": {
+      "attemptId": "b01b7bb1-5b87-4630-baca-7640e76cfd62",
+      "cachedInputTokens": null,
+      "callId": "d541c707-abd6-4f01-9a8f-038c11b2a4e7",
+      "candidatePoolDigest": "0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a",
+      "captureRefDigest": "8d08bd099643af363b7e089a0f763b8148cc95d45318ba4fa68ca43115be4567",
+      "errorCode": null,
+      "finishedAt": null,
+      "generationId": "production-astra-catalog-20261013-v6",
+      "inputDigest": "537491039c9f86fe5b5218e49b634c1297bf108a951d9d11592342677aea1629",
+      "inputTokens": null,
+      "membershipDigest": "63303ad93703720a56a213e9aaddbe12c45b8c58916f8c839ab9deb8d511d04b",
+      "outputDigest": null,
+      "outputTokens": null,
+      "receiptDigest": null,
+      "requestDigest": "72ef38c5db10293ad056e13a7de10e37995b9e6d54e614766a5ae2008fd242af",
+      "rowDigest": "ba76a66ea7da170457da043d85cc4565",
+      "selectedCorpusDigest": "9fb9ec705c19e0717894700447a13341859b41c8910fb374c4aa81dc14b755db",
+      "spanOfferDigest": "33f3d9456ae58bfa5e06b75fd0fcbe1a2835ba3d684ba3b259d16a05107af210",
+      "startedAt": "2026-10-14T00:11:04.374",
+      "status": "pending"
+    },
+    "members": [
+      {
+        "applicationState": "pending",
+        "appliedRevision": null,
+        "candidateCount": 4,
+        "candidatePageDigest": "b88ae1eca9224d2d99889ded7e4692c79be9e714c77a9cc656210a292a4d1507",
+        "checkpointRevision": 3,
+        "firstRank": 8,
+        "historicalRefDigest": "0cf387c2773856631b3534aa24820e9752728c609231b521f1dc97ca69b250d4",
+        "lastRank": 11,
+        "pageIndex": 2,
+        "rowDigest": "4b8b2d560c9445aba749c4ebde711229",
+        "sourceCandidateCount": 51,
+        "sourceCandidateDigest": "cf21b978e08e6ad063a3137dec8a635c94ee0eeb19eed6127ad6ce86413cd30f",
+        "sourceProfileKey": "7a2a1739ed757862f2e118f7eb35845b8c2b32ba1fb7f31bbd0b349f26d06a9f",
+        "sourceVideoId": "cmokmkp5h0nvkqsccj7ysgsz2"
+      },
+      {
+        "applicationState": "pending",
+        "appliedRevision": null,
+        "candidateCount": 3,
+        "candidatePageDigest": "fc149b1fb51c86dff5d5850b768090c657ef60220967218461231dcf1c779b5f",
+        "checkpointRevision": 3,
+        "firstRank": 7,
+        "historicalRefDigest": "46e9bb05e2c34d69b6865c0481be1579ee4e60373aa7bd661843973b1b8a14e5",
+        "lastRank": 9,
+        "pageIndex": 2,
+        "rowDigest": "cb4ae71e09d8ad07463cf0396ee09b4d",
+        "sourceCandidateCount": 51,
+        "sourceCandidateDigest": "3b9414b2ff22e7c7df10eccc7e13c4dc08c7126f15744c943cd845d42b533caf",
+        "sourceProfileKey": "c9fda2b257a43be5fa86069c0f3b996b092633676c0d8c5d5d10f3197ba0a266",
+        "sourceVideoId": "cmokmkra70nw2qscc6utvnl84"
+      }
+    ],
+    "note": "Reservation metadata and row hashes only; no spans, transcripts, profiles, model output or credentials.",
+    "observedAt": "2026-10-14T00:15:38.600742+00:00"
+  },
+  "expectedRequestDigest": "72ef38c5db10293ad056e13a7de10e37995b9e6d54e614766a5ae2008fd242af",
+  "generationId": "production-astra-catalog-20261013-v6",
+  "generationInputDigest": "e2ad59bb95b497738290c6dee1d0dd487886f34019ea721ce6971e12dfddd3a5",
+  "lateReservationResponse": {
+    "action": "edge_batch_start",
+    "at": "2026-10-14T00:11:22.521Z",
+    "elapsedMs": 18147,
+    "phase": "response",
+    "requestId": "m9QcaprwTxi4-C7fCYBc-A",
+    "status": 200
+  },
+  "noDispatchConclusion": {
+    "basis": "The exact adapter races reservation admission against a 15,000 ms timer and invokes runCodex only after that race resolves to dispatch. This call received its reservation response after 18,147 ms; the rejected race continuation cannot be re-entered by a late response. The invocation stopped with usage_uncertain and all fifteen timely reservations have saved completion receipts. This conclusion is derived from the committed control flow and local request timings, not a provider usage receipt.",
+    "inferenceDispatched": false,
+    "providerTokenCounts": "remain null; no measured usage is created"
+  },
+  "originalAttemptId": "b01b7bb1-5b87-4630-baca-7640e76cfd62",
+  "originalCallId": "d541c707-abd6-4f01-9a8f-038c11b2a4e7",
+  "reconciliationScope": {
+    "automaticRetry": false,
+    "capacityRefund": 0,
+    "coverageAdvance": 0,
+    "fullProfilesPreserved": true,
+    "memberPayloadAndBindingsImmutable": true,
+    "originalCallImmutable": true,
+    "permittedMemberTransition": "pending to no_dispatch_unapplied through the reviewed operator action with sealed original member snapshots"
+  },
+  "regressionEvidence": {
+    "adapterSuiteGreenSha256": "470315ca97c738359cb58703c81877320fbe26497d639f1a6aa713018c1a0880",
+    "reservationQueueRedSha256": "b173a8dce1a45047d3379c0abd2ffad97ea63830d629d3b4dc1b5aeeb2876651",
+    "test": "never launches the CLI after a timed-out reservation later commits"
+  },
+  "reservationStartAt": "2026-10-14T00:11:04.374Z",
+  "reviewedProducerCommit": "9e8a4a5a1e2da8393821811e428ba97b3f611ee5",
+  "rootProcessObservation": {
+    "exitCode": 1,
+    "processExitedAttested": true,
+    "sessionId": 63181
+  },
+  "runLogSha256": "379d1168af93d9dbc5a792eeec59edd798fa0a29a0f7cd6a48aa0c5970c0629a",
+  "sealedAt": "2026-10-14T00:17:33.876474+00:00",
+  "sourceFileSha256": {
+    "apps/mastra/src/services/precomputed-recommendations/codex-subscription-astra.ts": "9fbe5c0c47686f9e87fad42922d8b38e4ff5c61136e50a139e173c34e0ac2103",
+    "apps/mastra/src/services/precomputed-recommendations/edge-batch-executor.ts": "5a3c55909f984852518ac0a42997c51b93f8fa4e6101a7199bee62ebdb2c9736",
+    "apps/mastra/src/services/precomputed-recommendations/manual-subscription-catalog.ts": "4f66601d8de7b0ffd7cfd9723a37d84e39b3267a95a67dfe7bdb768e476c859f"
+  },
+  "traceFileSha256": "a261d230faeac2ba9f70978b78201649975a3d9137d9c43e0a9e2fbee816fde4"
+}

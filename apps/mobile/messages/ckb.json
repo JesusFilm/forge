@@ -138,6 +138,7 @@
     "versesAriaValue": "ئایەتەکانی {first} تا {last} لە {total}، {chapter}",
     "demoVerse": "بۆ ئایەتی دواتر پەنجە بەرەو سەرەوە بخشێنە",
     "demoChapter": "بۆ بەشی دواتر پەنجە بەرەو چەپ بخشێنە",
+    "demoChapterRtl": "بۆ بەشی دواتر پەنجە بەرەو ڕاست بخشێنە",
     "demoSkip": "بۆ تێپەڕاندن دەستی لێ بدە",
     "demoSkipAriaLabel": "تێپەڕاندنی نمایشی خشاندن",
     "selectVerseAriaHint": "دوو جار دەستی لێ بدە بۆ هەڵبژاردنی ئەم ئایەتە",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "کتێبێک هەڵبژێرە",
+    "chooseChapter": "بەشێک هەڵبژێرە",
+    "chooseVerse": "ئایەتێک هەڵبژێرە",
     "oldTestament": "پەیمانی کۆن",
     "newTestament": "پەیمانی نوێ",
     "books": "کتێبەکان",
@@ -193,7 +196,7 @@
     "someBooks": "{count} لە {total, plural, one {# کتێب} other {# کتێب}}",
     "twoNames": "{first} و {second}",
     "threeNames": "{first}، {second} و {third}",
-    "onDevice": "لەسەر ئەم ئامێرە",
+    "downloaded": "داگیرا",
     "downloading": "دادەگیرێت {percent}%",
     "downloadStopped": "داگرتن وەستا",
     "updateAvailable": "نوێکردنەوە بەردەستە",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "پۆستەری زنجیرە",
     "videosHeading": "ڤیدیۆکان",
     "detailsLoadError": "نەتوانرا هەموو وردەکارییەکان بار بکرێن.",
+    "languagesTitle": "زمانی ڤیدیۆکە",
     "searchLanguagesPlaceholder": "گەڕان بۆ زمان…",
     "searchLanguagesAriaLabel": "گەڕان لە زمانەکان",
     "noLanguagesFound": "هیچ زمانێک نەدۆزرایەوە",
@@ -502,6 +506,7 @@
     "resumeAt": "درێژەدان لە کاتی {time}",
     "unknownLanguage": "نەزانراو",
     "downloadedStatus": "داگیرا",
+    "languagesTitle": "زمانی ڤیدیۆکە",
     "searchLanguagesPlaceholder": "گەڕان بۆ زمان…",
     "searchLanguagesAriaLabel": "گەڕان لە زمانەکان",
     "noLanguagesFound": "هیچ زمانێک نەدۆزرایەوە",
@@ -773,5 +778,8 @@
     "send": "ناردن",
     "sending": "دەنێردرێت…",
     "sendAriaLabel": "ناردنی ڕاوبۆچوون"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ئەپەکە تۆڕی ناوخۆییەکەت بەکاردەهێنێت بۆ دۆزینەوەی ئەو ئامێرانەی کە ڤیدیۆیان بۆ دەنێردرێت، تا بتوانیت ڤیدیۆکان لەسەر تەلەفزیۆنەکەت لێبدەیت."
   }
 }

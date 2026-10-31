@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="forge_rc_phone" tests="1" failures="1" time="17.964" timestamp="2026-10-22T16:01:52">
+    <testcase id="selector-probe" name="selector-probe" classname="selector-probe" file="sel.yaml" time="17.957" timestamp="2026-10-22T16:01:52" status="ERROR">
+      <failure>Element not found: Id matching regex: screen-tab-nowhere</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

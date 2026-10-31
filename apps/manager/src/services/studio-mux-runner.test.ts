@@ -15,6 +15,7 @@ function port(state = "UPLOADING"): StudioMuxPort {
       asset_id: "asset",
     })),
     failed: vi.fn(),
+    assetFailed: vi.fn(),
     created: vi.fn(),
     observe: vi.fn(async () => ({ status: "ready" })),
     ready: vi.fn(),
@@ -54,5 +55,22 @@ it("records provider upload expiration without replacement", async () => {
   p.upload = async () => ({ id: "upload", status: "timed_out" })
   await runStudioMuxCandidate("attempt", p)
   expect(p.failed).toHaveBeenCalledWith("job", "upload")
+  expect(p.created).not.toHaveBeenCalled()
+})
+
+it("records terminal asset failure without staging or replacement", async () => {
+  const p = port("PROCESSING")
+  vi.mocked(p.read).mockResolvedValue({
+    id: "job",
+    state: "PROCESSING",
+    dispatchId: "dispatch",
+    uploadId: "upload",
+    assetId: "asset",
+  })
+  vi.mocked(p.observe).mockResolvedValue({ status: "errored" })
+  await runStudioMuxCandidate("attempt", p)
+  expect(p.assetFailed).toHaveBeenCalledWith("job", "asset")
+  expect(p.ready).not.toHaveBeenCalled()
+  expect(p.stage).not.toHaveBeenCalled()
   expect(p.created).not.toHaveBeenCalled()
 })

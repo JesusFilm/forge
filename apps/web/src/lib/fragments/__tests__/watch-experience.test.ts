@@ -76,6 +76,7 @@ describe("Web Watch Experience media collection titles", () => {
                 ![
                   "WatchHomeCategoryRailBlock",
                   "HomepageRecommendationsBlock",
+                  "WatchAudienceBlock",
                 ].includes(blockSelection.typeCondition?.name.value ?? ""),
             ),
           },
@@ -110,6 +111,17 @@ describe("Web Watch Experience media collection titles", () => {
     )
     expect(print(adminLegacyWatchExperienceFragment)).not.toContain(
       "AdminWatchHomeCategoryRail",
+    )
+    // The audience block ships in the current projection only; Web's retry
+    // for an Admin that predates it is derived in `watch-audience-content`.
+    expect(print(adminWatchExperienceFragment)).toContain(
+      "... on WatchAudienceBlock",
+    )
+    expect(print(adminPreCopyWatchExperienceFragment)).not.toContain(
+      "WatchAudience",
+    )
+    expect(print(adminLegacyWatchExperienceFragment)).not.toContain(
+      "WatchAudience",
     )
   })
 

@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} bilen {last} aralygyndaky aýatlar, jemi {total}, {chapter}",
     "demoVerse": "Indiki aýat üçin ýokary süýşüriň",
     "demoChapter": "Indiki bap üçin çepe süýşüriň",
+    "demoChapterRtl": "Indiki bap üçin saga süýşüriň",
     "demoSkip": "Geçmek üçin basyň",
     "demoSkipAriaLabel": "Süýşürmek görkezmesini geç",
     "selectVerseAriaHint": "Bu aýaty saýlamak üçin iki gezek basyň",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kitap saýlaň",
+    "chooseChapter": "Bap saýlaň",
+    "chooseVerse": "Aýat saýlaň",
     "oldTestament": "Köne Äht",
     "newTestament": "Täze Äht",
     "books": "Kitaplar",
@@ -193,7 +196,7 @@
     "someBooks": "Kitaplar: {count} / {total, plural, one {#} other {#}}",
     "twoNames": "{first} we {second}",
     "threeNames": "{first}, {second} we {third}",
-    "onDevice": "Bu enjamda",
+    "downloaded": "Ýüklendi",
     "downloading": "Ýüklenýär: {percent}%",
     "downloadStopped": "Ýükleme togtady",
     "updateAvailable": "Täzelenme bar",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Seriýanyň afişasy",
     "videosHeading": "Wideolar",
     "detailsLoadError": "Doly maglumatlary ýükläp bolmady.",
+    "languagesTitle": "Wideonyň dili",
     "searchLanguagesPlaceholder": "Dilleri gözläň…",
     "searchLanguagesAriaLabel": "Dilleri gözle",
     "noLanguagesFound": "Dil tapylmady",
@@ -502,6 +506,7 @@
     "resumeAt": "{time} ýerinden dowam et",
     "unknownLanguage": "Näbelli",
     "downloadedStatus": "Ýüklendi",
+    "languagesTitle": "Wideonyň dili",
     "searchLanguagesPlaceholder": "Dilleri gözläň…",
     "searchLanguagesAriaLabel": "Dilleri gözle",
     "noLanguagesFound": "Dil tapylmady",
@@ -773,5 +778,8 @@
     "send": "Iber",
     "sending": "Iberilýär…",
     "sendAriaLabel": "Seslenme iber"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programma wideo geçirip bolýan enjamlary tapmak üçin ýerli toruňyzy ulanýar, şeýdip wideolary telewizoryňyzda oýnadyp bilersiňiz."
   }
 }

@@ -3,12 +3,13 @@
 # Railway dashboard and treat that dashboard config as canonical.
 
 [build]
-builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/mastra build"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/mastra/Dockerfile"
+watchPatterns = ["/apps/mastra/**", "/packages/devotional-workspace/**", "/packages/experience-schema/**", "/packages/watch-url-policy/**", "/packages/studio-contracts/**", "/packages/studio-server/**", "/scripts/update-security-ca.sh", "/package.json", "/pnpm-lock.yaml", "/pnpm-workspace.yaml", "/patches/**"]
 
 [deploy]
-startCommand = "cd apps/mastra && MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs"
+startCommand = "node /app/apps/mastra/.mastra/output/index.mjs"
 healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3

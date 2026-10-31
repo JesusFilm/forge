@@ -138,6 +138,7 @@
     "versesAriaValue": "Eilutės nuo {first} iki {last} iš {total}, {chapter}",
     "demoVerse": "Braukite aukštyn – kita eilutė",
     "demoChapter": "Braukite kairėn – kitas skyrius",
+    "demoChapterRtl": "Braukite dešinėn – kitas skyrius",
     "demoSkip": "Bakstelėkite, kad praleistumėte",
     "demoSkipAriaLabel": "Praleisti braukimo demonstraciją",
     "selectVerseAriaHint": "Dukart bakstelėkite, kad pažymėtumėte šią eilutę",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Pasirinkite knygą",
+    "chooseChapter": "Pasirinkite skyrių",
+    "chooseVerse": "Pasirinkite eilutę",
     "oldTestament": "Senasis Testamentas",
     "newTestament": "Naujasis Testamentas",
     "books": "Knygos",
@@ -193,7 +196,7 @@
     "someBooks": "{count} iš {total, plural, one {# knygos} few {# knygų} many {# knygos} other {# knygų}}",
     "twoNames": "{first} ir {second}",
     "threeNames": "{first}, {second} ir {third}",
-    "onDevice": "Šiame įrenginyje",
+    "downloaded": "Atsisiųsta",
     "downloading": "Atsisiunčiama {percent} %",
     "downloadStopped": "Atsisiuntimas sustojo",
     "updateAvailable": "Yra atnaujinimas",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Serialo plakatas",
     "videosHeading": "Vaizdo įrašai",
     "detailsLoadError": "Nepavyko įkelti visos informacijos.",
+    "languagesTitle": "Vaizdo įrašo kalba",
     "searchLanguagesPlaceholder": "Ieškoti kalbų…",
     "searchLanguagesAriaLabel": "Ieškoti kalbų",
     "noLanguagesFound": "Kalbų nerasta",
@@ -502,6 +506,7 @@
     "resumeAt": "Tęsti nuo {time}",
     "unknownLanguage": "Nežinoma",
     "downloadedStatus": "Atsisiųsta",
+    "languagesTitle": "Vaizdo įrašo kalba",
     "searchLanguagesPlaceholder": "Ieškoti kalbų…",
     "searchLanguagesAriaLabel": "Ieškoti kalbų",
     "noLanguagesFound": "Kalbų nerasta",
@@ -773,5 +778,8 @@
     "send": "Siųsti",
     "sending": "Siunčiama…",
     "sendAriaLabel": "Siųsti atsiliepimą"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programėlė naudoja jūsų vietinį tinklą transliavimo įrenginiams rasti, kad galėtumėte leisti vaizdo įrašus savo televizoriuje."
   }
 }

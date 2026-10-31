@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихови {first} до {last} од {total}, {chapter}",
     "demoVerse": "Повлечете нагоре за следниот стих",
     "demoChapter": "Повлечете лево за следната глава",
+    "demoChapterRtl": "Повлечете десно за следната глава",
     "demoSkip": "Допрете за да прескокнете",
     "demoSkipAriaLabel": "Прескокни го прикажувањето на повлекувањето",
     "selectVerseAriaHint": "Допрете двапати за да го изберете овој стих",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Изберете книга",
+    "chooseChapter": "Изберете глава",
+    "chooseVerse": "Изберете стих",
     "oldTestament": "Стар завет",
     "newTestament": "Нов завет",
     "books": "Книги",
@@ -193,7 +196,7 @@
     "someBooks": "{count} од {total, plural, one {# книга} other {# книги}}",
     "twoNames": "{first} и {second}",
     "threeNames": "{first}, {second} и {third}",
-    "onDevice": "На овој уред",
+    "downloaded": "Преземено",
     "downloading": "Се презема {percent}%",
     "downloadStopped": "Преземањето запре",
     "updateAvailable": "Достапно е ажурирање",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Постер на серијата",
     "videosHeading": "Видеа",
     "detailsLoadError": "Не можеа да се вчитаат сите детали.",
+    "languagesTitle": "Јазик на видеото",
     "searchLanguagesPlaceholder": "Пребарај јазици…",
     "searchLanguagesAriaLabel": "Пребарај јазици",
     "noLanguagesFound": "Не се пронајдени јазици",
@@ -502,6 +506,7 @@
     "resumeAt": "Продолжи од {time}",
     "unknownLanguage": "Непознат",
     "downloadedStatus": "Преземено",
+    "languagesTitle": "Јазик на видеото",
     "searchLanguagesPlaceholder": "Пребарај јазици…",
     "searchLanguagesAriaLabel": "Пребарај јазици",
     "noLanguagesFound": "Не се пронајдени јазици",
@@ -773,5 +778,8 @@
     "send": "Испрати",
     "sending": "Се испраќа…",
     "sendAriaLabel": "Испрати повратни информации"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Апликацијата ја користи вашата локална мрежа за пронаоѓање уреди за емитување, за да можете да пуштате видеа на вашиот телевизор."
   }
 }

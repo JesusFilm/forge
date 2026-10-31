@@ -9,7 +9,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { COLORS, hexToRgba } from "../../lib/colors"
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import { FOCUS_RING_COLOR } from "../focus/focusVisual"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { TVFocusGuideView } from "../TVFocusGuideView"
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: "System",
-    fontSize: Math.round(scale(20)),
+    fontSize: readableFontSize(20),
     fontWeight: "700",
     letterSpacing: scale(2.6),
     textTransform: "uppercase",
@@ -238,15 +238,15 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: "System",
-    fontSize: Math.round(scale(27)),
+    fontSize: readableFontSize(27),
     fontWeight: "700",
     color: "#FFFFFF",
     marginBottom: scale(10),
   },
   cardBody: {
     fontFamily: "System",
-    fontSize: Math.round(scale(21)),
-    lineHeight: Math.round(scale(31)),
+    fontSize: readableFontSize(21),
+    lineHeight: Math.round(scale(38)),
     // Bright body text — the old COLORS.muted (#A8A29E) read as the "bland"
     // grey the redesign is fixing.
     color: "rgba(245,245,244,0.84)",

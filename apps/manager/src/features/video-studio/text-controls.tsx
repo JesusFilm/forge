@@ -9,10 +9,19 @@ const animations = ["none", "fade", "slide"] as const
 export function TextControls({
   item,
   onChange,
+  onPreview,
 }: {
   item: TextItem
   onChange: (properties: Partial<TextItem["properties"]>) => void
+  onPreview?: (properties: Partial<TextItem["properties"]> | null) => void
 }) {
+  function numeric(properties: (n: number) => Partial<TextItem["properties"]>) {
+    return {
+      onChange: (n: number) => onChange(properties(n)),
+      onPreview: (n: number | null) =>
+        onPreview?.(n === null ? null : properties(n)),
+    }
+  }
   const p = item.properties
   const family = p.fontFamily ?? "sans-serif"
   const weight = p.fontWeight ?? 500
@@ -78,14 +87,14 @@ export function TextControls({
             value={p.shadowBlur ?? 8}
             min={0}
             max={100}
-            onChange={(shadowBlur) => onChange({ shadowBlur })}
+            {...numeric((shadowBlur) => ({ shadowBlur }))}
           />
           <NumberField
             label="Shadow offset"
             value={p.shadowOffset ?? 3}
             min={0}
             max={100}
-            onChange={(shadowOffset) => onChange({ shadowOffset })}
+            {...numeric((shadowOffset) => ({ shadowOffset }))}
           />
         </>
       )}
@@ -95,7 +104,7 @@ export function TextControls({
         min={0}
         max={20}
         step={0.5}
-        onChange={(strokeWidth) => onChange({ strokeWidth })}
+        {...numeric((strokeWidth) => ({ strokeWidth }))}
       />
       {!!p.strokeWidth && (
         <label>
@@ -113,7 +122,7 @@ export function TextControls({
         min={0}
         max={1}
         step={0.05}
-        onChange={(scrimOpacity) => onChange({ scrimOpacity })}
+        {...numeric((scrimOpacity) => ({ scrimOpacity }))}
       />
       {!!p.scrimOpacity && (
         <NumberField
@@ -121,7 +130,7 @@ export function TextControls({
           value={p.scrimPadding ?? 16}
           min={0}
           max={200}
-          onChange={(scrimPadding) => onChange({ scrimPadding })}
+          {...numeric((scrimPadding) => ({ scrimPadding }))}
         />
       )}
       <h3>Animation</h3>
@@ -158,7 +167,7 @@ export function TextControls({
                 value={p[durationKey] ?? 9}
                 min={1}
                 max={300}
-                onChange={(value) => onChange({ [durationKey]: value })}
+                {...numeric((value) => ({ [durationKey]: value }))}
               />
             )}
           </div>

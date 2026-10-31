@@ -138,6 +138,7 @@
     "versesAriaValue": "Versíkulu {first} to’o {last} husi {total}, {chapter}",
     "demoVerse": "Dada ba leten atu ba versíkulu tuir mai",
     "demoChapter": "Dada ba karuk atu ba kapítulu tuir mai",
+    "demoChapterRtl": "Dada ba los atu ba kapítulu tuir mai",
     "demoSkip": "Kona atu liu",
     "demoSkipAriaLabel": "Liu demonstrasaun dada",
     "selectVerseAriaHint": "Kona dala rua atu hili versíkulu ne’e",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Hili livru ida",
+    "chooseChapter": "Hili kapítulu ida",
+    "chooseVerse": "Hili versíkulu ida",
     "oldTestament": "Testamentu Tuan",
     "newTestament": "Testamentu Foun",
     "books": "Livru sira",
@@ -193,7 +196,7 @@
     "someBooks": "{count} husi {total, plural, one {livru #} other {livru #}}",
     "twoNames": "{first} no {second}",
     "threeNames": "{first}, {second} no {third}",
-    "onDevice": "Iha aparellu ne’e",
+    "downloaded": "Deskarga ona",
     "downloading": "Deskarga hela {percent}%",
     "downloadStopped": "Deskarga para",
     "updateAvailable": "Atualizasaun disponível",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Póster série nian",
     "videosHeading": "Vídeu sira",
     "detailsLoadError": "Labele karrega detalle kompletu.",
+    "languagesTitle": "Língua vídeu nian",
     "searchLanguagesPlaceholder": "Buka língua…",
     "searchLanguagesAriaLabel": "Buka língua",
     "noLanguagesFound": "La hetan língua",
@@ -502,6 +506,7 @@
     "resumeAt": "Kontinua iha {time}",
     "unknownLanguage": "La hatene",
     "downloadedStatus": "Deskarga ona",
+    "languagesTitle": "Língua vídeu nian",
     "searchLanguagesPlaceholder": "Buka língua…",
     "searchLanguagesAriaLabel": "Buka língua",
     "noLanguagesFound": "La hetan língua",
@@ -773,5 +778,8 @@
     "send": "Haruka",
     "sending": "Haruka hela…",
     "sendAriaLabel": "Haruka komentáriu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasaun ne’e uza ita-nia rede lokál atu buka aparellu sira hodi haruka ba TV, nune’e ita bele toka vídeu iha ita-nia TV."
   }
 }

@@ -1,3 +1,4 @@
+import { Readable } from "node:stream"
 /**
  * S3-backend tests for storage/s3.ts.
  *
@@ -126,5 +127,29 @@ describe("storage — object-key API (S3 backend)", () => {
       connectionTimeout: 5_000,
       requestTimeout: 30_000,
     })
+  })
+})
+
+it("destroys a pending GetObject body when cancellation arrives after headers", async () => {
+  const controller = new AbortController()
+  const body = new Readable({ read() {} })
+  let consuming = false
+  const responseBody = Object.assign(body, {
+    transformToByteArray: async () => {
+      consuming = true
+      const chunks: Buffer[] = []
+      for await (const chunk of body) chunks.push(Buffer.from(chunk))
+      return Buffer.concat(chunks)
+    },
+  })
+  s3Send.mockResolvedValueOnce({ Body: responseBody })
+  const pending = readObject("retention/part.bin", controller.signal)
+  const rejected = expect(pending).rejects.toMatchObject({ name: "AbortError" })
+  await vi.waitFor(() => expect(consuming).toBe(true))
+  controller.abort()
+  await rejected
+  expect(body.destroyed).toBe(true)
+  expect(s3Send).toHaveBeenCalledWith(expect.anything(), {
+    abortSignal: controller.signal,
   })
 })

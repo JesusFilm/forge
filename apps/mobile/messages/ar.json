@@ -138,6 +138,7 @@
     "versesAriaValue": "الآيات {first} إلى {last} من {total}، {chapter}",
     "demoVerse": "اسحب لأعلى للانتقال إلى الآية التالية",
     "demoChapter": "اسحب لليسار للانتقال إلى الأصحاح التالي",
+    "demoChapterRtl": "اسحب لليمين للانتقال إلى الأصحاح التالي",
     "demoSkip": "اضغط للتخطي",
     "demoSkipAriaLabel": "تخطي العرض التوضيحي للسحب",
     "selectVerseAriaHint": "اضغط مرتين لتحديد هذه الآية",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "اختر سفرًا",
+    "chooseChapter": "اختر أصحاحًا",
+    "chooseVerse": "اختر آيةً",
     "oldTestament": "العهد القديم",
     "newTestament": "العهد الجديد",
     "books": "الأسفار",
@@ -193,7 +196,7 @@
     "someBooks": "{count} من {total, plural, zero {# أسفار} one {سفر واحد} two {سفرين} few {# أسفار} many {# سفرًا} other {# سفر}}",
     "twoNames": "{first} و{second}",
     "threeNames": "{first} و{second} و{third}",
-    "onDevice": "على هذا الجهاز",
+    "downloaded": "تم التنزيل",
     "downloading": "جارٍ التنزيل {percent}٪",
     "downloadStopped": "توقف التنزيل",
     "updateAvailable": "يتوفر تحديث",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "ملصق السلسلة",
     "videosHeading": "الفيديوهات",
     "detailsLoadError": "تعذّر تحميل التفاصيل كاملة.",
+    "languagesTitle": "لغة الفيديو",
     "searchLanguagesPlaceholder": "ابحث عن لغة…",
     "searchLanguagesAriaLabel": "البحث عن لغة",
     "noLanguagesFound": "لم يتم العثور على لغات",
@@ -502,6 +506,7 @@
     "resumeAt": "استئناف من {time}",
     "unknownLanguage": "غير معروفة",
     "downloadedStatus": "تم التنزيل",
+    "languagesTitle": "لغة الفيديو",
     "searchLanguagesPlaceholder": "ابحث عن لغة…",
     "searchLanguagesAriaLabel": "البحث عن لغة",
     "noLanguagesFound": "لم يتم العثور على لغات",
@@ -773,5 +778,8 @@
     "send": "إرسال",
     "sending": "جارٍ الإرسال…",
     "sendAriaLabel": "إرسال الملاحظات"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "يستخدم التطبيق شبكتك المحلية للعثور على أجهزة البث، لتتمكن من تشغيل مقاطع الفيديو على تلفازك."
   }
 }

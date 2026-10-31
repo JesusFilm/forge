@@ -138,6 +138,7 @@
     "versesAriaValue": "Ditemana {first} go fihla go {last} tša {total}, {chapter}",
     "demoVerse": "Gogela godimo go ya temaneng ye e latelago",
     "demoChapter": "Gogela go la nngele go ya kgaolong ye e latelago",
+    "demoChapterRtl": "Gogela go la go ja go ya kgaolong ye e latelago",
     "demoSkip": "Kgotla gore o tshele",
     "demoSkipAriaLabel": "Tshela pontšho ya go gogela",
     "selectVerseAriaHint": "Kgotla gabedi go kgetha temana ye",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Kgetha puku",
+    "chooseChapter": "Kgetha kgaolo",
+    "chooseVerse": "Kgetha temana",
     "oldTestament": "Testamente ye Tala",
     "newTestament": "Testamente ye Mpsha",
     "books": "Dipuku",
@@ -193,7 +196,7 @@
     "someBooks": "{count} go {total, plural, one {puku e #} other {dipuku tše #}}",
     "twoNames": "{first} le {second}",
     "threeNames": "{first}, {second} le {third}",
-    "onDevice": "Mo sedirišweng se",
+    "downloaded": "E dawunloutšwe",
     "downloading": "Go dawunlouda {percent}%",
     "downloadStopped": "Go dawunlouda go emile",
     "updateAvailable": "Mpshafatšo e a hwetšagala",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Posetara ya lenaneo",
     "videosHeading": "Dibidio",
     "detailsLoadError": "Ga go a kgonega go laetša dintlha ka botlalo.",
+    "languagesTitle": "Polelo ya bidio",
     "searchLanguagesPlaceholder": "Nyaka dipolelo...",
     "searchLanguagesAriaLabel": "Nyaka dipolelo",
     "noLanguagesFound": "Ga go na dipolelo tše di hweditšwego",
@@ -502,6 +506,7 @@
     "resumeAt": "Tšwela pele go {time}",
     "unknownLanguage": "Ga e tsebje",
     "downloadedStatus": "E dawunloutšwe",
+    "languagesTitle": "Polelo ya bidio",
     "searchLanguagesPlaceholder": "Nyaka dipolelo...",
     "searchLanguagesAriaLabel": "Nyaka dipolelo",
     "noLanguagesFound": "Ga go na dipolelo tše di hweditšwego",
@@ -773,5 +778,8 @@
     "send": "Romela",
     "sending": "Go a romelwa…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e šomiša neteweke ya gago ya selegae go nyaka didirišwa tšeo o ka romelago dibidio go tšona, gore o kgone go bapala dibidio go TV ya gago."
   }
 }

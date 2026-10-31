@@ -138,6 +138,7 @@
     "versesAriaValue": "Amavesi {first} kuya ku-{last} kwe-{total}, {chapter}",
     "demoVerse": "Swayiphela phezulu ukuthola ivesi elilandelayo",
     "demoChapter": "Swayiphela kwesobunxele ukuthola isahluko esilandelayo",
+    "demoChapterRtl": "Swayiphela kwesokudla ukuthola isahluko esilandelayo",
     "demoSkip": "Thepha ukuze weqe",
     "demoSkipAriaLabel": "Yeqa umboniso wokuswayipha",
     "selectVerseAriaHint": "Thepha kabili ukuze ukhethe leli vesi",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Khetha incwadi",
+    "chooseChapter": "Khetha isahluko",
+    "chooseVerse": "Khetha ivesi",
     "oldTestament": "Itestamente Elidala",
     "newTestament": "Itestamente Elisha",
     "books": "Izincwadi",
@@ -193,7 +196,7 @@
     "someBooks": "{count} {total, plural, one {kwencwadi engu-#} other {kwezincwadi ezingu-#}}",
     "twoNames": "{first} kanye no-{second}",
     "threeNames": "{first}, {second} kanye no-{third}",
-    "onDevice": "Ikule divayisi",
+    "downloaded": "Kulandiwe",
     "downloading": "Iyalandwa {percent}%",
     "downloadStopped": "Ukulanda kumile",
     "updateAvailable": "Isibuyekezo siyatholakala",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Iphosta yochungechunge",
     "videosHeading": "Amavidiyo",
     "detailsLoadError": "Akukwazekanga ukulayisha imininingwane ephelele.",
+    "languagesTitle": "Ulimi lwevidiyo",
     "searchLanguagesPlaceholder": "Sesha izilimi…",
     "searchLanguagesAriaLabel": "Sesha izilimi",
     "noLanguagesFound": "Azikho izilimi ezitholakele",
@@ -502,6 +506,7 @@
     "resumeAt": "Qhubeka ku-{time}",
     "unknownLanguage": "Ulimi olungaziwa",
     "downloadedStatus": "Kulandiwe",
+    "languagesTitle": "Ulimi lwevidiyo",
     "searchLanguagesPlaceholder": "Sesha izilimi…",
     "searchLanguagesAriaLabel": "Sesha izilimi",
     "noLanguagesFound": "Azikho izilimi ezitholakele",
@@ -773,5 +778,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela impendulo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa inethiwekhi yakho yendawo ukuthola amadivayisi ongasakazela kuwo, ukuze ukwazi ukudlala amavidiyo ku-TV yakho."
   }
 }

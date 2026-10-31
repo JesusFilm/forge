@@ -196,7 +196,7 @@ describe("/{language}.html/videos route", () => {
     })
   })
 
-  it("declares language-specific SEO metadata", async () => {
+  it("declares Spanish SEO metadata through the requested catalog", async () => {
     const pageMetadata = await generateMetadata({
       params: Promise.resolve({
         locale: "es",
@@ -206,10 +206,10 @@ describe("/{language}.html/videos route", () => {
     })
 
     expect(pageMetadata.title).toBe(
-      "Free Christian videos in Espanol latinoamericano | Jesus Film Project",
+      "Videos cristianos gratuitos en Espanol latinoamericano | Jesus Film Project",
     )
     expect(pageMetadata.description).toContain(
-      "with dubbed audio or subtitles in Espanol latinoamericano",
+      "con audio doblado o subtítulos en Espanol latinoamericano",
     )
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",
@@ -233,6 +233,33 @@ describe("/{language}.html/videos route", () => {
     )
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/russian.html/videos",
+    )
+  })
+
+  it("lower-cases the UI language's own name mid-sentence in metadata (N48a)", async () => {
+    // Admin stores the endonym capitalised; the ru catalog places it after
+    // "Язык:", where the lower-case CLDR form is correct.
+    const base = await resolveWatchLanguageInventoryMock("ru", "russian")
+    resolveWatchLanguageInventoryMock.mockResolvedValueOnce({
+      ...base,
+      languageSlug: "russian",
+      languageName: "Russian",
+      languageNativeName: "Русский",
+      switcherLanguages: [],
+    })
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "ru",
+        htmlLang: "ru",
+        languageSlug: "russian",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Бесплатные христианские видео. Язык: русский | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "Язык озвучки или субтитров: русский",
     )
   })
 

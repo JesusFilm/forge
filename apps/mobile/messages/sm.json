@@ -138,6 +138,7 @@
     "versesAriaValue": "Fuaiupu {first} e oʻo i le {last} mai le {total}, {chapter}",
     "demoVerse": "Toso i luga mo le fuaiupu e sosoʻo ai",
     "demoChapter": "Toso i le agavale mo le mataupu e sosoʻo ai",
+    "demoChapterRtl": "Toso i le taumatau mo le mataupu e sosoʻo ai",
     "demoSkip": "Paʻi e oso ai",
     "demoSkipAriaLabel": "Faʻamuta le faʻataʻitaʻiga o le toso",
     "selectVerseAriaHint": "Paʻi faʻalua e filifili ai lenei fuaiupu",
@@ -167,6 +168,8 @@
   },
   "BiblePassagePicker": {
     "chooseBook": "Filifili se tusi",
+    "chooseChapter": "Filifili se mataupu",
+    "chooseVerse": "Filifili se fuaiupu",
     "oldTestament": "Feagaiga Tuai",
     "newTestament": "Feagaiga Fou",
     "books": "Tusi",
@@ -193,7 +196,7 @@
     "someBooks": "{count} mai le {total, plural, one {# tusi} other {# tusi}}",
     "twoNames": "{first} ma {second}",
     "threeNames": "{first}, {second} ma {third}",
-    "onDevice": "O loʻo i lenei masini",
+    "downloaded": "Ua siʻi mai",
     "downloading": "O loʻo siʻi mai {percent}%",
     "downloadStopped": "Ua tu le siʻi mai",
     "updateAvailable": "O loʻo avanoa se faʻafouga",
@@ -313,6 +316,7 @@
     "seriesPosterAriaLabel": "Ata faʻasalalau o le faʻasologa",
     "videosHeading": "Vitio",
     "detailsLoadError": "E leʻi mafai ona utaina faʻamatalaga atoa.",
+    "languagesTitle": "Gagana o le vitio",
     "searchLanguagesPlaceholder": "Suʻe gagana…",
     "searchLanguagesAriaLabel": "Suʻe gagana",
     "noLanguagesFound": "E leai ni gagana na maua",
@@ -502,6 +506,7 @@
     "resumeAt": "Faʻaauau i le {time}",
     "unknownLanguage": "Lē iloa",
     "downloadedStatus": "Ua siʻi mai",
+    "languagesTitle": "Gagana o le vitio",
     "searchLanguagesPlaceholder": "Suʻe gagana…",
     "searchLanguagesAriaLabel": "Suʻe gagana",
     "noLanguagesFound": "E leai ni gagana na maua",
@@ -773,5 +778,8 @@
     "send": "Lafo",
     "sending": "O loʻo lafo…",
     "sendAriaLabel": "Lafo lou manatu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "E faʻaaoga e le polokalame lau fesoʻotaʻiga faʻalotoifale e suʻe ai masini mo le lafo i le TV, ina ia mafai ona e tā vitio i lau TV."
   }
 }

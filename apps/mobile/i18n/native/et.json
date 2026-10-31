@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Rakendus kasutab sinu kohtvõrku ülekandeseadmete leidmiseks, et saaksid videoid oma teleris esitada."
+  }
+}

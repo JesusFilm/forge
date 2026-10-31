@@ -197,6 +197,18 @@ const envSchema = z.object({
     .enum(["local", "preview", "staging", "production"])
     .default("local"),
   ADMIN_EXPERIENCE_INGEST_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_CATALOG_URL: z.string().url().optional(),
+  ADMIN_RECOMMENDATION_INGEST_URL: z.string().url().optional(),
+  PRECOMPUTED_GA4_PROPERTY_ID: z
+    .string()
+    .regex(/^\d{1,20}$/u)
+    .optional(),
+  PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL: z
+    .string()
+    .regex(/^[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/u)
+    .optional(),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: z.string().min(1).max(65_536).optional(),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_EVAL_API_KEY: z.string().min(1).optional(),
@@ -213,6 +225,11 @@ const envSchema = z.object({
   // optional: unset → the tool degrades to an empty result, never a boot fail.
   ADMIN_AGENT_TOOLS_URL: z.string().url().optional(),
   ADMIN_AGENT_TOOLS_API_KEY: z.string().min(1).optional(),
+  // Subtitle Quality Lab recovery sweep. Both optional: unconfigured is the
+  // normal state until the Lab is turned on, and the scheduled workflow skips
+  // rather than failing every tick.
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: z.string().url().optional(),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: z.string().min(1).optional(),
   // Single-attempt per-tool timeout. Must fit the 90s chatTurn budget with
   // maxSteps:8 — keep it small so several tool round-trips can complete in one
   // turn. Capped at 30s; default 10s.
@@ -867,6 +884,24 @@ export const env = envSchema.parse({
   ADMIN_EXPERIENCE_INGEST_URL: emptyToUndefined(
     process.env.ADMIN_EXPERIENCE_INGEST_URL,
   ),
+  ADMIN_RECOMMENDATION_CATALOG_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_CATALOG_URL,
+  ),
+  ADMIN_RECOMMENDATION_INGEST_URL: emptyToUndefined(
+    process.env.ADMIN_RECOMMENDATION_INGEST_URL,
+  ),
+  PRECOMPUTED_GA4_PROPERTY_ID: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_PROPERTY_ID,
+  ),
+  PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL,
+  ),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_CREDENTIALS_JSON,
+  ),
+  ADMIN_MASTRA_RECOMMENDATION_API_KEY: emptyToUndefined(
+    process.env.ADMIN_MASTRA_RECOMMENDATION_API_KEY,
+  ),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY,
   ),
@@ -900,6 +935,12 @@ export const env = envSchema.parse({
   ADMIN_AGENT_TOOLS_URL: emptyToUndefined(process.env.ADMIN_AGENT_TOOLS_URL),
   ADMIN_AGENT_TOOLS_API_KEY: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_API_KEY,
+  ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_URL,
+  ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY,
   ),
   ADMIN_AGENT_TOOLS_TIMEOUT_MS: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,

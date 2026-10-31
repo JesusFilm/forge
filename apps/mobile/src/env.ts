@@ -25,6 +25,7 @@ const _inlined = {
   signInEnabled: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
   exploreEnabled: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
   exploreAndroidEnabled: process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+  muxDataEnvKey: process.env.EXPO_PUBLIC_MUX_DATA_ENV_KEY,
 }
 void _inlined
 
@@ -69,6 +70,9 @@ const createAppEnv = () =>
       // the sign-in gate: the on-values live in explore/availabilityState.
       EXPO_PUBLIC_EXPLORE_ENABLED: z.string().optional(),
       EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED: z.string().optional(),
+      // Mux Data env key. Optional so a build without it boots; the shape
+      // check lives in muxData/config.ts, where a bad key turns Mux off.
+      EXPO_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
     },
     runtimeEnvStrict: {
       EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
@@ -96,6 +100,7 @@ const createAppEnv = () =>
       EXPO_PUBLIC_EXPLORE_ENABLED: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
       EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED:
         process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+      EXPO_PUBLIC_MUX_DATA_ENV_KEY: process.env.EXPO_PUBLIC_MUX_DATA_ENV_KEY,
     },
     isServer: false,
     emptyStringAsUndefined: true,

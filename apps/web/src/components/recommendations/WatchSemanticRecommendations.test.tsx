@@ -33,7 +33,10 @@ vi.mock("@/components/watch/MuxHoverPreview", () => ({
   MuxHoverPreview: () => null,
 }))
 
+import { setRequestLocale } from "next-intl/server"
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import enMessages from "../../../messages/en.json"
+import ruMessages from "../../../messages/ru.json"
 import {
   completeRecommendationConsentBootstrap,
   startRecommendationConsentBootstrap,
@@ -60,7 +63,7 @@ import {
 setupWatchRecommendationsTestHarness()
 
 describe("WatchSemanticRecommendations", () => {
-  it("waits for first-visit consent initialization before delivery", async () => {
+  it("starts delivery without waiting for retired consent initialization", async () => {
     startRecommendationConsentBootstrap()
     const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
       jsonResponse({ delivery: sixItemDelivery }),
@@ -77,7 +80,11 @@ describe("WatchSemanticRecommendations", () => {
       )
     })
     await flush()
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).endsWith("/api/recommendations"),
+      ),
+    ).toBe(true)
 
     completeRecommendationConsentBootstrap()
     await flush()
@@ -98,6 +105,51 @@ describe("WatchSemanticRecommendations", () => {
     expect(container.textContent).toContain("Target video")
   })
 
+  it("returns the in-memory experiment measurement ticket only in the selection body", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    const measurementTicket = `v1.${"A".repeat(24)}.${"B".repeat(43)}`
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({
+              delivery: { ...sixItemDelivery, measurementTicket },
+            })
+          : String(input).endsWith("/select")
+            ? jsonResponse({
+                claimNonce: JSON.parse(String(init?.body)).claimNonce,
+                canonicalHref: sixItemDelivery.items[0].canonicalHref,
+                targetMediaId: sixItemDelivery.items[0].targetMediaId,
+              })
+            : acceptedEvidenceResponse(init),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const navigate = vi.fn()
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      ),
+    )
+    await flush()
+    expect(container.innerHTML).not.toContain(measurementTicket)
+    act(() =>
+      container
+        .querySelector("a[data-recommendation-key]")
+        ?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        ),
+    )
+    await flush()
+    expect(
+      requestBodies(fetchMock).find((body) => body.claimNonce)
+        ?.measurementTicket,
+    ).toBe(measurementTicket)
+  })
   it("renders the governed co-watch/MMR response without exposing trial internals", async () => {
     startRecommendationConsentBootstrap()
     completeRecommendationConsentBootstrap()
@@ -930,6 +982,87 @@ describe("WatchSemanticRecommendations", () => {
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "/target.html",
     )
+  })
+
+  it("renders the localized explanation without retired personalization controls", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({ delivery: sixItemDelivery })
+          : jsonResponse({ receipts: [] }),
+      ),
+    )
+    const ru = ruMessages.VideoRecommendations
+    const en = enMessages.VideoRecommendations
+    for (const key of [
+      "explanationHybrid",
+      "personalizationLabel",
+      "personalizationPrompt",
+      "openCookieSettings",
+    ] as const) {
+      expect(ru[key], key).not.toBe(en[key])
+    }
+
+    setRequestLocale("ru")
+    try {
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="ru"
+            audioLanguageSlug="russian"
+          />,
+        )
+      })
+      await flush()
+
+      expect(container.textContent).toContain(ru.explanationHybrid)
+      const control = container.querySelector(
+        `section[aria-label="${ru.personalizationLabel}"]`,
+      )
+      expect(control).toBeNull()
+      expect(container.textContent).not.toContain(en.explanationHybrid)
+      expect(container.textContent).not.toContain(en.personalizationPrompt)
+    } finally {
+      setRequestLocale("en")
+    }
+  })
+
+  it("renders the heading and live announcement from the active locale catalog", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/api/recommendations")) {
+        return jsonResponse({ delivery: fallbackDelivery })
+      }
+      return jsonResponse({ receipts: [] })
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const ru = ruMessages.VideoRecommendations
+    const en = enMessages.VideoRecommendations
+    expect(ru.heading).not.toBe(en.heading)
+    expect(ru.showingSaved).not.toBe(en.showingSaved)
+
+    setRequestLocale("ru")
+    try {
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="ru"
+            audioLanguageSlug="russian"
+          />,
+        )
+      })
+      await flush()
+
+      const section = container.querySelector('[data-state="fallback"]')
+      expect(section?.getAttribute("aria-label")).toBe(ru.heading)
+      expect(section?.querySelector("h2")?.textContent).toBe(ru.heading)
+      expect(container.textContent).toContain(ru.showingSaved)
+      expect(container.textContent).not.toContain(en.heading)
+    } finally {
+      setRequestLocale("en")
+    }
   })
 
   it.each([1, 5, 6])(

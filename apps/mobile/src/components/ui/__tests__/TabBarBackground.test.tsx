@@ -71,7 +71,7 @@ describe("TabBarBackground", () => {
     expect(found[0].props.glassEffectStyle).toBe("regular")
     // The app hard-codes dark while app.json says "automatic".
     expect(found[0].props.colorScheme).toBe("dark")
-    // Inside a pressable, isInteractive flashes white on remount.
+    // The bar's background is not a button, so it takes no press response.
     expect(found[0].props.isInteractive).toBeUndefined()
     // Measured floor: untinted, bright content drops the idle labels to
     // 3.35:1, below AA. Blur removes detail, not luminance.

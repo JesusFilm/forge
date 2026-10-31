@@ -19,6 +19,7 @@
  * `document` (not the local container) for elements inside the modal.
  */
 
+import { setRequestLocale } from "next-intl/server"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -249,9 +250,9 @@ describe("DownloadModal — quality bucketing", () => {
     const downloads: DownloadModalDownload[] = [
       makeDownload({ documentId: "fhd", quality: "fhd" }), // -> Highest
       makeDownload({ documentId: "high", quality: "high" }), // -> High
-      makeDownload({ documentId: "distroHigh", quality: "distroHigh" }), // collapsed under High
+      makeDownload({ documentId: "distroHigh", quality: "distroHigh" }), // legacy: never a tier
       makeDownload({ documentId: "low", quality: "low" }), // -> Low
-      makeDownload({ documentId: "distroLow", quality: "distroLow" }), // collapsed under Low
+      makeDownload({ documentId: "distroLow", quality: "distroLow" }), // legacy: never a tier
     ]
     act(() => {
       root.render(
@@ -316,9 +317,14 @@ describe("DownloadModal — quality bucketing", () => {
               size: 700 * 1024 * 1024,
             }),
             makeDownload({
-              documentId: "distroHigh",
-              quality: "distroHigh",
+              documentId: "low",
+              quality: "low",
               size: 500 * 1024 * 1024,
+            }),
+            makeDownload({
+              documentId: "distroSd",
+              quality: "distroSd",
+              size: 600 * 1024 * 1024,
             }),
           ]}
           onClose={vi.fn()}
@@ -552,6 +558,103 @@ describe("DownloadModal — Terms of Use agreement", () => {
     expect(confirm.disabled).toBe(true)
   })
 
+  // QA N65: the consent sentence used to be a translated prefix + link +
+  // suffix, so verb-final languages lost the verb ("मैं उपयोग की शर्तों" =
+  // "I … Terms of Use"). Render the dialog and pin the whole sentence: the
+  // verb follows the linked phrase in hi/ur, which a prefix + link layout
+  // cannot produce.
+  it.each([
+    {
+      locale: "hi",
+      sentence: "मैं उपयोग की शर्तों से सहमत हूँ",
+      link: "उपयोग की शर्तों",
+    },
+    {
+      locale: "ur",
+      sentence: "میں استعمال کی شرائط سے متفق ہوں",
+      link: "استعمال کی شرائط",
+    },
+    {
+      locale: "ru",
+      sentence: "Я принимаю Условия использования",
+      link: "Условия использования",
+    },
+  ])(
+    "renders the $locale consent as one sentence with the Terms link inside it",
+    ({ locale, sentence, link }) => {
+      setRequestLocale(locale)
+      try {
+        act(() => {
+          root.render(
+            <TestDownloadModal
+              open
+              downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+              onClose={vi.fn()}
+            />,
+          )
+        })
+
+        const label = $('[data-testid="watch-download-modal-tos-label"]')
+        const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
+        const checkbox = $(
+          '[data-testid="watch-download-modal-tos"]',
+        ) as HTMLInputElement
+        expect(label?.textContent).toBe(sentence)
+        expect(trigger?.textContent).toBe(link)
+        expect(label?.contains(trigger)).toBe(true)
+        expect(checkbox.getAttribute("aria-label")).toBe(sentence)
+        // The Terms button is not nested inside a <label>.
+        expect(trigger?.closest("label")).toBeNull()
+      } finally {
+        setRequestLocale("en")
+      }
+    },
+  )
+
+  it("toggles the checkbox from the sentence text but not from the Terms button", () => {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const label = $(
+      '[data-testid="watch-download-modal-tos-label"]',
+    ) as HTMLElement
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(true)
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(false)
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(true)
+
+    act(() => {
+      ;(
+        $('[data-testid="watch-download-modal-tos-trigger"]') as HTMLElement
+      ).click()
+    })
+    expect(checkbox.checked).toBe(true)
+    expect(
+      $('[data-testid="watch-download-modal-terms-dialog"]'),
+    ).not.toBeNull()
+  })
+
   it("opens Terms without accepting; Cancel keeps the outer modal disabled", () => {
     const onClose = vi.fn()
     act(() => {
@@ -776,6 +879,91 @@ describe("DownloadModal — account-authenticated downloads", () => {
     )
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    ["high", "dl-high"],
+    ["low", "dl-low"],
+  ] as const)(
+    "downloading the %s tier requests the real %s row, never a distro row",
+    async (tier, expectedDownloadId) => {
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[
+              makeDownload({
+                documentId: "dl-fhd",
+                quality: "fhd",
+                size: 5521959728,
+              }),
+              // Misleading sizes: legacy rows sit where the size middle/tail was.
+              makeDownload({
+                documentId: "dl-distroSd",
+                quality: "distroSd",
+                size: 1561752518,
+              }),
+              makeDownload({
+                documentId: "dl-high",
+                quality: "high",
+                size: 2962849007,
+              }),
+              makeDownload({
+                documentId: "dl-sd",
+                quality: "sd",
+                size: 658922306,
+              }),
+              makeDownload({
+                documentId: "dl-distroLow",
+                quality: "distroLow",
+                size: 207141494,
+              }),
+              makeDownload({
+                documentId: "dl-low",
+                quality: "low",
+                size: 585287114,
+              }),
+            ]}
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-size-trigger"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      const option = $$(
+        '[data-testid="watch-download-modal-size-option"]',
+      ).find((o) => o.getAttribute("data-tier") === tier)
+      act(() => {
+        option?.click()
+      })
+      acceptTerms()
+      const created: HTMLAnchorElement[] = []
+      const realAppend = document.body.appendChild.bind(document.body)
+      const appendSpy = vi
+        .spyOn(document.body, "appendChild")
+        .mockImplementation(((node: Node) => {
+          if (node instanceof HTMLAnchorElement) created.push(node)
+          return realAppend(node)
+        }) as typeof document.body.appendChild)
+
+      await act(async () => {
+        ;(
+          $('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement
+        ).click()
+      })
+
+      expect(created.length).toBe(1)
+      const href = created[0]?.getAttribute("href") ?? ""
+      expect(href).toContain(`downloadId=${expectedDownloadId}&`)
+      expect(href).not.toContain("distro")
+      appendSpy.mockRestore()
+    },
+  )
 
   it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", async () => {
     act(() => {

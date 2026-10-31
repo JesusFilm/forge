@@ -8,6 +8,7 @@ import {
   studioCuts,
   transitionPresentation,
 } from "@forge/studio-contracts/transitions"
+import { studioAudioVolume } from "@forge/studio-contracts/audio"
 import { StudioText } from "./Text"
 class StudioRuntimeError extends Error {}
 
@@ -115,6 +116,8 @@ function HlsVideo({
       trimBefore={start}
       playbackRate={playbackRate}
       volume={volume}
+      useWebAudioApi
+      crossOrigin="anonymous"
       pauseWhenBuffering={false}
       style={{
         width: "100%",
@@ -196,7 +199,7 @@ function Layer({
               ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
               presentation.preRoll * (item.playbackRate ?? 1)
             }
-            volume={globalFrame < item.startFrame ? 0 : item.volume}
+            volume={studioAudioVolume(item, globalFrame - item.startFrame)}
             style={{
               width: "100%",
               height: "100%",
@@ -214,7 +217,7 @@ function Layer({
               ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
               presentation.preRoll * (item.playbackRate ?? 1)
             }
-            volume={globalFrame < item.startFrame ? 0 : item.volume}
+            volume={studioAudioVolume(item, globalFrame - item.startFrame)}
             onError={onError}
           />
         )
@@ -222,7 +225,9 @@ function Layer({
         <Remotion.Html5Audio
           src={url}
           trimBefore={(item.sourceStartMs * fps) / 1000}
-          volume={globalFrame < item.startFrame ? 0 : item.volume}
+          useWebAudioApi
+          crossOrigin="anonymous"
+          volume={studioAudioVolume(item, globalFrame - item.startFrame)}
         />
       ) : item.kind === "image" && media ? (
         <Remotion.Img

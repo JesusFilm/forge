@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const deleteWatchProgressForUser = vi.fn()
 const deleteWatchEventsForUser = vi.fn()
+const eraseWatchLearningProgressForSubject = vi.fn()
 
 vi.mock("@/auth/watch-progress-bearer", () => ({
   isValidWatchProgressBearer: (header: string | null) =>
@@ -26,12 +27,18 @@ vi.mock("@/services/watch-events.service", () => ({
   deleteWatchEventsForUser,
 }))
 
+vi.mock("@/services/watch-learning-progress.service", () => ({
+  eraseWatchLearningProgressForSubject,
+}))
+
 describe("DELETE /api/internal/watch-progress", () => {
   beforeEach(() => {
     deleteWatchProgressForUser.mockReset()
     deleteWatchEventsForUser.mockReset()
     deleteWatchProgressForUser.mockResolvedValue({ deletedCount: 3 })
     deleteWatchEventsForUser.mockResolvedValue({ deletedCount: 5 })
+    eraseWatchLearningProgressForSubject.mockReset()
+    eraseWatchLearningProgressForSubject.mockResolvedValue({ deletedCount: 2 })
   })
 
   it("erases progress and, for an account deletion, the watch-event log too (R5)", async () => {
@@ -55,6 +62,8 @@ describe("DELETE /api/internal/watch-progress", () => {
     await expect(response.json()).resolves.toEqual({
       deletedCount: 3,
       deletedWatchEventCount: 5,
+      deletedLearningProgressCount: 2,
+      learningProgressErased: true,
     })
     expect(deleteWatchProgressForUser).toHaveBeenCalledWith(
       "auth-user-123",
@@ -174,9 +183,10 @@ describe("DELETE /api/internal/watch-progress", () => {
     expect(response.status).toBe(200)
     expect(deleteWatchProgressForUser).toHaveBeenCalled()
     expect(deleteWatchEventsForUser).not.toHaveBeenCalled()
-    await expect(response.json()).resolves.toMatchObject({
-      deletedWatchEventCount: 0,
-    })
+    expect(eraseWatchLearningProgressForSubject).not.toHaveBeenCalled()
+    const body = await response.json()
+    expect(body).toMatchObject({ deletedWatchEventCount: 0 })
+    expect(body).not.toHaveProperty("learningProgressErased")
     warn.mockRestore()
   })
 
@@ -203,5 +213,59 @@ describe("DELETE /api/internal/watch-progress", () => {
 
     expect(prisma.$transaction).toHaveBeenCalled()
     warn.mockRestore()
+  })
+
+  it("erases learning progress inside the same transaction as the account's watch data", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { prisma } = await import("@/db/client")
+    const tx = { marker: "erasure-tx" }
+    vi.mocked(prisma.$transaction).mockImplementationOnce(
+      (async (fn: (client: unknown) => Promise<unknown>) =>
+        await fn(tx)) as never,
+    )
+    const { DELETE } = await import("./route")
+
+    await DELETE(
+      new Request("http://localhost/api/internal/watch-progress", {
+        method: "DELETE",
+        headers: {
+          authorization: "Bearer valid-erasure-key",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: "auth-user-123",
+          reason: "account-deleted",
+        }),
+      }),
+    )
+
+    expect(eraseWatchLearningProgressForSubject).toHaveBeenCalledWith(
+      tx,
+      "auth-user-123",
+    )
+    warn.mockRestore()
+  })
+
+  it("fails the whole erasure, with no acknowledgement, when learning erasure fails", async () => {
+    eraseWatchLearningProgressForSubject.mockRejectedValue(
+      new Error("relation does not exist"),
+    )
+    const { DELETE } = await import("./route")
+
+    await expect(
+      DELETE(
+        new Request("http://localhost/api/internal/watch-progress", {
+          method: "DELETE",
+          headers: {
+            authorization: "Bearer valid-erasure-key",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: "auth-user-123",
+            reason: "account-deleted",
+          }),
+        }),
+      ),
+    ).rejects.toThrow("relation does not exist")
   })
 })

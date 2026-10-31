@@ -1,0 +1,5 @@
+PASS standalone: custom path optimized; default behavior and FETCH limits preserved
+PASS app-page.runtime.prod.js: custom path optimized; default behavior and FETCH limits preserved
+PASS app-page-turbo.runtime.prod.js: custom path optimized; default behavior and FETCH limits preserved
+PASS app-page-experimental.runtime.prod.js: custom path optimized; default behavior and FETCH limits preserved
+PASS app-page-turbo-experimental.runtime.prod.js: custom path optimized; default behavior and FETCH limits preserved
