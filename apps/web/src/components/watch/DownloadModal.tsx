@@ -5,7 +5,6 @@ import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
   Check,
-  ChevronDown,
   Download as DownloadIcon,
   Globe2,
   LogIn,
@@ -21,8 +20,8 @@ import {
   TERMS_OF_USE_CANONICAL_URL,
   TERMS_OF_USE_PARAGRAPHS,
 } from "@/lib/terms-of-use"
-import { cn } from "@/lib/utils"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import { TierListbox } from "@/components/watch/TierListbox"
 import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
 import { redirectToAuth } from "@/components/watch/download-session-client"
 import {
@@ -60,8 +59,6 @@ export type DownloadModalProps = {
   authRequiredLoginUrl?: string | null
   onClose: () => void
 }
-
-const SIZE_DROPDOWN_ANIMATION_MS = 160
 
 // Thin null-tolerant wrapper around the shared formatter. The download
 // modal renders nothing when duration is missing or non-positive
@@ -111,23 +108,13 @@ export function DownloadModal({
         : t("tierLow")
   const [tosAgreed, setTosAgreed] = useState(false)
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [dropdownMounted, setDropdownMounted] = useState(false)
-  const [dropdownRect, setDropdownRect] = useState<{
-    left: number
-    top: number
-    width: number
-  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [localAuthLoginUrl, setLocalAuthLoginUrl] = useState<string | null>(
     null,
   )
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
-  const dropdownId = useId()
-  const dropdownListId = `${dropdownId}-list`
-  const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const listRef = useRef<HTMLUListElement | null>(null)
+  const fileSizeLabelId = useId()
   // Re-entry guard: blocks a double-click / stray pointer event from
   // queueing a second proxy request before the modal-close re-render
   // hides the button.
@@ -155,30 +142,11 @@ export function DownloadModal({
   const canDownload = tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
 
-  const updateDropdownRect = useCallback(() => {
-    const trigger = triggerRef.current
-    if (!trigger) return
-    const rect = trigger.getBoundingClientRect()
-    setDropdownRect({
-      left: rect.left,
-      top: rect.bottom + 8,
-      width: rect.width,
-    })
-  }, [])
-
-  const closeDropdown = useCallback(() => {
-    if (dropdownOpen) setDropdownMounted(true)
-    setDropdownOpen(false)
-  }, [dropdownOpen])
-
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
         setTosAgreed(false)
         setSelectedTier(null)
-        setDropdownOpen(false)
-        setDropdownMounted(false)
-        setDropdownRect(null)
         setError(null)
         setAuthChecking(false)
         setTermsOpen(false)
@@ -189,58 +157,6 @@ export function DownloadModal({
     },
     [onClose],
   )
-
-  useEffect(() => {
-    if (dropdownOpen) return
-    if (!dropdownMounted) return
-    const timeout = window.setTimeout(() => {
-      setDropdownMounted(false)
-      setDropdownRect(null)
-    }, SIZE_DROPDOWN_ANIMATION_MS)
-    return () => window.clearTimeout(timeout)
-  }, [dropdownMounted, dropdownOpen])
-
-  // Click-outside / Escape-first close for the custom dropdown. Without
-  // this, clicking elsewhere in the modal leaves the listbox open
-  // forever, and pressing Escape dismisses the entire dialog instead of
-  // collapsing only the dropdown.
-  useEffect(() => {
-    if (!dropdownOpen) return
-    updateDropdownRect()
-    function handlePointerDown(event: PointerEvent) {
-      const target = event.target as Node | null
-      if (!target) return
-      if (
-        triggerRef.current?.contains(target) ||
-        listRef.current?.contains(target)
-      ) {
-        return
-      }
-      closeDropdown()
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        // Stop propagation so base-ui's dialog Escape handler doesn't
-        // also fire and close the entire modal.
-        event.stopPropagation()
-        closeDropdown()
-        triggerRef.current?.focus()
-      }
-    }
-    function handleViewportChange() {
-      updateDropdownRect()
-    }
-    document.addEventListener("pointerdown", handlePointerDown, true)
-    document.addEventListener("keydown", handleKeyDown, true)
-    window.addEventListener("resize", handleViewportChange)
-    window.addEventListener("scroll", handleViewportChange, true)
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true)
-      document.removeEventListener("keydown", handleKeyDown, true)
-      window.removeEventListener("resize", handleViewportChange)
-      window.removeEventListener("scroll", handleViewportChange, true)
-    }
-  }, [closeDropdown, dropdownOpen, updateDropdownRect])
 
   async function handleDownload() {
     if (!selected) return
@@ -457,118 +373,21 @@ export function DownloadModal({
               </p>
             ) : (
               <div className="-mx-2 flex flex-col gap-3 px-2">
-                <label
-                  htmlFor={dropdownId}
+                <span
+                  id={fileSizeLabelId}
                   className="text-lg font-semibold text-stone-100"
                 >
                   {fileSizeLabel}
-                </label>
-                <div className="relative">
-                  <button
-                    ref={triggerRef}
-                    id={dropdownId}
-                    type="button"
-                    onClick={() => {
-                      if (dropdownOpen) {
-                        closeDropdown()
-                        return
-                      }
-                      updateDropdownRect()
-                      setDropdownMounted(false)
-                      setDropdownOpen(true)
-                    }}
-                    data-testid="watch-download-modal-size-trigger"
-                    data-open={dropdownOpen ? "true" : "false"}
-                    aria-haspopup="listbox"
-                    aria-expanded={dropdownOpen}
-                    aria-controls={dropdownListId}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left text-lg font-semibold text-stone-100 transition hover:bg-white/10"
-                  >
-                    <span>
-                      {selected ? (
-                        <span className="font-semibold">
-                          {tierLabel(selected.tier)}
-                        </span>
-                      ) : (
-                        fileSizeLabel
-                      )}
-                    </span>
-                    <ChevronDown
-                      size={20}
-                      className={cn(
-                        "transition-transform",
-                        dropdownOpen ? "rotate-180" : "",
-                      )}
-                    />
-                  </button>
-                  {(dropdownOpen || dropdownMounted) &&
-                  dropdownRect != null &&
-                  typeof document !== "undefined"
-                    ? createPortal(
-                        <ul
-                          ref={listRef}
-                          id={dropdownListId}
-                          role="listbox"
-                          aria-labelledby={dropdownId}
-                          data-testid="watch-download-modal-size-list"
-                          data-open={dropdownOpen ? "true" : "false"}
-                          className={cn(
-                            "fixed z-[1000] max-h-72 origin-top overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-150 ease-out",
-                            dropdownOpen
-                              ? "translate-y-0 scale-100 opacity-100"
-                              : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
-                          )}
-                          style={{
-                            left: dropdownRect.left,
-                            top: dropdownRect.top,
-                            width: dropdownRect.width,
-                          }}
-                        >
-                          {tiers.map((t) => {
-                            const isSelected = effectiveTier === t.tier
-                            return (
-                              <li key={t.tier}>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={isSelected}
-                                  data-testid="watch-download-modal-size-option"
-                                  data-tier={t.tier}
-                                  data-size-bytes={
-                                    t.download.size != null &&
-                                    t.download.size > 0
-                                      ? t.download.size
-                                      : ""
-                                  }
-                                  onClick={() => {
-                                    setSelectedTier(t.tier)
-                                    closeDropdown()
-                                  }}
-                                  className={cn(
-                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-base sm:text-sm transition",
-                                    isSelected
-                                      ? "bg-brand-red text-white"
-                                      : "text-stone-100 hover:bg-white/10",
-                                  )}
-                                >
-                                  <Check
-                                    size={16}
-                                    className={
-                                      isSelected ? "opacity-100" : "opacity-0"
-                                    }
-                                  />
-                                  <span className="font-semibold">
-                                    {tierLabel(t.tier)}
-                                  </span>
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>,
-                        document.body,
-                      )
-                    : null}
-                </div>
+                </span>
+                <TierListbox
+                  tiers={tiers.map((option) => option.tier)}
+                  value={effectiveTier}
+                  onChange={setSelectedTier}
+                  getLabel={tierLabel}
+                  placeholder={fileSizeLabel}
+                  labelledBy={fileSizeLabelId}
+                  testIdPrefix="watch-download-modal-size"
+                />
               </div>
             )}
           </div>
