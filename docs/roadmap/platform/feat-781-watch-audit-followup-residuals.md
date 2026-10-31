@@ -1,0 +1,106 @@
+---
+id: "feat-781"
+title: "Close the remaining Watch website audit follow-ups"
+owner: "vlad"
+priority: "P2"
+status: "in-progress"
+start_date: "2026-10-21"
+duration: 3
+depends_on: []
+blocks: []
+tags:
+  - "web"
+  - "watch"
+  - "accessibility"
+  - "performance"
+---
+
+## October 30 disposition
+
+The header overlap is corrected in #2835 with compact single-row controls;
+combined production header, search and loading checks are recorded in the
+October 30 merge-preparation report. #2849 now clears retry intent
+on a new in-place error and removes only its temporary main focus attributes
+on blur. The download integration repair in #2836 retains one-Escape Terms
+close after the shared picker migration. Prepared code is not merged code.
+
+Keep this ticket in progress for the remaining random-hero crossfade,
+non-English/markup snippet vocabulary, physical-device/screen-reader checks,
+and the authenticated live-manifest qualification still pending. #2845's recommendation-slot layout issue
+stays in feat-775. These residuals do not authorize reviving profiles/co-watch
+retired by the October 29 owner decision.
+
+## Problem
+
+The 2026-10-21 follow-up audit
+(`docs/reports/2026-10-21-watch-website-audit-followup.md`) left small,
+verified residuals that no open PR covers. Each is minor alone. Together
+they are the last known gaps on the main Watch templates, and some need a
+real browser or device that the audit could not use.
+
+## Entry Points — Read These First
+
+1. `docs/reports/2026-10-21-watch-website-audit-followup.md`, "Remaining
+   work": the list this ticket owns.
+2. `apps/web/src/components/home/WatchHomeTvCarousel.tsx` (first-slide fix
+   in #2853): the after-hydration random hero swap fades in from black.
+3. `apps/web/src/components/useWatchErrorRetry.ts` (added by #2849) and
+   `apps/web/src/app/[locale]/[htmlLang]/error.tsx`: retry flag after an
+   in-place failure, and the `tabindex="-1"` left on `main`.
+4. `apps/web/src/components/FloatingSearchProvider.tsx`: at 320–390 px
+   with 200% text the search row wraps to a second line that ends 12 px
+   below the fixed header band (pill bottom 188 px, band 176 px at
+   390 px), so it covers content under the band, such as the error
+   heading. Round 10: caused by #2835, whose large-text rule puts the
+   search field on a second row of a 52 px header grid (logo row 88 px at
+   200%). Search bottom 180/188 px vs backdrop 152 px at 320/390 + 200%.
+   The backdrop and hover band cannot see the header's container query.
+   Round 11: #2835 is a draft until this is fixed (blocker and numbers in
+   its PR body). Verify 320/390/768/1280 × 100/200%: no overlap with
+   content, header actions visible, 320 keyboard focus, no new CLS.
+5. `apps/admin/src/services/watch-search-snippet.ts` (added by #2851): cue
+   cleanup misses non-English and markup cues.
+6. Done in #2836 `27288977a` (round 10): collection download dialog and
+   Terms dialog focus return.
+
+## Grep These
+
+`useHasLeftInitialSlide`, `watch-home-media-enter`, `data-watch-error-retry`,
+`watchMainContentTargetProps`, `CAPTION_CUE`, `CUE_TRAILERS`,
+`series-page-download-button`, `returnFocusRef`.
+
+## What To Build
+
+- Crossfade the post-hydration random hero from the server slide, not from
+  black. Keep the first poster at full opacity (feat-780).
+- Clear the retry flag when a retry fails in place, and remove the
+  temporary `tabindex="-1"` from `main` after focus moves.
+- Keep the wrapped header search row inside the fixed header band (or
+  size the band from the real row height) at 320–390 px with 200% text.
+- (Done in #2836) Return focus to the series "Download collection" button
+  when the collection download dialog closes.
+- Extend cue cleanup to `[MÚSICA]`, `>>JESUS:` and `<i>[music]</i>` only with
+  a closed list and tests that keep real text, as #2851 does.
+- When a WebKit build, a real phone or a screen reader becomes available,
+  re-run the download, captions and retry journeys there.
+
+## Constraints
+
+- Do not merge or depend on the open audit PRs from this ticket; land each
+  item after the PR it builds on.
+- Do not change search ranking or time budgets here; budgets are an owner
+  decision. Matching deadline warnings to unique requests (to get a real
+  rate) is engineering work and needs no approval.
+- Do not change download size display (feat-310, #1740).
+- Preserve GA, Datadog RUM and recommendation behavior.
+
+## Verification
+
+- `pnpm --filter @forge/web exec vitest run src/components/watch src/components/useWatchErrorRetry`
+- Collection download dialog: Escape returns focus to the series download
+  button (keyboard, real build).
+- `pnpm --filter @forge/admin exec vitest run src/services/watch-search-snippet`
+- Real build (`next build` + `next start`), Chromium and Firefox at 320,
+  390 and 1280 px, 100% and 200% text: error heading below the search pill;
+  home LCP unchanged against `main` (see
+  `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`).
