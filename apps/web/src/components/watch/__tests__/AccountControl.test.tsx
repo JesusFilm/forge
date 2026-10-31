@@ -7,6 +7,15 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountControl } from "@/components/watch/AccountControl"
+import { __resetWatchBootstrapForTests } from "@/lib/watch-bootstrap-client"
+
+function bootstrapResponse(account: unknown) {
+  return Response.json({
+    contractVersion: "watch-bootstrap-v1",
+    account,
+    watchProgress: { authenticated: false, userId: null, entries: [] },
+  })
+}
 
 const floatingChrome = vi.hoisted(() => ({
   searchChromeVisible: true,
@@ -41,6 +50,7 @@ describe("AccountControl", () => {
 
   beforeEach(() => {
     vi.resetAllMocks()
+    __resetWatchBootstrapForTests()
     floatingChrome.searchChromeVisible = true
     window.history.replaceState(null, "", "/watch/jesus/english?t=12")
     assignSpy = vi.fn()
@@ -90,7 +100,7 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        bootstrapResponse({ accountGateEnabled: true, authenticated: false }),
       ),
     )
 
@@ -111,7 +121,7 @@ describe("AccountControl", () => {
       "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch",
     )
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/watch/api/auth/session?callbackURL=%2Fwatch",
+      "http://localhost:3000/watch/api/bootstrap?callbackURL=%2Fwatch",
       expect.any(Object),
     )
   })
@@ -121,11 +131,20 @@ describe("AccountControl", () => {
     ["invalid JSON", async () => new Response("not-json")],
     ["null JSON", async () => Response.json(null)],
     ["array JSON", async () => Response.json([])],
-    ["missing booleans", async () => Response.json({ user: {} })],
+    [
+      "unknown contract",
+      async () =>
+        Response.json({
+          contractVersion: "watch-bootstrap-v0",
+          account: { accountGateEnabled: true, authenticated: false },
+        }),
+    ],
+    ["unavailable account", async () => bootstrapResponse(null)],
+    ["missing booleans", async () => bootstrapResponse({ user: {} })],
     [
       "string booleans",
       async () =>
-        Response.json({
+        bootstrapResponse({
           accountGateEnabled: "true",
           authenticated: "false",
         }),
@@ -133,7 +152,7 @@ describe("AccountControl", () => {
     [
       "invalid authenticated user",
       async () =>
-        Response.json({
+        bootstrapResponse({
           accountGateEnabled: false,
           authenticated: true,
           user: "viewer",
@@ -142,7 +161,7 @@ describe("AccountControl", () => {
     [
       "conflicting signed-out user",
       async () =>
-        Response.json({
+        bootstrapResponse({
           accountGateEnabled: true,
           authenticated: false,
           user: { id: "viewer" },
@@ -169,7 +188,7 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        bootstrapResponse({ accountGateEnabled: true, authenticated: false }),
       ),
     )
 
@@ -191,7 +210,7 @@ describe("AccountControl", () => {
       "http://localhost:3000/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
     )
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/watch/api/auth/session?callbackURL=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
+      "http://localhost:3000/watch/api/bootstrap?callbackURL=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
       expect.any(Object),
     )
     expect(clearDatadogRumUserMock).toHaveBeenCalledTimes(1)
@@ -202,7 +221,7 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: false, authenticated: false }),
+        bootstrapResponse({ accountGateEnabled: false, authenticated: false }),
       ),
     )
 
@@ -216,7 +235,7 @@ describe("AccountControl", () => {
       ).toBeNull()
     })
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:3000/watch/api/auth/session?callbackURL=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
+      "http://localhost:3000/watch/api/bootstrap?callbackURL=%2Fwatch%2Fjesus%2Fenglish%3Ft%3D12",
       expect.any(Object),
     )
     expect(clearDatadogRumUserMock).toHaveBeenCalledTimes(1)
@@ -227,7 +246,7 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({
+        bootstrapResponse({
           accountGateEnabled: false,
           authenticated: true,
           user: {
@@ -291,7 +310,7 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({
+        bootstrapResponse({
           accountGateEnabled: false,
           authenticated: true,
           user: {
@@ -324,6 +343,8 @@ describe("AccountControl", () => {
     floatingChrome.searchChromeVisible = false
     await act(async () => {
       root.render(<AccountControl />)
+    })
+    await act(async () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
 
@@ -333,5 +354,125 @@ describe("AccountControl", () => {
       ).toBeNull()
       expect(button.getAttribute("aria-expanded")).toBe("false")
     })
+  })
+
+  it("reuses the document's bootstrap when the control remounts", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        bootstrapResponse({ accountGateEnabled: true, authenticated: false }),
+      ),
+    )
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+    await vi.waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="watch-account-control"]'),
+      ).not.toBeNull()
+    })
+    // The search modal swaps the control out and back in.
+    await act(async () => {
+      root.render(<></>)
+    })
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="watch-account-control"]'),
+      ).not.toBeNull()
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("retries the bootstrap on remount after a failed read", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(
+        bootstrapResponse({ accountGateEnabled: true, authenticated: false }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+    await vi.waitFor(() => {
+      expect(clearDatadogRumUserMock).toHaveBeenCalledTimes(1)
+    })
+    await act(async () => {
+      root.render(<></>)
+    })
+    await act(async () => {
+      root.render(<AccountControl />)
+    })
+
+    await vi.waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="watch-account-control"]'),
+      ).not.toBeNull()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+  it("ignores a late shared response after unmount without identifying a user", async () => {
+    let respond: ((response: Response) => void) | undefined
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            respond = resolve
+          }),
+      ),
+    )
+    await act(async () => root.render(<AccountControl />))
+    await act(async () => root.render(<></>))
+    await act(async () =>
+      respond?.(
+        bootstrapResponse({
+          accountGateEnabled: true,
+          authenticated: true,
+          user: { id: "late-user" },
+        }),
+      ),
+    )
+    expect(container.innerHTML).toBe("")
+    expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
+    expect(clearDatadogRumUserMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves public audio language, query and hash for auth after navigation", async () => {
+    Object.assign(window.location, {
+      pathname: "/watch/jesus.html/spanish-castilian.html",
+      search: "?t=12",
+      hash: "#chapter",
+    })
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        bootstrapResponse({
+          accountGateEnabled: true,
+          authenticated: false,
+        }),
+      ),
+    )
+    await act(async () => root.render(<AccountControl />))
+    const button = container.querySelector("button") as HTMLButtonElement
+    const [input] = vi.mocked(fetch).mock.calls[0]
+    expect(new URL(String(input)).searchParams.get("callbackURL")).toBe(
+      "/watch/jesus.html/spanish-castilian.html?t=12#chapter",
+    )
+    Object.assign(window.location, {
+      pathname: "/watch/magdalena.html/arabic.html",
+      search: "",
+      hash: "#scene",
+    })
+    await act(async () => button.click())
+    expect(
+      new URL(assignSpy.mock.calls[0][0]).searchParams.get("returnTo"),
+    ).toBe("/watch/magdalena.html/arabic.html#scene")
   })
 })

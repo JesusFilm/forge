@@ -4,7 +4,7 @@ import {
   readWebAuthSessionCookie,
 } from "@/auth/web-session"
 
-type AuthSessionResult =
+export type AuthSessionResult =
   | {
       authenticated: true
       userId: string
@@ -70,6 +70,16 @@ function timeoutSignal(ms: number): AbortSignal | undefined {
 export async function verifyAuthSession(
   headers: Headers,
 ): Promise<AuthSessionResult> {
+  // Existing on-demand callers keep their fail-closed anonymous response.
+  return (
+    (await verifyAuthSessionAvailability(headers)) ?? { authenticated: false }
+  )
+}
+
+/** Bootstrap must not permanently cache an upstream outage as a real guest. */
+export async function verifyAuthSessionAvailability(
+  headers: Headers,
+): Promise<AuthSessionResult | null> {
   const cookieHeader = headers.get("cookie")
   const webSession = await readWebAuthSessionCookie(
     getCookieValue(cookieHeader, WEB_AUTH_SESSION_COOKIE),
@@ -91,7 +101,7 @@ export async function verifyAuthSession(
   if (!hasBetterAuthCookie(cookieHeader)) return { authenticated: false }
 
   const authBase = resolveAuthBaseURL()
-  if (!authBase) return { authenticated: false }
+  if (!authBase) return null
 
   const url = new URL("/api/auth/get-session", authBase)
   url.searchParams.set("disableCookieCache", "true")
@@ -105,7 +115,9 @@ export async function verifyAuthSession(
       },
       signal: timeoutSignal(3_000),
     })
-    if (!response.ok) return { authenticated: false }
+    // An explicit unauthenticated response is a real guest, not an outage.
+    if (response.status === 401) return { authenticated: false }
+    if (!response.ok) return null
 
     const body = (await response.json()) as {
       user?: { id?: unknown; email?: unknown; name?: unknown; image?: unknown }
@@ -136,8 +148,10 @@ export async function verifyAuthSession(
                 : undefined,
           },
         }
-      : { authenticated: false }
+      : body === null || (body?.user === null && body?.session === null)
+        ? { authenticated: false }
+        : null
   } catch {
-    return { authenticated: false }
+    return null
   }
 }

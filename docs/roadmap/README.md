@@ -917,6 +917,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-899](platform/feat-899-mobile-bible-swipe-demo-ends-early.md)                    | Mobile Bible swipe demonstration ends after one cycle                                 | urim       | P2       | —     | 2    | —   | not-started |
 | [feat-900](platform/feat-900-mobile-mini-player-floats-paused.md)                      | Mobile mini player can float paused after a playing page closes                       | urim       | P2       | —     | 2    | —   | not-started |
 | [feat-901](platform/feat-901-qa-runner-journey-command.md)                             | /qa-runner command for QA engineers to create or change mobile release check journeys | urim       | P2       | —     | 1    | —   | complete    |
+| [feat-918](platform/feat-918-watch-hydration-bootstrap-request.md)                     | Watch: batch account and progress bootstrap reads                                     | vlad       | P1       | —     | 2    | —   | in-progress |
 
 ### Topic Experiences
 

@@ -3776,15 +3776,37 @@ function installStoryboardFetchMock(
   },
 ) {
   const originalFetch = globalThis.fetch
-  const fetchMock = vi.fn(() =>
+  const storyboardFetchMock = vi.fn<typeof fetch>(() =>
     Promise.resolve({
       ok: true,
       json: () => Promise.resolve(storyboard),
     } as Response),
   )
-  globalThis.fetch = fetchMock as typeof fetch
+  globalThis.fetch = (input, init) => {
+    const url = new URL(
+      input instanceof Request ? input.url : input.toString(),
+      window.location.origin,
+    )
+    // Progress hydration is independent of the storyboard request contract.
+    // Return a valid guest envelope rather than storyboard data to its parser.
+    if (
+      url.origin === window.location.origin &&
+      url.pathname === "/watch/api/bootstrap"
+    ) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            contractVersion: "watch-bootstrap-v1",
+            account: { accountGateEnabled: false, authenticated: false },
+            watchProgress: { authenticated: false, userId: null, entries: [] },
+          }),
+        ),
+      )
+    }
+    return storyboardFetchMock(input, init)
+  }
   return {
-    fetchMock,
+    storyboardFetchMock,
     restore: () => {
       globalThis.fetch = originalFetch
     },
@@ -3800,23 +3822,23 @@ async function flushPromises() {
 
 describe("HeroPlayer — timeline storyboard previews", () => {
   it("does not request storyboard metadata before chrome reveal", () => {
-    const { fetchMock, restore } = installStoryboardFetchMock()
+    const { storyboardFetchMock, restore } = installStoryboardFetchMock()
     try {
       act(() => {
         root.render(<HeroPlayer block={makeBlock()} />)
       })
-      expect(fetchMock).not.toHaveBeenCalled()
+      expect(storyboardFetchMock).not.toHaveBeenCalled()
     } finally {
       restore()
     }
   })
 
   it("requests storyboard metadata after chrome reveal when playbackId is available", async () => {
-    const { fetchMock, restore } = installStoryboardFetchMock()
+    const { storyboardFetchMock, restore } = installStoryboardFetchMock()
     try {
       await revealChrome()
       await flushPromises()
-      expect(fetchMock).toHaveBeenCalledWith(
+      expect(storyboardFetchMock).toHaveBeenCalledWith(
         "https://image.mux.com/playback-id-123/storyboard.json?format=webp",
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       )
@@ -3826,11 +3848,11 @@ describe("HeroPlayer — timeline storyboard previews", () => {
   })
 
   it("does not request storyboard metadata without a playbackId", async () => {
-    const { fetchMock, restore } = installStoryboardFetchMock()
+    const { storyboardFetchMock, restore } = installStoryboardFetchMock()
     try {
       await revealChrome(makeBlock({ playbackId: null }))
       await flushPromises()
-      expect(fetchMock).not.toHaveBeenCalled()
+      expect(storyboardFetchMock).not.toHaveBeenCalled()
     } finally {
       restore()
     }
