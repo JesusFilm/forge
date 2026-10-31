@@ -57,6 +57,14 @@
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
     "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  /* Montserrat ships as three unicode-range subset families (see
+     src/lib/watch-font.ts). Their ranges are disjoint, so the order only puts
+     the latin face, with its metric-adjusted fallback and the native stack,
+     last. Where a layout does not apply the font classes these are undefined,
+     and `--font-sans` falls back to the native stack as before. */
+  --font-montserrat:
+    var(--font-montserrat-cyrillic), var(--font-montserrat-rest),
+    var(--font-montserrat-latin);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
