@@ -2,6 +2,11 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import {
@@ -144,6 +149,12 @@ function SeriesHeroStatic({
           // alt value.
           <Image
             src={posterUrl}
+            loader={
+              isMuxImageUrl(posterUrl) && !isAdminMuxCardThumbnail(posterUrl)
+                ? muxImageLoader
+                : undefined
+            }
+            unoptimized={isAdminMuxCardThumbnail(posterUrl)}
             alt=""
             fill
             sizes="100vw"
