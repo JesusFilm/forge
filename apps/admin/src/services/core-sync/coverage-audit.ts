@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
+import { coreQuery } from "./core-client"
+import { fetchCoreImageIdSet } from "./phases/sync-video-images"
 
 export type CoverageAuditStatus = "covered" | "missing" | "empty-ok"
 
@@ -6,8 +8,9 @@ export type CoverageAuditCheck = {
   key: string
   label: string
   adminCount: number
+  coreCount?: number
   status: CoverageAuditStatus
-  confidence: "row-count" | "relationship-count"
+  confidence: "row-count" | "relationship-count" | "core-count"
 }
 
 export type CoverageAudit = {
@@ -27,6 +30,33 @@ type CheckConfig = {
   args?: unknown
   confidence: CoverageAuditCheck["confidence"]
   emptyOk?: boolean
+  // When present, the check compares `adminCount` against this Core-side
+  // count instead of the row-count/empty-ok heuristic. A failed Core read
+  // must not fail the sync, so callers degrade to the row-count heuristic
+  // on error (see runCoverageAudit below).
+  fetchCoreCount?: () => Promise<number>
+}
+
+const VIDEO_SUBTITLES_COUNT_QUERY = `
+  query VideoSubtitlesCount {
+    videoSubtitlesCount
+  }
+`
+
+async function fetchCoreVideoSubtitlesCount(): Promise<number> {
+  const result = await coreQuery<{ videoSubtitlesCount: number }>(
+    VIDEO_SUBTITLES_COUNT_QUERY,
+  )
+  const count = result.data?.videoSubtitlesCount
+  if (typeof count !== "number") {
+    throw new Error("Core videoSubtitlesCount is missing")
+  }
+  return count
+}
+
+async function fetchCoreVideoImagesCount(): Promise<number> {
+  const { ids } = await fetchCoreImageIdSet()
+  return ids.size
 }
 
 const CHECKS: CheckConfig[] = [
@@ -96,15 +126,19 @@ const CHECKS: CheckConfig[] = [
     key: "videoImages",
     label: "Video images",
     delegate: "videoImage",
-    args: { where: { source: "CORE", deletedAt: null } },
-    confidence: "relationship-count",
+    args: { where: { source: "CORE", deletedAt: null, coreId: { not: null } } },
+    // Falls back to "row-count" if the Core read fails; see fetchCoreCount.
+    confidence: "row-count",
+    fetchCoreCount: fetchCoreVideoImagesCount,
   },
   {
     key: "videoSubtitles",
     label: "Video subtitles",
     delegate: "videoSubtitle",
-    args: { where: { source: "CORE", deletedAt: null } },
-    confidence: "relationship-count",
+    args: { where: { source: "CORE", deletedAt: null, coreId: { not: null } } },
+    // Falls back to "row-count" if the Core read fails; see fetchCoreCount.
+    confidence: "row-count",
+    fetchCoreCount: fetchCoreVideoSubtitlesCount,
   },
   {
     key: "videoStudyQuestions",
@@ -171,6 +205,41 @@ export async function runCoverageAudit(
     CHECKS.map(async (check) => {
       const delegate = prisma[check.delegate] as unknown as CountDelegate
       const adminCount = await delegate.count(check.args)
+
+      if (check.fetchCoreCount) {
+        try {
+          const coreCount = await check.fetchCoreCount()
+          return {
+            key: check.key,
+            label: check.label,
+            adminCount,
+            coreCount,
+            confidence: "core-count",
+            status: adminCount < coreCount ? "missing" : "covered",
+          } satisfies CoverageAuditCheck
+        } catch (err) {
+          console.error(
+            JSON.stringify({
+              event: "core-sync.coverage-audit.core-count-unavailable",
+              key: check.key,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          )
+          return {
+            key: check.key,
+            label: check.label,
+            adminCount,
+            confidence: "row-count",
+            status:
+              adminCount > 0
+                ? "covered"
+                : check.emptyOk
+                  ? "empty-ok"
+                  : "missing",
+          } satisfies CoverageAuditCheck
+        }
+      }
+
       return {
         key: check.key,
         label: check.label,
