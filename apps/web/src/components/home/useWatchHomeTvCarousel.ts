@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -244,6 +245,7 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    pauseAdvanceForInteraction?: boolean
     // True while something else owns interaction (a Watch modal). Playback
     // this hook would start is deferred until it clears, because the owner
     // pauses media that starts under it and only resumes media that was
@@ -413,6 +415,7 @@ export function useWatchHomeTvCarousel(
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
+  const pauseAdvanceForInteraction = options.pauseAdvanceForInteraction ?? false
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
   const isAutoplayRefused =
@@ -424,7 +427,7 @@ export function useWatchHomeTvCarousel(
   // separate for the ring: only buffering is a stall worth explaining.
   const isMediaHeld =
     Boolean(activeSlide?.src) && isMediaPaused && !isAutoplayRefused
-  const isTurnHeld = isBuffering || isMediaHeld
+  const isTurnHeld = isBuffering || isMediaHeld || pauseAdvanceForInteraction
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
@@ -461,6 +464,8 @@ export function useWatchHomeTvCarousel(
   const portraitSkipCountRef = useRef(0)
   // `advance` is defined below the metadata handler that needs it.
   const advanceRef = useRef<(() => void) | null>(null)
+  const interactionPausedRef = useRef(pauseAdvanceForInteraction)
+  const endedWhileInteractionPausedRef = useRef(false)
 
   // The homepage is statically rendered and shared by every visitor, so the
   // per-visit draw happens here — once, right after mount — over the pools the
@@ -601,6 +606,7 @@ export function useWatchHomeTvCarousel(
         }, 900)
       }
       const isSameSlide = nextSlide != null && nextSlide.id === activeSlide?.id
+      endedWhileInteractionPausedRef.current = false
       clearSlideAdvanceTimeout()
       clearVideoPosterHold()
       // Every selection opens a new turn, so timers armed for the previous one
@@ -673,9 +679,25 @@ export function useWatchHomeTvCarousel(
     selectIndex(nextIndex)
   }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     advanceRef.current = advance
   }, [advance])
+
+  const handleEnded = useCallback(() => {
+    if (interactionPausedRef.current) {
+      endedWhileInteractionPausedRef.current = true
+      return
+    }
+    advanceRef.current?.()
+  }, [])
+
+  useLayoutEffect(() => {
+    interactionPausedRef.current = pauseAdvanceForInteraction
+    if (!pauseAdvanceForInteraction && endedWhileInteractionPausedRef.current) {
+      endedWhileInteractionPausedRef.current = false
+      advanceRef.current?.()
+    }
+  }, [pauseAdvanceForInteraction])
 
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
@@ -1015,8 +1037,17 @@ export function useWatchHomeTvCarousel(
     // Buffering and paused are not exclusive: a viewer who scrolls away
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
-    // behaviour the pause gate exists to stop.
-    if (!isBuffering || isMediaHeld || autoAdvancePaused) return undefined
+    // behaviour the pause gate exists to stop. Interaction holds the film's
+    // identity even when its stream never arrives; release starts a fresh
+    // recovery window without pausing playback.
+    if (
+      !isBuffering ||
+      isMediaHeld ||
+      autoAdvancePaused ||
+      pauseAdvanceForInteraction
+    ) {
+      return undefined
+    }
 
     const armedForTurn = turnTokenRef.current
     mediaWaitTimeoutRef.current = window.setTimeout(() => {
@@ -1036,6 +1067,7 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
+    pauseAdvanceForInteraction,
   ])
 
   useEffect(() => {
@@ -1093,7 +1125,7 @@ export function useWatchHomeTvCarousel(
       // own: a seven-second video resolves to the refused turn's duration.
       ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}:${isAutoplayRefused ? "refused" : "video"}`,
       handleCanPlay,
-      handleEnded: advance,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,
@@ -1120,6 +1152,7 @@ export function useWatchHomeTvCarousel(
       restartCount,
       isAutoplayRefused,
       handleCanPlay,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,

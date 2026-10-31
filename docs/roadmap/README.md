@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 29, 2026)
+## Status (October 30, 2026)
 
-- **Total tickets:** 985
-- **Complete:** 746
+- **Total tickets:** 986
+- **Complete:** 747
 - **Cancelled:** 43
 - **In progress:** 81
 - **Not started:** 57
@@ -1005,6 +1005,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-889](topic-experiences/feat-889-tv-streaming-ux-followup.md)                          | Resolve reviewed Watch TV streaming UX improvements                              | ekkasit       | P1       | —     | 3    | —   | in-progress |
 | [feat-890](topic-experiences/feat-890-tv-reviewed-shortlist.md)                             | Validate and refine the reviewed Watch TV UX shortlist                           | ekkasit       | P1       | —     | 3    | —   | complete    |
 | [feat-903](topic-experiences/feat-903-android-tv-player-back.md)                            | Restore reliable Android TV player Back navigation                               | ekkasit       | P1       | —     | 1    | —   | complete    |
+| [feat-915](topic-experiences/feat-915-watch-home-cta-stability-on-interaction.md)           | Keep Watch Home Hero Stable During Interaction                                   | vlad          | P1       | —     | 1    | —   | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad          | P2       | —     | 28   | —   | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit       | P2       | —     | 21   | —   | blocked     |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono     | P2       | —     | 61   | —   | blocked     |

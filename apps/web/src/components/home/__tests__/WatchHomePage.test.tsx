@@ -55,6 +55,7 @@ import {
 } from "@/lib/watch-home-hero-fit"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import {
+  WatchHomeTvCarousel,
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
 } from "@/components/home/WatchHomeTvCarousel"
@@ -432,7 +433,9 @@ describe("WatchHomePage", () => {
     const target = next
       .getAttribute("aria-label")!
       .replace("Show Candidate ", "")
-    next.focus()
+    await act(async () => {
+      next.focus()
+    })
     await act(async () => {
       next.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
@@ -611,6 +614,361 @@ describe("WatchHomePage", () => {
       ).length
     }
 
+    function heroIdentity() {
+      return {
+        title: carouselLabel(),
+        copy: container.querySelector(
+          '[data-testid="watch-home-tv-active-title"]',
+        )?.textContent,
+        href: container
+          .querySelector('[data-testid="watch-home-tv-actions"] a')
+          ?.getAttribute("href"),
+        src: currentVideo()?.getAttribute("src"),
+      }
+    }
+
+    function pointAtHero(over: boolean, pointerType = "mouse") {
+      const event = new Event(over ? "pointerover" : "pointerout", {
+        bubbles: true,
+      })
+      Object.defineProperties(event, {
+        pointerType: { value: pointerType },
+        relatedTarget: { value: over ? null : document.body },
+      })
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')!
+        .dispatchEvent(event)
+    }
+
+    it.each([
+      ["mouse", "never-canplay"],
+      ["keyboard", "never-canplay"],
+      ["mouse", "waiting"],
+      ["keyboard", "waiting"],
+    ] as const)(
+      "interaction watchdog: %s holds a %s stream past 36 seconds and release recovers",
+      async (interaction, stream) => {
+        vi.useFakeTimers()
+        try {
+          const video =
+            stream === "waiting"
+              ? await startFirstSlide(makeTimedSequencedModel(123))
+              : await renderWithoutCanPlay()
+          const play = stubPlay(video)
+          if (stream === "waiting") {
+            await act(async () => {
+              vi.advanceTimersByTime(1_500)
+            })
+          }
+          const pause = vi.spyOn(video, "pause")
+          const link = container.querySelector<HTMLAnchorElement>(
+            '[data-testid="watch-home-tv-actions"] a',
+          )!
+          const opening = heroIdentity()
+          expect(opening.title).toBe("Queued One")
+          expect(opening.href).toBeTruthy()
+          await act(async () => {
+            if (interaction === "mouse") pointAtHero(true)
+            else link.focus()
+          })
+          if (stream === "waiting") {
+            await act(async () => {
+              video.dispatchEvent(new Event("waiting", { bubbles: true }))
+            })
+          }
+          // Separate commits across three watchdog periods: a single batched
+          // timer jump could conceal advancement onto a replacement slide.
+          for (let period = 0; period < 4; period++) {
+            await act(async () => {
+              vi.advanceTimersByTime(10_000)
+            })
+            expect(heroIdentity()).toEqual(opening)
+            expect(currentVideo()).toBe(video)
+          }
+          expect(play).toHaveBeenCalled()
+          expect(pause).not.toHaveBeenCalled()
+          await act(async () => {
+            if (interaction === "mouse") pointAtHero(false)
+            else link.blur()
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(11_999)
+          })
+          expect(heroIdentity()).toEqual(opening)
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(carouselLabel()).toBe("Queued Two")
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it.each(["mouse", "keyboard"] as const)(
+      "preserves the remaining image dwell after a %s hold",
+      async (interaction) => {
+        vi.useFakeTimers()
+        try {
+          await act(async () => {
+            root.render(
+              <WatchHomePage
+                model={makeModel({
+                  heroSlides: [
+                    {
+                      ...makeCard({ hls: null, playbackId: null }),
+                      eyebrow: "Featured",
+                    },
+                    {
+                      ...makeCard({
+                        id: "image-2",
+                        coreId: "image-2",
+                        title: "Second Image",
+                        href: "/second.html",
+                        hls: null,
+                        playbackId: null,
+                      }),
+                      eyebrow: "Featured",
+                    },
+                  ],
+                })}
+              />,
+            )
+          })
+          const opening = heroIdentity()
+          expect(opening.title).toBe("Jesus")
+          const link = container.querySelector<HTMLAnchorElement>(
+            '[data-testid="watch-home-tv-actions"] a',
+          )!
+          await act(async () => {
+            vi.advanceTimersByTime(2_000)
+          })
+          await act(async () => {
+            if (interaction === "mouse") pointAtHero(true)
+            else link.focus()
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(40_000)
+          })
+          expect(heroIdentity()).toEqual(opening)
+          await act(async () => {
+            if (interaction === "mouse") pointAtHero(false)
+            else link.blur()
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(4_999)
+          })
+          expect(heroIdentity()).toEqual(opening)
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(carouselLabel()).toBe("Second Image")
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it.each(["mouse", "keyboard"] as const)(
+      "defers repeated ended events until the final %s hold releases once",
+      async (lastHold) => {
+        vi.useFakeTimers()
+        try {
+          const video = await startFirstSlide(makeTimedSequencedModel(123))
+          const link = container.querySelector<HTMLAnchorElement>(
+            '[data-testid="watch-home-tv-actions"] a',
+          )!
+          const opening = heroIdentity()
+          await act(async () => {
+            pointAtHero(true)
+            link.focus()
+          })
+          await act(async () => {
+            video.dispatchEvent(new Event("ended", { bubbles: true }))
+            video.dispatchEvent(new Event("ended", { bubbles: true }))
+          })
+          await act(async () => {
+            if (lastHold === "keyboard") pointAtHero(false)
+            else link.blur()
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(40_000)
+          })
+          expect(heroIdentity()).toEqual(opening)
+          await act(async () => {
+            if (lastHold === "keyboard") link.blur()
+            else pointAtHero(false)
+          })
+          expect(carouselLabel()).toBe("Queued Two")
+          await act(async () => {
+            vi.advanceTimersByTime(0)
+          })
+          expect(carouselLabel()).toBe("Queued Two")
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it("keeps main's running-media time query while holding film identity", async () => {
+      const video = await startFirstSlide(makeTimedSequencedModel(123))
+      const opening = heroIdentity()
+      await act(async () => {
+        pointAtHero(true)
+      })
+      await act(async () => {
+        setMediaTime(video, 8)
+        video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+      })
+      const running = heroIdentity()
+      expect(running.title).toBe(opening.title)
+      expect(running.copy).toBe(opening.copy)
+      expect(running.src).toBe(opening.src)
+      expect(running.href?.split("?")[0]).toBe(opening.href?.split("?")[0])
+      expect(running.href).toContain("t=8")
+      expect(running.href).not.toBe(opening.href)
+    })
+
+    it("lets deliberate selection cancel a deferred end without clearing the pointer hold", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(123))
+        await act(async () => {
+          pointAtHero(true)
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        await act(async () => {
+          container
+            .querySelector<HTMLButtonElement>(
+              'button[aria-label="Show Queued Two"]',
+            )!
+            .click()
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+        const selected = heroIdentity()
+        await act(async () => {
+          vi.advanceTimersByTime(40_000)
+        })
+        expect(heroIdentity()).toEqual(selected)
+        await act(async () => {
+          pointAtHero(false)
+        })
+        expect(heroIdentity()).toEqual(selected)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("does not turn pointer-owned focus into a keyboard hold", async () => {
+      vi.useFakeTimers()
+      try {
+        await startFirstSlide(makeTimedSequencedModel(10))
+        const link = container.querySelector<HTMLAnchorElement>(
+          '[data-testid="watch-home-tv-actions"] a',
+        )!
+        const matches = link.matches.bind(link)
+        vi.spyOn(link, "matches").mockImplementation((selector) =>
+          selector === ":focus-visible" ? false : matches(selector),
+        )
+        await act(async () => {
+          link.focus()
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(15_001)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("retains main's bounded portrait recovery during a hold", async () => {
+      const video = await startFirstSlide(makeTimedSequencedModel(123))
+      await act(async () => {
+        pointAtHero(true)
+      })
+      Object.defineProperties(video, {
+        videoWidth: { configurable: true, value: 360 },
+        videoHeight: { configurable: true, value: 640 },
+      })
+      await act(async () => {
+        video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+      })
+      expect(carouselLabel()).toBe("Queued Two")
+      expect(readWatchHomeVerticalVideoIds()).toContain("queued-1")
+    })
+
+    it("clears orphaned focus when the same film loses its CTA", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        const slides = [
+          { ...makeCard({ durationSeconds: 10 }), eyebrow: "Featured" },
+          {
+            ...makeCard({
+              coreId: "second",
+              title: "Second",
+              durationSeconds: 10,
+            }),
+            eyebrow: "Featured",
+          },
+        ]
+        // The fallback slides are authored props, so metadata can change without
+        // changing film identity. A prefetched queue intentionally retains its
+        // current records while its id-only sequence key remains unchanged.
+        await act(async () => {
+          root.render(<WatchHomeTvCarousel slides={slides} />)
+        })
+        await act(async () => {
+          currentVideo().dispatchEvent(new Event("canplay", { bubbles: true }))
+        })
+        const link = container.querySelector<HTMLAnchorElement>(
+          '[data-testid="watch-home-tv-actions"] a',
+        )!
+        await act(async () => {
+          link.focus()
+        })
+        expect(carouselLabel()).toBe("Jesus")
+        expect(document.activeElement).toBe(link)
+        // Let the focus-entry containment check finish while the CTA still
+        // exists. Its pending timeout must not mask missing href-change cleanup.
+        await act(async () => {
+          vi.advanceTimersByTime(0)
+        })
+        await act(async () => {
+          root.render(
+            <WatchHomeTvCarousel
+              slides={slides.map((slide, index) =>
+                index === 0 ? { ...slide, href: null } : slide,
+              )}
+            />,
+          )
+        })
+        expect(carouselLabel()).toBe("Jesus")
+        expect(
+          container.querySelector('[data-testid="watch-home-tv-actions"] a'),
+        ).toBeNull()
+        await act(async () => {
+          vi.advanceTimersByTime(0)
+        })
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("false")
+        await act(async () => {
+          vi.advanceTimersByTime(15_000)
+        })
+        expect(carouselLabel()).toBe("Second")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     // The ticket's own regression. Fails against the 30-second cap this change
     // removes.
     it("keeps a slide longer than 30 seconds on screen past 30 seconds", async () => {
@@ -656,6 +1014,174 @@ describe("WatchHomePage", () => {
         })
 
         expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it.each(["hover", "focus"] as const)(
+      "keeps the active hero stable during %s and resumes its remaining time afterward",
+      async (interaction) => {
+        vi.useFakeTimers()
+        try {
+          const video = await startFirstSlide(makeTimedSequencedModel(10))
+          const openingTitle = carouselLabel()
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(video.play).toHaveBeenCalled()
+          const stopInteraction = () => {
+            if (interaction === "hover") {
+              pointAtHero(false)
+            } else {
+              container
+                .querySelector<HTMLAnchorElement>(
+                  '[data-testid="watch-home-tv-actions"] a',
+                )
+                ?.blur()
+            }
+          }
+
+          await act(async () => {
+            if (interaction === "hover") {
+              pointAtHero(true)
+            } else {
+              container
+                .querySelector<HTMLAnchorElement>(
+                  '[data-testid="watch-home-tv-actions"] a',
+                )
+                ?.focus()
+            }
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(20_000)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+
+          await act(async () => {
+            stopInteraction()
+          })
+          expect(
+            container
+              .querySelector(
+                '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+              )
+              ?.getAttribute("data-paused"),
+          ).toBe("false")
+          await act(async () => {
+            vi.advanceTimersByTime(13_000)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+          await act(async () => {
+            vi.advanceTimersByTime(2_001)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it("does not treat touch pointer entry as a hover hold", async () => {
+      vi.useFakeTimers()
+      try {
+        await startFirstSlide(makeTimedSequencedModel(10))
+        await act(async () => {
+          pointAtHero(true, "touch")
+          vi.advanceTimersByTime(15_001)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("defers a video's ended advance until the hero interaction ends", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+        await act(async () => {
+          pointAtHero(true)
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          pointAtHero(false)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("clears the keyboard hold if the focused Watch Now link is removed", async () => {
+      vi.useFakeTimers()
+      try {
+        const model = makeModel({
+          carousel: {
+            pools: [
+              {
+                id: "pool-a",
+                collectionIds: ["pool-a"],
+                videos: [
+                  makeCarouselSlide(),
+                  makeCarouselSlide({
+                    id: "queued-2",
+                    title: "Queued Two",
+                    href: null,
+                    src: "https://stream.example/queued-two.m3u8",
+                  }),
+                ],
+              },
+            ],
+          },
+        })
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={model} />)
+        })
+        const watchNow = container.querySelector<HTMLAnchorElement>(
+          '[data-testid="watch-home-tv-actions"] a',
+        )!
+        await act(async () => {
+          watchNow.focus()
+        })
+        expect(document.activeElement).toBe(watchNow)
+
+        await act(async () => {
+          container
+            .querySelector<HTMLButtonElement>(
+              'button[aria-label="Show Queued Two"]',
+            )
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          vi.advanceTimersByTime(0)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("true")
+        const selectedVideo = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        )!
+        await act(async () => {
+          selectedVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+          vi.advanceTimersByTime(0)
+        })
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("false")
       } finally {
         vi.useRealTimers()
       }
@@ -2926,7 +3452,9 @@ describe("WatchHomePage", () => {
     const queuedTwoButton = container.querySelector(
       'button[aria-label="Show Queued Two"]',
     ) as HTMLButtonElement
-    queuedTwoButton.focus()
+    await act(async () => {
+      queuedTwoButton.focus()
+    })
     expect(document.activeElement).toBe(queuedTwoButton)
 
     await act(async () => {
@@ -3101,7 +3629,7 @@ describe("WatchHomePage", () => {
     ).toBe(false)
   })
 
-  it("moves focus to the current circle when autoplay removes the focused past circle", async () => {
+  it("defers an ended slide change until keyboard focus leaves the hero", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     const numberWords = ["One", "Two", "Three", "Four", "Five"]
 
@@ -3139,7 +3667,9 @@ describe("WatchHomePage", () => {
     const pastButton = container.querySelector(
       '[data-testid="watch-home-video-timeline"] [data-offset="-1"] button',
     ) as HTMLButtonElement
-    pastButton.focus()
+    await act(async () => {
+      pastButton.focus()
+    })
     expect(document.activeElement).toBe(pastButton)
 
     await act(async () => {
@@ -3148,11 +3678,21 @@ describe("WatchHomePage", () => {
         ?.dispatchEvent(new Event("ended", { bubbles: true }))
     })
 
-    const currentButton = container.querySelector(
-      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
-    ) as HTMLButtonElement
-    expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
-    expect(document.activeElement).toBe(currentButton)
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Two")
+    expect(document.activeElement).toBe(pastButton)
+
+    await act(async () => {
+      pastButton.blur()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Three")
 
     await act(async () => {
       container
@@ -3165,13 +3705,11 @@ describe("WatchHomePage", () => {
         ?.dispatchEvent(new Event("ended", { bubbles: true }))
     })
 
-    const repeatedlyRecoveredCurrentButton = container.querySelector(
-      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
-    ) as HTMLButtonElement
-    expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
-      "Queued Five",
-    )
-    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Five")
   })
 
   it("holds the playback ring and shows a loader until the hero video loads", async () => {
@@ -3525,11 +4063,22 @@ describe("WatchHomePage", () => {
       const muteButton = container.querySelector(
         'button[aria-label="Unmute preview"]',
       ) as HTMLButtonElement
-      muteButton.focus()
+      await act(async () => {
+        muteButton.focus()
+      })
       expect(document.activeElement).toBe(muteButton)
 
       await act(async () => {
         finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBe(finalUnplayedVideo)
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
+
+      await act(async () => {
+        muteButton.blur()
       })
 
       const replacementVideo = container.querySelector(
@@ -3542,10 +4091,7 @@ describe("WatchHomePage", () => {
       expect(replacementVideo).not.toBe(finalUnplayedVideo)
       expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
       expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
-      expect(
-        container.querySelector('button[aria-label="Unmute preview"]'),
-      ).toBe(muteButton)
-      expect(document.activeElement).toBe(muteButton)
+      expect(document.activeElement).not.toBe(muteButton)
 
       await act(async () => {
         replacementVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
@@ -3570,9 +4116,15 @@ describe("WatchHomePage", () => {
       })
 
       expect(
-        container.querySelector('[data-testid="watch-home-tv-actions"] a'),
-      ).toBe(watchNow)
-      expect(document.activeElement).toBe(watchNow)
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBe(replacementVideo)
+      await act(async () => {
+        watchNow.blur()
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).not.toBe(replacementVideo)
     } finally {
       vi.useRealTimers()
     }
