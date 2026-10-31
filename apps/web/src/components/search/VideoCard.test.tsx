@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, createElement } from "react"
+import { act, createElement, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import englishMessages from "../../../messages/en.json"
@@ -18,6 +18,7 @@ import {
   VideoCard,
 } from "./VideoCard"
 import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
+import { SearchResults } from "./SearchResults"
 
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => {
@@ -172,7 +173,7 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/perfect-2.html?subtitles=russian")
   })
 
-  it("fails closed when a subtitle-only result lacks a valid audio action", () => {
+  it("returns null when a subtitle-only result lacks a valid audio action", () => {
     expect(
       defaultHrefBuilder(
         makeResult({
@@ -182,10 +183,33 @@ describe("defaultHrefBuilder", () => {
           subtitleLanguageSlug: "russian",
         }),
       ),
-    ).toBe("/")
+    ).toBeNull()
   })
 
-  it("fails closed when subtitle intent is malformed", () => {
+  it("returns null when a subtitle-only result has no subtitle language", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "perfect-2",
+          languageSlug: "english",
+          availabilityKind: "target_subtitle",
+          subtitleLanguageSlug: null,
+        }),
+      ),
+    ).toBeNull()
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "perfect-2",
+          languageSlug: null,
+          availabilityKind: "target_subtitle",
+          subtitleLanguageSlug: null,
+        }),
+      ),
+    ).toBeNull()
+  })
+
+  it("returns null when subtitle intent is malformed", () => {
     expect(
       defaultHrefBuilder(
         makeResult({
@@ -195,7 +219,7 @@ describe("defaultHrefBuilder", () => {
           subtitleLanguageSlug: "Russian!",
         }),
       ),
-    ).toBe("/")
+    ).toBeNull()
   })
 
   it("routes unavailable results through a separate requested language", () => {
@@ -211,14 +235,29 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/good-friday-live.html/chinese-simplified.html")
   })
 
-  it("fails closed when an unavailable result has no valid requested language", () => {
+  it("returns null when an unavailable result has no valid requested language", () => {
     const unavailable = makeResult({
       slug: "good-friday-live",
       languageSlug: null,
       availabilityKind: "unavailable",
     })
-    expect(defaultHrefBuilder(unavailable)).toBe("/")
-    expect(defaultHrefBuilder(unavailable, "Chinese!")).toBe("/")
+    expect(defaultHrefBuilder(unavailable)).toBeNull()
+    expect(defaultHrefBuilder(unavailable, null)).toBeNull()
+    expect(defaultHrefBuilder(unavailable, "")).toBeNull()
+    expect(defaultHrefBuilder(unavailable, "Chinese!")).toBeNull()
+  })
+
+  it("returns null for an unavailable result with a malformed slug even when a language was requested", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "Tümlükden Nura",
+          languageSlug: null,
+          availabilityKind: "unavailable",
+        }),
+        "chinese-simplified",
+      ),
+    ).toBeNull()
   })
 
   it("keeps English explicit for a public language-home collision", () => {
@@ -238,8 +277,64 @@ describe("defaultHrefBuilder", () => {
     ).toBe("/soccer_event_collection.html")
   })
 
-  it("falls back to / on a malformed slug rather than a broken deep link", () => {
-    expect(defaultHrefBuilder(makeResult({ slug: "Not A Slug!" }))).toBe("/")
+  it.each([
+    ["spaces and punctuation", "Not A Slug!"],
+    ["empty", ""],
+  ])(
+    "returns null (never a homepage link) for a malformed slug: %s",
+    (_, slug) => {
+      expect(defaultHrefBuilder(makeResult({ slug }))).toBeNull()
+      expect(
+        defaultHrefBuilder(makeResult({ slug, languageSlug: "english" })),
+      ).toBeNull()
+    },
+  )
+
+  // Canonical production slugs, confirmed through anonymous Admin search.
+  // PR #2662 is on main: these TARGET_AUDIO records must remain playable.
+  it.each(["tümlükden-nura", "çoğu-çay-mostly-tea"])(
+    "builds a canonical playable link for Unicode slug %s",
+    (slug) => {
+      expect(
+        defaultHrefBuilder(
+          makeResult({
+            slug,
+            languageSlug: "english",
+            availabilityKind: "target_audio",
+          }),
+        ),
+      ).toBe(`/${slug}.html`)
+    },
+  )
+
+  it.each(["Spanish!", "español", ""])(
+    "returns null for a malformed explicit result language %j instead of defaulting to English",
+    (languageSlug) => {
+      expect(
+        defaultHrefBuilder(makeResult({ slug: "jesus", languageSlug })),
+      ).toBeNull()
+    },
+  )
+
+  it("still defaults to English when the result language is absent", () => {
+    expect(
+      defaultHrefBuilder(makeResult({ slug: "jesus", languageSlug: null })),
+    ).toBe("/jesus.html")
+    expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(
+      "/jesus.html",
+    )
+  })
+
+  it("never returns the Watch homepage for any malformed input", () => {
+    const malformed = [
+      makeResult({ slug: "Not A Slug!" }),
+      makeResult({ slug: "jesus", languageSlug: "Bad!" }),
+      makeResult({ slug: "jesus", availabilityKind: "unavailable" }),
+      makeResult({ slug: "jesus", availabilityKind: "target_subtitle" }),
+    ]
+    for (const result of malformed) {
+      expect(defaultHrefBuilder(result)).toBeNull()
+    }
   })
 })
 
@@ -710,7 +805,7 @@ describe("VideoCard", () => {
     },
   )
 
-  it("fails closed without writing recovery context for a malformed requested language", () => {
+  it("renders disabled without writing recovery context for a malformed requested language", () => {
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -728,8 +823,9 @@ describe("VideoCard", () => {
       )
     })
 
-    const card = container.querySelector("a")
-    expect(card?.getAttribute("href")).toBe("/")
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="search-card-disabled"]')
+    expect(card?.getAttribute("aria-disabled")).toBe("true")
     act(() => {
       card?.dispatchEvent(
         new MouseEvent("click", {
@@ -1014,6 +1110,361 @@ describe("VideoCard container availability", () => {
       container?.querySelector(
         '[data-testid="search-card-availability-badge"]',
       ),
+    ).not.toBeNull()
+  })
+})
+
+describe("VideoCard with no valid destination", () => {
+  function renderCard(
+    result: SearchResult,
+    props: Partial<ComponentProps<typeof VideoCard>> = {},
+  ) {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => {
+      root?.render(<VideoCard result={result} {...props} />)
+    })
+  }
+
+  const malformed = () =>
+    makeResult({
+      id: "v_bad",
+      slug: "Not A Slug!",
+      title: "Tümlükden Nura",
+      playbackId: "mux-playback-1",
+      durationSeconds: 120,
+    })
+
+  it("renders a non-clickable aria-disabled card instead of a link to /watch", () => {
+    const onResultClick = vi.fn()
+    renderCard(malformed(), { onResultClick })
+
+    expect(container?.querySelector("a")).toBeNull()
+    const card = container?.querySelector(
+      '[data-testid="search-card-disabled"]',
+    )
+    expect(card?.getAttribute("aria-disabled")).toBe("true")
+    expect(container?.innerHTML).not.toContain("/watch")
+    expect(container?.textContent).toContain("Tümlükden Nura")
+
+    act(() => {
+      card?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    expect(onResultClick).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { name: "malformed slug", slug: "Know_God_1_Created" },
+    {
+      name: "unavailable without a requested language",
+      slug: "jesus",
+      availabilityKind: "unavailable" as const,
+    },
+    {
+      name: "subtitle intent without audio",
+      slug: "jesus",
+      availabilityKind: "target_subtitle" as const,
+      subtitleLanguageSlug: "russian",
+    },
+    {
+      name: "subtitle intent without subtitles",
+      slug: "jesus",
+      languageSlug: "english",
+      availabilityKind: "target_subtitle" as const,
+    },
+  ])("never anchors unrepresentable intent: $name", ({ name, ...fields }) => {
+    const result = makeResult({
+      ...fields,
+      title: name,
+      playbackId: "mux-playback-1",
+    })
+    const onResultClick = vi.fn()
+    renderCard(result, { onResultClick })
+
+    // This fails on actual main's pre-guard VideoCard: its fallback is an
+    // anchor to the homepage, optionally with playback_source=search.
+    expect(container?.querySelector("a")).toBeNull()
+    const card = container?.querySelector<HTMLElement>(
+      '[data-testid="search-card-disabled"]',
+    )
+    expect(card).not.toBeNull()
+    expect(card?.getAttribute("aria-disabled")).toBe("true")
+    expect(card?.tabIndex).toBe(-1)
+    expect(
+      card?.querySelector(
+        'a, button, input, select, textarea, [tabindex], [contenteditable="true"], [role="button"], [role="link"]',
+      ),
+    ).toBeNull()
+    expect(container?.textContent).toContain(name)
+    expect(
+      card?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(englishMessages.LanguagePickerModal.notAvailable)
+
+    act(() => {
+      card?.focus()
+      card?.dispatchEvent(new FocusEvent("focus"))
+      card?.dispatchEvent(new Event("pointerenter"))
+      for (const key of ["Enter", " "]) {
+        card?.dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true }),
+        )
+        card?.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }))
+      }
+      card?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    expect(document.activeElement).not.toBe(card)
+    expect(onResultClick).not.toHaveBeenCalled()
+    expect(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).toBeNull()
+    expect(card?.querySelector("video, audio, source, svg")).toBeNull()
+    expect(card?.querySelector('[data-testid="mux-hover-preview"]')).toBeNull()
+    expect(card?.querySelector('[data-testid="watch-progress-bar"]')).toBeNull()
+    expect(
+      card?.querySelector('[data-testid="search-card-hover-outline"]'),
+    ).toBeNull()
+    expect(card?.innerHTML).not.toContain("search-card-hover-zoom")
+    expect(card?.innerHTML).not.toContain("animated.webp")
+    expect(card?.innerHTML).not.toContain("playback_source")
+  })
+
+  it.each([
+    {
+      slug: "tümlükden-nura",
+      href: "/t%C3%BCml%C3%BCkden-nura.html?playback_source=search",
+    },
+    {
+      slug: "çoğu-çay-mostly-tea",
+      href: "/%C3%A7o%C4%9Fu-%C3%A7ay-mostly-tea.html?playback_source=search",
+    },
+  ])(
+    "keeps canonical Unicode result $slug linked with playable affordances and click context",
+    ({ slug, href }) => {
+      const result = makeResult({
+        slug,
+        title: slug,
+        languageSlug: "english",
+        availabilityKind: "target_audio",
+        playbackId: "mux-playback-1",
+      })
+      const onResultClick = vi.fn<
+        NonNullable<ComponentProps<typeof VideoCard>["onResultClick"]>
+      >((_result, event) => {
+        expect(event.currentTarget.getAttribute("href")).toBe(href)
+        event.preventDefault()
+      })
+      renderCard(result, { onResultClick })
+
+      const anchor = container?.querySelector("a")
+      expect(anchor).not.toBeNull()
+      expect(anchor?.getAttribute("href")).toBe(href)
+      expect(
+        container?.querySelector('[data-testid="search-card-disabled"]'),
+      ).toBeNull()
+      expect(
+        container?.querySelector(
+          '[data-testid="search-card-availability-badge"]',
+        ),
+      ).toBeNull()
+      expect(
+        container?.querySelector('[data-testid="mux-hover-preview"]'),
+      ).not.toBeNull()
+      expect(
+        container?.querySelector('[data-testid="watch-progress-bar"]'),
+      ).not.toBeNull()
+      expect(container?.querySelector("svg")).not.toBeNull()
+      expect(container?.innerHTML).toContain("search-card-hover-zoom")
+
+      act(() => {
+        anchor?.focus()
+        anchor?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        )
+      })
+      expect(document.activeElement).toBe(anchor)
+      expect(onResultClick).toHaveBeenCalledOnce()
+      expect(onResultClick.mock.calls[0][0]).toBe(result)
+      expect(
+        sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+      ).toBeNull()
+    },
+  )
+
+  it("shows no hover, play, preview or progress affordance, and only the generic Not available badge", () => {
+    renderCard(malformed())
+
+    expect(
+      container?.querySelector('[data-testid="search-card-hover-outline"]'),
+    ).toBeNull()
+    expect(
+      container?.querySelector('[data-testid="watch-progress-bar"]'),
+    ).toBeNull()
+    expect(container?.querySelector("svg")).toBeNull()
+    expect(container?.innerHTML).not.toContain("search-card-hover-zoom")
+    expect(container?.innerHTML).not.toContain("hover:shadow")
+    // Existing LanguagePickerModal.notAvailable catalog key, no language name.
+    expect(
+      container?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(englishMessages.LanguagePickerModal.notAvailable)
+  })
+
+  it("keeps the generic badge name-free even when a language name was requested", () => {
+    renderCard(malformed(), {
+      requestedLanguageSlug: "spanish-castilian",
+      requestedLanguageName: "Spanish, Castilian",
+    })
+    expect(
+      container?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(englishMessages.LanguagePickerModal.notAvailable)
+    expect(container?.textContent).not.toContain("Spanish, Castilian")
+  })
+
+  it("keeps malformed rows in the actual result grid alongside valid links", () => {
+    const results = [
+      malformed(),
+      makeResult({ id: "valid", slug: "jesus", title: "JESUS" }),
+      makeResult({
+        id: "missing-language",
+        slug: "good-friday-live",
+        title: "Good Friday Live",
+        availabilityKind: "unavailable",
+      }),
+    ]
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    act(() => {
+      root?.render(
+        <SearchResults
+          initialResults={results}
+          initialHasMore={false}
+          query="Jesus"
+        />,
+      )
+    })
+
+    expect(container.querySelector(".grid")?.children).toHaveLength(3)
+    expect(
+      container.querySelectorAll('[data-testid="search-card-disabled"]'),
+    ).toHaveLength(2)
+    expect(container.querySelectorAll("a")).toHaveLength(1)
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/jesus.html?playback_source=search",
+    )
+    for (const result of results) {
+      expect(container.textContent).toContain(result.title)
+    }
+    expect(container.textContent).not.toContain("No results")
+  })
+
+  it("keeps the duration and episode-count pills so result counts read the same", () => {
+    renderCard(malformed())
+    expect(container?.textContent).toContain("2:00")
+
+    act(() => root?.unmount())
+    container?.remove()
+    renderCard(
+      makeResult({
+        slug: "Bad Slug",
+        label: "SERIES",
+        childCount: 3,
+        durationSeconds: null,
+      }),
+    )
+    expect(container?.textContent).toContain("3 episodes")
+  })
+
+  it("shows only the generic Not available badge for an unavailable result without a requested language", () => {
+    renderCard(
+      makeResult({
+        slug: "good-friday-live",
+        availabilityKind: "unavailable",
+        languageSlug: null,
+      }),
+    )
+
+    expect(container?.querySelector("a")).toBeNull()
+    expect(
+      container?.querySelector('[data-testid="search-card-disabled"]'),
+    ).not.toBeNull()
+    expect(
+      container?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(englishMessages.LanguagePickerModal.notAvailable)
+  })
+
+  it("renders a disabled card when a malformed explicit language has no target", () => {
+    renderCard(makeResult({ slug: "jesus", languageSlug: "Spanish!" }))
+    expect(container?.querySelector("a")).toBeNull()
+  })
+
+  it("keeps a valid ordinary result clickable", () => {
+    renderCard(makeResult({ slug: "jesus", languageSlug: "english" }))
+
+    const anchor = container?.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/jesus.html?playback_source=search",
+    )
+    expect(
+      container?.querySelector('[data-testid="search-card-disabled"]'),
+    ).toBeNull()
+    expect(
+      container?.querySelector('[data-testid="search-card-hover-outline"]'),
+    ).not.toBeNull()
+  })
+
+  it("keeps a valid unavailable-language result clickable with its badge and recovery context", () => {
+    const result = makeResult({
+      slug: "good-friday-live",
+      availabilityKind: "unavailable",
+      languageSlug: null,
+    })
+    renderCard(result, {
+      requestedLanguageSlug: "chinese-simplified",
+      requestedLanguageName: "Chinese",
+    })
+
+    const anchor = container?.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/good-friday-live.html/chinese-simplified.html",
+    )
+    expect(
+      container?.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toContain(englishMessages.LanguagePickerModal.notAvailable)
+
+    act(() => {
+      anchor?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    expect(
+      window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).not.toBeNull()
+  })
+
+  it("honours a custom hrefBuilder that returns a Route, and one that returns null", () => {
+    renderCard(malformed(), {
+      hrefBuilder: () => "/custom-destination" as never,
+    })
+    expect(container?.querySelector("a")?.getAttribute("href")).toBe(
+      "/custom-destination?playback_source=search",
+    )
+
+    act(() => root?.unmount())
+    container?.remove()
+    renderCard(makeResult({ slug: "jesus" }), { hrefBuilder: () => null })
+    expect(container?.querySelector("a")).toBeNull()
+    expect(
+      container?.querySelector('[data-testid="search-card-disabled"]'),
     ).not.toBeNull()
   })
 })
