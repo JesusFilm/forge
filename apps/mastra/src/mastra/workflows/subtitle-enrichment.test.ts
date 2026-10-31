@@ -14,6 +14,133 @@ const input = {
 }
 
 describe("subtitle enrichment workflow", () => {
+  it("preserves real source artifact evidence when every target translation fails", async () => {
+    const result = await runSubtitleEnrichmentWorkflow(
+      {
+        assetId: "asset-1",
+        sourceLanguage: "en",
+        targetLanguages: ["es"],
+        source: { kind: "mux", muxAssetId: "mux-1" },
+      },
+      {
+        runId: "source-before-translation",
+        apiKey: "test-key",
+        sourceDeps: {
+          readMuxSource: async () => ({
+            language: "en",
+            segments: [{ start: 0, end: 2, text: "Hello" }],
+          }),
+          writeArtifact: async ({ assetId, artifactType, ext }) =>
+            `${assetId}/${artifactType}.${ext}`,
+        },
+        run: async () => [
+          { lang: "es", status: "failed", error: "Provider unavailable" },
+        ],
+      },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "all_languages_failed",
+      source: {
+        kind: "mux",
+        language: "en",
+        segmentCount: 1,
+        artifactKeys: {
+          transcript: "asset-1/transcript.json",
+          subtitles: "asset-1/subtitles.vtt",
+        },
+      },
+    })
+  })
+
+  it("never starts translation when approved source content is invalid", async () => {
+    const run = vi.fn()
+    const result = await runSubtitleEnrichmentWorkflow(
+      {
+        assetId: "asset-1",
+        sourceLanguage: "en",
+        targetLanguages: ["es"],
+        source: { kind: "transcript_artifact" },
+      },
+      {
+        apiKey: "test-key",
+        run,
+        deps: {
+          readArtifact: async () => new TextEncoder().encode('{"segments":[]}'),
+        },
+      },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "source_invalid",
+      retryable: false,
+    })
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it("executes an explicit source-only subtitle request before reporting success", async () => {
+    const readArtifact = vi.fn(async () =>
+      new TextEncoder().encode(
+        JSON.stringify({
+          language: "en",
+          segments: [{ start: 0, end: 1, text: "Hello" }],
+        }),
+      ),
+    )
+    const writeArtifact = vi.fn(
+      async ({ artifactType, ext }: { artifactType: string; ext: string }) =>
+        `asset-1/${artifactType}.${ext}`,
+    )
+    const result = await runSubtitleEnrichmentWorkflow(
+      {
+        assetId: "asset-1",
+        sourceLanguage: "en",
+        targetLanguages: [],
+        source: { kind: "transcript_artifact" },
+      },
+      {
+        runId: "source-only",
+        apiKey: "",
+        deps: { readArtifact, writeArtifact },
+      },
+    )
+    expect(result).toMatchObject({
+      ok: true,
+      source: {
+        language: "en",
+        segmentCount: 1,
+        artifactKeys: {
+          transcript: "asset-1/transcript.json",
+          subtitles: "asset-1/subtitles.vtt",
+        },
+      },
+    })
+    expect(writeArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({ artifactType: "subtitles" }),
+    )
+  })
+
+  it("does not report successful subtitles for an empty stored transcript", async () => {
+    const writeArtifact = vi.fn(async () => "unexpected")
+    const result = await runSubtitleEnrichmentWorkflow(
+      {
+        assetId: "asset-1",
+        sourceLanguage: "en",
+        targetLanguages: ["en"],
+      },
+      {
+        runId: "empty-source",
+        apiKey: "",
+        deps: {
+          readArtifact: async () => new TextEncoder().encode('{"segments":[]}'),
+          writeArtifact,
+        },
+      },
+    )
+    expect(result.ok).toBe(false)
+    expect(writeArtifact).not.toHaveBeenCalled()
+  })
+
   it("rejects invalid input before provider or storage work", async () => {
     const run = vi.fn()
 

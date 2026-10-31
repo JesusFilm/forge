@@ -40,6 +40,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
+  An explicit `source` can reuse approved transcript/VTT artifacts or acquire
+  real Mux source subtitles. `runSubtitleSource` is the reusable source API;
+  Manager still owns job/callback admission and Mux publication.
 - Owns the subtitle translation gold-standard evaluator. The offline adapter
   resolves exact human Core VTT references from a committed manifest and lock;
   the protected cloud cell route accepts only already-frozen verified bytes,

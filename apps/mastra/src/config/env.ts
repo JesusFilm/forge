@@ -440,6 +440,10 @@ const envSchema = z.object({
   DEVOTIONAL_VOICE_STYLE: z.string().min(1).optional(),
   // ElevenLabs (voiceover + music). Absent key => audio steps skipped, not failed.
   ELEVENLABS_API_KEY: z.string().min(1).optional(),
+  MUX_TOKEN_ID: z.string().min(1).optional(),
+  MUX_TOKEN_SECRET: z.string().min(1).optional(),
+  MUX_SIGNING_KEY: z.string().min(1).optional(),
+  MUX_PRIVATE_KEY: z.string().min(1).optional(),
   // Default narration voice — "Voice D" from the audition (deep, emotive male).
   // Override to swap voice (e.g. per language) without code changes.
   ELEVENLABS_VOICE_ID: z.string().min(1).default("HKFOb9iktHA85uKXydRT"),
@@ -1119,6 +1123,10 @@ export const env = envSchema.parse({
   DEVOTIONAL_VOICE: emptyToUndefined(process.env.DEVOTIONAL_VOICE),
   DEVOTIONAL_VOICE_STYLE: emptyToUndefined(process.env.DEVOTIONAL_VOICE_STYLE),
   ELEVENLABS_API_KEY: emptyToUndefined(process.env.ELEVENLABS_API_KEY),
+  MUX_TOKEN_ID: emptyToUndefined(process.env.MUX_TOKEN_ID),
+  MUX_TOKEN_SECRET: emptyToUndefined(process.env.MUX_TOKEN_SECRET),
+  MUX_SIGNING_KEY: emptyToUndefined(process.env.MUX_SIGNING_KEY),
+  MUX_PRIVATE_KEY: emptyToUndefined(process.env.MUX_PRIVATE_KEY),
   ELEVENLABS_VOICE_ID: emptyToUndefined(process.env.ELEVENLABS_VOICE_ID),
   ELEVENLABS_TTS_MODEL: emptyToUndefined(process.env.ELEVENLABS_TTS_MODEL),
   ELEVENLABS_MUSIC_MODEL: emptyToUndefined(process.env.ELEVENLABS_MUSIC_MODEL),

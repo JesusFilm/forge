@@ -20,6 +20,103 @@ const successResult = {
 }
 
 describe("launchMastraSubtitleEnrichment", () => {
+  it("bridges source execution and preserves source artifacts on translation failure", async () => {
+    const source = {
+      kind: "mux" as const,
+      language: "en",
+      segmentCount: 1,
+      artifactKeys: {
+        transcript: "asset-1/transcript.json",
+        subtitles: "asset-1/subtitles.vtt",
+      },
+    }
+    const fetchImpl = vi.fn(async () =>
+      Response.json(
+        {
+          result: {
+            ok: false,
+            mastraRunId: "run-1",
+            reason: "all_languages_failed",
+            retryable: true,
+            source,
+            languages: [
+              { lang: "es", status: "failed", error: "Provider unavailable" },
+            ],
+          },
+        },
+        { status: 502 },
+      ),
+    )
+    const result = await launchMastraSubtitleEnrichment(
+      {
+        assetId: "asset-1",
+        sourceLanguage: "en",
+        targetLanguages: ["es"],
+        source: { kind: "mux", muxAssetId: "mux-1" },
+      },
+      { baseUrl: "https://mastra.internal", bearer: "secret", fetchImpl },
+    )
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "all_languages_failed",
+      source,
+    })
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        redirect: "error",
+        body: expect.stringContaining(
+          '"source":{"kind":"mux","muxAssetId":"mux-1"}',
+        ),
+      }),
+    )
+  })
+
+  it.each([
+    undefined,
+    {
+      kind: "subtitle_artifact",
+      language: "en",
+      segmentCount: 1,
+      artifactKeys: {
+        transcript: "another/transcript.json",
+        subtitles: "another/subtitles.vtt",
+      },
+    },
+  ])(
+    "rejects missing or foreign source artifact evidence: %j",
+    async (source) => {
+      const result = await launchMastraSubtitleEnrichment(
+        {
+          assetId: "asset-1",
+          sourceLanguage: "en",
+          targetLanguages: [],
+          source: { kind: "subtitle_artifact" },
+        },
+        {
+          baseUrl: "https://mastra.internal",
+          bearer: "secret",
+          fetchImpl: async () =>
+            Response.json({
+              result: {
+                ok: true,
+                mastraRunId: "run-1",
+                languages: [],
+                succeeded: 0,
+                failed: 0,
+                ...(source ? { source } : {}),
+              },
+            }),
+        },
+      )
+      expect(result).toEqual({
+        ok: false,
+        reason: "parse_error",
+        retryable: false,
+      })
+    },
+  )
+
   it("returns config_missing when service configuration is absent", async () => {
     await expect(
       launchMastraSubtitleEnrichment({

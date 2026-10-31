@@ -103,6 +103,12 @@ Origin documents:
   artifacts, translates and retimes subtitles, writes
   `{assetId}/subtitles-{lang}.vtt` and `{assetId}/translation-{lang}.json` to
   shared artifact storage, and returns per-language results to Manager.
+  An explicit `source` can reuse approved `transcript.json`/`subtitles.vtt`
+  artifacts or acquire real Mux source subtitles. The reusable
+  `runSubtitleSource` API validates timed cues before writing artifacts.
+  Optional `MUX_TOKEN_ID`/`MUX_TOKEN_SECRET` enable acquisition;
+  `MUX_SIGNING_KEY`/`MUX_PRIVATE_KEY` enable signed playback reads. Manager
+  retains canonical job state, callback admission, and Mux publication.
 - Subtitle translation evaluation is Mastra-owned under
   `src/evals/subtitle-translation/` and `evals/subtitle-translation/`. The
   offline adapter uses exact Core video/edition/language identities plus a

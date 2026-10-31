@@ -1,3 +1,4 @@
+import { parseTranscriptArtifact } from "./transcript"
 import { mapWithConcurrency } from "../concurrency"
 import { chunkSegments } from "./chunker"
 import { loadLanguageConfig } from "./language-config"
@@ -115,44 +116,6 @@ export type RunSubtitleEnrichmentDeps = {
     operation: SubtitleEnrichmentProviderOperation,
   ) => void
   onProviderCall?: (call: SubtitleEnrichmentProviderCall) => void
-}
-
-type TranscriptArtifact = {
-  segments: TranscriptSegment[]
-}
-
-function parseTranscriptArtifact(bytes: Uint8Array): TranscriptArtifact {
-  const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown
-  if (
-    typeof parsed !== "object" ||
-    parsed == null ||
-    !("segments" in parsed) ||
-    !Array.isArray((parsed as { segments?: unknown }).segments)
-  ) {
-    throw new Error("Transcript artifact is missing segments")
-  }
-
-  const segments = (parsed as { segments: unknown[] }).segments.map(
-    (segment, index): TranscriptSegment => {
-      if (
-        typeof segment !== "object" ||
-        segment == null ||
-        typeof (segment as { start?: unknown }).start !== "number" ||
-        typeof (segment as { end?: unknown }).end !== "number" ||
-        typeof (segment as { text?: unknown }).text !== "string"
-      ) {
-        throw new Error(`Transcript segment ${index} is invalid`)
-      }
-
-      return {
-        start: (segment as { start: number }).start,
-        end: (segment as { end: number }).end,
-        text: (segment as { text: string }).text,
-      }
-    },
-  )
-
-  return { segments }
 }
 
 function detectorErrorDetails(error: unknown) {
